@@ -2,6 +2,7 @@ import { readBlob } from "#lib/server/blob.js";
 import { logAiRequest } from "#lib/server/data.js";
 import { createGateway } from "@ai-sdk/gateway";
 import { chartStatedAnswer } from "#lib/utils/chartStatedAnswer.js";
+import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
 import { generateText } from "ai";
 import {
 	type BarNotesInput,
@@ -213,7 +214,11 @@ const AnswerSchema = v.object({
 	notes: v.optional(v.pipe(v.string(), v.maxLength(400)), ""),
 });
 /** The answer after `chartStatedAnswer`: tempo and meter null where the chart states neither. */
-export type AiAnswer = Omit<v.InferOutput<typeof AnswerSchema>, "meter"> & { meter: string | null };
+export type AiAnswer = Omit<v.InferOutput<typeof AnswerSchema>, "meter"> & {
+	meter: string | null;
+	/** What looked wrong in the chart read (utils/chartReadWarnings.ts): the page shows them and does not apply the answer unasked. */
+	warnings?: string[];
+};
 
 /** The mix from Blob, as the bytes the model listens to. */
 async function loadMix(mixUrl: string): Promise<Uint8Array> {
@@ -377,7 +382,9 @@ Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [], "met
 		question,
 		schema: AnswerSchema,
 	});
-	return chartStatedAnswer(answer, chart.text);
+	// A read score is checked for the signs of a bad read (docs/audio-engine.md "The chart read is checked"); the band's own chart is not a read.
+	const warnings = chart.text && !chart.chord ? chartReadWarnings(chart.text) : [];
+	return { ...chartStatedAnswer(answer, chart.text), ...(warnings.length ? { warnings } : {}) };
 }
 
 const SectionsAnswerSchema = v.object({

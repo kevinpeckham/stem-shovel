@@ -33,6 +33,11 @@ belong in CLAUDE.md or docs/, not here.
   chart's chord content. Surfacing the chart summary for user
   correction before it anchors the song-check protects everything
   downstream.
+  Acted on 2026-10-24 (docs/audio-engine.md "The chart read is
+  checked"): `utils/chartReadWarnings.ts` runs the key-vs-chords check
+  on every read score and carries the reader's Note lines; the
+  song-check answer brings them as `warnings`, the song page shows them
+  in amber on the card and no longer applies a doubtful answer unasked.
 
 - **The song-check reads; it does not hear** (stem-bench Study 4,
   2026-10-23; full tables in the repo's REPORT.md). `askAiAboutMix`
@@ -79,7 +84,10 @@ belong in CLAUDE.md or docs/, not here.
   recall when the SAME page arrives as a PDF instead of a PNG (fable
   98.8 to 76.0; repeat dots collapse hardest), so `readChartWithAi`
   should rasterize PDF uploads app-side and send images rather than
-  trusting each provider's internal PDF pipeline. Do not point this
+  trusting each provider's internal PDF pipeline. **Withdrawn
+  2026-10-24**: the Study 5 correction above traced the PDF loss to the
+  bench's own PDF generator dropping accidentals; the app never
+  rasterized, and should not. Do not point this
   surface at haiku (1.2% chord recall, 15-measure drift, writes a
   stub) and keep an unreadable-page guard in mind if the model ever
   changes: gemini fabricated a key and meter from an 80 px smear

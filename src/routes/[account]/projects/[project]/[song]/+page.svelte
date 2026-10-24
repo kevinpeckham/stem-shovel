@@ -1442,7 +1442,13 @@
 		try {
 			aiAnswer = await askAiAboutSong({ id: data.song.id });
 			settingsTab = "tempo";
-			if (data.song.changes.length === 0) await useAiAnswer();
+			if (aiAnswer.warnings?.length)
+				// A doubtful read anchors nothing unasked (stem-bench Study 5): the card shows what looked wrong.
+				notify(
+					`The AI's reading of the chart looks off: ${aiAnswer.warnings[0]} Open settings to review it.`,
+					{ kind: "error" },
+				);
+			else if (data.song.changes.length === 0) await useAiAnswer();
 			else
 				notify(`The AI read the chart: ${aiLine(aiAnswer)}; open settings to use its answer`, {
 					kind: "info",
@@ -2714,6 +2720,17 @@
 											.map((c) => `${c.key} at ${editPos(c.at)}`)
 											.join(", ")}{/if}
 									{aiAnswer.notes ? ` — ${aiAnswer.notes}` : ""}
+									{#if aiAnswer.warnings?.length}
+										<!-- The chart read looked wrong (utils/chartReadWarnings.ts): said before the answer is used. -->
+										<span class="mt-1 block text-amber-300" role="alert">
+											{#each aiAnswer.warnings as w (w)}
+												<span class="block"
+													><span class="i-ph-warning align-text-bottom" aria-hidden="true"></span>
+													{w}</span
+												>
+											{/each}
+										</span>
+									{/if}
 									<button
 										class="ml-2 link-dim"
 										type="button"

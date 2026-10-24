@@ -533,6 +533,36 @@ tool wearing a second opinion's clothes, so the app now says so:
   key too, and with the detector owning tempo and meter the swap buys
   little.
 
+## The chart read is checked (2026-10-24)
+
+stem-bench Study 5 (FINDINGS.md, "AI features") composed the real path,
+engraved page to chart read to chart-anchored song-check, and found the
+chain equals the truth-fed ceiling with a competent reader: the song-check
+inherits the read's accuracy one to one, so a bad read anchors everything
+after it. Its anatomy also corrected Study 3: the PDF losses were the
+bench's own PDF generator dropping every accidental (a WinAnsi font has no
+music glyphs), which the model then read faithfully. The app never
+rasterized PDFs and now does not plan to; instead the read is checked:
+
+- `utils/chartReadWarnings.ts` reads `readChartWithAi`'s summary for the
+  reader's own "Note:" lines (an unreadable page, a doubt it voiced
+  unprompted) and for the dropped-accidentals signature: a key signature
+  of two or more sharps or flats while none of eight or more chord symbols
+  carries any (one accidental is no evidence: a song in G major can go
+  pages without an F♯; a flat on a slash bass counts).
+  `keySignatureSharps` maps majors and minors to their signatures.
+- `askAiAboutMix` runs it on a read score (never on the band's own chart,
+  which is not a read) and returns the lines as `AiAnswer.warnings`.
+- The song page shows them in amber on the AI card, and `askAiWithScore`
+  (the check that follows a score upload) no longer applies a doubtful
+  answer to the song's settings unasked: it notifies with the first
+  warning and leaves the card for the user to judge, "Use these" still a
+  click away. A clean read behaves as before.
+
+Left: showing the read itself (the per-measure summary) for correction
+before it anchors the check, which Study 5 recommends; the read is cached
+by the file's URL, so a corrected read would need a place to live.
+
 ## The chord chart as the AI's chart (2026-10-24)
 
 Study 4 left the song-check switched off for every song without a score,
