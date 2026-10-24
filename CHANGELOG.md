@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.160.0] - 2026-10-24
+
 ### Added
 
 - **Gain lines travel to Reaper.** A clip's gain line goes out in a Reaper project as the take's volume envelope and comes back in when the project is imported, so a ride on a clip survives the round trip (proved against Reaper's own render). A looped clip with a gain line goes out as one item per pass. DAWproject files still leave it out.
