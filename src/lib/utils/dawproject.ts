@@ -302,25 +302,50 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		if (!audio) return;
 		// A looped clip says so in the format's own words (loopStart/loopEnd in content seconds); its notes are unrolled above.
 		const loop = c.loop ? ` loopStart="${num(c.loop.start)}" loopEnd="${num(c.loop.end)}"` : "";
+		// The clip's content: its Audio, inside Warps when warped (docs/multitrack-recorder.md "Warping a clip"), a Warp per
+		// point mapping the clip's content seconds to the file's, from zero to the end of what the clip plays.
+		const content = (file: DawprojectAudio, warp: StudioClip["warp"], indent: string) => {
+			const pad = (warp ? "  " : "") + indent;
+			if (warp) out(`${indent}            <Warps contentTimeUnit="seconds" id="${id("warps")}">`);
+			out(
+				`${pad}            <Audio algorithm="${warp ? "stretch" : "raw"}" channels="${file.channels}" duration="${num(file.durationSeconds)}" sampleRate="${file.sampleRate}" id="${id("audio")}">`,
+			);
+			out(`${pad}              <File path="${esc(file.path)}"/>`);
+			out(`${pad}            </Audio>`);
+			if (warp) {
+				const end = clipSegments(c).reduce((m, s) => Math.max(m, s.offset + s.duration), 0);
+				for (const p of warpPointsOver(warp, end))
+					out(`${indent}              <Warp time="${num(p.at)}" contentTime="${num(p.source)}"/>`);
+				out(`${indent}            </Warps>`);
+			}
+		};
+		// The clip's other takes (docs/multitrack-recorder.md "Takes in the files"): the clip holds Lanes, one per take
+		// with the take as a clip over its file at the clip's offset, the chosen take first; a reader without the idea
+		// sees lanes of clips inside a clip, which the format allows.
+		const takes = (c.alternates ?? []).filter((altId) => input.audio.has(altId));
 		// A switched-off clip is the format's enable="false".
 		out(
-			`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(c.offset)}"${loop}${c.muted ? ' enable="false"' : ""} fadeTimeUnit="seconds" fadeInTime="${num(c.fadeIn)}" fadeOutTime="${num(c.fadeOut)}" name="${esc(c.name)}">`,
+			`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(takes.length ? 0 : c.offset)}"${loop}${c.muted ? ' enable="false"' : ""} fadeTimeUnit="seconds" fadeInTime="${num(c.fadeIn)}" fadeOutTime="${num(c.fadeOut)}" name="${esc(c.name)}">`,
 		);
-		// A warped clip (docs/multitrack-recorder.md "Warping a clip"): the Audio inside Warps, a Warp per point mapping the clip's
-		// content seconds to the file's, from zero to the end of what the clip plays.
-		const pad = c.warp ? "  " : "";
-		if (c.warp) out(`            <Warps contentTimeUnit="seconds" id="${id("warps")}">`);
-		out(
-			`${pad}            <Audio algorithm="${c.warp ? "stretch" : "raw"}" channels="${audio.channels}" duration="${num(audio.durationSeconds)}" sampleRate="${audio.sampleRate}" id="${id("audio")}">`,
-		);
-		out(`${pad}              <File path="${esc(audio.path)}"/>`);
-		out(`${pad}            </Audio>`);
-		if (c.warp) {
-			const end = clipSegments(c).reduce((m, s) => Math.max(m, s.offset + s.duration), 0);
-			for (const p of warpPointsOver(c.warp, end))
-				out(`              <Warp time="${num(p.at)}" contentTime="${num(p.source)}"/>`);
-			out("            </Warps>");
-		}
+		if (takes.length) {
+			out(`            <Lanes timeUnit="seconds" id="${id("lanes")}">`);
+			const take = (file: DawprojectAudio, name: string, warp: StudioClip["warp"]) => {
+				out(`              <Lanes id="${id("lane")}">`);
+				out(`                <Clips id="${id("clips")}">`);
+				out(
+					`                  <Clip time="0.000000" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(c.offset)}" name="${esc(name)}">`,
+				);
+				content(file, warp, "        ");
+				out("                  </Clip>");
+				out("                </Clips>");
+				out("              </Lanes>");
+			};
+			take(audio, c.name, c.warp);
+			takes.forEach((altId, i) =>
+				take(input.audio.get(altId)!, `${c.name} (take ${i + 2})`, undefined),
+			);
+			out("            </Lanes>");
+		} else content(audio, c.warp, "");
 		out("          </Clip>");
 	};
 	for (const t of a.tracks) {

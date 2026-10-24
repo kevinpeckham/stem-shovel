@@ -463,6 +463,47 @@ describe("dawproject", () => {
 		expect(back.fixed).toContain("Warped audio kept, stretched by Dawn's own algorithm");
 	});
 
+	it("writes a clip's takes as lanes inside the clip, the chosen first, and the reader keeps them behind it", () => {
+		const withTakes: StudioArrangement = {
+			...arrangement,
+			clips: [{ ...arrangement.clips[0]!, alternates: ["s2", "missing"] }],
+		};
+		const { project: xml, metadata } = dawproject({
+			title: "Takes",
+			arrangement: withTakes,
+			audio: new Map([
+				["s1", { path: "audio/take1.wav", durationSeconds: 30.5, sampleRate: 48000, channels: 2 }],
+				["s2", { path: "audio/take2.wav", durationSeconds: 31, sampleRate: 48000, channels: 2 }],
+			]),
+			application: { name: "Stem Shovel Dawn", version: "0.157.0" },
+		});
+		expect(() => validate(xml, "Project.xsd")).not.toThrow();
+		// The outer clip keeps its place and fades; each take is a clip over its file inside a lane of its own.
+		const c0 = arrangement.clips[0]!;
+		expect(xml).toMatch(
+			new RegExp(
+				`<Clip time="${c0.start.toFixed(6)}" duration="${c0.duration.toFixed(6)}" contentTimeUnit="seconds" playStart="0.000000"[^>]*name="${c0.name}">\\n\\s+<Lanes timeUnit="seconds" id="lanes\\d+">\\n\\s+<Lanes id="lane\\d+">\\n\\s+<Clips id="clips\\d+">\\n\\s+<Clip time="0.000000" duration="${c0.duration.toFixed(6)}" contentTimeUnit="seconds" playStart="${c0.offset.toFixed(6)}" name="${c0.name}">\\n\\s+<Audio algorithm="raw"[^>]*>\\n\\s+<File path="audio/take1.wav"/>`,
+			),
+		);
+		expect(xml).toContain(`name="${c0.name} (take 2)"`);
+		expect(xml).toContain('<File path="audio/take2.wav"/>');
+		expect(xml).not.toContain("take 3");
+		const back = readDawproject(xml, metadata, "Takes");
+		const clip = back.arrangement.clips.find((c) => c.name === c0.name)!;
+		const take1 = back.files.find((f) => f.path === "audio/take1.wav")!;
+		const take2 = back.files.find((f) => f.path === "audio/take2.wav")!;
+		expect(clip).toMatchObject({
+			sourceId: take1.sourceId,
+			start: c0.start,
+			offset: c0.offset,
+			duration: c0.duration,
+			fadeIn: c0.fadeIn,
+			fadeOut: c0.fadeOut,
+			alternates: [take2.sourceId],
+		});
+		expect(back.fixed).toContain(`${c0.name}: 1 take lane kept behind it as takes`);
+	});
+
 	it("writes a clip's loop as loopStart/loopEnd, and the reader keeps it", () => {
 		const looped: StudioArrangement = {
 			...arrangement,

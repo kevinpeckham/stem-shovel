@@ -320,8 +320,10 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
     color" swatch sets it, and every reader keeps a DAW's color as it
     was ("Track colors").
 13. **Take lanes within a track** (`Lanes` nested under a track's lanes):
-    comping lanes. Dawn has alternates behind a clip, which is the same
-    idea in a different shape; nested lanes could map onto them.
+    comping lanes. Done 2026-10-24: a clip's alternates go out as Lanes
+    inside the clip (one per take, the chosen first) and come back as
+    alternates; Reaper's other takes likewise, both ways
+    (docs/multitrack-recorder.md "Takes in the files").
 14. **Video** (`Video` clips over a file): a picture track to score to.
     Not a songwriter's tool today; noted for completeness.
 15. **Cue markers with colors** and **time-signature denominators**

@@ -112,6 +112,7 @@ for i = 0, reaper.CountTracks(0) - 1 do
       fadeIn = reaper.GetMediaItemInfo_Value(item, "D_FADEINLEN"),
       fadeOut = reaper.GetMediaItemInfo_Value(item, "D_FADEOUTLEN"),
     }
+    it.takes = reaper.CountTakes(item)
     if take then
       local _, takeName = reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", "", false)
       it.name = takeName

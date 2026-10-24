@@ -266,18 +266,22 @@ async function sourceFiles(
 		options.bits === 16 ? encodeWav(channels, sampleRate) : encodeWav24(channels, sampleRate);
 	const a = engine.arrangement;
 	if (!options.trim) {
+		// Every source a clip can play: the chosen one and its takes (docs/multitrack-recorder.md "Takes in the files").
 		for (const c of a.clips) {
-			if (!c.sourceId || audio.has(c.sourceId)) continue;
-			const buffer = await sourceAtSongRate(engine, c.sourceId);
-			if (!buffer) continue;
-			const path = `${dir}/${c.sourceId}.wav`;
-			entries.push({ name: path, data: encode(channelsOf(buffer), buffer.sampleRate) });
-			audio.set(c.sourceId, {
-				path,
-				durationSeconds: buffer.duration,
-				sampleRate: buffer.sampleRate,
-				channels: buffer.numberOfChannels,
-			});
+			if (!c.sourceId) continue;
+			for (const sourceId of [c.sourceId, ...(c.alternates ?? [])]) {
+				if (audio.has(sourceId)) continue;
+				const buffer = await sourceAtSongRate(engine, sourceId);
+				if (!buffer) continue;
+				const path = `${dir}/${sourceId}.wav`;
+				entries.push({ name: path, data: encode(channelsOf(buffer), buffer.sampleRate) });
+				audio.set(sourceId, {
+					path,
+					durationSeconds: buffer.duration,
+					sampleRate: buffer.sampleRate,
+					channels: buffer.numberOfChannels,
+				});
+			}
 		}
 		return { entries, audio, arrangement: a };
 	}
@@ -319,7 +323,8 @@ async function sourceFiles(
 			sampleRate: sr,
 			channels: channels.length,
 		});
-		const { loop: _loop, warp: _warp, ...rest } = c;
+		// Trimmed to what the clip plays, so its loop, warp and other takes are gone with the rest of the file.
+		const { loop: _loop, warp: _warp, alternates: _alternates, ...rest } = c;
 		clips.push({ ...rest, sourceId: c.id, offset: 0 });
 	}
 	return { entries, audio, arrangement: { ...a, clips } };

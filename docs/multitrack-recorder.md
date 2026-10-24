@@ -1249,6 +1249,49 @@ origin added in the jobs function, so data.ts stays free of the env). An
 import does not make credits of what it reads: artists are rows the
 account curates (songs.remote.ts), and the notes keep the names in view.
 
+## Takes in the files (2026-10-24, docs/dawproject-plan.md "What the format carries that Dawn lacks" 13)
+
+A clip's takes (`alternates`: the sources behind the chosen one, from
+recording over a region several times) used to stay home: the readers
+reported "other takes" under dropped and the writers wrote the chosen
+take alone. Now they travel.
+
+- **Reaper.** The writer puts a `TAKE` block per alternate after the
+  chosen take inside the item, each over its own file at the clip's
+  offset and named "Clip (take n)"; the chosen take comes first, so no
+  `SEL` is written. The reader (`rppRead.ts`) turns an item's other
+  takes over plain media files into the clip's `alternates`, bringing
+  their files along in `files` labeled "Track - Take name"; a take that
+  is a MIDI take, a section of a file or a subproject has no place
+  behind an audio clip and is still reported, as are other takes behind
+  a MIDI clip. Dawn's takes share the clip's offset, so a take with its
+  own `SOFFS` is noted ("A take behind a clip plays from the clip's own
+  offset").
+- **DAWproject.** The format lets a `Clip` hold `Lanes`, so the writer
+  (`dawproject.ts`) writes a clip with takes as a clip whose content is
+  Lanes, one `Lanes` per take holding one `Clip` over its file at the
+  clip's offset, the chosen take first (its warp with it); the outer clip
+  keeps the place, fades, loop and mute, with `playStart` 0. It validates
+  against Bitwig's schema. The reader (`dawprojectRead.ts`,
+  `readAudioContent` factored out of `readClip` for it) reads that shape
+  back as one clip with `alternates`, noting "X: n take lanes kept
+  behind it as takes"; lanes inside a clip of any other shape (notes,
+  several clips in a lane) are flattened where the clip sits, as nested
+  `Clips` already were, noting "X: lanes inside it read as clips". Not
+  proven in Bitwig itself: whether its own comping lanes take this shape
+  is for the by-hand pass (docs/daw-interop-plan.md).
+- **The export packs them.** `sourceFiles` in `studioExport.ts` writes a
+  WAV for every source a clip can play, the chosen one and its takes, so
+  the writers find them; the trimmed repack, which renders each clip to
+  what it plays, drops the takes with the rest of the file. `bun run
+  interop:rpp` now carries a clip with a take behind it: Reaper 7.82
+  holds two takes on the item with the chosen one active at the clip's
+  offset, and Dawn reads Reaper's own saving of it back with the take
+  behind the clip.
+- **Live.** Live sets have no take lanes in the `.als` the reader opens
+  (Live keeps takes as clips on take lanes of its own since 11, written
+  differently); nothing changes there.
+
 ## Pre-fader sends and a tempo-synced delay (2026-10-24)
 
 The two items the routing phase left "for later" (docs/dawn-daw-plan.md

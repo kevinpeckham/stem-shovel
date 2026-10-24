@@ -269,6 +269,21 @@ export function rppProject(input: RppProjectInput): string {
 			out(4, `FILE ${q(audio.path)}`);
 			out(3, ">");
 		}
+		// The clip's other takes (docs/multitrack-recorder.md "Takes in the files"): a TAKE per alternate after the chosen
+		// one, each over its own file at the clip's offset; the first take is the active one, so no SEL is written.
+		if (audio && c.alternates?.length)
+			c.alternates.forEach((altId, i) => {
+				const alt = input.audio.get(altId);
+				if (!alt) return;
+				out(3, "TAKE");
+				out(3, `NAME ${q(`${c.name} (take ${i + 2})`)}`);
+				out(3, `VOLPAN ${num(c.gain)} 0 1 -1`);
+				out(3, `SOFFS ${num(c.offset)}`);
+				out(3, "PLAYRATE 1 1 0 -1 0 0.0025");
+				out(3, "<SOURCE WAVE");
+				out(4, `FILE ${q(alt.path)}`);
+				out(3, ">");
+			});
 		out(2, ">");
 	};
 

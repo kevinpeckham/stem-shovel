@@ -460,6 +460,25 @@ describe("readDawproject", () => {
 		expect(read.dropped).toEqual(["Lost alias: its original is not in the file"]);
 	});
 
+	it("lanes inside a clip that are not one audio clip each are read as clips, flattened where the clip sits", () => {
+		const xml = `<Project version="1.0">
+  <Transport><Tempo unit="bpm" value="120" id="t"/></Transport>
+  <Structure><Track contentType="notes" id="tr" name="Keys"><Channel role="regular" id="ch"><Volume unit="linear" value="1" id="v"/></Channel></Track></Structure>
+  <Arrangement id="arr"><Lanes timeUnit="seconds" id="l"><Lanes track="tr" id="l2"><Clips id="c">
+    <Clip time="8.0" duration="8.0" name="Scene"><Lanes id="inner">
+      <Lanes id="a"><Clips id="ca"><Clip time="0.0" duration="2.0" name="Riff"><Notes id="n1"><Note time="0" duration="1" key="60" vel="0.5"/></Notes></Clip></Clips></Lanes>
+      <Lanes id="b"><Clips id="cb"><Clip time="4.0" duration="2.0" name="Answer"><Notes id="n2"><Note time="0" duration="1" key="64" vel="0.5"/></Notes></Clip></Clips></Lanes>
+    </Lanes></Clip>
+  </Clips></Lanes></Lanes></Arrangement>
+</Project>`;
+		const read = readDawproject(xml, null, "scene");
+		expect(read.arrangement.clips.map((c) => [c.name, c.start, c.duration])).toEqual([
+			["Riff", 8, 2],
+			["Answer", 12, 2],
+		]);
+		expect(read.fixed).toContain("Scene: lanes inside it read as clips");
+	});
+
 	it("refuses what is not a project", () => {
 		expect(() => readDawproject("<nope/>")).toThrow(/Not a DAWproject/);
 		expect(() => readDawproject("<Project><Broken")).toThrow(/Not a DAWproject/);

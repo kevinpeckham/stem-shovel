@@ -219,15 +219,20 @@ describe("readRpp", () => {
 		]);
 		expect(read.files.map((f) => f.path)).toEqual([
 			"Media/kick-2.flac",
-			"Media/kick.wav",
 			"/home/me/Media/kick.wav",
+			"Media/kick.wav",
 		]);
-		expect(read.dropped).toEqual(["Second take on Kick: 1 other take"]);
+		// The item's first take stays behind the chosen one as a take of the clip, its file brought along.
+		expect(a.clips[0]!.alternates).toEqual([read.files[1]!.sourceId]);
+		expect(read.files[1]!.label).toBe("Kick - First take");
+		expect(read.dropped).toEqual([]);
 		expect(read.fixed).toEqual([
 			"Regions read as markers at their start",
 			"Envelope shapes other than linear read as linear",
 			"Bass sends to no output in Reaper: goes to the master here",
 			"Fade shapes other than linear read as equal power",
+			"Second take on Kick: 1 other take kept behind it as takes",
+			"A take behind a clip plays from the clip's own offset",
 		]);
 	});
 

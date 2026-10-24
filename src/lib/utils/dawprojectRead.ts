@@ -393,6 +393,54 @@ export function readDawproject(
 		fix(`${bus.name}: its own clips on a track of their own inside it`);
 		return owner;
 	};
+	/**
+	 * An audio clip's content: its file as a source, the offset into it, and the warp
+	 * (docs/multitrack-recorder.md "Warping a clip"): the Warps' points map the clip's
+	 * content time to the file's; kept as Dawn's warp when they stretch, else folded
+	 * into the offset. Null (reported) when the clip names no file.
+	 */
+	const readAudioContent = (
+		el: Element,
+		contentUnit: TimeUnit,
+		playStart: number,
+		name: string,
+	) => {
+		const warps = kid(el, "Warps");
+		const audio = kid(el, "Audio") ?? kid(warps, "Audio");
+		if (!audio) return null;
+		const path = attr(kid(audio, "File"), "path") ?? "";
+		if (!path) {
+			drop(`${name || "An audio clip"}: no file`);
+			return null;
+		}
+		const label =
+			name ||
+			path
+				.replace(/^.*\//, "")
+				.replace(/\.[a-z0-9]+$/i, "")
+				.slice(0, 60);
+		const sourceId = sourceFor(path, label, num(audio, "sampleRate", 0));
+		const fileSeconds = num(audio, "duration", 0);
+		let offset = toSeconds(playStart, contentUnit);
+		let warp: StudioWarp | undefined;
+		if (warps) {
+			const contentUnitOfWarps = unitOf(warps, "seconds", "contentTimeUnit");
+			const points = kids(warps, "Warp").map((w) => ({
+				at: toSeconds(num(w, "time", 0), contentUnit),
+				source: toSeconds(num(w, "contentTime", 0), contentUnitOfWarps),
+			}));
+			const kept = warpFromPoints(points);
+			if (kept) {
+				warp = kept;
+				fix("Warped audio kept, stretched by Dawn's own algorithm");
+			} else if (points.length) {
+				// The file at its own speed from the first point: the offset shifts by what the points say.
+				const first = [...points].sort((a, b) => a.at - b.at)[0]!;
+				offset = Math.max(0, first.source + (offset - first.at));
+			}
+		}
+		return { sourceId, offset, warp, fileSeconds, label, audio };
+	};
 	const readClip = (el: Element, given: Owner | null, unit: TimeUnit, baseSeconds: number) => {
 		const name = (attr(el, "name") ?? "").trim().slice(0, 60);
 		const owner = given?.kind === "bus" ? trackForBusClips(given, el) : given;
@@ -463,7 +511,86 @@ export function readDawproject(
 			for (const c of kids(nested, "Clip")) readClip(c, owner, contentUnit, start);
 			return;
 		}
-		if (kid(el, "Lanes")) drop(`${name || "A clip"}: nested lanes`);
+		// Lanes inside a clip (docs/multitrack-recorder.md "Takes in the files"): when each lane holds one audio clip they are
+		// the clip's takes, the first the chosen one and the rest behind it; any other shape is read as clips, flattened.
+		const lanesEl = kid(el, "Lanes");
+		if (lanesEl) {
+			const laneUnit = unitOf(lanesEl, contentUnit);
+			const lanes = kids(lanesEl, "Lanes");
+			const takeEls = lanes.map((lane) => {
+				const only = kids(kid(lane, "Clips"), "Clip");
+				return only.length === 1 && !attr(only[0], "reference") && kid(only[0], "Notes") === null
+					? only[0]!
+					: null;
+			});
+			if (lanes.length > 1 && takeEls.every((t) => t !== null)) {
+				if (clips.length >= MAX_STUDIO_CLIPS) {
+					drop(`${name || "A clip"} (over the ${MAX_STUDIO_CLIPS}-clip limit)`);
+					return;
+				}
+				const takes = takeEls.map((t) => {
+					const u = unitOf(t, laneUnit, "contentTimeUnit");
+					return readAudioContent(
+						t,
+						u,
+						num(t, "playStart", 0),
+						(attr(t, "name") ?? "").trim().slice(0, 60) || name,
+					);
+				});
+				const chosen = takes[0];
+				if (!chosen) return;
+				const first = takeEls[0]!;
+				const takeDuration =
+					attr(first, "duration") === null ? 0 : toSeconds(num(first, "duration", 0), laneUnit);
+				if (!(duration > 0))
+					duration =
+						takeDuration > 0 ? takeDuration : Math.max(0.001, chosen.fileSeconds - chosen.offset);
+				const alternates = takes
+					.slice(1)
+					.map((t) => t?.sourceId)
+					.filter(
+						(sid, i, all): sid is string =>
+							!!sid && sid !== chosen.sourceId && all.indexOf(sid) === i,
+					);
+				remember(el, chosen.audio, {
+					sourceId: chosen.sourceId,
+					offset: seconds(Math.max(0, chosen.offset)),
+				});
+				const loop = loopOf((v) => toSeconds(v, contentUnit), Math.max(0, chosen.offset), duration);
+				clips.push({
+					id: nanoid(),
+					trackId: owner.id,
+					sourceId: chosen.sourceId,
+					start,
+					offset: seconds(Math.max(0, chosen.offset)),
+					duration: clamp(seconds(duration) || 0.001, 0.001, MAX_STUDIO_SECONDS),
+					gain: 1,
+					fadeIn,
+					fadeOut,
+					name: name || chosen.label,
+					...off,
+					...(loop ? { loop } : {}),
+					...(chosen.warp ? { warp: chosen.warp } : {}),
+					...(alternates.length ? { alternates } : {}),
+				});
+				if (alternates.length)
+					fix(
+						`${name || chosen.label}: ${alternates.length} take ${alternates.length === 1 ? "lane" : "lanes"} kept behind it as takes`,
+					);
+				return;
+			}
+			fix(`${name || "A clip"}: lanes inside it read as clips`);
+			const flatten = (node: Element, unit: TimeUnit) => {
+				for (const child of Array.from(node.children)) {
+					const tag = child.localName.toLowerCase();
+					if (tag === "lanes") flatten(child, unitOf(child, unit));
+					else if (tag === "clips")
+						for (const c of kids(child, "Clip")) readClip(c, owner, unitOf(child, unit), start);
+				}
+			};
+			flatten(lanesEl, laneUnit);
+			return;
+		}
 		// Automation inside the clip: an expression target (Bitwig keeps a notes clip's controller lanes here) becomes a lane of the clip; anything else is read as the track's, mostly a report.
 		const laneEvents: LaneEvent[] = [];
 		for (const pts of kids(el, "Points")) {
@@ -501,39 +628,10 @@ export function readDawproject(
 			return;
 		}
 		if (audio) {
-			const path = attr(kid(audio, "File"), "path") ?? "";
-			if (!path) {
-				drop(`${name || "An audio clip"}: no file`);
-				return;
-			}
-			const label =
-				name ||
-				path
-					.replace(/^.*\//, "")
-					.replace(/\.[a-z0-9]+$/i, "")
-					.slice(0, 60);
-			const sourceId = sourceFor(path, label, num(audio, "sampleRate", 0));
-			const fileSeconds = num(audio, "duration", 0);
-			// The offset into the file, and the warp (docs/multitrack-recorder.md "Warping a clip"): the Warps' points map the
-			// clip's content time to the file's; kept as Dawn's warp when they stretch, else folded into the offset.
-			let offset = toSeconds(playStart, contentUnit);
-			let warp: StudioWarp | undefined;
-			if (warps) {
-				const contentUnitOfWarps = unitOf(warps, "seconds", "contentTimeUnit");
-				const points = kids(warps, "Warp").map((w) => ({
-					at: toSeconds(num(w, "time", 0), contentUnit),
-					source: toSeconds(num(w, "contentTime", 0), contentUnitOfWarps),
-				}));
-				const kept = warpFromPoints(points);
-				if (kept) {
-					warp = kept;
-					fix("Warped audio kept, stretched by Dawn's own algorithm");
-				} else if (points.length) {
-					// The file at its own speed from the first point: the offset shifts by what the points say.
-					const first = [...points].sort((a, b) => a.at - b.at)[0]!;
-					offset = Math.max(0, first.source + (offset - first.at));
-				}
-			}
+			const content = readAudioContent(el, contentUnit, playStart, name);
+			if (!content) return;
+			const { sourceId, warp, fileSeconds, label } = content;
+			let { offset } = content;
 			if (!(duration > 0)) duration = Math.max(0.001, fileSeconds - offset);
 			remember(el, audio, { sourceId, offset: seconds(Math.max(0, offset)) });
 			const loop = loopOf((v) => toSeconds(v, contentUnit), Math.max(0, offset), duration);

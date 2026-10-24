@@ -121,9 +121,10 @@ const seconds = (v: number) => Math.round(v * 1_000_000) / 1_000_000;
  * senders send to; each item's active take as a clip in seconds (position,
  * length, start offset, volume, fades) over its media file, or a MIDI
  * take's notes with their ticks taken through the tempo map (or the
- * take's own tempo when it ignores the project's). What has no place in
- * Dawn is reported (`dropped`: FX, other takes, a stretched take, items
- * on a folder, receives on a track with items, nested folders' routing);
+ * take's own tempo when it ignores the project's), the item's other
+ * takes over plain media files behind it as the clip's takes. What has
+ * no place in Dawn is reported (`dropped`: FX, a MIDI take behind
+ * another, receives on a track with items, nested folders' routing);
  * what was read into Dawn's ways is too (`fixed`). The media are not in
  * the file: `files` names them by the paths the project holds, and the
  * caller finds them (utils/unpackProject.ts).
@@ -489,10 +490,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				body: takeAt ? [...takes[takeAt]!, ...takes[0]!] : takes[0]!,
 			};
 			const name = (lineOf(take, "NAME")?.[1] ?? "").trim().slice(0, 60) || "Clip";
-			if (takes.length > 1)
-				drop(
-					`${name} on ${p.name}: ${takes.length - 1} other ${takes.length === 2 ? "take" : "takes"}`,
-				);
+			const otherTakes = `${takes.length - 1} other ${takes.length === 2 ? "take" : "takes"}`;
 			// A muted item comes across switched off: kept, playing nothing.
 			const muted = numAt(lineOf(own, "MUTE"), 1, 0) !== 0;
 			if (clips.length >= MAX_STUDIO_CLIPS) {
@@ -557,6 +555,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 					continue;
 				}
 				clips.push({ ...base, notes, anchor: "beats", ...(lanes.length ? { lanes } : {}) });
+				if (takes.length > 1) drop(`${name} on ${p.name}: ${otherTakes} behind a MIDI take`);
 				if (track.kind !== "midi") {
 					if (clips.some((c) => c.trackId === track.id && c.sourceId)) {
 						drop(`${name} on ${p.name}: MIDI on a track with audio`);
@@ -625,6 +624,46 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 					: {}),
 				...(warp ? { warp } : {}),
 			});
+			// The item's other takes (docs/multitrack-recorder.md "Takes in the files"): a take over a plain media file
+			// becomes one of the clip's takes, its file brought along; a MIDI take, a section of a file or a subproject has
+			// no place behind an audio clip and is reported. Dawn's takes share the clip's offset.
+			if (takes.length > 1) {
+				const alternates: string[] = [];
+				let lost = 0;
+				let shifted = false;
+				takes.forEach((body, i) => {
+					if (i === takeAt) return;
+					const other: Block = { name: "TAKE", args: [], body: i ? [...body, ...takes[0]!] : body };
+					const src = blocksOf(other, "SOURCE")[0];
+					const kind = src?.args[0] ?? "";
+					const file =
+						src && !["MIDI", "SECTION", "RPP_PROJECT", "VIDEO"].includes(kind)
+							? lineOf(src, "FILE")?.[1]
+							: undefined;
+					if (!file) {
+						lost++;
+						return;
+					}
+					let id = sourceByPath.get(file);
+					if (!id) {
+						id = nanoid();
+						sourceByPath.set(file, id);
+						const takeName = (lineOf(other, "NAME")?.[1] ?? "").trim().slice(0, 60) || "Take";
+						files.push({ sourceId: id, path: file, label: `${p.name} - ${takeName}` });
+					}
+					if (id !== sourceId && !alternates.includes(id)) alternates.push(id);
+					if (Math.abs(numAt(lineOf(other, "SOFFS"), 1, 0) - offset) > 0.0005) shifted = true;
+				});
+				if (alternates.length) {
+					clips[clips.length - 1]!.alternates = alternates;
+					fix(`${name} on ${p.name}: ${otherTakes} kept behind it as takes`);
+					if (shifted) fix("A take behind a clip plays from the clip's own offset");
+				}
+				if (lost)
+					drop(
+						`${name} on ${p.name}: ${lost} other ${lost === 1 ? "take" : "takes"} (MIDI, a section of a file or a subproject)`,
+					);
+			}
 		}
 	}
 	if (blocksOf(project, "MASTERFXLIST").some((f) => f.body.some((x) => isBlock(x))))

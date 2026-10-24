@@ -421,6 +421,28 @@ describe("rppProject", () => {
 		expect(unevenBack.fixed).toContain("Stretch markers kept as warps (Dawn's own stretch)");
 	});
 
+	it("writes a clip's other takes as TAKE blocks after the chosen one, and reads them back behind it", () => {
+		const withTakes: StudioArrangement = {
+			...arrangement,
+			clips: [{ ...arrangement.clips[0]!, alternates: ["s-kick", "s-missing"] }],
+		};
+		const text = rppProject({ title: "Takes", arrangement: withTakes, audio, application: app });
+		expect(text).toContain(
+			'      <SOURCE WAVE\n        FILE "media/s-bass.wav"\n      >\n      TAKE\n      NAME "Bass take (take 2)"\n      VOLPAN 0.7 0 1 -1\n      SOFFS 0.5\n      PLAYRATE 1 1 0 -1 0 0.0025\n      <SOURCE WAVE\n        FILE "media/s-kick.wav"\n      >\n    >\n',
+		);
+		// The take whose file is lost is left out; no SEL, since the chosen take comes first.
+		expect(text).not.toContain("take 3");
+		expect(text).not.toContain("TAKE SEL");
+		const back = readRpp(text);
+		const clip = back.arrangement.clips.find((c) => c.name === "Bass take")!;
+		const kick = back.files.find((f) => f.path === "media/s-kick.wav")!;
+		expect(clip.sourceId).toBe(back.files.find((f) => f.path === "media/s-bass.wav")!.sourceId);
+		expect(clip.alternates).toEqual([kick.sourceId]);
+		expect(kick.label).toBe("Bass - Bass take (take 2)");
+		expect(back.fixed).toContain("Bass take on Bass: 1 other take kept behind it as takes");
+		expect(back.dropped).toEqual([]);
+	});
+
 	it("round-trips through the reader: the same tracks, buses, routing, clips, notes, tempo map and markers", () => {
 		const read = readRpp(text, "Exiles");
 		const b = read.arrangement;

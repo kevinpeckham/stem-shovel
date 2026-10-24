@@ -80,6 +80,20 @@ const arrangement: StudioArrangement = {
 				{ at: 3, source: 2 },
 			],
 		},
+		// A clip with a take behind it (docs/multitrack-recorder.md "Takes in the files"): Reaper should hold two takes, the chosen first.
+		{
+			id: "Kick again",
+			trackId: "t-kick",
+			sourceId: "kick",
+			alternates: ["hats"],
+			start: 17,
+			offset: 0.5,
+			duration: 2,
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: "Kick again",
+		},
 	],
 	// The master's own lane: full until 6 s, then (over 10 ms) silent; a render across 6 s shows Reaper honors it.
 	masterAutomation: {
@@ -228,6 +242,7 @@ interface Got {
 			fadeIn: number;
 			fadeOut: number;
 			offset?: number;
+			takes?: number;
 			playrate?: number;
 			preservePitch?: number;
 			stretchMarkers?: { pos: number; src: number }[];
@@ -355,6 +370,11 @@ for (const c of arrangement.clips) {
 		`${c.name}: at ${c.start} s, ${c.duration} s long (${g ? `${g.position.toFixed(3)}, ${g.length.toFixed(3)}` : "missing"})`,
 	);
 	if (!g) continue;
+	if (c.alternates?.length)
+		check(
+			g.takes === 1 + c.alternates.length && g.name === c.name && near(g.offset, c.offset),
+			`${c.name}: ${1 + c.alternates.length} takes, the chosen one active at offset ${c.offset} (${g.takes ?? "?"} takes, "${g.name}" at ${g.offset?.toFixed(3)})`,
+		);
 	if (c.notes) {
 		const origin = c.start - c.offset;
 		const want = c.notes.map((n) => ({ at: origin + n.t, pitch: n.p }));
@@ -509,6 +529,11 @@ if (existsSync(saved)) {
 			r && near(r.start, c.start) && near(r.duration, c.duration, 0.01) && near(r.offset, c.offset),
 			`read back: ${c.name} at ${c.start} s, ${c.duration} s, offset ${c.offset} (${r ? `${r.start}, ${r.duration}, ${r.offset}` : "missing"})`,
 		);
+		if (c.alternates?.length)
+			check(
+				r?.alternates?.length === c.alternates.length,
+				`read back: ${c.name} keeps its ${c.alternates.length} other ${c.alternates.length === 1 ? "take" : "takes"} (${r?.alternates?.length ?? 0})`,
+			);
 		if (c.notes && r?.notes)
 			check(
 				r.notes.length === c.notes.length &&

@@ -12,9 +12,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **The chord chart is the AI's chart too.** Ask AI to check, and the AI read of Scan stems and of an upload, now work on a song whose only chart is the one written in the Chart tab: the model reads the band's sections and chords beside the mix and places the keys from the chords each part moves through. A score still comes first when the song has one, and the tempo and time signature still come from the chart only where it marks them ("120 bpm", "3/4").
 
+- **Takes travel with the files.** A clip's other takes go out in a Reaper project as the item's other takes and in a DAWproject as lanes inside the clip, and come back as the clip's takes when such a file is opened, their audio brought along; a Reaper project's other takes used to be left behind and reported.
+
 ### Technical
 
 - `scoreForAi` returns `{kind: "chart", markdown, title}` as its third choice; `loadScore` passes it as text with `chord: true` and `CHART_NOTE` describes it; `chartStatedAnswer` also reads "120 bpm" and "♩ = 120" (docs/audio-engine.md "The chord chart as the AI's chart").
+- The export packs every take's source beside the chosen one (`sourceFiles`); `interop:rpp` proves a take against Reaper. Reaper: `TAKE` blocks written and read for `alternates`; DAWproject: a `Clip` holding `Lanes` of take clips, read back as alternates, other shapes flattened (`readAudioContent` factored out) (docs/multitrack-recorder.md "Takes in the files").
 
 ## [0.156.0] - 2026-10-24
 

@@ -164,6 +164,28 @@ describe("exportSong", () => {
 		expect(strFromU8(entries["metadata.xml"]!)).toContain("<Title>Exiles</Title>");
 		expect(entries["audio/s1.wav"]!.length).toBe(44 + 48000 * 2 * 3);
 	});
+	it("packs a clip's other takes beside its chosen source, and the project file names them as takes", async () => {
+		const e = engine();
+		e.arrangement = {
+			...e.arrangement,
+			clips: e.arrangement.clips.map((c) =>
+				c.sourceId === "s1" ? { ...c, alternates: ["s2", "lost"] } : c,
+			),
+		};
+		e.bufferOf = vi.fn((id: string) => (id === "s1" || id === "s2" ? fakeBuffer(0.5) : null));
+		const files = await exportSong(
+			e,
+			"Takes",
+			{ ...EXPORT_DEFAULTS, mix: false, reaper: true },
+			app,
+		);
+		const inside = unzipSync(new Uint8Array(await files[0]!.blob.arrayBuffer()));
+		expect(Object.keys(inside).sort()).toEqual(["Takes.rpp", "media/s1.wav", "media/s2.wav"]);
+		const text = strFromU8(inside["Takes.rpp"]!);
+		expect(text).toContain('TAKE\n      NAME "');
+		expect(text).toContain('FILE "media/s2.wav"');
+		expect(text).not.toContain("lost");
+	});
 	it("writes a Reaper project with its media beside it, a folder in the export's zip", async () => {
 		const files = await exportSong(
 			engine(),
