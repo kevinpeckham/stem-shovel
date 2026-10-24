@@ -12,6 +12,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **Gain lines travel in DAWproject files too.** A clip's gain line goes out as the clip's own gain automation and comes back when a DAWproject is imported; a looped clip keeps its loop and the line replays each pass.
 
+### Changed
+
+- **Undo in the Studio holds its history as changes, not copies.** Each step of the hundred-deep history keeps only what the edit changed, so a long session with hundreds of clips and lines undoes as before at a fraction of the memory.
+- **The Studio starts a song's clips as they come due** rather than all at once at play, so a song with hundreds of clips starts and reschedules without a pause.
+
 ## [0.160.0] - 2026-10-24
 
 ### Added

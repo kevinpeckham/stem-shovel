@@ -2325,10 +2325,44 @@ open) finds the WAV gone on its next cold fetch: the engine's
 `refreshUrls` hook (set by the page) reloads the song's URLs and fetches
 once more where the URL changed (`#bytesOf`). (2026-10-24)
 
+**Undo by patches (2026-10-24).** Undo no longer keeps up to a hundred
+whole copies of the song. `UndoStack` (audio/undoStack.ts) holds the
+newest state on each side (undo, redo) whole and turns every older one
+into the patch from its successor the moment a newer one arrives
+(utils/structuralPatch.ts): objects key by key, arrays of objects with
+an `id` (tracks, clips, markers, buses) by id, other arrays (a lane's
+points, a gain envelope) whole when they differ. Moving one clip of five
+hundred is an 88-byte patch against an 82 kB arrangement (0.1%; adding
+or removing one, 0.06–0.25%), so a long session holds one snapshot per
+side plus its edits. `#commit()` still pushes the state before each
+edit, and undo costs one patch and one copy.
+
+**Windowed scheduling (2026-10-24).** A pass no longer builds every
+clip's source at play. `#startPass` works out each audio clip's segments
+in the pass (its fades once, through `clipCrossfades`), starts those
+that begin within `STUDIO_SCHEDULE_HORIZON_S` (4 s) of the pass's start,
+and queues the rest by their start time; the look-ahead (`lookahead.ts`,
+a 25 ms timer reaching 0.1 s ahead) starts each as it comes within the
+horizon, through the same `#startSegment`, so fades, gain envelopes, a
+clip's loop repeats, mutes and the loop's cutoff behave as before. A
+song of hundreds of clips builds a few nodes at a time, and an edit
+while playing (`#reschedule`) rebuilds only what is near. The horizon is
+seconds, not the look-ahead's tenth, so a starved or throttled timer
+still finds a source started well before it is due; one whose moment
+passed anyway starts at once, offset to where the pass has reached.
+Stop, pause, a seek and a reschedule drop the queue with the sources
+(`#stopSources`), and `#stopClip` drops a clip's queued segments. The
+loop's next pass queues the same way from its own start. A render (and a
+bounce) has no look-ahead and schedules every clip at once; MIDI notes
+were already windowed (`#queueMidi`), and automation stays whole-pass
+AudioParam events. Windowing within one long clip is not needed: one
+AudioBufferSourceNode plays a buffer of any length. Holding a long
+source in memory is the streaming worklet's job, still open (D8).
+
 Left for later, named in the plan: the streaming worklet over OPFS and
-Blob, windowed scheduling of very long clips, and operation-based undo
-(the history stays whole-document snapshots at depth 100, which the mix
-gestures and every D1–D7 edit already fold into one step each).
+Blob (on-demand decoding, release and FLAC storage keep a long
+session's memory to what it plays; a source still lives decoded while
+it plays).
 
 Browser spec `tests/e2e/studio-scale.spec.ts`; unit tests on the graph
 over stand-in strips and on the persistence with fake timers; a schema

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 
 /**
@@ -8,7 +8,17 @@ import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
  * (on a ripple or an insert) the markers, tempo changes, automation
  * points and loop region after the edit. Stopped, so no AudioContext.
  */
-const { studio } = await import("./studio.svelte");
+/** The look-ahead's callback, caught so a test drives it by hand (the clock is the fake context's). */
+const lookahead = vi.hoisted(() => ({ tick: null as ((until: number) => void) | null }));
+vi.mock("./lookahead", () => ({
+	startLookahead: (_ctx: unknown, queueUntil: (until: number) => void) => {
+		lookahead.tick = queueUntil;
+		return () => {
+			lookahead.tick = null;
+		};
+	},
+}));
+const { studio, STUDIO_SCHEDULE_HORIZON_S } = await import("./studio.svelte");
 
 const clip = (id: string, trackId: string, start: number, duration: number): StudioClip => ({
 	id,
@@ -124,5 +134,163 @@ describe("studio.insertRange", () => {
 	});
 	it("refuses nothing inserted", () => {
 		expect(studio.insertRange(4, 0)).toBe(false);
+	});
+});
+
+/**
+ * Any Web Audio object as a stand-in: every property another stand-in,
+ * every call answering one, awaiting one resolves; numbers read as 0.
+ */
+function stub(): never {
+	const props = new Map<PropertyKey, unknown>();
+	return new Proxy(function () {}, {
+		get(_t, k) {
+			if (k === "then") return undefined;
+			if (k === Symbol.toPrimitive) return () => 0;
+			if (!props.has(k)) props.set(k, stub());
+			return props.get(k);
+		},
+		set(_t, k, v) {
+			props.set(k, v);
+			return true;
+		},
+		apply: () => stub(),
+		construct: () => stub() as object,
+	}) as never;
+}
+/** Each buffer source started, as (when, offset, duration). */
+const starts: [number, number, number][] = [];
+const clock = { now: 0 };
+/** A context of stand-ins, but for its clock and its buffer sources, which log their starts. */
+function fakeContext() {
+	const base: Record<PropertyKey, unknown> = {
+		get currentTime() {
+			return clock.now;
+		},
+		sampleRate: 48000,
+		state: "running",
+		audioWorklet: { addModule: async () => {} },
+		resume: async () => {},
+		createBufferSource: () => {
+			const src = stub() as unknown as Record<string, unknown>;
+			src.start = (at: number, offset: number, duration: number) =>
+				starts.push([at, offset, duration]);
+			return src;
+		},
+	};
+	return new Proxy(base, {
+		get: (t, k) => (k in t ? t[k] : ((t[k] = stub()), t[k])),
+	});
+}
+const fakeBuffer = {
+	duration: 40,
+	length: 40_000,
+	sampleRate: 1000,
+	numberOfChannels: 1,
+	getChannelData: () => new Float32Array(40_000),
+} as unknown as AudioBuffer;
+
+/**
+ * Windowed scheduling (docs/multitrack-recorder.md "Scale and structure"):
+ * a pass starts the clips within STUDIO_SCHEDULE_HORIZON_S of its start
+ * and the look-ahead the rest as they come within reach; a render still
+ * schedules every clip at once.
+ */
+describe("studio clip scheduling", () => {
+	const sourceId = "src_windowed000000000a";
+	const at = (id: string, start: number, duration = 1) => ({
+		...clip(id, "t1", start, duration),
+		sourceId,
+	});
+	const song = (loop: StudioArrangement["loop"] = null): StudioArrangement => ({
+		...arrangement(),
+		loop,
+		tracks: [track("t1")],
+		clips: [at("c0", 0), at("c2", 2), at("c10", 10, 2), at("c30", 30)],
+		markers: [],
+		tempoChanges: [],
+	});
+	beforeEach(() => {
+		vi.stubGlobal("AudioContext", function () {
+			return fakeContext();
+		});
+		vi.stubGlobal("OfflineAudioContext", function () {
+			return fakeContext();
+		});
+		for (const node of ["AudioWorkletNode", "GainNode", "ConstantSourceNode", "OscillatorNode"])
+			vi.stubGlobal(node, function () {
+				return stub();
+			});
+		vi.stubGlobal("requestAnimationFrame", () => 0);
+		vi.stubGlobal("cancelAnimationFrame", () => {});
+		clock.now = 0;
+		starts.length = 0;
+		studio.adoptSource(sourceId, fakeBuffer, { blob: new Blob(), filename: "a.wav" }, "A");
+	});
+	afterEach(() => {
+		studio.stop();
+		vi.unstubAllGlobals();
+	});
+
+	it("starts the clips within the horizon at play, and the rest as they come within reach", async () => {
+		expect(STUDIO_SCHEDULE_HORIZON_S).toBeGreaterThan(1);
+		studio.arrangement = song();
+		await studio.play({ from: 0, ahead: 0.1 });
+		expect(starts.map(([when]) => when)).toEqual([0.1, 2.1]);
+		expect(studio.diagnostics().clipsQueued).toBe(2);
+		clock.now = 5;
+		lookahead.tick!(5.1);
+		expect(starts).toHaveLength(2);
+		clock.now = 6.5;
+		lookahead.tick!(6.6);
+		expect(starts[2]).toEqual([10.1, 0, 2]);
+		expect(studio.diagnostics().clipsQueued).toBe(1);
+	});
+	it("a clip whose moment passed starts now, offset to where the pass has reached", async () => {
+		studio.arrangement = song();
+		await studio.play({ from: 0, ahead: 0.1 });
+		clock.now = 10.6;
+		lookahead.tick!(10.7);
+		expect(starts[2]?.[0]).toBeCloseTo(10.6);
+		expect(starts[2]?.[1]).toBeCloseTo(0.5);
+		expect(starts[2]?.[2]).toBeCloseTo(1.5);
+	});
+	it("stop drops what was queued: nothing starts late", async () => {
+		studio.arrangement = song();
+		await studio.play({ from: 0, ahead: 0.1 });
+		const tick = lookahead.tick!;
+		studio.stop();
+		expect(studio.diagnostics().clipsQueued).toBe(0);
+		clock.now = 40;
+		tick(40.1);
+		expect(starts).toHaveLength(2);
+	});
+	it("a seek drops the old pass's queue and queues its own", async () => {
+		studio.arrangement = song();
+		await studio.play({ from: 0, ahead: 0.1 });
+		studio.seek(9);
+		// The 10 s clip is now within reach; the 30 s one waits; nothing of the old pass is left.
+		expect(starts.slice(2).map(([when]) => when)).toEqual([1.02]);
+		expect(studio.diagnostics().clipsQueued).toBe(1);
+	});
+	it("the loop's next pass queues its clips the same way", async () => {
+		studio.arrangement = song({ on: true, start: 0, end: 12 });
+		await studio.play({ from: 0, ahead: 0.1 });
+		expect(starts).toHaveLength(2);
+		clock.now = 6.5;
+		lookahead.tick!(6.6);
+		clock.now = 12.05;
+		lookahead.tick!(12.15);
+		// The first pass's 10 s clip, then the second pass (from 12.1) with its first two clips.
+		expect(starts.slice(2).map(([when]) => when)).toEqual([10.1, 12.1, 14.1]);
+		expect(studio.diagnostics().clipsQueued).toBe(1);
+		clock.now = 18.5;
+		lookahead.tick!(18.6);
+		expect(starts[5]?.[0]).toBeCloseTo(22.1);
+	});
+	it("a render schedules every clip at once", async () => {
+		studio.arrangement = song();
+		await studio.render();
+		expect(starts.map(([when]) => when)).toEqual([0, 2, 10, 30]);
 	});
 });

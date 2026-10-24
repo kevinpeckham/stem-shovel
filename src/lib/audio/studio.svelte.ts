@@ -19,7 +19,7 @@ import { studioGrid } from "#lib/utils/studioGrid.js";
 import { studioKeyAt } from "#lib/utils/studioChanges.js";
 import { swingNotes } from "#lib/utils/swingNotes.js";
 import { clipNoteEvents } from "#lib/utils/clipNoteEvents.js";
-import { clipSegments } from "#lib/utils/clipSegments.js";
+import { clipSegments, type ClipSegment } from "#lib/utils/clipSegments.js";
 import { detectTempo } from "#lib/utils/detectTempo.js";
 import { stretchChannels } from "#lib/utils/stretchChannels.js";
 import { resampleChannels, semitonesFactor } from "#lib/utils/resampleChannels.js";
@@ -123,6 +123,7 @@ import {
 	type StudioInstrument,
 } from "#lib/constants/studioInstruments.js";
 import { startLookahead } from "./lookahead";
+import { UndoStack } from "./undoStack";
 import { metronome } from "./metronome.svelte";
 import { claimPlayback, releasePlayback } from "./onlyOnePlays";
 import { computePeaks } from "./peaks";
@@ -243,6 +244,16 @@ const NO_STRIPS: Map<string, StripGraph> = new Map();
 /** Frames per peak of a take's live waveform (about a hundredth of a second). */
 export const LIVE_PEAK_FRAMES = 512;
 const UNDO_DEPTH = 100;
+/**
+ * How far ahead of the clock a clip's source is built and started. A pass
+ * starts the clips that begin within it and queues the rest for the
+ * look-ahead (lookahead.ts: a 25 ms timer reaching 0.1 s ahead), so a
+ * song of hundreds of clips builds a few nodes at a time, not all at
+ * play. Seconds rather than the look-ahead's tenth: a starved or
+ * throttled timer then still finds every source started well before it
+ * is due.
+ */
+export const STUDIO_SCHEDULE_HORIZON_S = 4;
 
 export {
 	isInstrument,
@@ -273,6 +284,19 @@ interface Playing {
 	clipId: string;
 	src: AudioBufferSourceNode;
 	gain: GainNode;
+}
+/** A segment of an audio clip in a pass, waiting for its source: started by the look-ahead once `at` is within the horizon. */
+interface QueuedSegment {
+	at: number;
+	clip: StudioClip;
+	buffer: AudioBuffer;
+	seg: ClipSegment;
+	/** The pass it belongs to. */
+	from: number;
+	when: number;
+	to: number | null;
+	/** The clip's fades, worked out once for the pass. */
+	fades: EffectiveFades;
 }
 /** A MIDI track recording (phase 3): the instrument's note events as they come, until Stop pairs them into a clip. */
 /** What the lane code needs of a strip's owner: a track, a bus, or the master as `#masterOwner` presents it. */
@@ -410,18 +434,20 @@ class StudioEngine {
 		return this.#graph?.tracks ?? NO_STRIPS;
 	}
 	#playing: Playing[] = [];
+	/** The clip segments of the passes under way not yet started, by `at` (STUDIO_SCHEDULE_HORIZON_S). */
+	#clipQueue: QueuedSegment[] = [];
 	/** Each pass under way: the timeline second it began at and the context time it began on. */
 	#passes: { from: number; when: number; to: number | null }[] = [];
 	#stopLookahead: (() => void) | null = null;
 	#frame = 0;
 	#meterBuf: Float32Array<ArrayBuffer> | null = null;
 	#captures: Capture[] = [];
-	#past: StudioArrangement[] = [];
-	#future: StudioArrangement[] = [];
+	/** The undo history as patches, the state before each edit (audio/undoStack.ts; docs/multitrack-recorder.md "Scale and structure"). */
+	#history = new UndoStack<StudioArrangement>(UNDO_DEPTH);
 	/**
 	 * The mix's moves (fader, pan, mute, solo, master, effects) join the undo
 	 * stack one step per gesture (utils/mixHistory.ts decides where a gesture
-	 * starts); the stack itself is `#past`, so ⌘Z steps through edits and
+	 * starts); the stack itself is `#history`, so ⌘Z steps through edits and
 	 * moves alike. Cleared with the history on open.
 	 */
 	#mixGestures = new MixHistory<null>();
@@ -594,8 +620,7 @@ class StudioEngine {
 		sources: (StudioSourceView & { blob?: Blob })[];
 	}) {
 		this.stop();
-		this.#past = [];
-		this.#future = [];
+		this.#history.clear();
 		this.#mixGestures.clear();
 		this.canUndo = this.canRedo = false;
 		this.#buffers.clear();
@@ -889,9 +914,7 @@ class StudioEngine {
 
 	// ── Edits (each snapshots for undo and marks the song dirty) ───────────
 	#commit() {
-		this.#past.push(structuredClone($state.snapshot(this.arrangement)));
-		if (this.#past.length > UNDO_DEPTH) this.#past.shift();
-		this.#future = [];
+		this.#history.push($state.snapshot(this.arrangement) as StudioArrangement);
 		this.canUndo = true;
 		this.canRedo = false;
 		this.dirty = true;
@@ -902,24 +925,20 @@ class StudioEngine {
 	}
 	undo() {
 		this.#mixGestures.clear();
-		const prev = this.#past.pop();
-		if (!prev) return;
-		this.#future.push(structuredClone($state.snapshot(this.arrangement)));
-		this.#restoreArrangement(prev);
+		const prev = this.#history.undo($state.snapshot(this.arrangement) as StudioArrangement);
+		if (prev) this.#restoreArrangement(prev);
 	}
 	redo() {
 		this.#mixGestures.clear();
-		const next = this.#future.pop();
-		if (!next) return;
-		this.#past.push(structuredClone($state.snapshot(this.arrangement)));
-		this.#restoreArrangement(next);
+		const next = this.#history.redo($state.snapshot(this.arrangement) as StudioArrangement);
+		if (next) this.#restoreArrangement(next);
 	}
 	#restoreArrangement(a: StudioArrangement) {
 		const wasRunning = this.running;
 		if (wasRunning) this.stop();
 		this.arrangement = a;
-		this.canUndo = this.#past.length > 0;
-		this.canRedo = this.#future.length > 0;
+		this.canUndo = this.#history.canUndo;
+		this.canRedo = this.#history.canRedo;
 		this.dirty = true;
 		this.#ensureAllStrips();
 		this.#masterStrip?.setInserts(this.#synced(a.masterInserts ?? []), 0);
@@ -3013,6 +3032,7 @@ class StudioEngine {
 		const when = ctx.currentTime + ahead + countIn;
 		this.#stopAt = from;
 		this.#passes = [];
+		this.#clipQueue = [];
 		this.#startPass(from, when);
 		// A drums track armed: the drum machine plays along from the start, at the song's tempo, in step (its beat is recorded when recording). Not for a MIDI drums track (its notes play the drums), nor while a MIDI track renders to audio.
 		if (
@@ -3061,9 +3081,19 @@ class StudioEngine {
 		if (this.#masterStrip)
 			this.#scheduleLanes(this.#masterOwner(), this.#masterStrip, from, when, to);
 		const fades = clipCrossfades(this.arrangement.clips);
+		const due: QueuedSegment[] = [];
 		for (const clip of this.arrangement.clips)
-			this.#startClip(clip, from, when, to, fades.get(clip.id));
+			due.push(...this.#clipSegmentsIn(clip, from, when, to, fades.get(clip.id)));
+		this.#clipQueue = [...this.#clipQueue, ...due].sort((a, b) => a.at - b.at);
+		this.#startClipsUntil(when + STUDIO_SCHEDULE_HORIZON_S);
 		this.#queueMidi(from, when, to);
+	}
+	/** Starts the queued clip segments due before `until`. */
+	#startClipsUntil(until: number) {
+		const q = this.#clipQueue;
+		let n = 0;
+		while (n < q.length && q[n].at <= until) this.#startSegment(q[n++]);
+		if (n) this.#clipQueue = q.slice(n);
 	}
 	/** Every note of every MIDI clip that falls in [from, to), queued for the look-ahead from `when`; the first moments fire now. */
 	#queueMidi(from: number, when: number, to: number | null) {
@@ -3162,59 +3192,77 @@ class StudioEngine {
 		if (this.#midiVoices.length > 64)
 			this.#midiVoices = this.#midiVoices.filter((v) => v.ends > ctx.currentTime);
 	}
-	#startClip(
+	/** The segments of an audio clip that sound in the pass [from, to) begun at `when`, each with the context time it starts at. */
+	#clipSegmentsIn(
 		clip: StudioClip,
 		from: number,
 		when: number,
 		to: number | null,
 		fades?: EffectiveFades,
-	) {
-		const ctx = this.#ctx;
-		if (!clip.sourceId) return; // a MIDI clip: its notes are queued by #queueMidi
+	): QueuedSegment[] {
+		if (!clip.sourceId) return []; // a MIDI clip: its notes are queued by #queueMidi
 		const buffer = this.clipBufferOf(clip);
-		const nodes = this.#tracks.get(clip.trackId);
-		if (!ctx || !buffer || !nodes) return;
-		const clipEnd = clip.start + clip.duration;
-		if (clip.muted || clipEnd <= from || (to !== null && clip.start >= to)) return;
+		if (clip.muted || !this.#ctx || !buffer || !this.#tracks.has(clip.trackId)) return [];
 		// Fades: the clip's own at its edges (widened over an overlap into a crossfade, utils/clipCrossfades.ts), else a few milliseconds so a cut never clicks.
 		const f = fades ?? fadesOf(clip);
-		// A source per pass of the clip (utils/clipSegments.ts): one for a clip without a loop, the loop's repeats for one with.
-		for (const seg of clipSegments(clip)) {
-			const segEnd = seg.start + seg.duration;
-			if (segEnd <= from || (to !== null && seg.start >= to)) continue;
-			const begins = Math.max(seg.start, from);
-			const ends = to === null ? segEnd : Math.min(segEnd, to);
-			const offset = seg.offset + (begins - seg.start);
-			const length = ends - begins;
-			if (length <= 0 || offset >= buffer.duration) continue;
-			const src = ctx.createBufferSource();
-			src.buffer = buffer;
-			const gain = ctx.createGain();
-			const at = when + (begins - from);
-			// The gain envelope rides its own node before the fades (docs/multitrack-recorder.md "Clip gain envelopes").
-			const env = envelopeNode(ctx, clip.gainEnvelope, at, offset, length);
-			if (env) src.connect(env).connect(gain);
-			else src.connect(gain);
-			gain.connect(nodes.input);
-			scheduleFades(gain.gain, clip.gain, at, length, {
-				fadeIn: begins === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
-				fadeOut: ends === clipEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
-				inShape: f.inShape,
-				outShape: f.outShape,
-			});
-			src.start(at, offset, Math.min(length, buffer.duration - offset));
-			const entry: Playing = { clipId: clip.id, src, gain };
-			src.onended = () => {
-				this.#playing = this.#playing.filter((p) => p !== entry);
-				env?.disconnect();
-				gain.disconnect();
-			};
-			this.#playing.push(entry);
-		}
+		// A source per pass of the clip (utils/clipSegments.ts): one for a clip without a loop, the loop's repeats for one with; those in the pass.
+		return clipSegments(clip)
+			.filter((seg) => seg.start + seg.duration > from && (to === null || seg.start < to))
+			.map((seg) => ({
+				at: when + (Math.max(seg.start, from) - from),
+				clip,
+				buffer,
+				seg,
+				from,
+				when,
+				to,
+				fades: f,
+			}));
+	}
+	/**
+	 * A clip segment's source, started. Late (a starved timer let its moment
+	 * pass), it starts now from where the pass has reached in it, so it stays
+	 * in time with the rest.
+	 */
+	#startSegment({ clip, buffer, seg, from, when, to, fades: f }: QueuedSegment) {
+		const ctx = this.#ctx;
+		const nodes = this.#tracks.get(clip.trackId);
+		if (!ctx || !nodes) return;
+		const clipEnd = clip.start + clip.duration;
+		const segEnd = seg.start + seg.duration;
+		const begins = Math.max(seg.start, from, from + (ctx.currentTime - when));
+		const ends = to === null ? segEnd : Math.min(segEnd, to);
+		const offset = seg.offset + (begins - seg.start);
+		const length = ends - begins;
+		if (length <= 0 || offset >= buffer.duration) return;
+		const src = ctx.createBufferSource();
+		src.buffer = buffer;
+		const gain = ctx.createGain();
+		const at = when + (begins - from);
+		// The gain envelope rides its own node before the fades (docs/multitrack-recorder.md "Clip gain envelopes").
+		const env = envelopeNode(ctx, clip.gainEnvelope, at, offset, length);
+		if (env) src.connect(env).connect(gain);
+		else src.connect(gain);
+		gain.connect(nodes.input);
+		scheduleFades(gain.gain, clip.gain, at, length, {
+			fadeIn: begins === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
+			fadeOut: ends === clipEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
+			inShape: f.inShape,
+			outShape: f.outShape,
+		});
+		src.start(at, offset, Math.min(length, buffer.duration - offset));
+		const entry: Playing = { clipId: clip.id, src, gain };
+		src.onended = () => {
+			this.#playing = this.#playing.filter((p) => p !== entry);
+			env?.disconnect();
+			gain.disconnect();
+		};
+		this.#playing.push(entry);
 	}
 	/** The look-ahead: when a loop pass ends within reach, the next pass is already queued. */
 	#queueUntil = (until: number) => {
 		this.#flushMidi(until);
+		this.#startClipsUntil(until + STUDIO_SCHEDULE_HORIZON_S);
 		const loop = this.arrangement.loop;
 		const last = this.#passes[this.#passes.length - 1];
 		if (!loop?.on || !last || last.to === null) return;
@@ -3261,6 +3309,7 @@ class StudioEngine {
 			p.gain.disconnect();
 		}
 		this.#playing = [];
+		this.#clipQueue = [];
 		this.#passes = [];
 		for (const v of this.#midiVoices) v.cancel();
 		this.#midiVoices = [];
@@ -3279,6 +3328,7 @@ class StudioEngine {
 			p.gain.disconnect();
 		}
 		this.#playing = this.#playing.filter((x) => x.clipId !== clipId);
+		this.#clipQueue = this.#clipQueue.filter((x) => x.clip.id !== clipId);
 		for (const v of this.#midiVoices.filter((x) => x.clipId === clipId)) v.cancel();
 		this.#midiVoices = this.#midiVoices.filter((x) => x.clipId !== clipId);
 		this.#midiQueue = this.#midiQueue.filter((e) => e.clipId !== clipId);
@@ -3852,6 +3902,7 @@ class StudioEngine {
 				.filter(([, s]) => s.mono)
 				.map(([id]) => id),
 			playing: this.#playing.length,
+			clipsQueued: this.#clipQueue.length,
 			passes: this.#passes.length,
 			buffers: Array.from(this.#buffers.keys()),
 			master: this.#masterStrip?.fader.gain.value ?? null,

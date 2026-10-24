@@ -207,9 +207,10 @@ automatable parameters, so D2 adds sends and inserts in one place.
   them (`ensureSource`, `releaseUnused`, the `cold` status), track
   freeze and unfreeze, the graph (`studioGraph.ts`) and the autosave
   (`studioPersistence.svelte.ts`) as modules with tests, FLAC renditions
-  of sources in the jobs function (2026-10-24, `flacStudioSources`).
-  Left: the streaming worklet over OPFS, windowed scheduling,
-  operation-based undo.
+  of sources in the jobs function (2026-10-24, `flacStudioSources`),
+  windowed clip scheduling (`STUDIO_SCHEDULE_HORIZON_S`) and undo as
+  patches (`UndoStack`, `structuralPatch`), both 2026-10-24.
+  Left: the streaming worklet over OPFS.
   docs/multitrack-recorder.md "Scale and structure".
 
 ### Cross-cutting, every phase
