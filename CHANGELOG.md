@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.155.0] - 2026-10-24
+
 ### Added
 
 - **Pre-fader sends.** Each send in a track's mixer strip has a small **post**/**pre** button: pre-fader, the send ignores the fader and the inserts, so a reverb or a monitor mix can hold steady while the track rides.
@@ -16,6 +18,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **A folder's own clips come along.** Opening a Reaper project whose folder track holds items, or a DAWproject whose group has clips of its own, used to drop them. They now land on a track named after the folder, in its color, inside the group.
+
+### Technical
+
+- `sync` on a delay insert's settings (`DELAY_SYNCS`); `utils/withSyncedDelays.ts`; the delay stage exposes `time` for the engine's scheduling (`#scheduleLanes`, `#tempoSteps`); `setSendPre` (docs/multitrack-recorder.md "Pre-fader sends and a tempo-synced delay").
 
 ## [0.154.0] - 2026-10-23
 
