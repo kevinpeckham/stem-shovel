@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
+import type { StudioArrangement } from "#lib/val/StudioSchema.js";
+import { rppProject } from "./rpp";
 import { readRpp } from "./rppRead";
 
 const corpus = readFileSync("tests/rpp/reaper-7.82.RPP", "utf8");
@@ -330,6 +332,107 @@ describe("readRpp", () => {
 			["Looped", 1, 1.5, 5, { start: 1, end: 3 }],
 			["Once", 8, 1, 1.5, undefined],
 		]);
+	});
+
+	it("reads a take's active volume envelope as the clip's gain envelope in content seconds, through the play rate", () => {
+		const item = (name: string, env: string) => `    <ITEM
+      POSITION 2
+      LENGTH 4
+      NAME ${name}
+      SOFFS 1
+      PLAYRATE 0.5 1 0 -1 0 0.0025
+      <SOURCE WAVE
+        FILE "Media/keys.wav"
+      >
+${env}
+    >`;
+		const rpp = `<REAPER_PROJECT 0.1 "7.0/test" 0 0
+  TEMPO 120 4 4 0
+  <TRACK
+    NAME Keys
+${item("Ride", "      <VOLENV\n        ACT 1 -1\n        PT 0 1 0\n        PT 0.5 0.5 2\n        PT 1.5 2.5 0\n      >")}
+${item("Off", "      <VOLENV\n        ACT 0 -1\n        PT 0 0.5 0\n      >")}
+${item("Flat", "      <VOLENV\n        ACT 1 -1\n        PT 0 1 0\n      >")}
+${item("Empty", "      <VOLENV\n        ACT 1 -1\n      >")}
+  >
+>`;
+		const read = readRpp(rpp, "ride");
+		const [ride, off, flat, empty] = read.arrangement.clips;
+		// Half speed: the file's 1 s is content 2 s; take time over the rate is seconds of the item; the value clamped to 2.
+		expect(ride!.offset).toBe(2);
+		expect(ride!.gainEnvelope).toEqual([
+			{ t: 2, v: 1 },
+			{ t: 3, v: 0.5 },
+			{ t: 5, v: 2 },
+		]);
+		expect(read.fixed).toContain("Envelope shapes other than linear read as linear");
+		expect(off!.gainEnvelope).toBeUndefined();
+		expect(flat!.gainEnvelope).toBeUndefined();
+		expect(empty!.gainEnvelope).toBeUndefined();
+	});
+
+	it("round-trips a gain envelope through the writer and back", () => {
+		const gainEnvelope = [
+			{ t: 1, v: 0.5 },
+			{ t: 1.7321, v: 1.2 },
+			{ t: 3.25, v: 0 },
+			{ t: 5, v: 0.8 },
+		];
+		const arrangement: StudioArrangement = {
+			version: 1,
+			bpm: 120,
+			beatsPerBar: 4,
+			gridOn: true,
+			countIn: false,
+			click: false,
+			loop: null,
+			master: 1,
+			tracks: [
+				{
+					id: "t",
+					name: "Keys",
+					gain: 1,
+					pan: 0,
+					muted: false,
+					solo: false,
+					armed: false,
+					input: null,
+				},
+			],
+			clips: [
+				{
+					id: "c",
+					trackId: "t",
+					sourceId: "s",
+					start: 2,
+					offset: 1,
+					duration: 4,
+					gain: 1,
+					fadeIn: 0,
+					fadeOut: 0,
+					name: "Ride",
+					warp: [
+						{ at: 0, source: 0 },
+						{ at: 1.25, source: 1 },
+					],
+					gainEnvelope,
+				},
+			],
+		};
+		const text = rppProject({
+			title: "Ride",
+			arrangement,
+			audio: new Map([
+				["s", { path: "media/s.wav", durationSeconds: 20, sampleRate: 48000, channels: 2 }],
+			]),
+			application: { name: "test", version: "1" },
+		});
+		const back = readRpp(text).arrangement.clips[0]!.gainEnvelope!;
+		expect(back).toHaveLength(gainEnvelope.length);
+		back.forEach((p, i) => {
+			expect(p.t).toBeCloseTo(gainEnvelope[i]!.t, 4);
+			expect(p.v).toBeCloseTo(gainEnvelope[i]!.v, 4);
+		});
 	});
 
 	it("takes a MIDI take at its own tempo when it ignores the project's, and refuses what is not a project", () => {

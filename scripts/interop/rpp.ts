@@ -1,12 +1,13 @@
 /**
  * Reaper opens a project Dawn wrote (docs/dawproject-plan.md, roadmap
  * step 3; docs/daw-interop-plan.md, tier B): the fixture song with a bus,
- * a send, envelopes and a track color added goes out through `exportSong`
- * as a Reaper project (utils/rpp.ts) to `.interop/rpp/`; Reaper runs under
- * a virtual display with scripts/interop/rpp.lua, which opens it, writes
- * what it holds and saves the project again; this judges what Reaper read
- * against the arrangement, then reads Reaper's own saving of it back
- * through utils/rppRead.ts and judges that too.
+ * a send, envelopes, a track color and a clip gain envelope added goes
+ * out through `exportSong` as a Reaper project (utils/rpp.ts) to
+ * `.interop/rpp/`; Reaper runs under a virtual display with
+ * scripts/interop/rpp.lua, which opens it, writes what it holds and saves
+ * the project again; this judges what Reaper read against the
+ * arrangement, then reads Reaper's own saving of it back through
+ * utils/rppRead.ts and judges that too.
  *
  *   bun run interop:rpp
  *
@@ -27,6 +28,7 @@ import { readRpp } from "#lib/utils/rppRead.js";
 import { studioGrid } from "#lib/utils/studioGrid.js";
 import { warpSourceAt, warpUniformRatio } from "#lib/audio/warp.js";
 import { beatsBetween } from "#lib/audio/measures.js";
+import { gainEnvelopeRamps } from "#lib/utils/gainEnvelope.js";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
 import { arrangement as fixture, engine as fixtureEngine, readWav } from "./fixture";
 
@@ -93,6 +95,29 @@ const arrangement: StudioArrangement = {
 			fadeIn: 0,
 			fadeOut: 0,
 			name: "Kick again",
+		},
+		// A clip with a gain envelope (docs/multitrack-recorder.md "Clip gain envelopes") on a pad at four fifths speed, so the
+		// take's volume envelope has to land through the play rate: full, then down to a quarter at 1.5 s into the clip.
+		{
+			id: "Keys ride",
+			trackId: "t-keys",
+			sourceId: "keys",
+			start: 20,
+			offset: 2,
+			duration: 3,
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: "Keys ride",
+			warp: [
+				{ at: 0, source: 0 },
+				{ at: 1.25, source: 1 },
+			],
+			gainEnvelope: [
+				{ t: 2.5, v: 1 },
+				{ t: 3.5, v: 1 },
+				{ t: 3.51, v: 0.25 },
+			],
 		},
 	],
 	// The master's own lane: full until 6 s, then (over 10 ms) silent; a render across 6 s shows Reaper honors it.
@@ -246,6 +271,7 @@ interface Got {
 			playrate?: number;
 			preservePitch?: number;
 			stretchMarkers?: { pos: number; src: number }[];
+			volumeEnvelope?: { at: number; value: number; shape: number }[];
 			file?: string;
 			sampleRate?: number;
 			notes?: { at: number; ends: number; pitch: number; velocity: number }[];
@@ -264,6 +290,7 @@ interface Got {
 	masterVolumeEnvelope?: { at: number; value: number }[];
 	mixRender?: string;
 	render?: string;
+	rideRender?: { on: string; off: string };
 	log: string[];
 }
 const got: Got = JSON.parse(readFileSync(`${out}/result.json`, "utf8"));
@@ -370,6 +397,26 @@ for (const c of arrangement.clips) {
 		`${c.name}: at ${c.start} s, ${c.duration} s long (${g ? `${g.position.toFixed(3)}, ${g.length.toFixed(3)}` : "missing"})`,
 	);
 	if (!g) continue;
+	if (c.gainEnvelope) {
+		// The take's volume envelope: the clip's stretch with a point at each end, in take time from the item's start
+		// ((t - offset) × play rate), the factor as the value, linear.
+		const rate = c.warp ? 1 / (warpUniformRatio(c.warp) ?? 1) : 1;
+		const want = gainEnvelopeRamps(c.gainEnvelope, c.offset, c.offset + c.duration).map((p) => ({
+			at: (p.t - c.offset) * rate,
+			value: p.v,
+		}));
+		const env = g.volumeEnvelope ?? [];
+		check(
+			env.length === want.length &&
+				want.every(
+					(w, i) =>
+						near(env[i]!.at, w.at, 0.005) &&
+						near(env[i]!.value, w.value, 0.001) &&
+						env[i]!.shape === 0,
+				),
+			`${c.name}: take volume envelope ${want.map((w) => `${w.value}@${w.at.toFixed(3)}`).join(", ")} (${env.map((p) => `${p.value.toFixed(3)}@${p.at.toFixed(3)} s${p.shape}`).join(", ") || "none"})`,
+		);
+	}
 	if (c.alternates?.length)
 		check(
 			g.takes === 1 + c.alternates.length && g.name === c.name && near(g.offset, c.offset),
@@ -467,6 +514,33 @@ if (got.mixRender && existsSync(got.mixRender)) {
 		false,
 		`Reaper rendered the mix for the master volume check (${got.mixRender ?? "no render"})`,
 	);
+// Reaper's renders of the Keys ride with its take envelope and without: their ratio window by window is the envelope as
+// Reaper plays it, which must drop to a quarter 1.5 s into the item (the content's 3.5 s), not 1.2 s (a position in item
+// seconds without the rate) or 1.875 s (over the rate twice).
+if (got.rideRender && existsSync(got.rideRender.on) && existsSync(got.rideRender.off)) {
+	const on = readWav(got.rideRender.on);
+	const off = readWav(got.rideRender.off);
+	const win = Math.round(on.sampleRate * 0.01);
+	const rms = (a: Float32Array) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
+	const ratios: number[] = [];
+	for (let i = 0; i + win <= on.channels[0]!.length; i += win)
+		ratios.push(
+			rms(on.channels[0]!.subarray(i, i + win)) /
+				Math.max(1e-9, rms(off.channels[0]!.subarray(i, i + win))),
+		);
+	const drop = ratios.findIndex((r) => r < 0.625) * 0.01 + 0.005;
+	const before = ratios.slice(10, 110);
+	const after = ratios.slice(170, 290);
+	const mean = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length;
+	check(
+		near(drop, 1.5, 0.03) && near(mean(before), 1, 0.02) && near(mean(after), 0.25, 0.01),
+		`Reaper plays the Keys ride's take envelope through the play rate: full ${mean(before).toFixed(3)}, down to ${mean(after).toFixed(3)} at ${drop.toFixed(3)} s into the item (1.5 wanted)`,
+	);
+} else
+	check(
+		false,
+		`Reaper rendered the Keys ride for the take envelope check (${JSON.stringify(got.rideRender ?? "no render")})`,
+	);
 check(
 	near(got.masterVolume, arrangement.master),
 	`master volume ${arrangement.master} (${got.masterVolume.toFixed(3)})`,
@@ -534,6 +608,17 @@ if (existsSync(saved)) {
 				r?.alternates?.length === c.alternates.length,
 				`read back: ${c.name} keeps its ${c.alternates.length} other ${c.alternates.length === 1 ? "take" : "takes"} (${r?.alternates?.length ?? 0})`,
 			);
+		if (c.gainEnvelope) {
+			const want = gainEnvelopeRamps(c.gainEnvelope, c.offset, c.offset + c.duration);
+			check(
+				r?.gainEnvelope?.length === want.length &&
+					want.every(
+						(w, i) =>
+							near(r.gainEnvelope![i]!.t, w.t, 0.005) && near(r.gainEnvelope![i]!.v, w.v, 0.001),
+					),
+				`read back: ${c.name}'s gain envelope ${want.map((w) => `${w.v}@${w.t}`).join(", ")} (${r?.gainEnvelope?.map((p) => `${p.v}@${p.t}`).join(", ") ?? "none"})`,
+			);
+		}
 		if (c.notes && r?.notes)
 			check(
 				r.notes.length === c.notes.length &&

@@ -18,6 +18,7 @@ import type {
 	StudioTrack,
 	StudioClipLane,
 } from "#lib/val/StudioSchema.js";
+import { MAX_STUDIO_GAIN_POINTS } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import type { DawprojectFile, DawprojectRead } from "./dawprojectRead";
 import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
@@ -27,6 +28,7 @@ import { readReport } from "./readReport";
 import { colourOfHex } from "./colourOfHex";
 import { BEAT_UNITS } from "#lib/constants/studio.js";
 import { uniformWarp, warpContentAt, warpFromPoints } from "#lib/audio/warp.js";
+import { GAIN_ENVELOPE_MAX } from "./gainEnvelope";
 
 /** A block of the project: `<NAME args…` to its `>`, holding lines (as tokens) and blocks in order. */
 interface Block {
@@ -122,7 +124,8 @@ const seconds = (v: number) => Math.round(v * 1_000_000) / 1_000_000;
  * length, start offset, volume, fades) over its media file, or a MIDI
  * take's notes with their ticks taken through the tempo map (or the
  * take's own tempo when it ignores the project's), the item's other
- * takes over plain media files behind it as the clip's takes. What has
+ * takes over plain media files behind it as the clip's takes, the chosen
+ * take's active volume envelope as the clip's gain envelope. What has
  * no place in Dawn is reported (`dropped`: FX, a MIDI take behind
  * another, receives on a track with items, nested folders' routing);
  * what was read into Dawn's ways is too (`fixed`). The media are not in
@@ -275,6 +278,26 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 		)
 			fix("Envelope shapes other than linear read as linear");
 		return pts.length ? pts : undefined;
+	};
+	/**
+	 * A take's volume envelope as a clip's gain envelope (docs/multitrack-recorder.md "Clip gain envelopes"): a point's
+	 * position is take time from the item's start, which runs at the play rate, so it lands at `offset` + position / rate in
+	 * the clip's content seconds; the value is the factor. Only an active envelope, and none that is flat at one.
+	 */
+	const gainEnvelopeOf = (envBlock: Block, offset: number, playrate: number, until = Infinity) => {
+		if (numAt(lineOf(envBlock, "ACT"), 1, 1) !== 1) return undefined;
+		const lines = linesOf(envBlock, "PT");
+		if (lines.some((p, i) => i < lines.length - 1 && numAt(p, 3, 0) !== 0))
+			fix("Envelope shapes other than linear read as linear");
+		const pts = lines
+			.map((p) => ({
+				t: seconds(offset + Math.max(0, numAt(p, 1, 0)) / (playrate > 0 ? playrate : 1)),
+				v: clamp(round4(numAt(p, 2, 1)), 0, GAIN_ENVELOPE_MAX),
+			}))
+			.filter((p) => p.t <= until)
+			.sort((a, b) => a.t - b.t)
+			.slice(0, MAX_STUDIO_GAIN_POINTS);
+		return pts.length && pts.some((p) => p.v !== 1) ? pts : undefined;
 	};
 	const laneOf = (block: Block, name: string, kind: "volume" | "pan" | "mute") => {
 		const envBlock = blocksOf(block, name)[0];
@@ -614,9 +637,19 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			const sectionFrom = Math.max(0, sectionStart);
 			// The offset and a section's loop are seconds of the file; a warped clip keeps them in its content's seconds.
 			const fileOffset = sectionFrom + (loopsSection ? offset % sectionLength : offset);
+			// The chosen take's own volume envelope (its block sits among the take's lines): over a looped item it runs once down
+			// the item, so only the first pass's stretch comes across.
+			const volEnv = blocksOf({ name: "TAKE", args: [], body: takes[takeAt]! }, "VOLENV")[0];
+			const loopEnd = loopsSection ? toContent(sectionFrom + sectionLength) : Infinity;
+			const gainEnvelope = volEnv
+				? gainEnvelopeOf(volEnv, toContent(fileOffset), playrate, loopEnd)
+				: undefined;
+			if (gainEnvelope && loopsSection)
+				fix("A take volume envelope on a looped item read over its first pass");
 			clips.push({
 				...base,
 				offset: seconds(toContent(fileOffset)),
+				...(gainEnvelope ? { gainEnvelope } : {}),
 				sourceId,
 				...(loopsSection
 					? {

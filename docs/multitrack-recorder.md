@@ -883,11 +883,19 @@ set a point (replacing one within half a millisecond, sorted, clamped).
   Delete or Alt-click removes one. A looped clip draws the line over
   its first pass's content. Revisions call a change "gain envelope"
   (`diffArrangements`).
-- **Not in the files.** The Reaper and DAWproject writers leave the
-  envelope out (a Reaper take has a volume envelope of its own, and a
-  DAWproject clip could carry Points; neither is written or read yet),
-  so a project export plays the clip at its gain alone. Consolidate
-  first when the ride must travel.
+- **In a Reaper project (2026-10-24).** The writer (`rpp.ts`) puts the envelope on
+  the chosen take as a `<VOLENV` after its source (the takes behind it
+  carry none): the stretch the clip plays, `gainEnvelopeRamps` from the
+  offset to the end so the held ends come through, each point at
+  `(t - offset) × play rate` (take time from the item's start), the
+  factor as the value, linear. A looped clip with one goes out an item
+  per pass. The reader (`rppRead.ts`) takes an active take envelope back
+  the other way (position ÷ rate + offset, values within 0..2; none that
+  is flat at one; other shapes read as linear, a looped item's over its
+  first pass). `bun run interop:rpp` proves it on a clip at play rate
+  0.8: Reaper's render drops to a quarter 1.505 s into the item, 1.5
+  wanted (FINDINGS.md). The DAWproject writer still leaves the envelope
+  out; Consolidate first when the ride must travel there.
 
 ## Time (2026-10-19, docs/dawn-daw-plan.md D5)
 

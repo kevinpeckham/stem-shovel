@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Gain lines travel to Reaper.** A clip's gain line goes out in a Reaper project as the take's volume envelope and comes back in when the project is imported, so a ride on a clip survives the round trip (proved against Reaper's own render). A looped clip with a gain line goes out as one item per pass. DAWproject files still leave it out.
+
 ### Fixed
 
 - **Section bands no longer cover the bar numbers.** While a song has sections, the ruler's bar numbers sit in their own row under the bands.

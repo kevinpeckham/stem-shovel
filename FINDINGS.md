@@ -829,6 +829,14 @@ From a probe (a project with `TEMPO 120 6 8` and a tempo point carrying `(8 << 1
 - **`TimeMap2_GetDividedBpmAtTime` is 240 there**: the tempo in beats of the bottom number, which is what Reaper's transport displays ("240" for that 6/8). `TimeMap_GetTimeSigAtTime` returns 120, the stored tempo, with 6/8.
 - So a DAW-style tempo (Live, Bitwig, a MIDI file and Dawn all count quarter notes) goes into an `.rpp` unscaled whatever the signature, and the `(denominator << 16) | numerator` on a point carries the bottom number.
 
+## Reaper's take volume envelope runs in take time, from a rendered probe (2026-10-24)
+
+From `bun run interop:rpp` (scripts/interop/rpp.ts and rpp.lua): Reaper 7.82 opening an item at play rate 0.8 whose take carries a `<VOLENV` (after the take's `<SOURCE`, before the next `TAKE`), read through `GetTakeEnvelopeByName(take, "Volume")` and rendered with the envelope on and switched off (`ACT 0` through `SetEnvelopeStateChunk`), the ratio of the two renders being the envelope as Reaper plays it; for Dawn's clip gain envelopes (utils/rpp.ts, utils/rppRead.ts).
+
+- **A point's position is take time from the item's start, not item seconds**: it plays at position ÷ play rate. A step written at 1.2 played at 1.505 s into the item (1.5 = 1.2 ÷ 0.8 wanted), so a content second `t` of a clip at offset `o` goes out as `(t − o) × rate`, as a stretch marker's position does. The start offset does not shift it: 0 is the item's start whatever `SOFFS` is.
+- **The value is plain amplitude** (1 is 0 dB): a point of 0.25 rendered at 0.250 of the unenveloped level. `GetEnvelopePoint` returns the positions and values as written, shape 0 linear.
+- **The master's envelope silences a solo render too**: to render past the master's own volume envelope, switch it off through its chunk and restore the chunk after.
+
 ## Reaper's play rate, start offset and stretch markers, from a probe (2026-10-23)
 
 From `bun run interop:rpp` opening Dawn's project in Reaper 7.82 and reading the items back through the API (`GetMediaItemTakeInfo_Value`, `GetTakeStretchMarker`), for Dawn's clip warps (utils/rpp.ts, utils/rppRead.ts).

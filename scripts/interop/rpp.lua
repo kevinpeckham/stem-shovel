@@ -6,7 +6,8 @@
 -- after opening it is written out for the runner to judge: the tracks with
 -- their levels, pans, mutes, solos, colors, folder depths, receives and
 -- envelope points, the items with their positions, lengths, offsets,
--- volumes, fades and sources (a MIDI take's notes in project time), the
+-- volumes, fades, take volume envelopes and sources (a MIDI take's notes
+-- in project time), the
 -- tempo and time-signature markers and the markers; then the project is
 -- saved again under the output folder, so the reader can be checked on
 -- Reaper's own rendering of it.
@@ -64,14 +65,23 @@ local function envelopePoints(tr, name)
   return pointsOf(reaper.GetTrackEnvelopeByName(tr, name))
 end
 -- The master's envelopes by their chunk names: GetTrackEnvelopeByName(master, "Volume") finds nothing (FINDINGS.md).
-local function masterEnvelope(name)
+local function masterEnv(name)
   local master = reaper.GetMasterTrack(0)
   for i = 0, reaper.CountTrackEnvelopes(master) - 1 do
     local env = reaper.GetTrackEnvelope(master, i)
     local _, chunk = reaper.GetEnvelopeStateChunk(env, "", false)
-    if chunk:sub(1, #name + 1) == "<" .. name then return pointsOf(env) end
+    if chunk:sub(1, #name + 1) == "<" .. name then return env end
   end
   return nil
+end
+local function masterEnvelope(name)
+  return pointsOf(masterEnv(name))
+end
+-- An envelope switched off (ACT 0) or back on, through its chunk; returns the chunk as it was.
+local function setActive(env, on)
+  local _, chunk = reaper.GetEnvelopeStateChunk(env, "", false)
+  reaper.SetEnvelopeStateChunk(env, (chunk:gsub("\nACT %d", "\nACT " .. (on and 1 or 0), 1)), false)
+  return chunk
 end
 
 for i = 0, reaper.CountTracks(0) - 1 do
@@ -120,6 +130,8 @@ for i = 0, reaper.CountTracks(0) - 1 do
       it.takeVolume = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
       it.playrate = reaper.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE")
       it.preservePitch = reaper.GetMediaItemTakeInfo_Value(take, "B_PPITCH")
+      -- The take's own volume envelope (a clip's gain envelope): positions in take time from the item's start.
+      it.volumeEnvelope = pointsOf(reaper.GetTakeEnvelopeByName(take, "Volume"))
       -- The take's stretch markers: a position in take time against a source position.
       it.stretchMarkers = {}
       for m = 0, reaper.GetTakeNumStretchMarkers(take) - 1 do
@@ -204,6 +216,40 @@ reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "mix-master-volume", true)
 reaper.Main_OnCommand(42230, 0)
 reaper.SetMediaTrackInfo_Value(reaper.GetMasterTrack(0), "I_AUTOMODE", 0)
 result.mixRender = out .. "/mix-master-volume.wav"
+
+-- Where a take's volume envelope lands: the Keys track alone over the "Keys ride" item (20 to 23 s, play rate 0.8), rendered
+-- with its take envelope and again with it switched off, the master's envelope (silent from 6 s) off for both; the ratio of
+-- the two is the envelope as Reaper plays it.
+local keys, ride
+for i = 0, reaper.CountTracks(0) - 1 do
+  local tr = reaper.GetTrack(0, i)
+  local _, name = reaper.GetTrackName(tr)
+  if name == "Keys" then keys = tr end
+end
+if keys then
+  for j = 0, reaper.CountTrackMediaItems(keys) - 1 do
+    local take = reaper.GetActiveTake(reaper.GetTrackMediaItem(keys, j))
+    local _, takeName = reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", "", false)
+    if takeName == "Keys ride" then ride = take end
+  end
+end
+local rideEnv = ride and reaper.GetTakeEnvelopeByName(ride, "Volume")
+local masterVol = masterEnv("MASTERVOLENV")
+if rideEnv and masterVol then
+  local masterChunk = setActive(masterVol, false)
+  reaper.SetMediaTrackInfo_Value(keys, "I_SOLO", 1)
+  reaper.GetSetProjectInfo(0, "RENDER_STARTPOS", 20, true)
+  reaper.GetSetProjectInfo(0, "RENDER_ENDPOS", 23, true)
+  reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "ride-on", true)
+  reaper.Main_OnCommand(42230, 0)
+  local rideChunk = setActive(rideEnv, false)
+  reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "ride-off", true)
+  reaper.Main_OnCommand(42230, 0)
+  reaper.SetEnvelopeStateChunk(rideEnv, rideChunk, false)
+  reaper.SetEnvelopeStateChunk(masterVol, masterChunk, false)
+  reaper.SetMediaTrackInfo_Value(keys, "I_SOLO", 0)
+  result.rideRender = { on = out .. "/ride-on.wav", off = out .. "/ride-off.wav" }
+end
 
 reaper.Main_SaveProjectEx(0, out .. "/reaper-saved.RPP", 0)
 local f = io.open(out .. "/result.json", "w")

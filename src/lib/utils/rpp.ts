@@ -9,6 +9,7 @@ import { clipNoteEvents } from "./clipNoteEvents";
 import { clipSegments } from "./clipSegments";
 import { studioGrid } from "./studioGrid";
 import { warpSourceAt, warpUniformRatio } from "#lib/audio/warp.js";
+import { GAIN_ENVELOPE_MAX, gainEnvelopeRamps } from "./gainEnvelope";
 
 /** An audio file the project refers to for a clip's source: its path beside the `.rpp` file. */
 export interface RppAudio {
@@ -41,7 +42,9 @@ const PPQ = 960;
  * (position, length, start offset, volume, linear fades) over its media
  * file by a path relative to the project, or a MIDI item whose events
  * are the clip's notes in ticks through the tempo map, ending with all
- * notes off. Inserts stay out (Reaper's FX are its own plugins). Pure;
+ * notes off; an audio clip's gain envelope as its take's volume envelope
+ * (points in take time from the item's start, the clip's ends included).
+ * Inserts stay out (Reaper's FX are its own plugins). Pure;
  * the caller writes the audio beside it. Reaper reads the result as
  * `bun run interop:rpp` checks (scripts/interop/rpp.ts).
  */
@@ -182,7 +185,11 @@ export function rppProject(input: RppProjectInput): string {
 		// an uneven one as stretch markers over a plain item, so a looped clip warped unevenly is unrolled pass by pass.
 		const ratio = c.warp ? warpUniformRatio(c.warp) : 1;
 		const toFile = (t: number) => (c.warp ? warpSourceAt(c.warp, t) : t);
-		if (loop && (c.offset < loop.start || c.offset >= loop.end || ratio === null)) {
+		// A gain envelope rides content seconds and replays every pass, where a take's envelope runs once down the item: unrolled too.
+		if (
+			loop &&
+			(c.offset < loop.start || c.offset >= loop.end || ratio === null || c.gainEnvelope?.length)
+		) {
 			for (const seg of clipSegments(c)) {
 				const first = seg.start === c.start;
 				const last = seg.start + seg.duration >= c.start + c.duration;
@@ -277,6 +284,26 @@ export function rppProject(input: RppProjectInput): string {
 			}
 			out(3, "<SOURCE WAVE");
 			out(4, `FILE ${q(audio.path)}`);
+			out(3, ">");
+		}
+		// The gain envelope (docs/multitrack-recorder.md "Clip gain envelopes") as the chosen take's volume envelope, after its
+		// source and before the next TAKE: the stretch the clip plays, a point at each end so the held ends come through. A
+		// point's position is take time from the item's start, which runs at the play rate (as a stretch marker's does), so
+		// content second t lands at (t - offset) × rate; the value is the factor itself (1 is 0 dB), linear between points.
+		const ramps = audio ? gainEnvelopeRamps(c.gainEnvelope, c.offset, c.offset + c.duration) : [];
+		if (ramps.length) {
+			const rate = 1 / (ratio ?? 1);
+			out(3, "<VOLENV");
+			out(4, "ACT 1 -1");
+			out(4, "VIS 1 1 1");
+			out(4, "LANEHEIGHT 0 0");
+			out(4, "ARM 0");
+			out(4, "DEFSHAPE 0 -1 -1");
+			for (const p of ramps)
+				out(
+					4,
+					`PT ${num((p.t - c.offset) * rate)} ${num(Math.max(0, Math.min(GAIN_ENVELOPE_MAX, p.v)))} 0`,
+				);
 			out(3, ">");
 		}
 		// The clip's other takes (docs/multitrack-recorder.md "Takes in the files"): a TAKE per alternate after the chosen

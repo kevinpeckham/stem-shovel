@@ -424,6 +424,71 @@ describe("rppProject", () => {
 		expect(unevenBack.fixed).toContain("Stretch markers kept as warps (Dawn's own stretch)");
 	});
 
+	it("writes a gain envelope as the chosen take's volume envelope in take time, the clip's ends included, and none without one", () => {
+		const base = arrangement.clips.find((c) => c.name === "Bass take")!;
+		// Half speed, content 1 s to 5 s: take time runs at the play rate, so content second t is at (t - 1) × 0.5. The
+		// points outside the window give the ends their values (0.666667 at 1 s, 1.25 at 5 s) and are left out.
+		const ride = {
+			...base,
+			offset: 1,
+			duration: 4,
+			warp: [
+				{ at: 0, source: 0 },
+				{ at: 2, source: 1 },
+			],
+			gainEnvelope: [
+				{ t: 0.5, v: 0.5 },
+				{ t: 2, v: 1 },
+				{ t: 3, v: 0 },
+				{ t: 4, v: 1.5 },
+				{ t: 6, v: 1 },
+			],
+		};
+		const text = rppProject({
+			title: "Ride",
+			arrangement: { ...arrangement, clips: [{ ...ride, alternates: ["s-kick"] }] },
+			audio,
+			application: app,
+		});
+		// After the chosen take's source, before the next take.
+		expect(text).toContain(
+			'        FILE "media/s-bass.wav"\n      >\n      <VOLENV\n        ACT 1 -1\n        VIS 1 1 1\n        LANEHEIGHT 0 0\n        ARM 0\n        DEFSHAPE 0 -1 -1\n        PT 0 0.666667 0\n        PT 0.5 1 0\n        PT 1 0 0\n        PT 1.5 1.5 0\n        PT 2 1.25 0\n      >\n      TAKE\n',
+		);
+		expect(text.match(/<VOLENV$/gm)).toHaveLength(1);
+		const plain = rppProject({
+			title: "Plain",
+			arrangement: { ...arrangement, clips: [base] },
+			audio,
+			application: app,
+		});
+		expect(plain).not.toMatch(/<VOLENV$/m);
+		// A looped clip with one goes out an item per pass, each with the stretch it plays.
+		const looped = rppProject({
+			title: "Loop",
+			arrangement: {
+				...arrangement,
+				clips: [
+					{
+						...base,
+						offset: 1.5,
+						duration: 3,
+						loop: { start: 1, end: 3 },
+						gainEnvelope: [
+							{ t: 1, v: 0 },
+							{ t: 3, v: 1 },
+						],
+					},
+				],
+			},
+			audio,
+			application: app,
+		});
+		const items = looped.split("<ITEM").slice(1);
+		expect(items).toHaveLength(2);
+		expect(items[0]).toContain("PT 0 0.25 0\n        PT 1.5 1 0\n");
+		expect(items[1]).toContain("PT 0 0 0\n        PT 1.5 0.75 0\n");
+	});
+
 	it("writes a clip's other takes as TAKE blocks after the chosen one, and reads them back behind it", () => {
 		const withTakes: StudioArrangement = {
 			...arrangement,
