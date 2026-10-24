@@ -33,6 +33,15 @@ export const STUDIO_FADER_MAX = FADER_MAX;
 /** Decoded audio past which the device warns (bytes). */
 export const STUDIO_MEMORY_WARNING_BYTES = 400 * 1024 * 1024;
 /**
+ * The disk the Studio's decoded-source cache may take in this browser
+ * (audio/pcmCache.ts, docs/multitrack-recorder.md "Scale and structure"):
+ * float samples, so a stereo minute at 48 kHz is 23 MB and 2 GB holds
+ * about an hour and a half of stereo, a few songs' recordings. The worker
+ * takes half the site's quota when that is less; the least recently used
+ * go first.
+ */
+export const STUDIO_PCM_CACHE_BYTES = 2 * 1024 * 1024 * 1024;
+/**
  * The rates a song may be rendered at (Song settings, docs/multitrack-recorder.md
  * "Sample rates"): the mix, the stems and the project files come out at the
  * song's rate on every machine, whatever rate the device records at.

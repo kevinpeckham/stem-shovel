@@ -88,6 +88,7 @@
 		type Reservation,
 	} from "#lib/upload.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
 	import { studioChangesToSong } from "#lib/utils/studioChanges.js";
 	import { downloadBlob } from "#lib/utils/downloadBlob.js";
@@ -463,6 +464,8 @@
 				loadedKey = "";
 			}
 			await deleteIdeaNow({ id: s.id });
+			// The recordings' copies on this device go with the song (docs/multitrack-recorder.md "Scale and structure").
+			for (const src of s.sources) void studio.pcmCache.forget(src.id);
 			await refreshAll();
 			if (s.id === songId) openSong(data.songs[0] ?? null);
 			notify(`“${s.title}” deleted`);
@@ -1015,6 +1018,22 @@
 		if (studio.unfreezeTrack(track.id)) notify(`${track.name} is back as it was`);
 	}
 	/** The buffers nothing plays dropped from memory (D8); they come back from the server when wanted. */
+	/** The song menu's "Clear the copies on this device": what the disk cache holds, then dropped (docs/multitrack-recorder.md "Scale and structure"). */
+	async function clearDiskCopies() {
+		const { bytes, entries } = await studio.pcmCache.estimate();
+		if (!entries) {
+			notify("No recordings are kept on this device");
+			return;
+		}
+		if (
+			!confirm(
+				`Clear the ${entries} ${entries === 1 ? "recording" : "recordings"} (${formatBytes(bytes)}) kept on this device? They come back from the server when a song wants them.`,
+			)
+		)
+			return;
+		await studio.pcmCache.clear();
+		notify(`Cleared ${formatBytes(bytes)} kept on this device`);
+	}
 	function freeMemory() {
 		const n = studio.releaseUnused();
 		notify(
@@ -1759,6 +1778,16 @@
 								title:
 									"Drop from memory what no clip plays; it comes back from the server when wanted",
 								action: freeMemory,
+							},
+							{
+								id: "disk",
+								kind: "button",
+								label: "Clear the copies on this device",
+								iconClass: "i-ph-hard-drives",
+								title:
+									"Recordings are kept decoded in this browser's private storage so a song reopens without fetching; drop them all",
+								condition: studio.pcmCache.available,
+								action: () => void clearDiskCopies(),
 							},
 							{
 								id: "clean",

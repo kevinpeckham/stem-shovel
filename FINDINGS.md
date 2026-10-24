@@ -829,6 +829,13 @@ From a probe (a project with `TEMPO 120 6 8` and a tempo point carrying `(8 << 1
 - **`TimeMap2_GetDividedBpmAtTime` is 240 there**: the tempo in beats of the bottom number, which is what Reaper's transport displays ("240" for that 6/8). `TimeMap_GetTimeSigAtTime` returns 120, the stored tempo, with 6/8.
 - So a DAW-style tempo (Live, Bitwig, a MIDI file and Dawn all count quarter notes) goes into an `.rpp` unscaled whatever the signature, and the `(denominator << 16) | numerator` on a point carries the bottom number.
 
+## OPFS from a Studio page: fast in Chromium, closed in Playwright's Linux WebKit (2026-10-24)
+
+From a spike for the Studio's disk cache of decoded sources (docs/multitrack-recorder.md "Scale and structure"; docs/dawn-daw-plan.md D8), a Playwright page on the dev server's origin writing and reading a four-minute stereo file (46 MB at 16-bit) in the Origin Private File System.
+
+- **Chromium (headless, this VM):** a worker's `FileSystemSyncAccessHandle` wrote at 320 MB/s and read 256 KB ranges at 300 MB/s, the whole file at 785 MB/s; the main thread's `getFile().slice().arrayBuffer()` read it at 1284 MB/s and `createWritable` wrote at 277 MB/s; rebuilding a 4-minute stereo `AudioBuffer` from 16-bit PCM took 66 ms; `navigator.storage.estimate()` offered 10.7 GB. Disk reads are not the bottleneck of a cache or of a streamed voice; the budget is.
+- **Playwright's WebKit on Linux cannot open OPFS:** `navigator.storage.getDirectory()` throws `UnknownError: The operation failed for an unknown transient reason`, though `estimate()` answers (1.0 GB). Safari proper has OPFS and sync access handles in dedicated workers but no `createWritable`, so a cache must write from a worker and must treat every OPFS error as a miss. Safari's real throughput and quota are measured on a device, not here.
+
 ## Reaper's take volume envelope runs in take time, from a rendered probe (2026-10-24)
 
 From `bun run interop:rpp` (scripts/interop/rpp.ts and rpp.lua): Reaper 7.82 opening an item at play rate 0.8 whose take carries a `<VOLENV` (after the take's `<SOURCE`, before the next `TAKE`), read through `GetTakeEnvelopeByName(take, "Volume")` and rendered with the envelope on and switched off (`ACT 0` through `SetEnvelopeStateChunk`), the ratio of the two renders being the envelope as Reaper plays it; for Dawn's clip gain envelopes (utils/rpp.ts, utils/rppRead.ts).

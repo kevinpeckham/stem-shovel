@@ -76,6 +76,7 @@ import {
 	warpWithoutPoint,
 } from "./warp.js";
 import { renderWarpAsync } from "./warpRenderer.js";
+import { pcmCache } from "./pcmCache";
 import { clipCrossfades, type EffectiveFades } from "#lib/utils/clipCrossfades.js";
 import { compRegion } from "#lib/utils/compRegion.js";
 import { fadeCurve } from "#lib/utils/fadeCurve.js";
@@ -420,6 +421,13 @@ class StudioEngine {
 		return this.#graph?.buses ?? NO_STRIPS;
 	}
 	#buffers = new Map<string, AudioBuffer>();
+	/**
+	 * The disk copy of each decoded source in this browser (audio/pcmCache.ts,
+	 * docs/multitrack-recorder.md "Scale and structure"): read before a
+	 * fetch, written after one and for every source made here, forgotten
+	 * with the source. The page can ask it what it holds (`estimate`).
+	 */
+	readonly pcmCache = pcmCache;
 	/** The warped clips' content, rendered from their sources (audio/warp.ts), by source and warp. */
 	#warped = new Map<string, AudioBuffer>();
 	#warpJobs = new Map<string, Promise<void>>();
@@ -675,14 +683,8 @@ class StudioEngine {
 				const s = queue.shift();
 				if (!s) return;
 				try {
-					const buffer = await this.#decode(await this.#bytesOf(s.id, s.url));
-					if (!this.sources[s.id]) continue; // another song loaded meanwhile
-					this.#buffers.set(s.id, buffer);
-					const entry = this.sources[s.id];
-					entry.status = "ready";
-					entry.durationSeconds = buffer.duration;
-					if (entry.peaks.length === 0) entry.peaks = computePeaks(buffer, 1024);
-					this.#fillUnknownClips(s.id, buffer);
+					const { buffer, fetched } = await this.#sourceBuffer(s.id, s.url);
+					this.#holdLoaded(s.id, buffer, fetched);
 				} catch {
 					if (this.sources[s.id]) this.sources[s.id].status = "failed";
 				} finally {
@@ -692,6 +694,51 @@ class StudioEngine {
 			}
 		};
 		await Promise.all(Array.from({ length: LOAD_CONCURRENCY }, worker));
+	}
+	/**
+	 * A loaded source held and marked ready, a fetched one copied to disk
+	 * (audio/pcmCache.ts); false when the source is no longer the song's
+	 * (another song loaded meanwhile).
+	 */
+	#holdLoaded(sourceId: string, buffer: AudioBuffer, fetched: boolean): boolean {
+		const entry = this.sources[sourceId];
+		if (!entry) return false;
+		this.#buffers.set(sourceId, buffer);
+		if (fetched) void pcmCache.write(sourceId, buffer);
+		entry.status = "ready";
+		entry.durationSeconds = buffer.duration;
+		if (entry.peaks.length === 0) entry.peaks = computePeaks(buffer, 1024);
+		this.#fillUnknownClips(sourceId, buffer);
+		return true;
+	}
+	/**
+	 * A source's samples: the disk copy when this browser keeps one
+	 * (audio/pcmCache.ts), at the rate it was decoded at, else the file
+	 * fetched and decoded (`fetched`, to be copied to disk). A source held
+	 * as a blob here (the browser-kept song) is decoded from the blob and
+	 * never copied: it is on this disk already.
+	 */
+	async #sourceBuffer(
+		sourceId: string,
+		url: string,
+	): Promise<{ buffer: AudioBuffer; fetched: boolean }> {
+		if (this.#blobs.has(sourceId))
+			return { buffer: await this.#decode(await this.#bytesOf(sourceId, url)), fetched: false };
+		const copy = await pcmCache.read(sourceId);
+		if (copy?.channels.length) {
+			try {
+				const buffer = new AudioBuffer({
+					numberOfChannels: copy.channels.length,
+					length: Math.max(1, copy.channels[0]!.length),
+					sampleRate: copy.sampleRate,
+				});
+				copy.channels.forEach((ch, i) => buffer.copyToChannel(ch as Float32Array<ArrayBuffer>, i));
+				return { buffer, fetched: false };
+			} catch {
+				// A copy this browser will not hold (a rate out of its range): the network has the file.
+			}
+		}
+		return { buffer: await this.#decode(await this.#bytesOf(sourceId, url)), fetched: true };
 	}
 	/** Decodes in the live context when open (its rate), else in a scratch one. */
 	async #decode(bytes: ArrayBuffer): Promise<AudioBuffer> {
@@ -739,15 +786,8 @@ class StudioEngine {
 		this.decoding++;
 		const job = (async () => {
 			try {
-				const buffer = await this.#decode(await this.#bytesOf(sourceId, url ?? ""));
-				if (!this.sources[sourceId]) return null; // another song loaded meanwhile
-				this.#buffers.set(sourceId, buffer);
-				const e = this.sources[sourceId];
-				e.status = "ready";
-				e.durationSeconds = buffer.duration;
-				if (e.peaks.length === 0) e.peaks = computePeaks(buffer, 1024);
-				this.#fillUnknownClips(sourceId, buffer);
-				return buffer;
+				const { buffer, fetched } = await this.#sourceBuffer(sourceId, url ?? "");
+				return this.#holdLoaded(sourceId, buffer, fetched) ? buffer : null;
 			} catch {
 				if (this.sources[sourceId]) this.sources[sourceId].status = "failed";
 				return null;
@@ -881,6 +921,7 @@ class StudioEngine {
 	/** A source no clip uses any more, dropped from memory (and, by the page, from the server). */
 	forgetSource(sourceId: string) {
 		this.#buffers.delete(sourceId);
+		void pcmCache.forget(sourceId);
 		const next = { ...this.sources };
 		delete next[sourceId];
 		this.sources = next;
@@ -2147,6 +2188,8 @@ class StudioEngine {
 		channels.forEach((ch, i) => buffer.copyToChannel(ch as Float32Array<ArrayBuffer>, i));
 		const sourceId = nanoid();
 		this.#buffers.set(sourceId, buffer);
+		// On disk before the upload finishes, so a reload while it is still going reads it back (audio/pcmCache.ts).
+		void pcmCache.write(sourceId, buffer);
 		this.sources[sourceId] = {
 			id: sourceId,
 			label,
@@ -2707,6 +2750,7 @@ class StudioEngine {
 		const sourceId = nanoid();
 		const label = file.filename.replace(/\.[a-z0-9]+$/i, "").slice(0, 60) || "Import";
 		this.#buffers.set(sourceId, buffer);
+		void pcmCache.write(sourceId, buffer);
 		this.sources[sourceId] = {
 			id: sourceId,
 			label,
@@ -2759,6 +2803,7 @@ class StudioEngine {
 		fileSampleRate?: number,
 	): StudioTake {
 		this.#buffers.set(sourceId, buffer);
+		void pcmCache.write(sourceId, buffer);
 		this.sources[sourceId] = {
 			id: sourceId,
 			label: trackLabel.slice(0, 60) || "Import",
@@ -3651,6 +3696,7 @@ class StudioEngine {
 					: sliceBuffer(ctx, whole, piece.from, piece.to);
 			const sourceId = nanoid();
 			this.#buffers.set(sourceId, buffer);
+			void pcmCache.write(sourceId, buffer);
 			this.sources[sourceId] = {
 				id: sourceId,
 				label,

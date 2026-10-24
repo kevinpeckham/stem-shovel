@@ -2359,10 +2359,32 @@ AudioParam events. Windowing within one long clip is not needed: one
 AudioBufferSourceNode plays a buffer of any length. Holding a long
 source in memory is the streaming worklet's job, still open (D8).
 
-Left for later, named in the plan: the streaming worklet over OPFS and
-Blob (on-demand decoding, release and FLAC storage keep a long
-session's memory to what it plays; a source still lives decoded while
-it plays).
+**A disk copy of each source (2026-10-24).** Every decoded source is
+also kept on this device, in the browser's Origin Private File System
+(`stem-shovel/pcm/`, one file a source, `index.json` beside them), so a
+cold source, a reopened song and a recording still uploading come back
+from disk rather than the network. `audio/pcmCache.ts` is the page's
+side and `workers/pcmCache.worker.ts` does the file work with sync
+access handles (Safari has OPFS but no `createWritable`); the file is
+the decoded samples as 32-bit floats behind a small header
+(`utils/pcmFile.ts`), so an export from a cached source loses nothing.
+The key is the source id, which a file keeps through its upload and the
+later FLAC conversion. `load` and `ensureSource` read the copy before a
+fetch (`#sourceBuffer`) and write one after a fetch; an import, a take
+and a made source (`#sourceFromChannels`) are written at once;
+`forgetSource` drops the copy, and the page forgets a deleted song's
+sources (`removeSong`); the song menu's "Clear the copies on this
+device" shows the count and size (`estimate`) and clears them. The cache
+keeps to `STUDIO_PCM_CACHE_BYTES` (2 GB) or half the site's quota, the
+least recently used going first. Any failure (no OPFS, as in
+Playwright's WebKit, an error, a worker that does not answer in 5 s) is
+a miss and a normal network load. Memory while playing is unchanged: the
+streaming voice over these files is the next step.
+
+Left for later, named in the plan: the streaming voice over these disk
+copies (a worker reading ranges, a worklet playing them), so a source
+no longer lives decoded in memory while it plays. The spike's numbers
+are in FINDINGS.md ("OPFS from a Studio page").
 
 Browser spec `tests/e2e/studio-scale.spec.ts`; unit tests on the graph
 over stand-in strips and on the persistence with fake timers; a schema

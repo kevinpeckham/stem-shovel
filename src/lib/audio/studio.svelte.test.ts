@@ -18,6 +18,15 @@ vi.mock("./lookahead", () => ({
 		};
 	},
 }));
+/** The disk cache (audio/pcmCache.ts), a stand-in whose reads a test sets. */
+const disk = vi.hoisted(() => ({
+	read: vi.fn(
+		async (_key: string): Promise<{ sampleRate: number; channels: Float32Array[] } | null> => null,
+	),
+	write: vi.fn(async (_key: string, _buffer: AudioBuffer) => {}),
+	forget: vi.fn(async (_key: string) => {}),
+}));
+vi.mock("./pcmCache", () => ({ pcmCache: disk }));
 const { studio, STUDIO_SCHEDULE_HORIZON_S } = await import("./studio.svelte");
 
 const clip = (id: string, trackId: string, start: number, duration: number): StudioClip => ({
@@ -134,6 +143,116 @@ describe("studio.insertRange", () => {
 	});
 	it("refuses nothing inserted", () => {
 		expect(studio.insertRange(4, 0)).toBe(false);
+	});
+});
+
+/** An AudioBuffer as the engine builds one from the disk copy. */
+class FakeAudioBuffer {
+	numberOfChannels: number;
+	length: number;
+	sampleRate: number;
+	#data: Float32Array[];
+	constructor(o: { numberOfChannels: number; length: number; sampleRate: number }) {
+		this.numberOfChannels = o.numberOfChannels;
+		this.length = o.length;
+		this.sampleRate = o.sampleRate;
+		this.#data = Array.from({ length: o.numberOfChannels }, () => new Float32Array(o.length));
+	}
+	get duration() {
+		return this.length / this.sampleRate;
+	}
+	getChannelData(i: number) {
+		return this.#data[i]!;
+	}
+	copyToChannel(src: Float32Array, i: number) {
+		this.#data[i]!.set(src);
+	}
+}
+
+/**
+ * The disk cache (docs/multitrack-recorder.md "Scale and structure"): a
+ * source the disk holds loads without a fetch, one fetched is copied to
+ * disk, a source made here is written at once, and a source the song
+ * drops is forgotten.
+ */
+describe("studio disk cache", () => {
+	const id = "src_cached0000000000000";
+	const view = {
+		id,
+		kind: "take",
+		takeNumber: 1,
+		trackLabel: "Keys",
+		url: "https://blob.example/keys.wav",
+		filename: "keys.wav",
+		codec: null,
+		sampleRate: 44100,
+		channels: 1,
+		durationSeconds: 1,
+		sizeBytes: 1,
+		peaks: [],
+		createdAt: new Date(0),
+	} as const;
+	const song = () => ({
+		current: { ...arrangement(), clips: [{ ...clip("k", "t1", 0, 1), sourceId: id }] },
+		sources: [{ ...view }],
+	});
+	const fetchSpy = vi.fn(async () => new Response(new ArrayBuffer(8)));
+	beforeEach(() => {
+		disk.read.mockReset().mockResolvedValue(null);
+		disk.write.mockClear();
+		disk.forget.mockClear();
+		fetchSpy.mockClear();
+		vi.stubGlobal("fetch", fetchSpy);
+		vi.stubGlobal("AudioBuffer", FakeAudioBuffer);
+		vi.stubGlobal("OfflineAudioContext", function () {
+			return {
+				decodeAudioData: async () =>
+					new FakeAudioBuffer({ numberOfChannels: 1, length: 48000, sampleRate: 48000 }),
+			};
+		});
+	});
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("loads a source the disk holds from the disk, at its own rate, with no fetch and no rewrite", async () => {
+		disk.read.mockResolvedValue({
+			sampleRate: 44100,
+			channels: [new Float32Array(44100).fill(0.5)],
+		});
+		await studio.load(song() as never);
+		expect(disk.read).toHaveBeenCalledWith(id);
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(studio.sources[id]?.status).toBe("ready");
+		const buffer = studio.bufferOf(id)!;
+		expect(buffer.sampleRate).toBe(44100);
+		expect(buffer.getChannelData(0)[100]).toBe(0.5);
+		expect(disk.write).not.toHaveBeenCalled();
+	});
+	it("a miss fetches and decodes, then copies the source to disk", async () => {
+		await studio.load(song() as never);
+		expect(fetchSpy).toHaveBeenCalledWith(view.url);
+		expect(studio.sources[id]?.status).toBe("ready");
+		expect(disk.write).toHaveBeenCalledWith(id, studio.bufferOf(id));
+	});
+	it("a cold source fetched on demand is read from disk first", async () => {
+		await studio.load({ ...song(), current: { ...arrangement(), clips: [] } } as never);
+		expect(studio.sources[id]?.status).toBe("cold");
+		disk.read.mockResolvedValue({ sampleRate: 48000, channels: [new Float32Array(10)] });
+		expect(await studio.ensureSource(id)).not.toBeNull();
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+	it("an import is written to disk at once, and forgotten with the source", () => {
+		const buffer = new FakeAudioBuffer({ numberOfChannels: 2, length: 480, sampleRate: 48000 });
+		const take = studio.importBuffer(
+			studio.arrangement.tracks[0]!,
+			buffer as unknown as AudioBuffer,
+			{ blob: new Blob(), filename: "drums.wav" },
+			0,
+		)!;
+		expect(disk.write).toHaveBeenCalledWith(take.sourceId, buffer);
+		studio.forgetSource(take.sourceId);
+		expect(disk.forget).toHaveBeenCalledWith(take.sourceId);
 	});
 });
 
