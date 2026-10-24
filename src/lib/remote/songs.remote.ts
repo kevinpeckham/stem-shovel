@@ -345,7 +345,7 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 		askAiAboutMix(
 			song.mixUrl,
 			{ tempo: at0("tempo"), meter: at0("meter") },
-			{ userId: user.id, songId: id },
+			{ userId: user.id, songId: id, accountId },
 			score,
 		),
 	);
@@ -378,7 +378,7 @@ export const detectSections = command(IdSchema, async ({ id }) => {
 				existing: (full?.sections ?? []).map((s) => ({ name: s.name, start: s.start })),
 				vocabulary: vocabulary ?? [],
 			},
-			{ userId: user.id, songId: id },
+			{ userId: user.id, songId: id, accountId },
 			score ?? null,
 		),
 	);

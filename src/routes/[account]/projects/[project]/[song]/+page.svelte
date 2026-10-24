@@ -1527,6 +1527,15 @@
 			aiBusy = false;
 		}
 	}
+	/** The chart read opened for correction (docs/audio-engine.md, "The chart read is stored"): the Chart tab's notation view, then the first score's read. */
+	async function reviewRead() {
+		const file = notationPdfs[0];
+		if (!file) return;
+		panel = "chart";
+		chartChoice = "notation";
+		await tick();
+		void notationPanel?.showRead(file.id);
+	}
 	/** Fill the rows from the model's answer and save at once (a bug report: filling alone looked like nothing happened). */
 	async function useAiAnswer() {
 		if (!aiAnswer) return;
@@ -2721,7 +2730,7 @@
 											.join(", ")}{/if}
 									{aiAnswer.notes ? ` — ${aiAnswer.notes}` : ""}
 									{#if aiAnswer.warnings?.length}
-										<!-- The chart read looked wrong (utils/chartReadWarnings.ts): said before the answer is used. -->
+										<!-- The chart read looked wrong (utils/chartReadWarnings.ts): said before the answer is used, with the read a click away. -->
 										<span class="mt-1 block text-amber-300" role="alert">
 											{#each aiAnswer.warnings as w (w)}
 												<span class="block"
@@ -2729,6 +2738,11 @@
 													{w}</span
 												>
 											{/each}
+											{#if notationPdfs.length > 0 && data.canEdit}
+												<button class="link-dim" type="button" onclick={reviewRead}
+													>Review what the AI read</button
+												>
+											{/if}
 										</span>
 									{/if}
 									<button
@@ -3512,6 +3526,8 @@
 					notation={data.song.notation}
 					pdfs={notationPdfs}
 					canEdit={data.canEdit}
+					aiAvailable={data.aiAvailable && !data.song.noAi && !data.song.project.noAi}
+					oncheck={() => void askAiWithScore()}
 				/>
 			{:else if notesMine}
 				<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->

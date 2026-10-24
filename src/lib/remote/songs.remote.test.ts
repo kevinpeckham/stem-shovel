@@ -512,7 +512,7 @@ describe("side effects of the editor-gated functions", () => {
 		expect(aiDetect.askAiAboutMix).toHaveBeenCalledWith(
 			"https://blob/mix.mp3",
 			{ tempo: null, meter: "3/4" },
-			{ userId: USER, songId: SONG },
+			{ userId: USER, songId: SONG, accountId: ACCOUNT },
 			score,
 		);
 	});
@@ -546,7 +546,7 @@ describe("side effects of the editor-gated functions", () => {
 				existing: [{ name: "Intro", start: 0 }],
 				vocabulary: ["Verse", "Chorus"],
 			},
-			{ userId: USER, songId: SONG },
+			{ userId: USER, songId: SONG, accountId: ACCOUNT },
 			null,
 		);
 	});

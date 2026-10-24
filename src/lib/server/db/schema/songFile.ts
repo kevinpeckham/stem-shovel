@@ -54,6 +54,15 @@ export const songFile = table(
 		pageCount: t.integer("page_count"),
 		/** A score (notation as a PDF or an image): shown on the Chart tab's notation view as well as the Attachments tab. */
 		isNotation: t.integer("is_notation", { mode: "boolean" }).notNull().default(false),
+		/**
+		 * A score's per-measure summary as the reading model wrote it, or as a
+		 * member corrected it (docs/audio-engine.md, "The chart read is
+		 * stored"): the song-check reads this instead of reading the file
+		 * again. Null until the file is first read, or after a member clears it.
+		 */
+		chartRead: t.text("chart_read"),
+		/** A member saved a correction of `chartRead`: a new model read never overwrites it unless the member clears it first. */
+		chartReadEdited: t.integer("chart_read_edited", { mode: "boolean" }).notNull().default(false),
 		thumbnailUrl: t.text("thumbnail_url"),
 		thumbnailPathname: t.text("thumbnail_pathname"),
 		/** The permanent link's secret: `/f/<code>` (nanoid, 16). */

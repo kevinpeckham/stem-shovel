@@ -559,9 +559,34 @@ rasterized PDFs and now does not plan to; instead the read is checked:
   warning and leaves the card for the user to judge, "Use these" still a
   click away. A clean read behaves as before.
 
-Left: showing the read itself (the per-measure summary) for correction
-before it anchors the check, which Study 5 recommends; the read is cached
-by the file's URL, so a corrected read would need a place to live.
+The read itself is shown and corrected since the same day (next).
+
+## The chart read is stored (2026-10-24)
+
+A score's read lives on its file: `song_file.chart_read` holds the per-measure
+summary as the model wrote it or as a member corrected it, and
+`chart_read_edited` marks a correction. `scoreForAi` hands both to the song-check
+with the file's id; `loadScore` takes a stored read as the chart's text (no model
+call, no Redis), still attaching the file when it fits beside the mix, and
+otherwise reads the file with `readChartWithAi` and stores the result
+(`saveChartRead`, edited false). Redis stays a second-level cache keyed by the
+file's URL (`chartCacheKey`). Study 5 asks for the read to be seen before it
+anchors a check: `readChartOfFile` (files.remote.ts) returns the stored read, or
+reads and stores one (a few per hour; a stored read is free), with the
+`chartReadWarnings`; `saveChartReadOfFile` keeps a member's correction (one line
+per measure, `m1 …`), which no model read overwrites; `clearChartReadOfFile`
+forgets the read in the row and in Redis, so the next check reads the file again.
+
+On the page: a score tile's ⋯ menu on the Chart tab's notation view has
+**What the AI read** (`SongNotationPanel.svelte`, members with the AI at
+hand), which opens the read in a floating panel: the lines in an editor,
+what looks wrong in amber (`chartReadWarnings`, live as you type), **Save**
+(the correction, saved as the read the song-check uses from then on, marked
+"corrected by the band"), **Read again** (clears the stored read, with a
+confirmation when it was corrected, and the model reads the file afresh)
+and **Check the song** (the page's `askAiWithScore`). The AI card's
+warnings carry **Review what the AI read**, which switches to the notation
+view and opens the first score's read. Migration 0097 adds the columns.
 
 ## The chord chart as the AI's chart (2026-10-24)
 

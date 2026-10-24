@@ -45,6 +45,40 @@ describe("scoreForAi", () => {
 		});
 	});
 
+	test("a notation PDF comes with its file id and its stored read", async () => {
+		reset({
+			song: [SONG],
+			songFile: [
+				{
+					id: "f1",
+					accountId: "a1",
+					projectId: "p1",
+					songId: "sg1",
+					kind: "pdf",
+					status: "ready",
+					isNotation: true,
+					url: "https://blob/score.pdf",
+					filename: "score.pdf",
+					title: "Score",
+					sizeBytes: 1000,
+					chartRead: "m1 key F major 4/4: F",
+					chartReadEdited: true,
+					createdAt: "2026-10-01",
+				},
+			],
+		});
+		await expect(scoreForAi("a1", "sg1")).resolves.toEqual({
+			kind: "pdf",
+			fileId: "f1",
+			url: "https://blob/score.pdf",
+			filename: "score.pdf",
+			title: "Score",
+			sizeBytes: 1000,
+			chartRead: "m1 key F major 4/4: F",
+			chartReadEdited: true,
+		});
+	});
+
 	test("without a score, the song's own chord chart goes along", async () => {
 		await expect(scoreForAi("a1", "sg1")).resolves.toEqual({
 			kind: "chart",

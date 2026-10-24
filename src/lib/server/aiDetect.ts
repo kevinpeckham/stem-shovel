@@ -1,5 +1,5 @@
 import { readBlob } from "#lib/server/blob.js";
-import { logAiRequest } from "#lib/server/data.js";
+import { logAiRequest, saveChartRead } from "#lib/server/data.js";
 import { createGateway } from "@ai-sdk/gateway";
 import { chartStatedAnswer } from "#lib/utils/chartStatedAnswer.js";
 import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
@@ -42,12 +42,30 @@ export const aiAvailable = () => !!ENV.AI_GATEWAY_API_KEY;
  * score as the AI's chart"): a MusicXML file as the text summary of its
  * keys and chords, a PDF or image of the score as the file itself, or
  * the song's own chord chart document as its markdown ("The chord chart
- * as the AI's chart").
+ * as the AI's chart"). A PDF or image carries its stored read (`chartRead`,
+ * "The chart read is stored") and the row it is stored on.
  */
 export type ScoreForAi =
 	| { kind: "musicxml"; format: "mxl" | "musicxml"; url: string; filename: string; title: string }
-	| { kind: "pdf" | "image"; url: string; filename: string; title: string; sizeBytes: number }
+	| ScoreFileForAi
 	| { kind: "chart"; markdown: string; title: string };
+/** A score as a PDF or image (`song_file` with `isNotation`): the file, and its read when one is stored. */
+export interface ScoreFileForAi {
+	kind: "pdf" | "image";
+	fileId: string;
+	url: string;
+	filename: string;
+	title: string;
+	sizeBytes: number;
+	chartRead: string | null;
+	chartReadEdited: boolean;
+}
+/** Who asks: the log's user and song, and the account a fresh read is stored in. */
+interface AiAsker {
+	userId: string;
+	songId: string;
+	accountId: string;
+}
 /** What the request carries for the chart: its per-measure summary as text, the PDF or image itself, or both; `chord` when the text is the band's own chord chart. */
 interface ScorePart {
 	text?: string;
@@ -62,21 +80,23 @@ const scoreName = (score: ScoreForAi | null | undefined) =>
 
 /**
  * Reads the score from Blob into what the request carries: a MusicXML as
- * its summary; a PDF or image as the summary a reading model makes of it
- * (`readChartWithAi`) plus the file itself when it fits beside the mix.
- * Null when nothing could be read.
+ * its summary; a PDF or image as its stored read when it has one, else the
+ * summary a reading model makes of it (`readChartWithAi`, then stored on
+ * the file), plus the file itself when it fits beside the mix. Null when
+ * nothing could be read.
  */
 async function loadScore(
 	score: ScoreForAi,
 	audioBytes: number,
-	who: { userId: string; songId: string },
+	who: AiAsker,
 ): Promise<ScorePart | null> {
 	if (score.kind === "chart") {
 		const text = score.markdown.trim().slice(0, CHORD_CHART_MAX_CHARS);
 		return text ? { text, chord: true } : null;
 	}
+	const stored = score.kind === "musicxml" ? "" : storedRead(score);
 	const res = await readBlob(score.url);
-	if (!res.ok) return null;
+	if (!res.ok) return stored ? { text: stored } : null;
 	const bytes = new Uint8Array(await res.arrayBuffer());
 	if (score.kind === "musicxml") {
 		const xml = score.format === "mxl" ? musicXmlFromMxl(bytes) : new TextDecoder().decode(bytes);
@@ -84,13 +104,48 @@ async function loadScore(
 		return summary ? { text: summary } : null;
 	}
 	const mediaType = FILE_CONTENT_TYPE_OF(score.filename);
-	const text = await readChartWithAi(score, bytes, mediaType, who).catch(() => "");
+	const text =
+		stored ||
+		(await readChartWithAi(score, bytes, mediaType, who)
+			.then(async (read) => {
+				// Stored for the member to see and correct; the check goes on without it.
+				await saveChartRead(who.accountId, score.fileId, read, false).catch(() => null);
+				return read;
+			})
+			.catch(() => ""));
 	const file =
 		audioBytes + bytes.byteLength <= MAX_REQUEST_BYTES
 			? { data: bytes, mediaType, filename: score.filename }
 			: undefined;
 	return text || file ? { text: text || undefined, file } : null;
 }
+
+/** The read stored on a score file, when there is one. */
+const storedRead = (score: Pick<ScoreFileForAi, "chartRead">) => score.chartRead?.trim() ?? "";
+
+/**
+ * A score's read for a member to see before any check (docs/audio-engine.md,
+ * "The chart read is stored"): the stored read when there is one
+ * (`fromModel` false), else the file read by the model now and stored on
+ * it. Throws when the file or the model fails.
+ */
+export async function readChartOfScore(
+	score: Pick<ScoreFileForAi, "fileId" | "url" | "filename" | "chartRead">,
+	who: AiAsker,
+): Promise<{ text: string; fromModel: boolean }> {
+	const stored = storedRead(score);
+	if (stored) return { text: stored, fromModel: false };
+	const res = await readBlob(score.url);
+	if (!res.ok) throw new Error("The score could not be fetched");
+	const bytes = new Uint8Array(await res.arrayBuffer());
+	const text = await readChartWithAi(score, bytes, FILE_CONTENT_TYPE_OF(score.filename), who);
+	await saveChartRead(who.accountId, score.fileId, text, false);
+	return { text, fromModel: true };
+}
+
+/** Where Redis keeps a file's read, by its URL (a second-level cache under the stored read). */
+export const chartCacheKey = (url: string) =>
+	`chart:${createHash("sha256").update(url).digest("hex").slice(0, 32)}`;
 
 /** A read chart stays cached this long; the file never changes under its URL (Blob pathnames are never reused). */
 const CHART_CACHE_SECONDS = 30 * 24 * 3600;
@@ -112,7 +167,7 @@ export async function readChartWithAi(
 	who: { userId: string; songId: string },
 ): Promise<string> {
 	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
-	const cacheKey = `chart:${createHash("sha256").update(score.url).digest("hex").slice(0, 32)}`;
+	const cacheKey = chartCacheKey(score.url);
 	if (redisConfigured()) {
 		try {
 			const [hit] = await redisPipeline([["GET", cacheKey]]);
@@ -353,7 +408,7 @@ export interface SongSettings {
 export async function askAiAboutMix(
 	mixUrl: string,
 	settings: SongSettings,
-	who: { userId: string; songId: string },
+	who: AiAsker,
 	score: ScoreForAi,
 ): Promise<AiAnswer> {
 	const mix = await loadMix(mixUrl);
@@ -416,7 +471,7 @@ export async function detectSectionsWithAi(
 		/** Section names the account's other songs use, most common first. */
 		vocabulary: string[];
 	},
-	who: { userId: string; songId: string },
+	who: AiAsker,
 	score: ScoreForAi | null = null,
 ): Promise<SectionsAnswer> {
 	const mix = await loadMix(mixUrl);

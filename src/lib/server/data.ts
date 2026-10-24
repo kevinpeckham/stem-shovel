@@ -4581,6 +4581,52 @@ export async function attachFile(accountId: string, fileId: string, songId: stri
 	return row ?? null;
 }
 
+/**
+ * A score file's stored read (docs/audio-engine.md, "The chart read is
+ * stored"): the row of a ready notation PDF or image of the account, with
+ * its read and whether a member corrected it; null for any other file.
+ */
+export async function chartReadOfFile(accountId: string, fileId: string) {
+	const row = await db.query.songFile.findFirst({
+		where: and(
+			eq(songFile.accountId, accountId),
+			eq(songFile.id, fileId),
+			eq(songFile.status, "ready"),
+			eq(songFile.isNotation, true),
+			inArray(songFile.kind, ["pdf", "image"]),
+		),
+		columns: {
+			id: true,
+			songId: true,
+			url: true,
+			filename: true,
+			kind: true,
+			chartRead: true,
+			chartReadEdited: true,
+		},
+	});
+	return row ? { ...row, kind: row.kind as "pdf" | "image" } : null;
+}
+
+/**
+ * Stores a score's read: the model's (`edited` false) or a member's
+ * correction (`edited` true); `text` null with `edited` false clears it, so
+ * the next check reads the file again. Null for a file the account lacks.
+ */
+export async function saveChartRead(
+	accountId: string,
+	fileId: string,
+	text: string | null,
+	edited: boolean,
+) {
+	const [row] = await db
+		.update(songFile)
+		.set({ chartRead: text, chartReadEdited: edited })
+		.where(and(eq(songFile.accountId, accountId), eq(songFile.id, fileId)))
+		.returning({ chartRead: songFile.chartRead, chartReadEdited: songFile.chartReadEdited });
+	return row ?? null;
+}
+
 /** A file's URLs as a page may send them (presigned for a private store), like `presentSongFiles`. */
 async function presentFile<F extends { url: string; thumbnailUrl: string | null }>(
 	f: F,
@@ -6840,7 +6886,16 @@ export async function scoreForAi(
 	songId: string,
 ): Promise<
 	| { kind: "musicxml"; format: "mxl" | "musicxml"; url: string; filename: string; title: string }
-	| { kind: "pdf" | "image"; url: string; filename: string; title: string; sizeBytes: number }
+	| {
+			kind: "pdf" | "image";
+			fileId: string;
+			url: string;
+			filename: string;
+			title: string;
+			sizeBytes: number;
+			chartRead: string | null;
+			chartReadEdited: boolean;
+	  }
 	| { kind: "chart"; markdown: string; title: string }
 	| null
 > {
@@ -6863,9 +6918,21 @@ export async function scoreForAi(
 			inArray(songFile.kind, ["pdf", "image"]),
 		),
 		orderBy: [asc(songFile.createdAt)],
-		columns: { kind: true, url: true, filename: true, title: true, sizeBytes: true },
+		columns: {
+			id: true,
+			kind: true,
+			url: true,
+			filename: true,
+			title: true,
+			sizeBytes: true,
+			chartRead: true,
+			chartReadEdited: true,
+		},
 	});
-	if (file) return { ...file, kind: file.kind as "pdf" | "image" };
+	if (file) {
+		const { id, ...rest } = file;
+		return { ...rest, fileId: id, kind: file.kind as "pdf" | "image" };
+	}
 	const row = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
 		columns: { title: true, chartMarkdown: true },

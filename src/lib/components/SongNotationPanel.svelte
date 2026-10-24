@@ -13,7 +13,14 @@
 	} from "#lib/constants/notationFormats.js";
 	import { FILE_MAX_BYTES, MAX_FILES_PER_SONG } from "#lib/constants/fileFormats.js";
 	import { deleteNotation, updateNotation } from "#lib/remote/notation.remote.js";
-	import { deleteFile, updateFile } from "#lib/remote/files.remote.js";
+	import {
+		clearChartReadOfFile,
+		deleteFile,
+		readChartOfFile,
+		saveChartReadOfFile,
+		updateFile,
+	} from "#lib/remote/files.remote.js";
+	import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
 	import type { PanelFile } from "#lib/components/SongFilesPanel.svelte";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
@@ -68,8 +75,79 @@
 		/** The song's PDFs marked as notation. */
 		pdfs?: PanelFile[];
 		canEdit: boolean;
+		/** The AI is configured and allowed for this song: a PDF or image score has "What the AI read" (docs/audio-engine.md, "The chart read is stored"). */
+		aiAvailable?: boolean;
+		/** Run the song-check with the (corrected) read: the page asks the AI and shows its card. */
+		oncheck?: () => void;
 	}
-	let { songId, songTitle, notation, pdfs = [], canEdit }: Props = $props();
+	let {
+		songId,
+		songTitle,
+		notation,
+		pdfs = [],
+		canEdit,
+		aiAvailable = false,
+		oncheck,
+	}: Props = $props();
+
+	// ── What the AI read (docs/audio-engine.md, "The chart read is stored"): the per-measure summary of a PDF or image score, shown for correction before it anchors the song-check ──
+	interface Reading {
+		file: PanelFile;
+		text: string;
+		/** The text as stored; `text` differs while an edit is unsaved. */
+		stored: string;
+		edited: boolean;
+		busy: boolean;
+		error: string | null;
+	}
+	let reading = $state<Reading | null>(null);
+	let readWarnings = $derived(reading ? chartReadWarnings(reading.text) : []);
+	let readDirty = $derived(!!reading && reading.text !== reading.stored);
+	/** Open the read of a score file (the ⋯ menu, or the page's card when a check's read looked wrong). */
+	export async function showRead(fileId: string) {
+		const file = pdfs.find((p) => p.id === fileId);
+		if (!file) return;
+		reading = { file, text: "", stored: "", edited: false, busy: true, error: null };
+		try {
+			const r = await readChartOfFile({ id: fileId });
+			if (reading?.file.id !== fileId) return;
+			reading = { ...reading, text: r.text, stored: r.text, edited: r.edited, busy: false };
+			if (r.fromModel)
+				notify(`The AI read ${nameOf({ kind: "pdf", row: file })}`, { kind: "info" });
+		} catch (e) {
+			if (reading?.file.id !== fileId) return;
+			reading = { ...reading, busy: false, error: errorMessage(e) };
+		}
+	}
+	async function saveRead() {
+		if (!reading || reading.busy) return;
+		const id = reading.file.id;
+		reading = { ...reading, busy: true, error: null };
+		try {
+			const r = await saveChartReadOfFile({ id, text: reading.text });
+			if (reading?.file.id !== id) return;
+			reading = { ...reading, text: r.text, stored: r.text, edited: true, busy: false };
+			notify("Your corrected read is saved; the AI checks the song against it from now on");
+		} catch (e) {
+			if (reading?.file.id !== id) return;
+			reading = { ...reading, busy: false, error: errorMessage(e) };
+		}
+	}
+	/** The stored read gone, the model reads the file again (a correction is lost; the button says so). */
+	async function readAgain() {
+		if (!reading || reading.busy) return;
+		if (reading.edited && !confirm("Drop your corrected read and let the AI read the file again?"))
+			return;
+		const id = reading.file.id;
+		reading = { ...reading, busy: true, error: null };
+		try {
+			await clearChartReadOfFile({ id });
+			await showRead(id);
+		} catch (e) {
+			if (reading?.file.id !== id) return;
+			reading = { ...reading, busy: false, error: errorMessage(e) };
+		}
+	}
 
 	let ready = $derived<Tile[]>([
 		...notation
@@ -461,6 +539,15 @@
 										action: () => startEdit(t),
 									},
 									{
+										id: "read",
+										label: "What the AI read",
+										iconClass: "i-ph-text-align-left",
+										title:
+											"The chart as the AI read it, one line per measure: check and correct it before the AI checks the song against it",
+										condition: canEdit && aiAvailable && t.kind === "pdf",
+										action: () => (t.kind === "pdf" ? void showRead(t.row.id) : undefined),
+									},
+									{
 										id: "unmark",
 										label: "Not notation",
 										iconClass: "i-ph-file",
@@ -580,6 +667,90 @@
 						<div class="notation-page">{@html svg}</div>
 					{/each}
 				</div>
+			{/if}
+		</div>
+	</FloatingPanel>
+	<!-- What the AI read: the per-measure text in an editor, what looks wrong in amber (utils/chartReadWarnings.ts), saved as the read the song-check uses. -->
+	<FloatingPanel
+		open={reading !== null}
+		title={reading ? `What the AI read of ${nameOf({ kind: "pdf", row: reading.file })}` : ""}
+		storageKey="stemshovel.song.chart-read"
+		width={720}
+		height={640}
+		onminimise={() => (reading = null)}
+	>
+		{#snippet controls()}
+			{#if reading}
+				<button
+					class="button button-xs"
+					type="button"
+					disabled={reading.busy || !readDirty}
+					title="Keep this text as the chart the AI checks the song against"
+					onclick={saveRead}
+				>
+					<span class="i-ph-floppy-disk" aria-hidden="true"></span>
+					Save
+				</button>
+				<button
+					class="button button-xs"
+					type="button"
+					disabled={reading.busy}
+					title={reading.edited
+						? "Drop the corrected read and let the AI read the file again"
+						: "Let the AI read the file again"}
+					onclick={readAgain}
+				>
+					<span class="i-ph-arrow-clockwise" aria-hidden="true"></span>
+					Read again
+				</button>
+				{#if oncheck}
+					<button
+						class="button button-xs"
+						type="button"
+						disabled={reading.busy || readDirty}
+						title={readDirty
+							? "Save the read first"
+							: "Ask the AI to check the song's key, tempo and meter against this read"}
+						onclick={() => {
+							reading = null;
+							oncheck?.();
+						}}
+					>
+						<span class="i-ph-sparkle" aria-hidden="true"></span>
+						Check the song
+					</button>
+				{/if}
+			{/if}
+		{/snippet}
+		<div class="min-h-full flex flex-col gap-2 p-2" aria-live="polite">
+			{#if reading?.busy && !reading.text}
+				<p class="p-2 text-14px opacity-60">Reading the chart…</p>
+			{:else if reading}
+				<p class="text-12px opacity-70">
+					One line per measure, as the AI read the file{reading.edited
+						? "; corrected by the band"
+						: ""}. Fix a wrong key, chord or measure number here and save: the song-check reads this
+					text, not the file.
+				</p>
+				{#if readWarnings.length > 0}
+					<ul class="text-13px text-amber-300 grid gap-1" role="alert">
+						{#each readWarnings as w (w)}
+							<li>
+								<span class="i-ph-warning align-text-bottom" aria-hidden="true"></span>
+								{w}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				{#if reading.error}
+					<p class="text-13px text-red-400" role="alert">{reading.error}</p>
+				{/if}
+				<textarea
+					class="field font-mono text-12px leading-snug flex-1 min-h-320px w-full resize-y"
+					spellcheck="false"
+					aria-label="What the AI read, one line per measure"
+					disabled={reading.busy}
+					bind:value={reading.text}></textarea>
 			{/if}
 		</div>
 	</FloatingPanel>

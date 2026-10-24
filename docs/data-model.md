@@ -376,26 +376,28 @@ itself (the project page's library) and moves with `attachFile`, the blob
 staying put. The table keeps the name it had when it held PDFs alone
 (until 2026-10-06); the schema file is `songFile.ts`.
 
-| column                 | type                           | notes                                                                                                                          |
-| ---------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| id                     | text PK                        |                                                                                                                                |
-| account_id             | text FK → account (cascade)    |                                                                                                                                |
-| project_id             | text FK → project (cascade)    | indexed; backfilled from the song for the rows before 2026-10-06                                                               |
-| song_id                | text FK → song (cascade), null | indexed; null for a project-level file                                                                                         |
-| kind                   | text not null default 'pdf'    | pdf / image / audio / text / midi / other, by extension (`fileKindOf`)                                                         |
-| title                  | text not null default ''       | the filename minus its extension to begin with                                                                                 |
-| description            | text not null default ''       |                                                                                                                                |
-| status                 | text                           | uploading / ready / failed                                                                                                     |
-| url, pathname          | text                           | `accounts/<a>/songs/<s>/files/<id>.<ext>` or `accounts/<a>/projects/<p>/files/<id>.<ext>` (`/pdfs/<id>.pdf` before 2026-10-06) |
-| filename               | text                           |                                                                                                                                |
-| size_bytes             | integer                        | counts toward the account's storage                                                                                            |
-| page_count             | integer null                   | a PDF's, as pdf.js read it in the browser                                                                                      |
-| is_notation            | boolean not null default 0     | a score (PDF or image): listed on the Chart tab's notation view too; always 0 at the project level                             |
-| thumbnail_url          | text null                      | `<id>.thumb-<stamp>.webp` beside the file                                                                                      |
-| thumbnail_pathname     | text null                      |                                                                                                                                |
-| share_code             | text not null unique           | nanoid(16); the permanent link is `/f/<code>`                                                                                  |
-| uploaded_by            | text FK → user (set null)      |                                                                                                                                |
-| created_at, updated_at | timestamp_ms                   |                                                                                                                                |
+| column                 | type                           | notes                                                                                                                                        |
+| ---------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                     | text PK                        |                                                                                                                                              |
+| account_id             | text FK → account (cascade)    |                                                                                                                                              |
+| project_id             | text FK → project (cascade)    | indexed; backfilled from the song for the rows before 2026-10-06                                                                             |
+| song_id                | text FK → song (cascade), null | indexed; null for a project-level file                                                                                                       |
+| kind                   | text not null default 'pdf'    | pdf / image / audio / text / midi / other, by extension (`fileKindOf`)                                                                       |
+| title                  | text not null default ''       | the filename minus its extension to begin with                                                                                               |
+| description            | text not null default ''       |                                                                                                                                              |
+| status                 | text                           | uploading / ready / failed                                                                                                                   |
+| url, pathname          | text                           | `accounts/<a>/songs/<s>/files/<id>.<ext>` or `accounts/<a>/projects/<p>/files/<id>.<ext>` (`/pdfs/<id>.pdf` before 2026-10-06)               |
+| filename               | text                           |                                                                                                                                              |
+| size_bytes             | integer                        | counts toward the account's storage                                                                                                          |
+| page_count             | integer null                   | a PDF's, as pdf.js read it in the browser                                                                                                    |
+| is_notation            | boolean not null default 0     | a score (PDF or image): listed on the Chart tab's notation view too; always 0 at the project level                                           |
+| chart_read             | text                           | a score's per-measure read as the model wrote it or a member corrected it (docs/audio-engine.md "The chart read is stored"); null until read |
+| chart_read_edited      | boolean not null default 0     | the read above is a member's correction, which no model read overwrites                                                                      |
+| thumbnail_url          | text null                      | `<id>.thumb-<stamp>.webp` beside the file                                                                                                    |
+| thumbnail_pathname     | text null                      |                                                                                                                                              |
+| share_code             | text not null unique           | nanoid(16); the permanent link is `/f/<code>`                                                                                                |
+| uploaded_by            | text FK → user (set null)      |                                                                                                                                              |
+| created_at, updated_at | timestamp_ms                   |                                                                                                                                              |
 
 ### recording_session (`recordingSession`, `account.recordingSessions`)
 
