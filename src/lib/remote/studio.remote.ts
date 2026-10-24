@@ -20,6 +20,7 @@ import {
 	studioRevisionOwner,
 	studioSongView,
 	studioSourceOwner,
+	studioSourcesWantingFlac,
 	importSongStemsIntoStudio,
 	createSong,
 	updateSongChanges,
@@ -27,7 +28,8 @@ import {
 	studioExportInput,
 } from "#lib/server/data.js";
 import { background } from "#lib/server/background.js";
-import { scheduleDawprojectExport } from "#lib/server/jobs.js";
+import { scheduleDawprojectExport, scheduleStudioFlac } from "#lib/server/jobs.js";
+import { studioSourceWantsFlac } from "#lib/utils/studioSourceWantsFlac.js";
 import { MAX_FILES_PER_SONG } from "#lib/constants/fileFormats.js";
 import { notifySong, notifyStudioShared } from "#lib/server/notifications.js";
 import { NameSchema } from "#lib/val/NameSchema.js";
@@ -190,10 +192,20 @@ export const deleteStudioSource = command(IdSchema, async ({ id }) => {
 	return { deleted: await removeSource(owner.accountId, id) };
 });
 
-/** One song as the page loads it, fresh (after an upload or a save). */
+/**
+ * One song as the page loads it, fresh (after an upload or a save). A
+ * source still in WAV (one recorded before the FLAC pass, or marked ready
+ * by the completion webhook alone) is handed to the jobs function: the
+ * view's codec and filename decide whether to ask, so a song with nothing
+ * to convert costs no query and posts nothing.
+ */
 export const studioSong = query(IdSchema, async ({ id }) => {
 	const { accountId, userId } = await ownIdea(id);
 	const song = await studioSongView(accountId, id, userId);
 	if (!song) error(404, "Song not found");
+	if (song.sources.some((s) => studioSourceWantsFlac({ codec: s.codec, name: s.filename }))) {
+		const wanting = await studioSourcesWantingFlac(accountId, id);
+		if (wanting.length) scheduleStudioFlac(wanting);
+	}
 	return song;
 });

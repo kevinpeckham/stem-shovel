@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Writable } from "node:stream";
 
 /**
@@ -31,6 +33,8 @@ const h = vi.hoisted(() => ({
 		failRecordingPlayback: vi.fn(),
 		failSessionPlayback: vi.fn(),
 		replaceRecordingSource: vi.fn(),
+		studioSourceForTranscode: vi.fn(),
+		replaceStudioSourceFile: vi.fn(),
 	},
 	blob: {
 		readBlob: vi.fn(),
@@ -103,7 +107,8 @@ vi.mock("#lib/server/blob.js", () => h.blob);
 vi.mock("#lib/server/mix.js", () => h.mix);
 vi.mock("#lib/server/notes.js", () => h.notes);
 
-const { renderStems, renderDemos, renderRecordings } = await import("./transcode");
+const { renderStems, renderDemos, renderRecordings, flacStudioSources } =
+	await import("./transcode");
 
 const PUBLIC = "https://store.public.blob.vercel-storage.com";
 const PRIVATE = "https://store.private.blob.vercel-storage.com";
@@ -541,5 +546,86 @@ describe("renderRecordings", () => {
 		expect(h.data.failRecordingPlayback).toHaveBeenCalledWith("take-1");
 		expect(h.data.finishRecordingPlayback).not.toHaveBeenCalled();
 		expect(h.fs.removed).toHaveLength(1);
+	});
+});
+
+describe("flacStudioSources", () => {
+	const path = "accounts/a/studio/i1/src1.wav";
+	const sourceRow = (over: Record<string, unknown> = {}) => ({
+		id: "src1",
+		accountId: "acct-1",
+		url: `${PRIVATE}/${path}`,
+		pathname: path,
+		filename: "Take 3.wav",
+		contentType: "audio/wav",
+		codec: "pcm",
+		status: "ready",
+		sizeBytes: 4321,
+		...over,
+	});
+	const flacFile = join(tmpdir(), "studio-flac-abc", "source.flac");
+	beforeEach(() => {
+		h.data.studioSourceForTranscode.mockResolvedValue(sourceRow());
+		h.data.replaceStudioSourceFile.mockResolvedValue({ id: "src1" });
+		h.fs.written.set(flacFile, Buffer.alloc(2000));
+	});
+
+	it("turns a WAV source into FLAC in its store, points the row at it and deletes the WAV", async () => {
+		await flacStudioSources(["src1"]);
+		const flac = runFor(/source\.flac$/)!;
+		expect(flac.join(" ")).toContain("-map_metadata -1 -c:a flac -compression_level 5");
+		expect(h.blob.putBlob).toHaveBeenCalledWith(
+			"accounts/a/studio/i1/src1.flac",
+			expect.any(Buffer),
+			"audio/flac",
+			"private",
+		);
+		expect(h.data.replaceStudioSourceFile).toHaveBeenCalledWith("acct-1", "src1", {
+			url: `${PRIVATE}/accounts/a/studio/i1/src1.flac`,
+			pathname: "accounts/a/studio/i1/src1.flac",
+			filename: "Take 3.flac",
+			contentType: "audio/flac",
+			sizeBytes: 2000,
+			codec: "flac",
+		});
+		expect(h.blob.deleteBlobs).toHaveBeenCalledWith([`${PRIVATE}/${path}`]);
+		expect(h.fs.removed).toEqual([join(tmpdir(), "studio-flac-abc")]);
+	});
+	it("skips a source that is not WAV, not ready, already FLAC or gone, without fetching it", async () => {
+		h.data.studioSourceForTranscode
+			.mockResolvedValueOnce(
+				sourceRow({ contentType: "audio/mpeg", codec: null, pathname: "a/s.mp3" }),
+			)
+			.mockResolvedValueOnce(sourceRow({ status: "uploading" }))
+			.mockResolvedValueOnce(sourceRow({ pathname: "a/s.flac", codec: "flac" }))
+			.mockResolvedValueOnce(null);
+		await flacStudioSources(["s1", "s2", "s3", "s4"]);
+		expect(h.blob.readBlob).not.toHaveBeenCalled();
+		expect(h.blob.putBlob).not.toHaveBeenCalled();
+	});
+	it("keeps the WAV when the FLAC is not smaller", async () => {
+		h.fs.written.set(flacFile, Buffer.alloc(4321));
+		await flacStudioSources(["src1"]);
+		expect(h.blob.putBlob).not.toHaveBeenCalled();
+		expect(h.data.replaceStudioSourceFile).not.toHaveBeenCalled();
+		expect(h.blob.deleteBlobs).not.toHaveBeenCalled();
+		expect(h.fs.removed).toHaveLength(1);
+	});
+	it("removes the FLAC it wrote when the source was deleted meanwhile, and keeps the WAV's URL alone", async () => {
+		h.data.replaceStudioSourceFile.mockResolvedValue(null);
+		await flacStudioSources(["src1"]);
+		expect(h.blob.deleteBlobs).toHaveBeenCalledTimes(1);
+		expect(h.blob.deleteBlobs).toHaveBeenCalledWith([`${PRIVATE}/accounts/a/studio/i1/src1.flac`]);
+	});
+	it("logs a failed source and goes on to the next", async () => {
+		const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+		h.blob.readBlob
+			.mockResolvedValueOnce(new Response(null, { status: 404, statusText: "Not Found" }))
+			.mockImplementation(async () => fetched());
+		await flacStudioSources(["bad", "src1"]);
+		expect(logged).toHaveBeenCalledWith("[studio-flac] bad:", expect.any(Error));
+		expect(h.data.replaceStudioSourceFile).toHaveBeenCalledTimes(1);
+		expect(h.fs.removed).toHaveLength(2);
+		logged.mockRestore();
 	});
 });

@@ -5,6 +5,7 @@ import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes, traceTranscriptionDeps } from "#lib/server/notes.js";
 import { renderNotationPdf } from "#lib/server/notationPdf.js";
 import {
+	flacStudioSources,
 	measureDemos,
 	measureSessions,
 	measureStemMetadata,
@@ -73,6 +74,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 			case "dawproject-export":
 				for (const id of ids) await renderDawprojectExport(id);
+				break;
+			case "studio-flac":
+				await flacStudioSources(ids);
 				break;
 		}
 	});

@@ -20,6 +20,7 @@ const h = vi.hoisted(() => ({
 	renderStems: vi.fn(),
 	renderDemos: vi.fn(),
 	renderRecordings: vi.fn(),
+	flacStudioSources: vi.fn(),
 }));
 vi.mock("varlock/env", () => ({ ENV: h.env, initVarlockEnv: () => {} }));
 vi.mock("$app/env", () => ({ dev: false, building: false, browser: false, version: "0" }));
@@ -41,6 +42,7 @@ vi.mock("#lib/server/transcode.js", () => ({
 	renderStems: h.renderStems,
 	renderDemos: h.renderDemos,
 	renderRecordings: h.renderRecordings,
+	flacStudioSources: h.flacStudioSources,
 }));
 
 const { POST } = await import("./+server");
@@ -111,5 +113,10 @@ describe("POST /api/jobs", () => {
 		await post({ kind: "dawproject-export", ids: [A] });
 		await settled();
 		expect(h.renderDawprojectExport).toHaveBeenCalledWith(A);
+	});
+	it("Studio sources become FLAC as one batch", async () => {
+		await post({ kind: "studio-flac", ids: [A, B] });
+		await settled();
+		expect(h.flacStudioSources).toHaveBeenCalledWith([A, B]);
 	});
 });

@@ -553,14 +553,18 @@
 	}
 
 	// ── Recording and the upload queue ─────────────────────────────────────
+	/** The song's source URLs as the server has them now (a saved recording's, or a WAV turned FLAC by the jobs function). */
+	async function refreshSourceUrls() {
+		await refreshAll();
+		const s = data.songs.find((x) => x.id === songId);
+		if (s) studio.noteSourceUrls(s.sources);
+	}
+	studio.refreshUrls = refreshSourceUrls;
 	const queue = new StudioQueue({
 		onsaved: (sourceId) => {
 			studio.markSourceSaved(sourceId);
 			// The refreshed song carries the file's URL, so the recording can go cold and come back (D8).
-			void refreshAll().then(() => {
-				const s = data.songs.find((x) => x.id === songId);
-				if (s) studio.noteSourceUrls(s.sources);
-			});
+			void refreshSourceUrls();
 		},
 	});
 	let uploading = $derived(queue.items.filter((u) => u.status !== "failed").length);

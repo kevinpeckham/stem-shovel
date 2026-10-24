@@ -12,6 +12,7 @@ import {
 	blob,
 	data,
 	givenRow,
+	jobs,
 	resetRemoteMocks,
 } from "../../../../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../../../../tests/helpers/fakeApiEvent";
@@ -34,7 +35,13 @@ const post = (body: unknown = ready) =>
 
 beforeEach(() => {
 	resetRemoteMocks();
-	data.studioSourceOwner.mockResolvedValue({ accountId: ACCOUNT, ideaId: IDEA, pathname });
+	data.studioSourceOwner.mockResolvedValue({
+		accountId: ACCOUNT,
+		ideaId: IDEA,
+		pathname,
+		contentType: "audio/wav",
+		codec: "pcm",
+	});
 	givenRow("idea", { accountId: ACCOUNT });
 	data.studioSongAccess.mockResolvedValue({ accountId: ACCOUNT, createdBy: USER, shared: false });
 	blob.isOurBlobUrl.mockReturnValue(true);
@@ -73,5 +80,31 @@ describe("POST /api/studio/sources/[id]/ready", () => {
 		const res = await post();
 		expect(await res.json()).toEqual({ ok: true });
 		expect(data.markStudioSourceReady).toHaveBeenCalledWith(ACCOUNT, SOURCE, ready);
+	});
+	it("hands a WAV source to the jobs function for its FLAC", async () => {
+		await post();
+		expect(jobs.scheduleStudioFlac).toHaveBeenCalledWith([SOURCE]);
+	});
+	it("schedules nothing for an imported FLAC or MP3", async () => {
+		for (const [ext, contentType] of [
+			["flac", "audio/flac"],
+			["mp3", "audio/mpeg"],
+		]) {
+			data.studioSourceOwner.mockResolvedValue({
+				accountId: ACCOUNT,
+				ideaId: IDEA,
+				pathname: pathname.replace(/wav$/, ext),
+				contentType,
+				codec: null,
+			});
+			await post();
+		}
+		expect(data.markStudioSourceReady).toHaveBeenCalledTimes(2);
+		expect(jobs.scheduleStudioFlac).not.toHaveBeenCalled();
+	});
+	it("schedules nothing when the row was not marked (deleted meanwhile)", async () => {
+		data.markStudioSourceReady.mockResolvedValue(null);
+		await post();
+		expect(jobs.scheduleStudioFlac).not.toHaveBeenCalled();
 	});
 });

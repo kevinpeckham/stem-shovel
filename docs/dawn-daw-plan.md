@@ -206,9 +206,10 @@ automatable parameters, so D2 adds sends and inserts in one place.
 - Built: sources decoded on demand and released when nothing plays
   them (`ensureSource`, `releaseUnused`, the `cold` status), track
   freeze and unfreeze, the graph (`studioGraph.ts`) and the autosave
-  (`studioPersistence.svelte.ts`) as modules with tests. Left: the
-  streaming worklet over OPFS, FLAC renditions in the jobs function,
-  windowed scheduling, operation-based undo.
+  (`studioPersistence.svelte.ts`) as modules with tests, FLAC renditions
+  of sources in the jobs function (2026-10-24, `flacStudioSources`).
+  Left: the streaming worklet over OPFS, windowed scheduling,
+  operation-based undo.
   docs/multitrack-recorder.md "Scale and structure".
 
 ### Cross-cutting, every phase

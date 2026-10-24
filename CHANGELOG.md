@@ -8,6 +8,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Changes on a version** in the song's text history. Beside View on each earlier version of the chart, lyrics, notes or your own note, **Changes** shows what differs between that version and the text as it is now, line by line, with long unchanged stretches folded away.
+
+### Changed
+
+- **Studio recordings are stored as FLAC.** A take or bounce the Studio uploads as WAV is converted to FLAC by the jobs function once it is saved, the same samples at about half the size, so a song's recordings count half as much toward the account's storage. Songs recorded before this are converted the next time they are opened. Playback, exports and downloads are unchanged.
+
+### Technical
+
+- `utils/diffLines.ts`; `DocHistoryPanel` target `current`.
+- `flacStudioSources` in transcode.ts, `scheduleStudioFlac` ("studio-flac" job), scheduled by the source-ready route and by `studioSong` for sources still WAV; the engine's `refreshUrls` hook refetches a source whose file moved (docs/multitrack-recorder.md "Scale and structure").
+
 ## [0.158.0] - 2026-10-24
 
 ### Added

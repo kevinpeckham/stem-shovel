@@ -235,7 +235,7 @@ describe("the song's own functions (requireOwnIdea)", () => {
 			input: { id: IDEA },
 			dataFn: "studioSongView",
 			args: [ACCOUNT, IDEA, USER],
-			result: { id: IDEA, title: "Song" },
+			result: { id: IDEA, title: "Song", sources: [] },
 		},
 	];
 	for (const c of cases) {
@@ -387,5 +387,29 @@ describe("a song shared with the band (D7)", () => {
 			shared: true,
 		});
 		expect(data.setStudioShared).toHaveBeenCalledWith(ACCOUNT, IDEA, true);
+	});
+});
+
+describe("studioSong (the FLAC backfill)", () => {
+	const source = (codec: string | null, filename: string) => ({ id: SOURCE, codec, filename });
+	beforeEach(() => {
+		givenIdeaOwnedBy(USER);
+		asEditorOf(ACCOUNT);
+	});
+	it("hands the song's sources still in WAV to the jobs function", async () => {
+		data.studioSongView.mockResolvedValue({ id: IDEA, sources: [source("pcm", "take.wav")] });
+		data.studioSourcesWantingFlac.mockResolvedValue([SOURCE]);
+		await call(studio.studioSong, { id: IDEA });
+		expect(data.studioSourcesWantingFlac).toHaveBeenCalledWith(ACCOUNT, IDEA);
+		expect(jobs.scheduleStudioFlac).toHaveBeenCalledWith([SOURCE]);
+	});
+	it("a song of FLACs and MP3s costs no query and posts nothing", async () => {
+		data.studioSongView.mockResolvedValue({
+			id: IDEA,
+			sources: [source("flac", "take.flac"), source(null, "loop.mp3")],
+		});
+		await call(studio.studioSong, { id: IDEA });
+		expect(data.studioSourcesWantingFlac).not.toHaveBeenCalled();
+		expect(jobs.scheduleStudioFlac).not.toHaveBeenCalled();
 	});
 });

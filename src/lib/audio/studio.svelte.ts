@@ -832,9 +832,23 @@ class StudioEngine {
 		const blob = this.#blobs.get(sourceId);
 		if (blob) return blob.arrayBuffer();
 		const res = await fetch(url);
-		if (!res.ok) throw new Error(`${res.status}`);
-		return res.arrayBuffer();
+		if (res.ok) return res.arrayBuffer();
+		// The file may have moved: the jobs function turns a WAV source into FLAC under a new
+		// pathname and drops the WAV (docs/multitrack-recorder.md "Scale and structure"). Ask the
+		// page for the song's URLs as they are now and try once more where the URL changed.
+		if (this.refreshUrls) {
+			await this.refreshUrls().catch(() => undefined);
+			const fresh = this.#urls.get(sourceId);
+			if (fresh && fresh !== url) {
+				const again = await fetch(fresh);
+				if (again.ok) return again.arrayBuffer();
+				throw new Error(`${again.status}`);
+			}
+		}
+		throw new Error(`${res.status}`);
 	}
+	/** Set by the page: reload the song's source URLs from the server (`noteSourceUrls`), for a fetch that found a file gone. */
+	refreshUrls: (() => Promise<void>) | null = null;
 	/** Where the song's sources are on the server (the page, after a refresh): a source made here can then go cold and come back (D8). */
 	noteSourceUrls(sources: { id: string; url: string }[]) {
 		for (const src of sources) if (this.sources[src.id]) this.#urls.set(src.id, src.url);

@@ -81,3 +81,5 @@ export const scheduleDawprojectExport = (fileId: string) =>
 	scheduleJob("dawproject-export", [fileId]);
 export const scheduleNotationPdf = (notationId: string) =>
 	scheduleJob("notation-pdf", [notationId]);
+/** Studio sources still in WAV become FLAC, the row then pointing at it (src/lib/server/transcode.ts `flacStudioSources`). */
+export const scheduleStudioFlac = (sourceIds: string[]) => scheduleJob("studio-flac", sourceIds);

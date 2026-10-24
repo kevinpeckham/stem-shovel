@@ -15,6 +15,7 @@ export const JOB_KINDS = [
 	"stem-metadata",
 	"notation-pdf",
 	"dawproject-export",
+	"studio-flac",
 ] as const;
 
 export type JobKind = (typeof JOB_KINDS)[number];

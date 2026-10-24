@@ -2281,12 +2281,31 @@ and timers. The bounce orchestration moved out in D3
 (`studioExport.ts`); the instruments in D6 (`instruments.ts`); the
 inserts, strips and offline render in D2 and D3.
 
+**FLAC renditions of sources.** The browser keeps writing 24-bit WAV (codec
+`pcm`); the jobs function then makes it FLAC, the same samples at about half
+the bytes. The ready route (`POST /api/studio/sources/[id]/ready`) schedules
+`scheduleStudioFlac([id])` once the row is marked ready, and the page load
+(`+page.server.ts`, over the songs it lists) and `studioSong` hand over any source still in WAV (one marked ready by the completion
+webhook alone, or recorded before the pass), at most 50 a load, deciding on
+the view's codec and filename first so a song with nothing to convert posts
+nothing. `flacStudioSources` (src/lib/server/transcode.ts) runs one source at
+a time: `-map_metadata -1 -c:a flac -compression_level 5`, the FLAC kept only
+when it is smaller, written at the same ID-based pathname with `.flac` in the
+WAV's store; `replaceStudioSourceFile` points the row at it (url, pathname,
+filename, `audio/flac`, size, codec `flac`), the id unchanged so every clip
+and revision still names it, and the WAV is deleted. A failure is logged and
+the next source runs; the WAV stays, so the next load asks again. The browser
+decodes FLAC through `decodeAudioData` as it does the Idea Recorder's takes,
+and an export re-encodes from the decoded buffer, so only storage changes.
+A browser holding the old URL (the recording's own session, a tab left
+open) finds the WAV gone on its next cold fetch: the engine's
+`refreshUrls` hook (set by the page) reloads the song's URLs and fetches
+once more where the URL changed (`#bytesOf`). (2026-10-24)
+
 Left for later, named in the plan: the streaming worklet over OPFS and
-Blob, FLAC renditions of sources in the jobs function (the browser
-keeps 24-bit WAV; a FLAC rendition halves the storage), windowed
-scheduling of very long clips, and operation-based undo (the history
-stays whole-document snapshots at depth 100, which the mix gestures
-and every D1–D7 edit already fold into one step each).
+Blob, windowed scheduling of very long clips, and operation-based undo
+(the history stays whole-document snapshots at depth 100, which the mix
+gestures and every D1–D7 edit already fold into one step each).
 
 Browser spec `tests/e2e/studio-scale.spec.ts`; unit tests on the graph
 over stand-in strips and on the persistence with fake timers; a schema

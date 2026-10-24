@@ -16,6 +16,8 @@ import {
 } from "#lib/server/data.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import { songTargets } from "#lib/server/songTargets.js";
+import { scheduleStudioFlac } from "#lib/server/jobs.js";
+import { studioSourceWantsFlac } from "#lib/utils/studioSourceWantsFlac.js";
 import { realMemberships } from "#lib/utils/actingMemberships.js";
 import copyFallback from "../../../scripts/user-docs/studio-page.md?raw";
 import type { PageServerLoad } from "./$types";
@@ -43,6 +45,21 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 				}
 			: null;
 	const editing = realMemberships(locals.memberships).filter((m) => isEditor(m.role));
+	const songs = user
+		? await listStudioSongs(
+				user.id,
+				editing.map((m) => m.accountId),
+			)
+		: [];
+	// Sources still in WAV (recorded before the FLAC pass, or marked ready by the webhook alone) go to the
+	// jobs function (docs/multitrack-recorder.md "Scale and structure"), decided on the rows in hand.
+	const wavSources = songs
+		.flatMap((s) => s.sources)
+		// The job itself skips a source not ready yet.
+		.filter((src) => studioSourceWantsFlac({ codec: src.codec, name: src.filename }))
+		.map((src) => src.id)
+		.slice(0, 50);
+	if (wavSources.length) scheduleStudioFlac(wavSources);
 	// Signed out, or a member of no editing account: the song lives in the browser (docs/multitrack-recorder.md, "Signed out") until an account takes it.
 	const member = user ? pickAccount(editing, cookies.get(CURRENT_ACCOUNT_COOKIE)) : null;
 	return {
@@ -52,12 +69,7 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 			? { id: member.accountId, slug: member.slug, name: member.name, canEdit: true }
 			: null,
 		// Their own songs and the ones shared with the band in the accounts they edit (D7).
-		songs: user
-			? await listStudioSongs(
-					user.id,
-					editing.map((m) => m.accountId),
-				)
-			: [],
+		songs,
 		projects: user ? await songTargets(editing) : [],
 		// The song the home page demos (docs/multitrack-recorder.md, "The home demo"): marked in the list, not deletable here.
 		homeDemoId: (await getAppSetting("homeStudioSongId")) ?? null,

@@ -17,6 +17,7 @@ import { FOUNDER_SEATS } from "#lib/constants/plans.js";
 import type { SongStage } from "#lib/val/SongStageSchema.js";
 import { MAX_MIXES_PER_SONG } from "#lib/constants/mixFormats.js";
 import { STUDIO_FADER_MAX, MAX_STUDIO_TRACKS } from "#lib/constants/studio.js";
+import { WAV_CONTENT_TYPES } from "#lib/constants/wavContentTypes.js";
 import type { StemManifest } from "#lib/audio/types.js";
 import { DrumProjectSchema, type DrumProject } from "#lib/val/DrumPatternSchema.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
@@ -144,6 +145,7 @@ import {
 	or,
 	lt,
 	ne,
+	not,
 	notExists,
 	sql,
 } from "drizzle-orm";
@@ -6566,11 +6568,11 @@ export async function studioSourceOfPathname(pathname: string) {
 	return row ?? null;
 }
 
-/** A source by id: its account, its song and the pathname reserved for it, for the ready route's and the commands' ownership checks. */
+/** A source by id: its account, its song and the pathname reserved for it, for the ready route's and the commands' ownership checks, with the type and codec that tell the ready route whether a FLAC is due. */
 export async function studioSourceOwner(id: string) {
 	const row = await db.query.studioSource.findFirst({
 		where: eq(studioSource.id, id),
-		columns: { accountId: true, ideaId: true, pathname: true },
+		columns: { accountId: true, ideaId: true, pathname: true, contentType: true, codec: true },
 	});
 	return row ?? null;
 }
@@ -6611,6 +6613,81 @@ export async function deleteStudioSource(accountId: string, id: string) {
 	if (!row) return false;
 	await deleteBlobs([row.url]);
 	return true;
+}
+
+/** A source as the jobs function's FLAC pass reads it (src/lib/server/transcode.ts `flacStudioSources`), or null when it is gone. */
+export async function studioSourceForTranscode(id: string) {
+	const row = await db.query.studioSource.findFirst({
+		where: eq(studioSource.id, id),
+		columns: {
+			id: true,
+			accountId: true,
+			url: true,
+			pathname: true,
+			filename: true,
+			contentType: true,
+			codec: true,
+			status: true,
+			sizeBytes: true,
+		},
+	});
+	return row ?? null;
+}
+
+/**
+ * The jobs function made a FLAC of a WAV source: the row points at the new
+ * file (its own ID-based pathname; the old one ended in .wav) with the
+ * smaller size the storage total counts. The id stays, so every clip and
+ * revision that names the source still does. null when the source was
+ * deleted meanwhile; the caller then removes the FLAC it wrote.
+ */
+export async function replaceStudioSourceFile(
+	accountId: string,
+	id: string,
+	r: {
+		url: string;
+		pathname: string;
+		filename: string;
+		contentType: string;
+		sizeBytes: number;
+		codec: "flac";
+	},
+) {
+	const [row] = await db
+		.update(studioSource)
+		.set({
+			url: r.url,
+			pathname: r.pathname,
+			filename: r.filename,
+			contentType: r.contentType,
+			sizeBytes: r.sizeBytes,
+			codec: r.codec,
+		})
+		.where(and(eq(studioSource.accountId, accountId), eq(studioSource.id, id)))
+		.returning({ id: studioSource.id });
+	return row ?? null;
+}
+
+/** The song's ready sources still in WAV (utils/studioSourceWantsFlac.ts says the same of one row), at most 50 a visit, for the backfill the song's load schedules. */
+export async function studioSourcesWantingFlac(accountId: string, ideaId: string) {
+	const rows = await db
+		.select({ id: studioSource.id })
+		.from(studioSource)
+		.where(
+			and(
+				eq(studioSource.accountId, accountId),
+				eq(studioSource.ideaId, ideaId),
+				eq(studioSource.status, "ready"),
+				or(
+					eq(studioSource.codec, "pcm"),
+					inArray(studioSource.contentType, WAV_CONTENT_TYPES),
+					like(studioSource.pathname, "%.wav"),
+				),
+				not(like(studioSource.pathname, "%.flac")),
+			),
+		)
+		.limit(50);
+	return rows.map((r) => r.id);
 }
 
 /** The song's newest revision by number, with its hash, or null before any save. */

@@ -21,9 +21,12 @@ import {
 	finishStemMetadata,
 	stemForMetadata,
 	replaceRecordingSource,
+	replaceStudioSourceFile,
+	studioSourceForTranscode,
 } from "#lib/server/data.js";
 import { accessOfUrl } from "#lib/utils/blobAccess.js";
 import { createPcm16Peaks } from "#lib/utils/pcm16Peaks.js";
+import { studioSourceWantsFlac } from "#lib/utils/studioSourceWantsFlac.js";
 import { silenceBounds, type SilenceBounds } from "#lib/utils/silenceBounds.js";
 import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
 import { deleteBlobs, playbackPathname, putBlob, readBlob } from "#lib/server/blob.js";
@@ -50,6 +53,10 @@ import { promisify } from "node:util";
  * made the stem ready, and again from the song page for any stem still
  * without one (never tried, failed a while ago, or stuck). `claimPlayback`
  * is the lock: a stem is rendered by one job at a time.
+ *
+ * Lossless sources are also kept smaller here: a raw PCM take of the Idea
+ * Recorder and a WAV source of the Studio (`flacStudioSources`) are
+ * replaced by FLAC, the same samples at about half the bytes.
  */
 
 const BITRATE = { mono: "128k", stereo: "192k" };
@@ -270,6 +277,85 @@ export async function renderRecordings(recordingIds: string[]): Promise<void> {
 /** Session recordings (docs/uploads-and-blob.md, "Sessions") get the same MP3, for playback and the session's download. */
 export async function renderSessions(recordingIds: string[]): Promise<void> {
 	for (const id of recordingIds) await transcodeToMp3(id, SESSION_TARGET);
+}
+
+/**
+ * Studio sources the browser uploaded as WAV (docs/multitrack-recorder.md,
+ * "Scale and structure") become FLAC: the same samples at about half the
+ * bytes, which the browser decodes as it does the Idea Recorder's takes.
+ * One at a time; a FLAC no smaller than the WAV (noise, or a file too
+ * short to compress) is not kept. The row then points at the FLAC and the
+ * WAV goes. A failure is logged and the next source still runs; the WAV
+ * stays, so the song's next load asks again.
+ */
+export async function flacStudioSources(ids: string[]): Promise<void> {
+	for (const id of ids) {
+		try {
+			await flacStudioSource(id);
+		} catch (e) {
+			console.error(`[studio-flac] ${id}:`, e);
+		}
+	}
+}
+
+/** A ready source with its file in Blob, still the WAV it was uploaded as. */
+const dueForFlac = (row: Awaited<ReturnType<typeof studioSourceForTranscode>>) =>
+	row?.status === "ready" && !!row.url && studioSourceWantsFlac({ ...row, name: row.pathname });
+
+async function flacStudioSource(id: string): Promise<void> {
+	const row = await studioSourceForTranscode(id);
+	if (!row || !dueForFlac(row)) return;
+	if (!ffmpegPath) throw new Error("ffmpeg binary is not available on this platform");
+	const dir = await mkdtemp(join(tmpdir(), "studio-flac-"));
+	try {
+		const source = join(dir, "source.wav");
+		const flac = join(dir, "source.flac");
+		const res = await readBlob(row.url);
+		if (!res.ok || !res.body)
+			throw new Error(`${res.status} ${res.statusText} fetching ${row.url}`);
+		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(source));
+		await run(
+			ffmpegPath,
+			[
+				"-hide_banner",
+				"-loglevel",
+				"error",
+				"-y",
+				"-i",
+				source,
+				"-vn",
+				"-map_metadata",
+				"-1",
+				"-c:a",
+				"flac",
+				"-compression_level",
+				"5",
+				flac,
+			],
+			{ maxBuffer: 1024 * 1024 },
+		);
+		const bytes = await readFile(flac);
+		const { size } = await stat(source);
+		if (bytes.byteLength >= size) return;
+		const pathname = row.pathname.replace(/\.[a-z0-9]+$/i, "") + ".flac";
+		const blob = await putBlob(pathname, bytes, "audio/flac", accessOfUrl(row.url));
+		const replaced = await replaceStudioSourceFile(row.accountId, id, {
+			url: blob.url,
+			pathname,
+			filename: row.filename.replace(/\.[a-z0-9]+$/i, "") + ".flac",
+			contentType: "audio/flac",
+			sizeBytes: bytes.byteLength,
+			codec: "flac",
+		});
+		// Deleted while it converted: the FLAC goes too, the WAV went with the row.
+		if (!replaced) {
+			await deleteBlobs([blob.url]);
+			return;
+		}
+		if (row.url !== blob.url) await deleteBlobs([row.url]);
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
 }
 
 /** The row family an MP3 is made for: how to claim it, record the result or give up. */
