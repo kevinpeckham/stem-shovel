@@ -10,6 +10,7 @@ import { clipNoteEvents } from "./clipNoteEvents";
 import { studioGrid } from "./studioGrid";
 import { clipSegments } from "./clipSegments";
 import { warpPointsOver } from "#lib/audio/warp.js";
+import { GAIN_ENVELOPE_MAX, gainEnvelopeRamps } from "./gainEnvelope";
 import {
 	DAWPROJECT_METADATA_FIELDS,
 	type DawprojectMetadata,
@@ -41,7 +42,8 @@ export interface DawprojectInput {
  * clip over its file, a MIDI clip's notes), the volume and pan lanes as
  * automation points, the markers, the tempo and meter changes as the
  * arrangement's tempo and time-signature automation (in beats, as Bitwig
- * writes them; held steps), and `metadata.xml` with the title. Pure: the
+ * writes them; held steps), an audio clip's gain envelope as Points on
+ * the clip's gain expression, and `metadata.xml` with the title. Pure: the
  * caller zips the two files with the audio (utils/zipBlobs.ts). Inserts
  * and their automation stay out (the format names a DAW's own devices).
  * Elements come in the schema's order (tests/dawproject/Project.xsd):
@@ -319,6 +321,27 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 				out(`${indent}            </Warps>`);
 			}
 		};
+		// The gain envelope (docs/multitrack-recorder.md "Clip gain envelopes") as Points on the clip's gain expression beside
+		// its content, the way Bitwig keeps a notes clip's controller lanes beside its Notes (FINDINGS.md): a linear factor
+		// (1 is unity, 0..2), linear between points. The Points are part of the clip's content timeline, whose time is the
+		// clip's content seconds (playStart is the offset, a Warp's `time` is the same seconds), so a point's time is its `t`
+		// as it stands, and over the span the clip plays (every pass's), a point at each end so the held ends come through.
+		// A looped clip keeps its loop: loopStart/loopEnd loop the content timeline, Points and all, so the line replays each
+		// pass as Dawn's does (Reaper's take envelope runs once down the item, so rpp.ts unrolls instead).
+		const gainPoints = (indent: string) => {
+			const segments = clipSegments(c);
+			const from = Math.min(...segments.map((s) => s.offset));
+			const to = Math.max(...segments.map((s) => s.offset + s.duration));
+			const ramps = gainEnvelopeRamps(c.gainEnvelope, from, to);
+			if (!ramps.length) return;
+			out(`${indent}            <Points unit="linear" id="${id("pts")}">`);
+			out(`${indent}              <Target expression="gain"/>`);
+			for (const p of ramps)
+				out(
+					`${indent}              <RealPoint time="${num(p.t)}" value="${num(Math.max(0, Math.min(GAIN_ENVELOPE_MAX, p.v)))}" interpolation="linear"/>`,
+				);
+			out(`${indent}            </Points>`);
+		};
 		// The clip's other takes (docs/multitrack-recorder.md "Takes in the files"): the clip holds Lanes, one per take
 		// with the take as a clip over its file at the clip's offset, the chosen take first; a reader without the idea
 		// sees lanes of clips inside a clip, which the format allows.
@@ -329,23 +352,33 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		);
 		if (takes.length) {
 			out(`            <Lanes timeUnit="seconds" id="${id("lanes")}">`);
-			const take = (file: DawprojectAudio, name: string, warp: StudioClip["warp"]) => {
+			// The gain line rides the chosen take, as in Reaper; the alternates play without it.
+			const take = (
+				file: DawprojectAudio,
+				name: string,
+				warp: StudioClip["warp"],
+				chosen = false,
+			) => {
 				out(`              <Lanes id="${id("lane")}">`);
 				out(`                <Clips id="${id("clips")}">`);
 				out(
 					`                  <Clip time="0.000000" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(c.offset)}" name="${esc(name)}">`,
 				);
 				content(file, warp, "        ");
+				if (chosen) gainPoints("        ");
 				out("                  </Clip>");
 				out("                </Clips>");
 				out("              </Lanes>");
 			};
-			take(audio, c.name, c.warp);
+			take(audio, c.name, c.warp, true);
 			takes.forEach((altId, i) =>
 				take(input.audio.get(altId)!, `${c.name} (take ${i + 2})`, undefined),
 			);
 			out("            </Lanes>");
-		} else content(audio, c.warp, "");
+		} else {
+			content(audio, c.warp, "");
+			gainPoints("");
+		}
 		out("          </Clip>");
 	};
 	for (const t of a.tracks) {

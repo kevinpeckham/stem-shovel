@@ -569,3 +569,117 @@ describe("dawproject", () => {
 		expect(back.tracks.find((t) => t.name === "Kick")!.output).toBe(bus("Kit").id);
 	});
 });
+
+describe("dawproject gain envelopes", () => {
+	const audio = new Map([
+		["s1", { path: "audio/guitar.wav", durationSeconds: 30.5, sampleRate: 48000, channels: 2 }],
+		["s2", { path: "audio/take2.wav", durationSeconds: 31, sampleRate: 48000, channels: 2 }],
+	]);
+	const write = (clip: Partial<StudioArrangement["clips"][number]>) =>
+		dawproject({
+			title: "Gain",
+			arrangement: { ...arrangement, clips: [{ ...arrangement.clips[0]!, ...clip }] },
+			audio,
+			application: { name: "Stem Shovel Dawn", version: "0.160.0" },
+		});
+	/** The file without its gain Points: what the schema checks (a clip holds one timeline; FINDINGS.md). */
+	const withoutGain = (xml: string) =>
+		xml.replace(
+			/\n\s*<Points unit="linear" id="pts\d+">\n\s*<Target expression="gain"\/>[\s\S]*?<\/Points>/g,
+			"",
+		);
+	const rounded = (pts: { t: number; v: number }[] | undefined) =>
+		pts?.map((p) => ({ t: Math.round(p.t * 1e4) / 1e4, v: Math.round(p.v * 1e4) / 1e4 }));
+
+	it("writes the envelope as linear Points on the gain expression beside the Audio, in content seconds, ends included and clamped", () => {
+		// The clip plays content 0.5 to 10.5: a point at each end of that, the breakpoints inside, 2.5 clamped to 2.
+		const { project: xml } = write({
+			gainEnvelope: [
+				{ t: 0, v: 1 },
+				{ t: 2, v: 0.5 },
+				{ t: 4, v: 1.5 },
+				{ t: 6, v: 2.5 },
+			],
+		});
+		expect(xml).toMatch(
+			/<\/Audio>\n {12}<Points unit="linear" id="pts\d+">\n {14}<Target expression="gain"\/>\n {14}<RealPoint time="0.500000" value="0.875000" interpolation="linear"\/>\n {14}<RealPoint time="2.000000" value="0.500000" interpolation="linear"\/>\n {14}<RealPoint time="4.000000" value="1.500000" interpolation="linear"\/>\n {14}<RealPoint time="6.000000" value="2.000000" interpolation="linear"\/>\n {14}<RealPoint time="10.500000" value="2.000000" interpolation="linear"\/>\n {12}<\/Points>\n {10}<\/Clip>/,
+		);
+		expect(() => validate(withoutGain(xml), "Project.xsd")).not.toThrow();
+	});
+
+	it("writes no Points without an envelope or with one flat at one", () => {
+		expect(write({}).project).not.toContain('expression="gain"');
+		expect(write({ gainEnvelope: [{ t: 1, v: 1 }] }).project).not.toContain('expression="gain"');
+		expect(write({ gainEnvelope: [] }).project).not.toContain('expression="gain"');
+	});
+
+	it("round-trips an envelope within four decimals", () => {
+		const gainEnvelope = [
+			{ t: 0.5, v: 0.8 },
+			{ t: 2, v: 0.5 },
+			{ t: 4.1234, v: 1.5 },
+			{ t: 10.5, v: 1.2 },
+		];
+		const { project: xml, metadata } = write({ gainEnvelope });
+		const back = readDawproject(xml, metadata, "Gain");
+		expect(rounded(back.arrangement.clips[0]!.gainEnvelope)).toEqual(gainEnvelope);
+		expect(back.dropped.join(" ")).not.toMatch(/gain/);
+	});
+
+	it("keeps a looped clip's loop: the clip's loop replays its content timeline, Points and all, as Dawn replays the line", () => {
+		const gainEnvelope = [
+			{ t: 0.5, v: 0 },
+			{ t: 2.5, v: 1.5 },
+		];
+		const { project: xml, metadata } = write({
+			duration: 10,
+			loop: { start: 0.5, end: 2.5 },
+			gainEnvelope,
+		});
+		expect(xml).toContain('playStart="0.500000" loopStart="0.500000" loopEnd="2.500000"');
+		expect(xml.match(/<Clip /g)).toHaveLength(1); // one clip, not a clip per pass
+		expect(xml.match(/<Target expression="gain"\/>/g)).toHaveLength(1);
+		expect(xml).toContain('<RealPoint time="2.500000" value="1.500000" interpolation="linear"/>');
+		const clip = readDawproject(xml, metadata, "Gain").arrangement.clips[0]!;
+		expect(clip.loop).toEqual({ start: 0.5, end: 2.5 });
+		expect(rounded(clip.gainEnvelope)).toEqual(gainEnvelope);
+	});
+
+	it("writes a warped clip's Points beside its Warps in the same content seconds, and round-trips them", () => {
+		const gainEnvelope = [
+			{ t: 2, v: 0.25 },
+			{ t: 3, v: 1 },
+			{ t: 6, v: 2 },
+		];
+		const { project: xml, metadata } = write({
+			offset: 2,
+			duration: 4,
+			warp: [
+				{ at: 0, source: 0 },
+				{ at: 1.416667, source: 1 },
+			],
+			gainEnvelope,
+		});
+		expect(xml).toMatch(
+			/<\/Warps>\n\s+<Points unit="linear" id="pts\d+">\n\s+<Target expression="gain"\/>\n\s+<RealPoint time="2.000000" value="0.250000"/,
+		);
+		expect(() => validate(withoutGain(xml), "Project.xsd")).not.toThrow();
+		const clip = readDawproject(xml, metadata, "Gain").arrangement.clips[0]!;
+		expect(clip.warp).toBeDefined();
+		expect(rounded(clip.gainEnvelope)).toEqual(gainEnvelope);
+	});
+
+	it("puts the line on the chosen take's clip when the clip has takes, and reads it back from there", () => {
+		const gainEnvelope = [
+			{ t: 0.5, v: 0.5 },
+			{ t: 10.5, v: 1 },
+		];
+		const { project: xml, metadata } = write({ alternates: ["s2"], gainEnvelope });
+		expect(xml.match(/<Target expression="gain"\/>/g)).toHaveLength(1);
+		expect(xml.indexOf('expression="gain"')).toBeLessThan(xml.indexOf("audio/take2.wav"));
+		expect(() => validate(withoutGain(xml), "Project.xsd")).not.toThrow();
+		const clip = readDawproject(xml, metadata, "Gain").arrangement.clips[0]!;
+		expect(clip.alternates).toHaveLength(1);
+		expect(rounded(clip.gainEnvelope)).toEqual(gainEnvelope);
+	});
+});

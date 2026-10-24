@@ -894,8 +894,22 @@ set a point (replacing one within half a millisecond, sorted, clamped).
   is flat at one; other shapes read as linear, a looped item's over its
   first pass). `bun run interop:rpp` proves it on a clip at play rate
   0.8: Reaper's render drops to a quarter 1.505 s into the item, 1.5
-  wanted (FINDINGS.md). The DAWproject writer still leaves the envelope
-  out; Consolidate first when the ride must travel there.
+  wanted (FINDINGS.md).
+  A DAWproject (2026-10-24) carries it as the clip's own automation (`utils/dawproject.ts`):
+  `<Points unit="linear">` on `<Target expression="gain"/>` beside the clip's
+  `Audio` or `Warps`, a `RealPoint` per ramp of `gainEnvelopeRamps` over the
+  content the clip plays, each linear and its value the factor clamped to 0..2.
+  The clip's content time is Dawn's content seconds (`playStart` is the offset,
+  a `Warp`'s `time` the same seconds), so a point's time is its `t` as it stands.
+  A looped clip keeps its loop, since `loopStart`/`loopEnd` replay the clip's
+  whole content timeline, Points and all; with takes the line rides the chosen
+  take's clip. Points beside the content are Bitwig's way (as with a notes
+  clip's controller lanes) and fail the schema, which wants one timeline in a
+  clip; the reader takes that form and the schema's `<Lanes>` wrapper alike,
+  decibels as a factor, any other interpolation as linear (reported), and drops
+  a line flat at one. A gain expression on a notes clip is still reported dropped.
+  Untested in Bitwig or any other DAW: the schema check and the
+  round trip are the proof here.
 
 ## Time (2026-10-19, docs/dawn-daw-plan.md D5)
 

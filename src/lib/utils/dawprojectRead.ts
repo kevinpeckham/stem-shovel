@@ -21,7 +21,8 @@ import {
 	STUDIO_FADER_MAX,
 	STUDIO_SAMPLE_RATES,
 } from "#lib/constants/studio.js";
-import { MIN_CLIP_LOOP_SECONDS } from "#lib/val/StudioSchema.js";
+import { MAX_STUDIO_GAIN_POINTS, MIN_CLIP_LOOP_SECONDS } from "#lib/val/StudioSchema.js";
+import { GAIN_ENVELOPE_MAX } from "./gainEnvelope";
 import type {
 	StudioWarp,
 	StudioArrangement,
@@ -441,6 +442,37 @@ export function readDawproject(
 		}
 		return { sourceId, offset, warp, fileSeconds, label, audio };
 	};
+	/**
+	 * An audio clip's gain envelope (docs/multitrack-recorder.md "Clip gain envelopes") from Points on its gain expression
+	 * among its content: a point's time is the clip's content time, which is Dawn's content seconds once `shift` (what the
+	 * reader folded into the offset) is added; the value a linear factor (decibels converted), clamped to 0..2. Undefined
+	 * when there is none or it is flat at one. Dawn's line is linear between points, so any other interpolation reads as linear.
+	 */
+	const gainEnvelopeOf = (body: Element, contentUnit: TimeUnit, shift: number) => {
+		const pts = kids(body, "Points").find((p) => attr(kid(p, "Target"), "expression") === "gain");
+		if (!pts) return undefined;
+		const reals = kids(pts, "RealPoint");
+		if (
+			reals.some(
+				(p, i) => i < reals.length - 1 && (attr(p, "interpolation") ?? "linear") !== "linear",
+			)
+		)
+			fix("Gain line shapes other than linear read as linear");
+		const decibel = attr(pts, "unit") === "decibel";
+		const points = reals
+			.map((p) => {
+				const raw = num(p, "value", 1);
+				return {
+					t: seconds(toSeconds(num(p, "time", 0), contentUnit) + shift),
+					v: clamp(round4(decibel ? Math.pow(10, raw / 20) : raw), 0, GAIN_ENVELOPE_MAX),
+				};
+			})
+			.sort((a, b) => a.t - b.t);
+		if (points.length > MAX_STUDIO_GAIN_POINTS)
+			drop(`A gain line's ${points.length - MAX_STUDIO_GAIN_POINTS} points over the limit`);
+		const kept = points.slice(0, MAX_STUDIO_GAIN_POINTS);
+		return kept.some((p) => p.v !== 1) ? kept : undefined;
+	};
 	const readClip = (el: Element, given: Owner | null, unit: TimeUnit, baseSeconds: number) => {
 		const name = (attr(el, "name") ?? "").trim().slice(0, 60);
 		const owner = given?.kind === "bus" ? trackForBusClips(given, el) : given;
@@ -514,7 +546,15 @@ export function readDawproject(
 		// Lanes inside a clip (docs/multitrack-recorder.md "Takes in the files"): when each lane holds one audio clip they are
 		// the clip's takes, the first the chosen one and the rest behind it; any other shape is read as clips, flattened.
 		const lanesEl = kid(el, "Lanes");
-		if (lanesEl) {
+		// The schema's way of putting content and Points side by side (a clip holds one timeline): Lanes holding them directly.
+		const body =
+			lanesEl &&
+			!kid(lanesEl, "Lanes") &&
+			!kid(lanesEl, "Clips") &&
+			(kid(lanesEl, "Audio") || kid(lanesEl, "Warps") || kid(lanesEl, "Notes"))
+				? lanesEl
+				: el;
+		if (lanesEl && body === el) {
 			const laneUnit = unitOf(lanesEl, contentUnit);
 			const lanes = kids(lanesEl, "Lanes");
 			const takeEls = lanes.map((lane) => {
@@ -556,6 +596,13 @@ export function readDawproject(
 					sourceId: chosen.sourceId,
 					offset: seconds(Math.max(0, chosen.offset)),
 				});
+				// The gain line rides the chosen take's clip (Dawn writes it there), in that clip's content time.
+				const firstUnit = unitOf(first, laneUnit, "contentTimeUnit");
+				const gainEnvelope = gainEnvelopeOf(
+					first,
+					firstUnit,
+					chosen.offset - toSeconds(num(first, "playStart", 0), firstUnit),
+				);
 				const loop = loopOf((v) => toSeconds(v, contentUnit), Math.max(0, chosen.offset), duration);
 				clips.push({
 					id: nanoid(),
@@ -572,6 +619,7 @@ export function readDawproject(
 					...(loop ? { loop } : {}),
 					...(chosen.warp ? { warp: chosen.warp } : {}),
 					...(alternates.length ? { alternates } : {}),
+					...(gainEnvelope ? { gainEnvelope } : {}),
 				});
 				if (alternates.length)
 					fix(
@@ -591,10 +639,15 @@ export function readDawproject(
 			flatten(lanesEl, laneUnit);
 			return;
 		}
-		// Automation inside the clip: an expression target (Bitwig keeps a notes clip's controller lanes here) becomes a lane of the clip; anything else is read as the track's, mostly a report.
+		const warps = kid(body, "Warps");
+		const audio = kid(body, "Audio") ?? kid(warps, "Audio");
+		const notesEl = kid(body, "Notes");
+		// Automation inside the clip: an expression target (Bitwig keeps a notes clip's controller lanes here) becomes a lane of the clip, and the gain expression an audio clip's gain line; anything else is read as the track's, mostly a report.
+		// A gain expression on a notes clip has no place in Dawn and is reported, as any other expression it has no lane for.
 		const laneEvents: LaneEvent[] = [];
-		for (const pts of kids(el, "Points")) {
+		for (const pts of kids(body, "Points")) {
 			const expression = attr(kid(pts, "Target"), "expression");
+			if (expression === "gain" && audio) continue;
 			if (!expression) {
 				readPoints(pts, contentUnit);
 				continue;
@@ -620,18 +673,20 @@ export function readDawproject(
 					value: clamp(num(p, "value", 0), 0, 1),
 				});
 		}
-		const warps = kid(el, "Warps");
-		const audio = kid(el, "Audio") ?? kid(warps, "Audio");
-		const notesEl = kid(el, "Notes");
 		if (clips.length >= MAX_STUDIO_CLIPS) {
 			drop(`${name || "A clip"} (over the ${MAX_STUDIO_CLIPS}-clip limit)`);
 			return;
 		}
 		if (audio) {
-			const content = readAudioContent(el, contentUnit, playStart, name);
+			const content = readAudioContent(body, contentUnit, playStart, name);
 			if (!content) return;
 			const { sourceId, warp, fileSeconds, label } = content;
 			let { offset } = content;
+			const gainEnvelope = gainEnvelopeOf(
+				body,
+				contentUnit,
+				offset - toSeconds(playStart, contentUnit),
+			);
 			if (!(duration > 0)) duration = Math.max(0.001, fileSeconds - offset);
 			remember(el, audio, { sourceId, offset: seconds(Math.max(0, offset)) });
 			const loop = loopOf((v) => toSeconds(v, contentUnit), Math.max(0, offset), duration);
@@ -649,6 +704,7 @@ export function readDawproject(
 				...off,
 				...(loop ? { loop } : {}),
 				...(warp ? { warp } : {}),
+				...(gainEnvelope ? { gainEnvelope } : {}),
 			});
 			return;
 		}

@@ -556,3 +556,91 @@ describe("sample rates", () => {
 		expect(readDawproject(xml, null, "clean").fixed).toEqual([]);
 	});
 });
+
+describe("gain envelopes", () => {
+	const project = (clip: string, contentType = "audio") => `<Project version="1.0">
+  <Transport><Tempo unit="bpm" value="120" id="t"/><TimeSignature numerator="4" denominator="4" id="s"/></Transport>
+  <Structure><Track contentType="${contentType}" id="tr" name="Guitar"><Channel role="regular" id="ch"><Volume unit="linear" value="1" id="v"/></Channel></Track></Structure>
+  <Arrangement id="arr"><Lanes timeUnit="seconds" id="l"><Lanes track="tr" id="l2"><Clips id="c">
+    ${clip}
+  </Clips></Lanes></Lanes></Arrangement>
+</Project>`;
+	const audio =
+		'<Audio algorithm="raw" channels="2" duration="8" sampleRate="48000" id="a"><File path="audio/take.wav"/></Audio>';
+
+	it("reads Points on the gain expression beside the Audio as the clip's gain line, in content seconds, sorted and clamped", () => {
+		const read = readDawproject(
+			project(`<Clip time="1" duration="4" contentTimeUnit="seconds" playStart="1" name="Take">${audio}
+      <Points unit="linear" id="p"><Target expression="gain"/>
+        <RealPoint time="3" value="0.5" interpolation="linear"/>
+        <RealPoint time="1" value="1" interpolation="linear"/>
+        <RealPoint time="5" value="3" interpolation="linear"/>
+      </Points></Clip>`),
+			null,
+			"gain",
+		);
+		expect(read.arrangement.clips[0]).toMatchObject({ offset: 1, duration: 4 });
+		expect(read.arrangement.clips[0]!.gainEnvelope).toEqual([
+			{ t: 1, v: 1 },
+			{ t: 3, v: 0.5 },
+			{ t: 5, v: 2 },
+		]);
+		expect(read.dropped).toEqual([]);
+		expect(read.fixed).toEqual([]);
+	});
+
+	it("reads a held line as linear, with a note", () => {
+		const read = readDawproject(
+			project(`<Clip time="0" duration="4" name="Take">${audio}
+      <Points unit="linear" id="p"><Target expression="gain"/>
+        <RealPoint time="0" value="0.5" interpolation="hold"/><RealPoint time="2" value="1.5" interpolation="hold"/>
+      </Points></Clip>`),
+			null,
+			"gain",
+		);
+		expect(read.arrangement.clips[0]!.gainEnvelope).toEqual([
+			{ t: 0, v: 0.5 },
+			{ t: 2, v: 1.5 },
+		]);
+		expect(read.fixed).toContain("Gain line shapes other than linear read as linear");
+	});
+
+	it("reads the schema's form too, the Audio and the Points inside Lanes in the clip, and decibels as a factor", () => {
+		const read = readDawproject(
+			project(`<Clip time="0" duration="4" contentTimeUnit="seconds" playStart="0" name="Take"><Lanes timeUnit="seconds" id="cl">${audio}
+      <Points unit="decibel" id="p"><Target expression="gain"/>
+        <RealPoint time="0" value="-6.0206" interpolation="linear"/><RealPoint time="4" value="0" interpolation="linear"/>
+      </Points></Lanes></Clip>`),
+			null,
+			"gain",
+		);
+		expect(read.arrangement.clips[0]).toMatchObject({ name: "Take", duration: 4 });
+		expect(read.arrangement.clips[0]!.gainEnvelope).toEqual([
+			{ t: 0, v: 0.5 },
+			{ t: 4, v: 1 },
+		]);
+		expect(read.dropped).toEqual([]);
+	});
+
+	it("drops a line flat at one, and reports a gain expression on a notes clip as before", () => {
+		const flat = readDawproject(
+			project(`<Clip time="0" duration="4" name="Take">${audio}
+      <Points unit="linear" id="p"><Target expression="gain"/><RealPoint time="0" value="1"/><RealPoint time="2" value="1"/></Points></Clip>`),
+			null,
+			"gain",
+		);
+		expect(flat.arrangement.clips[0]!.gainEnvelope).toBeUndefined();
+		expect(flat.dropped).toEqual([]);
+		const notes = readDawproject(
+			project(
+				`<Clip time="0" duration="4" name="Riff"><Notes id="n"><Note time="0" duration="1" key="60" vel="0.5"/></Notes>
+      <Points unit="linear" id="p"><Target expression="gain"/><RealPoint time="0" value="0.5"/></Points></Clip>`,
+				"notes",
+			),
+			null,
+			"gain",
+		);
+		expect(notes.arrangement.clips[0]!.gainEnvelope).toBeUndefined();
+		expect(notes.dropped).toContain("Riff: gain expression");
+	});
+});

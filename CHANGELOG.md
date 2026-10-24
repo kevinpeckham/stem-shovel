@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Gain lines travel in DAWproject files too.** A clip's gain line goes out as the clip's own gain automation and comes back when a DAWproject is imported; a looped clip keeps its loop and the line replays each pass.
+
 ## [0.160.0] - 2026-10-24
 
 ### Added
