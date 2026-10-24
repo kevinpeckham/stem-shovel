@@ -1236,7 +1236,6 @@
 					applied: false,
 				};
 			}
-			void checkUnsureMeter(detection);
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {
@@ -1408,15 +1407,17 @@
 		}
 	}
 
-	// "Ask AI to check": a second opinion on the rendered mix (src/lib/server/aiDetect.ts);
-	// "Use these" puts the answer into the rows at 0:00 for the user to save.
+	// "Ask AI to check": the model reads the song's score beside the rendered mix and places its
+	// keys, time signature and tempo marks (src/lib/server/aiDetect.ts; it needs the score: blind,
+	// it reads its candidates back, docs/audio-engine.md "The song-check reads the chart").
+	// "Use these" puts the answer into the rows for the user to save.
 	let aiBusy = $state(false);
 	let aiAnswer = $state<AiAnswer | null>(null);
 	let aiError = $state<string | null>(null);
-	/** Why the answer came unasked: the detector's time signature was a close call, or the song has a score the AI read. */
-	let aiAuto = $state<null | "meter" | "score">(null);
+	/** The answer came unasked: Scan stems or an upload on a song with a score. */
+	let aiAuto = $state(false);
 	async function askAi() {
-		aiAuto = null;
+		aiAuto = false;
 		aiBusy = true;
 		aiError = null;
 		try {
@@ -1435,7 +1436,7 @@
 	 */
 	async function askAiWithScore(): Promise<boolean> {
 		notify("This song has a score; asking the AI to read it and listen", { kind: "info" });
-		aiAuto = "score";
+		aiAuto = true;
 		aiBusy = true;
 		aiError = null;
 		try {
@@ -1456,72 +1457,50 @@
 					: `${errorMessage(e)}; scanning the stems instead`,
 				{ kind: "info" },
 			);
-			aiAuto = null;
+			aiAuto = false;
 			return false;
 		} finally {
 			aiBusy = false;
 		}
 	}
-	/** An answer as one line: "96 bpm · C major (also A♭ major, F major) · 4/4". */
+	/** An answer as one line: "96 bpm · C major (also A♭ major, F major) · 4/4"; tempo and meter only where the chart states them. */
 	function aiLine(a: AiAnswer): string {
 		const keys = [a.key, ...a.keyChanges.map((c) => c.key)].filter(
 			(k, i, all) => k && all.indexOf(k) === i,
 		);
 		const key = keys.length > 1 ? `${keys[0]} (also ${keys.slice(1).join(", ")})` : (keys[0] ?? "");
 		return [
-			a.tempo === null ? "no fixed tempo" : `${Math.round(a.tempo)} bpm`,
+			a.tempo === null ? null : `${Math.round(a.tempo)} bpm`,
 			key,
 			a.meter === "free" ? "no meter" : a.meter,
 		]
 			.filter(Boolean)
 			.join(" · ");
 	}
-	/**
-	 * Below this the detector's 3/4-or-4/4 lean is a coin toss (a user's 4/4
-	 * song came back 3/4 at 0.08), so the model listens too when it can.
-	 */
-	const UNSURE_METER = 0.15;
 	/** After an upload the mix renders in the background; the check waits for it this long. */
 	const MIX_WAIT_TRIES = 18;
 	const MIX_WAIT_MS = 10_000;
 	/**
-	 * After the detector has set a song's settings: the AI listens too when
-	 * the time signature was a close call, or reads the score when the song
-	 * has one (then its answer replaces the detector's, as the detector's
-	 * replaced nothing: the song had no settings before this upload).
+	 * After the detector has set an uploaded song's settings and the song has
+	 * a score: the AI reads the score beside the mix once it is rendered, and
+	 * its answer replaces the detector's (the detector's replaced nothing: the
+	 * song had no settings before this upload). The old close-call check on a
+	 * scoreless song is gone: blind, the model only read the detector's meter
+	 * back (docs/audio-engine.md, "The song-check reads the chart").
 	 */
-	async function checkUnsureMeter(d: Detection, applied = false) {
-		if (!data.aiAvailable || aiBusy) return;
-		const score = hasScore && applied;
-		if (!score && (!d.tempo.bpm || d.meter.confidence >= UNSURE_METER)) return;
-		notify(
-			score
-				? "This song has a score; asking the AI to read it and listen"
-				: `${d.meter.value} time is a close call; asking the AI to listen too`,
-			{ kind: "info" },
-		);
-		aiAuto = score ? "score" : "meter";
+	async function checkWithScore() {
+		if (!data.aiAvailable || aiBusy || !hasScore) return;
+		notify("This song has a score; asking the AI to read it and listen", { kind: "info" });
+		aiAuto = true;
 		aiBusy = true;
 		aiError = null;
 		try {
 			for (let attempt = 1; ; attempt++) {
 				try {
-					const answer = await askAiAboutSong({ id: data.song.id });
-					aiAnswer = answer;
+					aiAnswer = await askAiAboutSong({ id: data.song.id });
 					settingsTab = "tempo";
-					if (score) {
-						aiBusy = false;
-						await useAiAnswer();
-						return;
-					}
-					// The card sits in the settings popover, so say here whether the AI agrees.
-					const meter = answer.meter === "free" ? "no fixed meter" : answer.meter;
-					notify(
-						answer.meter === d.meter.value
-							? `The AI agrees: ${meter}`
-							: `The AI hears ${meter} instead; open settings to use its answer`,
-						{ kind: "info", timeout: 12_000 },
-					);
+					aiBusy = false;
+					await useAiAnswer();
 					return;
 				} catch (e) {
 					// 409: the mix is not rendered yet (renditions still transcoding after an upload).
@@ -1537,7 +1516,7 @@
 					kind: "info",
 				});
 			} else aiError = errorMessage(e);
-			aiAuto = null;
+			aiAuto = false;
 		} finally {
 			aiBusy = false;
 		}
@@ -1545,14 +1524,16 @@
 	/** Fill the rows from the model's answer and save at once (a bug report: filling alone looked like nothing happened). */
 	async function useAiAnswer() {
 		if (!aiAnswer) return;
-		// Rows at 0:00 for what the model is sure of (no row for a free tempo or no meter),
-		// plus a tempo row at each shift; other rows the user typed stay.
+		// Rows at 0:00 for what the chart states (no row where it has no tempo mark or time
+		// signature, or marks no meter), plus a tempo row at each of its later marks; other rows stay.
 		const at0: { kind: SongChangeKind; value: string }[] = [
 			...(aiAnswer.tempo === null
 				? []
 				: [{ kind: "tempo" as const, value: String(Math.round(aiAnswer.tempo)) }]),
 			...(aiAnswer.key ? [{ kind: "key" as const, value: aiAnswer.key }] : []),
-			...(aiAnswer.meter === "free" ? [] : [{ kind: "meter" as const, value: aiAnswer.meter }]),
+			...(aiAnswer.meter === null || aiAnswer.meter === "free"
+				? []
+				: [{ kind: "meter" as const, value: aiAnswer.meter }]),
 		];
 		const replaced = new Set(at0.map((r) => r.kind));
 		// The model places a change by ear, often a beat early (a chord on the "and" of four); snap each to the bar
@@ -1575,13 +1556,15 @@
 			const bar = snapToDownbeat(grid, at);
 			return snapToAnchor(bar, sectionStarts, barSecondsAt(grid, bar));
 		};
-		// Every earlier key change goes when the model names the keys through the song (it read the score, or heard a modulation).
+		// Every earlier key change goes when the model names the keys through the song; the later tempo
+		// rows go only when the chart spoke about tempo at all (its tempo is null otherwise, and the song's own rows stay).
 		const keysToo = aiAnswer.keyChanges.length > 0;
+		const tempoToo = aiAnswer.tempo !== null;
 		const rows = changeRows.filter(
 			(r) =>
 				!(
 					(r.seconds === 0 && replaced.has(r.kind)) ||
-					(r.kind === "tempo" && r.seconds !== 0) ||
+					(tempoToo && r.kind === "tempo" && r.seconds !== 0) ||
 					(keysToo && r.kind === "key")
 				),
 		);
@@ -1609,14 +1592,14 @@
 			});
 		}
 		const line = aiLine(aiAnswer);
-		const fromScore = aiAuto === "score";
+		const fromScore = aiAuto;
 		changeRows = rows;
 		await saveChangeRows();
 		if (changeError) notify(`Could not apply the AI's answer: ${changeError}`, { kind: "error" });
 		else {
 			aiAnswer = null;
 			if (fromScore)
-				notify(`The AI read the score: ${line} — set as the song's tempo, key and time signature`, {
+				notify(`The AI read the score: ${line} — saved to the song's settings`, {
 					timeout: 12_000,
 				});
 		}
@@ -1771,7 +1754,7 @@
 					timeout: 12_000,
 				},
 			);
-			void checkUnsureMeter(d, true);
+			void checkWithScore();
 		} catch (e) {
 			notify(`Detected ${summary}, but it could not be saved: ${errorMessage(e)}`, {
 				kind: "error",
@@ -2519,9 +2502,7 @@
 											.map((s) => `${s.name} at ${editPos(s.at)}`)
 											.join(", ")}</strong
 									>
-									({Math.round(sectionsAnswer.confidence * 100)}% sure){sectionsAnswer.notes
-										? ` — ${sectionsAnswer.notes}`
-										: ""}
+									{sectionsAnswer.notes ? ` — ${sectionsAnswer.notes}` : ""}
 									<button
 										class="ml-2 link-dim"
 										type="button"
@@ -2634,10 +2615,10 @@
 										<button
 											class="button button-xs"
 											type="button"
-											disabled={aiBusy}
+											disabled={aiBusy || !hasScore}
 											title={hasScore
-												? "Send the rendered mix and the score to a model that reads the chart, listens and reports tempo, keys and time signature"
-												: "Send the rendered mix to a model that listens and reports tempo, key and time signature"}
+												? "Send the rendered mix and the score to a model that reads the chart beside the recording and places its keys, time signature and tempo marks"
+												: "Attach the song's score or chart first (a MusicXML file, or a PDF or image marked as notation): the AI reads it beside the mix"}
 											onclick={askAi}
 										>
 											<span class="i-ph-sparkle" aria-hidden="true"></span>
@@ -2724,26 +2705,15 @@
 							{/if}
 							{#if aiAnswer}
 								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									{aiAuto === "meter"
-										? "The time signature was a close call, so the AI listened too. It hears"
-										: aiAuto === "score"
-											? "The AI read the score and listened. It finds"
-											: "AI hears"}
-									<strong
-										>{aiAnswer.tempo === null
-											? "no fixed tempo"
-											: `${Math.round(aiAnswer.tempo)} bpm`} · {aiAnswer.key}
-										· {aiAnswer.meter === "free" ? "no meter" : aiAnswer.meter}</strong
-									>{#if aiAnswer.tempoChanges.length > 0}
+									The AI read the score and listened. It finds
+									<strong>{aiLine(aiAnswer)}</strong>{#if aiAnswer.tempoChanges.length > 0}
 										, then {aiAnswer.tempoChanges
 											.map((c) => `${Math.round(c.bpm)} bpm at ${editPos(c.at)}`)
 											.join(", ")}{/if}{#if aiAnswer.keyChanges.length > 0}
 										, then {aiAnswer.keyChanges
 											.map((c) => `${c.key} at ${editPos(c.at)}`)
 											.join(", ")}{/if}
-									({Math.round(aiAnswer.confidence * 100)}% sure){aiAnswer.notes
-										? ` — ${aiAnswer.notes}`
-										: ""}
+									{aiAnswer.notes ? ` — ${aiAnswer.notes}` : ""}
 									<button
 										class="ml-2 link-dim"
 										type="button"

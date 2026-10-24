@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Ask AI to check reads the chart.** The check now needs the song's score (a MusicXML file, or a PDF or image marked as notation) and is disabled without one, with the reason in its title. The model reads the chart while the mix plays and reports the keys and where each begins, and the time signature and tempo marks the chart states; where the chart marks neither, the song's detected tempo and time signature stay. The model is no longer asked to confirm or correct the detector, and the song's key is never sent to it: an external study found that, listening blind, it read the candidates back and guessed tempo from a genre prior, while with the chart it was exact.
+- **No more automatic second listen on a close-call time signature**, for the same reason: it could only echo the detector's guess.
+- **The AI cards no longer show a "% sure" figure**, which read 100% on invented answers.
+
+### Technical
+
+- `askAiAboutSong` answers 412 without a score; `askAiAboutMix(mixUrl, settings, who, score)` takes `{tempo, meter}` and a required score; `AiAnswer.meter` is nullable and `confidence` is gone from both answers; `utils/chartStatedAnswer.ts` keeps tempo and meter only where the chart's summary states them (docs/audio-engine.md "The song-check reads the chart").
+
 ## [0.155.0] - 2026-10-24
 
 ### Added

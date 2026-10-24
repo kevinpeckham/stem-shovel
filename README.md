@@ -236,7 +236,7 @@ check and the tests without any secret.
   plans: free for life, founder accounts, the cost model and the Stripe plan.
 - `src/lib/audio/analysis.ts` — tempo, key and meter detection at upload;
   `transcribe.ts` + `chords.ts` — chords per bar via Basic Pitch;
-  `src/lib/server/aiDetect.ts` — the AI Gateway second opinion (docs/audio-engine.md).
+  `src/lib/server/aiDetect.ts` — the AI chart check through the AI Gateway (docs/audio-engine.md).
 - `src/lib/server/viewAccess.ts`, `src/lib/remote/share.remote.ts` — privacy:
   private projects and songs, viewing links (docs/auth.md).
 - `src/lib/server/signUpGate.ts`, `src/routes/admin/sign-up/` — the sign-up

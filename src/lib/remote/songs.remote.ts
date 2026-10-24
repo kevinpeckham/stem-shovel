@@ -321,7 +321,7 @@ export const reorderStems = command(StemOrderSchema, async ({ songId, ids }) => 
 	return { ids: await reorder(m.accountId, songId, ids) };
 });
 
-/** Asks the AI Gateway model to check the song's tempo, key and meter against its rendered mix (members; a few per hour). */
+/** Asks the AI Gateway model to read the song's score beside its rendered mix and place its keys, time signature and tempo marks (members; a few per hour). */
 export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
@@ -332,14 +332,18 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	if (song.noAi || song.project.noAi) error(403, "AI is switched off for this song");
 	if (await rateLimited(`ai:${user.id}`, 10, HOUR)) error(429, "Too many AI checks in one hour.");
 	if (!song.mixUrl) error(409, "The mix has not been rendered yet; try again in a moment.");
+	// The check needs the score: blind, the model reads its candidates back and guesses tempo from a
+	// genre prior (docs/audio-engine.md, "The song-check reads the chart"). 412, not 409: the page
+	// waits on a 409 for the mix to render.
+	const score = await scoreForAi(accountId, id);
+	if (!score) error(412, "Attach the song's score or chart first; the AI reads it beside the mix");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
-	// The song's score rides along when it has one: the chart's keys are surer than the ear's (docs/audio-engine.md, "The score as the AI's chart").
-	const score = (await scoreForAi(accountId, id)) ?? null;
+	// The song's own tempo and time signature help the model follow the chart's bars; its key is never handed over.
 	return aiOrError(
 		askAiAboutMix(
 			song.mixUrl,
-			{ tempo: at0("tempo"), key: at0("key"), meter: at0("meter") },
+			{ tempo: at0("tempo"), meter: at0("meter") },
 			{ userId: user.id, songId: id },
 			score,
 		),

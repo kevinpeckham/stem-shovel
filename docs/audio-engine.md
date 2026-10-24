@@ -178,18 +178,18 @@ fields are `$state`, so components read `engine.position` directly.
   logged to `ai_request` as `chart-draft`. On Peaceful Dreams the draft
   kept the song's ten sections at their bars.
 - **Ask AI to check** (`src/lib/server/aiDetect.ts`, `askAiAboutSong` in
-  songs.remote.ts): a member sends the rendered original mix, with the
-  song's current tempo, key and meter as candidates, to
-  `google/gemini-3-flash` through the AI Gateway; the JSON answer (tempo or null for no
-  fixed pulse, `tempoChanges` as `{at, bpm}` shifts, meter or "free", key,
-  confidence, notes) shows under the changes editor with "Use
-  these", which saves the values into rows at 0:00 at once. It also runs
-  unasked after a detection whose time signature is a close call (above). Ten
-  per user per hour; needs `AI_GATEWAY_API_KEY`, otherwise hidden. Every
-  call is logged to `ai_request` (prompt text, reply, parsed answer or
-  error, duration, tokens) and listed on `/admin` for review. First
-  live run (2026-09-16, Peaceful Dreams): 145 bpm · D major · 4/4 at 95 %,
-  in eight seconds, matching the song's settings.
+  songs.remote.ts): a member sends the rendered original mix and the
+  song's score to `google/gemini-3-flash` through the AI Gateway, with
+  the song's tempo and time signature as facts for following the bars;
+  the JSON answer (the key and `keyChanges` as `{at, key}`, the chart's
+  meter, its tempo mark and later marks as `tempoChanges`, notes) shows
+  under the changes editor with "Use these", which saves the values into
+  rows at once. The button is disabled on a song without a score, and
+  the answer keeps tempo and meter only where the chart states them
+  (below, "The song-check reads the chart"). Ten per user per hour;
+  needs `AI_GATEWAY_API_KEY`, otherwise hidden. Every call is logged to
+  `ai_request` (prompt text, reply, parsed answer or error, duration,
+  tokens) and listed on `/admin` for review.
 - **Documents in the panel** (`SongDocPanel.svelte`): one component reads
   a chart, lyrics or notes document (its sanitized HTML) and, when
   `editing`, mounts `MarkdownDocEditor` inside a form on the `saveDoc`
@@ -484,3 +484,51 @@ none of his did): a snapped key change within a bar's length of a
 section's start moves onto it (`snapToAnchor`, `barSecondsAt`), and a
 snapped section start within a bar of an existing key change moves onto
 that, so whichever is detected second lands on the first.
+
+## The song-check reads the chart (2026-10-24)
+
+stem-bench Study 4 (FINDINGS.md, "AI features") measured `askAiAboutMix`
+against synthesized mixes whose tempo, meter and key are true by
+construction. Blind, the model pinned tempo to a 120 to 180 bpm genre
+prior at confidence 1.0, named wrong keys and found none of six changes;
+handed the detector's candidates it echoed them, right or wrong, 10 to 12
+times in 12; handed the chart it was perfect on every field and placed
+all six changes within four seconds. The feature was a chart-anchoring
+tool wearing a second opinion's clothes, so the app now says so:
+
+- **The score is required.** `askAiAboutSong` answers 412 without one
+  ("Attach the song's score or chart first"; 412 rather than 409, which
+  the page takes as "the mix is still rendering" and waits on). The
+  button is disabled with that reason in its title. `askAiAboutMix`
+  takes the score as a required argument and throws when it cannot be
+  read.
+- **Settings as facts, never the key.** The question gives the song's
+  tempo and time signature "to follow the bars"; the key is not sent,
+  since a handed key was echoed 10 of 11 times even by the better model.
+  The prompt no longer asks the model to confirm or correct anything.
+- **Tempo and meter only where the chart states them.**
+  `chartStatedAnswer` (`src/lib/utils/chartStatedAnswer.ts`) nulls the
+  answer's tempo (and empties `tempoChanges`) unless the chart's summary
+  carries a `tempo <bpm>` mark, and nulls the meter unless it carries a
+  time signature; without a summary (a PDF the reader could not write
+  out) only the keys survive. `AiAnswer.meter` is therefore nullable.
+  On the page a null writes no row and, for tempo, leaves the song's
+  later tempo rows alone; the card and the notification print only what
+  the chart said.
+- **The close-call meter check is gone.** The detector's 3/4-or-4/4
+  lean under 0.15 used to send the song to the model with the detector's
+  meter as a candidate, and the page said "The AI agrees" or "hears 3/4
+  instead". Blind meter was the model's weakest field and with a
+  candidate it echoed, so the check could only confirm a guess or
+  suggest a wrong one with full confidence. `UNSURE_METER` and the meter
+  branch of the old `checkUnsureMeter` are removed; `checkWithScore`
+  remains for an upload on a song with a score.
+- **No confidence.** The field read 1.0 on fabricated answers, so the
+  song-check and the sections check no longer ask for it and the cards
+  no longer show "(87% sure)".
+- **Not changed.** Detect sections still runs without a score (the study
+  did not measure it; the chart's rehearsal marks lead when there is
+  one). The model stays `google/gemini-3-flash`: the successor tier
+  pushes back on wrong tempo and meter candidates but swallows a wrong
+  key too, and with the detector owning tempo and meter the swap buys
+  little.

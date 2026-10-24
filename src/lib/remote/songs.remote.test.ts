@@ -235,6 +235,13 @@ describe("editor-gated functions", () => {
 					mixUrl: "https://blob/mix.mp3",
 					changes: [],
 				});
+				data.scoreForAi.mockResolvedValue({
+					kind: "musicxml",
+					format: "mxl",
+					url: "https://blob/score.mxl",
+					filename: "score.mxl",
+					title: "",
+				});
 				aiDetect.askAiAboutMix.mockResolvedValue({ tempo: 120 });
 			},
 			dataFn: "songForMix",
@@ -466,14 +473,30 @@ describe("side effects of the editor-gated functions", () => {
 		await expect(call(songs.askAiAboutSong, { id: SONG })).rejects.toMatchObject(httpError(403));
 		expect(aiDetect.askAiAboutMix).not.toHaveBeenCalled();
 	});
-	it("askAiAboutSong sends the song's score along when it has one", async () => {
+	it("askAiAboutSong refuses a song without a score (412): the model reads the chart, it does not hear", async () => {
 		asEditorOf(ACCOUNT);
 		data.songForMix.mockResolvedValue({
 			accountId: ACCOUNT,
 			noAi: false,
 			project: { noAi: false },
 			mixUrl: "https://blob/mix.mp3",
-			changes: [{ kind: "key", start: 0, value: "C major" }],
+			changes: [{ kind: "tempo", start: 0, value: "120" }],
+		});
+		data.scoreForAi.mockResolvedValue(null);
+		await expect(call(songs.askAiAboutSong, { id: SONG })).rejects.toMatchObject(httpError(412));
+		expect(aiDetect.askAiAboutMix).not.toHaveBeenCalled();
+	});
+	it("askAiAboutSong sends the song's score with its tempo and meter, never its key", async () => {
+		asEditorOf(ACCOUNT);
+		data.songForMix.mockResolvedValue({
+			accountId: ACCOUNT,
+			noAi: false,
+			project: { noAi: false },
+			mixUrl: "https://blob/mix.mp3",
+			changes: [
+				{ kind: "key", start: 0, value: "C major" },
+				{ kind: "meter", start: 0, value: "3/4" },
+			],
 		});
 		const score = {
 			kind: "musicxml",
@@ -488,7 +511,7 @@ describe("side effects of the editor-gated functions", () => {
 		expect(data.scoreForAi).toHaveBeenCalledWith(ACCOUNT, SONG);
 		expect(aiDetect.askAiAboutMix).toHaveBeenCalledWith(
 			"https://blob/mix.mp3",
-			{ tempo: null, key: "C major", meter: null },
+			{ tempo: null, meter: "3/4" },
 			{ userId: USER, songId: SONG },
 			score,
 		);

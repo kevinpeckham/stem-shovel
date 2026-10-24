@@ -36,6 +36,10 @@ belong in CLAUDE.md or docs/, not here.
   tempo for a pulseless pad unprompted (gate failed by letter) while
   resisting a false "120 bpm" suggestion on the same pads; 3.5-flash
   ran the probe clean.
+  Acted on 2026-10-24 (docs/audio-engine.md "The song-check reads the
+  chart"): the check needs the score, the key is never handed over,
+  tempo and meter come from the answer only where the chart states
+  them, the close-call meter listen and the confidence figure are gone.
 
 - **chart-read measured: the model reads sheet music; the PDF path is
   the weak link** (stem-bench Study 3, 2026-10-23; full tables in the
