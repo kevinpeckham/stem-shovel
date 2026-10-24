@@ -1119,7 +1119,7 @@
 		await persistSections(sections);
 		if (!sectionError) {
 			sectionsAnswer = null;
-			notify(`${sections.length} sections set from the AI${hasScore ? " and the score" : ""}`, {
+			notify(`${sections.length} sections set from the AI${hasScore ? " and the chart" : ""}`, {
 				timeout: 8000,
 			});
 		}
@@ -1193,11 +1193,11 @@
 		if (sections.length >= 1 && data.song.sections.length >= 2) return [0, ...sections];
 		return keyWindows(playerEngine?.duration ?? 0);
 	}
-	/** The song has a score (MusicXML, or a PDF or image marked as notation): the AI reads it with the mix, surer about the keys than the ear (docs/audio-engine.md, "The score as the AI's chart"). */
-	let hasScore = $derived(notationCount > 0);
+	/** The song has a chart the AI can read with the mix: a score (MusicXML, or a PDF or image marked as notation) or its own chord chart document (docs/audio-engine.md, "The score as the AI's chart", "The chord chart as the AI's chart"). */
+	let hasScore = $derived(notationCount > 0 || !!data.docs.chart);
 	async function scanStems() {
 		if (!playerEngine || playerEngine.status !== "ready") return;
-		// With a score and the AI at hand, the AI reads the chart and listens; the stems only when it cannot.
+		// With a chart and the AI at hand, the AI reads the chart and listens; the stems only when it cannot.
 		if (hasScore && data.aiAvailable && !aiBusy) {
 			const answered = await askAiWithScore();
 			if (answered) return;
@@ -1414,7 +1414,7 @@
 	let aiBusy = $state(false);
 	let aiAnswer = $state<AiAnswer | null>(null);
 	let aiError = $state<string | null>(null);
-	/** The answer came unasked: Scan stems or an upload on a song with a score. */
+	/** The answer came unasked: Scan stems or an upload on a song with a chart. */
 	let aiAuto = $state(false);
 	async function askAi() {
 		aiAuto = false;
@@ -1435,7 +1435,7 @@
 	 * mix not rendered yet, the gateway down), so the stems are scanned instead.
 	 */
 	async function askAiWithScore(): Promise<boolean> {
-		notify("This song has a score; asking the AI to read it and listen", { kind: "info" });
+		notify("This song has a chart; asking the AI to read it and listen", { kind: "info" });
 		aiAuto = true;
 		aiBusy = true;
 		aiError = null;
@@ -1444,7 +1444,7 @@
 			settingsTab = "tempo";
 			if (data.song.changes.length === 0) await useAiAnswer();
 			else
-				notify(`The AI read the score: ${aiLine(aiAnswer)}; open settings to use its answer`, {
+				notify(`The AI read the chart: ${aiLine(aiAnswer)}; open settings to use its answer`, {
 					kind: "info",
 					timeout: 12_000,
 				});
@@ -1482,7 +1482,7 @@
 	const MIX_WAIT_MS = 10_000;
 	/**
 	 * After the detector has set an uploaded song's settings and the song has
-	 * a score: the AI reads the score beside the mix once it is rendered, and
+	 * a chart: the AI reads the chart beside the mix once it is rendered, and
 	 * its answer replaces the detector's (the detector's replaced nothing: the
 	 * song had no settings before this upload). The old close-call check on a
 	 * scoreless song is gone: blind, the model only read the detector's meter
@@ -1490,7 +1490,7 @@
 	 */
 	async function checkWithScore() {
 		if (!data.aiAvailable || aiBusy || !hasScore) return;
-		notify("This song has a score; asking the AI to read it and listen", { kind: "info" });
+		notify("This song has a chart; asking the AI to read it and listen", { kind: "info" });
 		aiAuto = true;
 		aiBusy = true;
 		aiError = null;
@@ -1599,7 +1599,7 @@
 		else {
 			aiAnswer = null;
 			if (fromScore)
-				notify(`The AI read the score: ${line} — saved to the song's settings`, {
+				notify(`The AI read the chart: ${line} — saved to the song's settings`, {
 					timeout: 12_000,
 				});
 		}
@@ -2461,7 +2461,7 @@
 											type="button"
 											disabled={sectionsBusy}
 											title={hasScore
-												? "Send the mix and the score to a model that marks where each section begins"
+												? "Send the mix and the chart to a model that marks where each section begins"
 												: "Send the mix to a model that listens and marks where each section begins"}
 											onclick={detectSongSections}
 										>
@@ -2496,7 +2496,7 @@
 							</p>
 							{#if sectionsAnswer}
 								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									{hasScore ? "The AI read the score and listened. It finds" : "AI hears"}
+									{hasScore ? "The AI read the chart and listened. It finds" : "AI hears"}
 									<strong
 										>{sectionsAnswer.sections
 											.map((s) => `${s.name} at ${editPos(s.at)}`)
@@ -2582,7 +2582,7 @@
 										title={playerEngine?.status !== "ready"
 											? "Available once every stem has decoded"
 											: hasScore && data.aiAvailable
-												? "The song has a score: the AI reads it and listens to the mix for tempo, keys and time signature"
+												? "The song has a chart: the AI reads it and listens to the mix for its keys, and for tempo and time signature where the chart marks them"
 												: "Listen to the loaded stems for tempo, key and time signature"}
 										onclick={scanStems}
 									>
@@ -2617,8 +2617,8 @@
 											type="button"
 											disabled={aiBusy || !hasScore}
 											title={hasScore
-												? "Send the rendered mix and the score to a model that reads the chart beside the recording and places its keys, time signature and tempo marks"
-												: "Attach the song's score or chart first (a MusicXML file, or a PDF or image marked as notation): the AI reads it beside the mix"}
+												? "Send the rendered mix and the chart to a model that reads it beside the recording and places its keys, time signature and tempo marks"
+												: "Write the song's chart in the Chart tab, or attach its score (a MusicXML file, or a PDF or image marked as notation), first: the AI reads it beside the mix"}
 											onclick={askAi}
 										>
 											<span class="i-ph-sparkle" aria-hidden="true"></span>
@@ -2705,7 +2705,7 @@
 							{/if}
 							{#if aiAnswer}
 								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									The AI read the score and listened. It finds
+									The AI read the chart and listened. It finds
 									<strong>{aiLine(aiAnswer)}</strong>{#if aiAnswer.tempoChanges.length > 0}
 										, then {aiAnswer.tempoChanges
 											.map((c) => `${Math.round(c.bpm)} bpm at ${editPos(c.at)}`)

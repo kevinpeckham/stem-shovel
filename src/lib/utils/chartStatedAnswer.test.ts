@@ -31,6 +31,18 @@ describe("chartStatedAnswer", () => {
 		expect(out.tempo).toBe(120);
 	});
 
+	test("a band's own chart counts when it says the tempo in bpm or marks a time signature", () => {
+		const out = chartStatedAnswer(answer, "# Intro\n120 bpm, in 3/4\n| D | G | A |");
+		expect(out.tempo).toBe(120);
+		expect(out.meter).toBe("3/4");
+		const bare = chartStatedAnswer(
+			answer,
+			"# Intro\n| D | G | A | x2\n# Verse\n| Bm | G | D | A/C# |",
+		);
+		expect(bare.tempo).toBeNull();
+		expect(bare.meter).toBeNull();
+	});
+
 	test("without a summary only the keys survive", () => {
 		const out = chartStatedAnswer(answer, undefined);
 		expect(out).toEqual({ ...answer, tempo: null, tempoChanges: [], meter: null });

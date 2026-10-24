@@ -37,18 +37,27 @@ const MAX_REQUEST_BYTES = 19 * 1024 * 1024;
 export const aiAvailable = () => !!ENV.AI_GATEWAY_API_KEY;
 
 /**
- * The score the model reads beside the mix (docs/audio-engine.md, "The
+ * The chart the model reads beside the mix (docs/audio-engine.md, "The
  * score as the AI's chart"): a MusicXML file as the text summary of its
- * keys and chords, or a PDF or image of the chart as the file itself.
+ * keys and chords, a PDF or image of the score as the file itself, or
+ * the song's own chord chart document as its markdown ("The chord chart
+ * as the AI's chart").
  */
 export type ScoreForAi =
 	| { kind: "musicxml"; format: "mxl" | "musicxml"; url: string; filename: string; title: string }
-	| { kind: "pdf" | "image"; url: string; filename: string; title: string; sizeBytes: number };
-/** What the request carries for the chart: its per-measure summary as text, the PDF or image itself, or both. */
+	| { kind: "pdf" | "image"; url: string; filename: string; title: string; sizeBytes: number }
+	| { kind: "chart"; markdown: string; title: string };
+/** What the request carries for the chart: its per-measure summary as text, the PDF or image itself, or both; `chord` when the text is the band's own chord chart. */
 interface ScorePart {
 	text?: string;
 	file?: { data: Uint8Array; mediaType: string; filename: string };
+	chord?: boolean;
 }
+/** The band's chart is free text; this much of it goes along (the draft examples send 3 000). */
+const CHORD_CHART_MAX_CHARS = 12_000;
+/** What a score is called in the log: its file, or the song's chart document. */
+const scoreName = (score: ScoreForAi | null | undefined) =>
+	score ? (score.kind === "chart" ? `chart of ${score.title}` : score.filename) : "";
 
 /**
  * Reads the score from Blob into what the request carries: a MusicXML as
@@ -61,6 +70,10 @@ async function loadScore(
 	audioBytes: number,
 	who: { userId: string; songId: string },
 ): Promise<ScorePart | null> {
+	if (score.kind === "chart") {
+		const text = score.markdown.trim().slice(0, CHORD_CHART_MAX_CHARS);
+		return text ? { text, chord: true } : null;
+	}
 	const res = await readBlob(score.url);
 	if (!res.ok) return null;
 	const bytes = new Uint8Array(await res.arrayBuffer());
@@ -212,7 +225,13 @@ async function loadMix(mixUrl: string): Promise<Uint8Array> {
 }
 
 const CHART_NOTE = (chart: ScorePart) =>
-	`The song's own chart comes with the recording${chart.text ? `, as a measure-by-measure summary (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)${chart.file ? " and as the file it was read from" : ""}` : ""}. First make sure it is the chart of this recording (the same piece: its harmony, meter and form match what you hear); if it plainly is not, set it aside, answer from the recording alone and say so in "notes".`;
+	`The song's own chart comes with the recording${
+		chart.chord
+			? ', as the band wrote it: its sections, the chords of each (one per bar unless it says otherwise, with repeats as "x2"), sometimes the words. It has no key signatures and marks no bars: read each part\'s key from the chords it moves through, and follow its sections in the recording'
+			: chart.text
+				? `, as a measure-by-measure summary (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)${chart.file ? " and as the file it was read from" : ""}`
+				: ""
+	}. First make sure it is the chart of this recording (the same piece: its harmony, meter and form match what you hear); if it plainly is not, set it aside, answer from the recording alone and say so in "notes".`;
 
 /**
  * One question to the listening model about a mix, with the song's score
@@ -237,7 +256,7 @@ async function listen<S extends v.GenericSchema>(opts: {
 	const withFile = chart?.file
 		? ` and ${chart.file.filename} (${chart.file.data.byteLength} bytes)`
 		: "";
-	const withText = chart?.text ? `\n\nCHART (${score?.filename}):\n${chart.text}` : "";
+	const withText = chart?.text ? `\n\nCHART (${scoreName(score)}):\n${chart.text}` : "";
 	const log = {
 		kind: opts.kind,
 		model: MODEL,
@@ -269,7 +288,7 @@ async function listen<S extends v.GenericSchema>(opts: {
 						{
 							type: "text",
 							text: chart?.text
-								? `${question}\n\nThe chart, from ${score?.filename}:\n${chart.text}`
+								? `${question}\n\nThe chart, from ${scoreName(score)}:\n${chart.text}`
 								: question,
 						},
 					],
@@ -334,7 +353,7 @@ export async function askAiAboutMix(
 ): Promise<AiAnswer> {
 	const mix = await loadMix(mixUrl);
 	const chart = await loadScore(score, mix.byteLength, who);
-	if (!chart) throw new Error("The song's score could not be read");
+	if (!chart) throw new Error("The song's chart could not be read");
 	const known = [
 		settings.tempo ? `tempo ${settings.tempo} bpm` : null,
 		settings.meter ? `time signature ${settings.meter}` : null,

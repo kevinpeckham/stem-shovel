@@ -532,3 +532,25 @@ tool wearing a second opinion's clothes, so the app now says so:
   pushes back on wrong tempo and meter candidates but swallows a wrong
   key too, and with the detector owning tempo and meter the swap buys
   little.
+
+## The chord chart as the AI's chart (2026-10-24)
+
+Study 4 left the song-check switched off for every song without a score,
+and most songs here have a markdown chord chart in the Docs panel and no
+engraved notation. So the band's own chart is the third thing
+`scoreForAi` can hand the model: after the first ready MusicXML and the
+first ready notation attachment, the song's `chartMarkdown` when it has
+words in it, as `{kind: "chart", markdown, title}`. `loadScore` passes
+the first 12 000 characters as the chart text with `chord: true`, and
+`CHART_NOTE` then tells the model what it is reading: the band's
+sections and the chords of each, one per bar unless it says otherwise,
+no key signatures and no bars, so each part's key comes from the chords
+it moves through and its place in the recording from following the
+sections. The rest is unchanged: tempo and meter survive the answer only
+where the chart states them (`chartStatedAnswer` also reads "120 bpm"
+and "♩ = 120", the ways a band writes a tempo), the key is never sent,
+and the page's `hasScore` is now "has a score or a chart", so Scan
+stems, the upload check and the buttons' titles follow. What is not yet
+measured: a chord chart has no bars and the model aligns by ear, so the
+key-change placement may be looser than the lead sheet's four seconds;
+a stem-bench arm with the markdown chart would tell.

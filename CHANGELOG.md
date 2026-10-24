@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The chord chart is the AI's chart too.** Ask AI to check, and the AI read of Scan stems and of an upload, now work on a song whose only chart is the one written in the Chart tab: the model reads the band's sections and chords beside the mix and places the keys from the chords each part moves through. A score still comes first when the song has one, and the tempo and time signature still come from the chart only where it marks them ("120 bpm", "3/4").
+
+### Technical
+
+- `scoreForAi` returns `{kind: "chart", markdown, title}` as its third choice; `loadScore` passes it as text with `chord: true` and `CHART_NOTE` describes it; `chartStatedAnswer` also reads "120 bpm" and "♩ = 120" (docs/audio-engine.md "The chord chart as the AI's chart").
+
 ## [0.156.0] - 2026-10-24
 
 ### Changed

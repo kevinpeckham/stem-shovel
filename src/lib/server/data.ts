@@ -6829,10 +6829,11 @@ export async function songLink(accountId: string, songId: string) {
 
 /** A song with its ready stems and the names a mix file needs, by id (public: viewing needs no member). */
 /**
- * The score the AI check reads with the mix (docs/audio-engine.md, "The
- * score as the AI's chart"): the song's first ready MusicXML, else its
- * first ready notation attachment (a PDF or an image marked as a score);
- * null when the song has neither.
+ * The chart the AI check reads with the mix (docs/audio-engine.md, "The
+ * score as the AI's chart" and "The chord chart as the AI's chart"): the
+ * song's first ready MusicXML, else its first ready notation attachment
+ * (a PDF or an image marked as a score), else the song's own chord chart
+ * document when it has words in it; null when the song has none of them.
  */
 export async function scoreForAi(
 	accountId: string,
@@ -6840,6 +6841,7 @@ export async function scoreForAi(
 ): Promise<
 	| { kind: "musicxml"; format: "mxl" | "musicxml"; url: string; filename: string; title: string }
 	| { kind: "pdf" | "image"; url: string; filename: string; title: string; sizeBytes: number }
+	| { kind: "chart"; markdown: string; title: string }
 	| null
 > {
 	const xml = await db.query.songNotation.findFirst({
@@ -6863,8 +6865,13 @@ export async function scoreForAi(
 		orderBy: [asc(songFile.createdAt)],
 		columns: { kind: true, url: true, filename: true, title: true, sizeBytes: true },
 	});
-	if (!file) return null;
-	return { ...file, kind: file.kind as "pdf" | "image" };
+	if (file) return { ...file, kind: file.kind as "pdf" | "image" };
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { title: true, chartMarkdown: true },
+	});
+	if (!row || !row.chartMarkdown.trim()) return null;
+	return { kind: "chart", markdown: row.chartMarkdown, title: row.title };
 }
 
 export async function songForMix(songId: string) {

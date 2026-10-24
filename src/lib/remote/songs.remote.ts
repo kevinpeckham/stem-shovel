@@ -336,7 +336,8 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	// genre prior (docs/audio-engine.md, "The song-check reads the chart"). 412, not 409: the page
 	// waits on a 409 for the mix to render.
 	const score = await scoreForAi(accountId, id);
-	if (!score) error(412, "Attach the song's score or chart first; the AI reads it beside the mix");
+	if (!score)
+		error(412, "Write the song's chart or attach its score first; the AI reads it beside the mix");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
 	// The song's own tempo and time signature help the model follow the chart's bars; its key is never handed over.
