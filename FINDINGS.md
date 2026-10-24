@@ -835,6 +835,7 @@ From a spike for the Studio's disk cache of decoded sources (docs/multitrack-rec
 
 - **Chromium (headless, this VM):** a worker's `FileSystemSyncAccessHandle` wrote at 320 MB/s and read 256 KB ranges at 300 MB/s, the whole file at 785 MB/s; the main thread's `getFile().slice().arrayBuffer()` read it at 1284 MB/s and `createWritable` wrote at 277 MB/s; rebuilding a 4-minute stereo `AudioBuffer` from 16-bit PCM took 66 ms; `navigator.storage.estimate()` offered 10.7 GB. Disk reads are not the bottleneck of a cache or of a streamed voice; the budget is.
 - **Playwright's WebKit on Linux cannot open OPFS:** `navigator.storage.getDirectory()` throws `UnknownError: The operation failed for an unknown transient reason`, though `estimate()` answers (1.0 GB). Safari proper has OPFS and sync access handles in dedicated workers but no `createWritable`, so a cache must write from a worker and must treat every OPFS error as a miss. Safari's real throughput and quota are measured on a device, not here.
+- **Safari on a MacBook Pro (Kevin, 2026-10-24):** the cache worked (the menu item present, no warning, a reopened song fetched no `.flac`/`.wav`), and `navigator.storage.estimate()` answered a quota of 82.5 GB with five recordings (277 MB) kept, so the cache runs on its own 2 GB ceiling there. The iPhone's quota is still unmeasured.
 
 ## Reaper's take volume envelope runs in take time, from a rendered probe (2026-10-24)
 
