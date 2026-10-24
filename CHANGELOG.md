@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.156.0] - 2026-10-24
+
 ### Changed
 
 - **Ask AI to check reads the chart.** The check now needs the song's score (a MusicXML file, or a PDF or image marked as notation) and is disabled without one, with the reason in its title. The model reads the chart while the mix plays and reports the keys and where each begins, and the time signature and tempo marks the chart states; where the chart marks neither, the song's detected tempo and time signature stay. The model is no longer asked to confirm or correct the detector, and the song's key is never sent to it: an external study found that, listening blind, it read the candidates back and guessed tempo from a genre prior, while with the chart it was exact.
