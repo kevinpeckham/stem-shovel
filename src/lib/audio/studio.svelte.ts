@@ -83,6 +83,9 @@ import { gainEnvelopeRamps } from "#lib/utils/gainEnvelope.js";
 import { mixClipsToChannels } from "#lib/utils/mixClipsToChannels.js";
 import { reverseChannels } from "#lib/utils/reverseChannels.js";
 import { rippleDelete } from "#lib/utils/rippleDelete.js";
+import { rangeDelete } from "#lib/utils/rangeDelete.js";
+import { rangeInsert } from "#lib/utils/rangeInsert.js";
+import { shiftTimes } from "#lib/utils/shiftTimes.js";
 import type {
 	TempoCurve,
 	StudioArrangement,
@@ -1994,6 +1997,87 @@ class StudioEngine {
 		if (ripple) this.#reschedule();
 	}
 	/**
+	 * A range of time cut out of every track (docs/dawn-daw-plan.md, D4;
+	 * utils/rangeDelete.ts): the clips' parts inside [from, to) go, one
+	 * undo step. With `ripple` the gap closes: the clips, markers, tempo,
+	 * meter and key changes, automation points and loop region at or after
+	 * `to` move earlier by the range's length, and the automation points
+	 * inside it go. False, with nothing changed, for a range under a
+	 * millisecond or one that would split past the clip limit.
+	 */
+	deleteRange(from: number, to: number, ripple = false): boolean {
+		const a = Math.max(0, Math.min(from, to));
+		const b = Math.max(from, to);
+		if (b - a < 0.001) return false;
+		const touched = (c: StudioClip) => c.start < b && c.start + c.duration > a;
+		if (!ripple && !this.arrangement.clips.some(touched)) return false;
+		const before = this.arrangement.clips.map((c) => c.id);
+		const clips = rangeDelete($state.snapshot(this.arrangement.clips), a, b, ripple, localId);
+		return this.#applyRange(before, clips, () => {
+			if (ripple) this.#shiftTimeline(a, b, -(b - a));
+		});
+	}
+	/**
+	 * Silence inserted at `at` on every track (docs/dawn-daw-plan.md, D4;
+	 * utils/rangeInsert.ts), one undo step: clips at or after it move later
+	 * by `seconds`, a clip across it splits there, and the markers, tempo,
+	 * meter and key changes, automation points and loop region at or after
+	 * it move with them. False, with nothing changed, under a millisecond or
+	 * past the clip limit.
+	 */
+	insertRange(at: number, seconds: number): boolean {
+		const t = Math.max(0, at);
+		if (seconds < 0.001) return false;
+		const before = this.arrangement.clips.map((c) => c.id);
+		const clips = rangeInsert($state.snapshot(this.arrangement.clips), t, seconds, localId);
+		return this.#applyRange(before, clips, () => this.#shiftTimeline(t, t, seconds));
+	}
+	#applyRange(before: string[], clips: StudioClip[], shift: () => void): boolean {
+		if (clips.length > MAX_STUDIO_CLIPS) {
+			this.notice = `A song holds at most ${MAX_STUDIO_CLIPS} clips.`;
+			return false;
+		}
+		this.#commit();
+		// A clone per clip: the two pieces of a split share no arrays.
+		this.arrangement.clips = clips.map((c) => structuredClone(c));
+		shift();
+		const kept = new Set(clips.map((c) => c.id));
+		for (const id of before) if (!kept.has(id)) this.#stopClip(id);
+		this.#reschedule();
+		return true;
+	}
+	/** The arrangement's timed lists after a range edit (utils/shiftTimes.ts): items in [from, to) go (automation points only), those at or after `to` move by `by`. */
+	#shiftTimeline(from: number, to: number, by: number) {
+		const a = this.arrangement;
+		if (a.markers?.length) a.markers = shiftTimes($state.snapshot(a.markers), "t", to, to, by);
+		if (a.tempoChanges?.length)
+			a.tempoChanges = shiftTimes($state.snapshot(a.tempoChanges), "start", to, to, by);
+		if (a.meterChanges?.length)
+			a.meterChanges = shiftTimes($state.snapshot(a.meterChanges), "start", to, to, by);
+		if (a.keyChanges?.length)
+			a.keyChanges = shiftTimes($state.snapshot(a.keyChanges), "start", to, to, by);
+		const lanes = (auto: StudioAutomation | undefined): StudioAutomation | undefined => {
+			if (!auto) return auto;
+			const out: StudioAutomation = {};
+			for (const [key, points] of Object.entries($state.snapshot(auto)))
+				if (points.length) {
+					const next = shiftTimes(points, "t", from, to, by);
+					if (next.length) out[key] = next;
+				}
+			return Object.keys(out).length ? out : undefined;
+		};
+		for (const t of a.tracks) if (t.automation) t.automation = lanes(t.automation);
+		for (const bus of a.buses ?? []) if (bus.automation) bus.automation = lanes(bus.automation);
+		if (a.masterAutomation) a.masterAutomation = lanes(a.masterAutomation);
+		const loop = a.loop;
+		if (loop && loop.start >= to - 1e-6)
+			a.loop = {
+				...loop,
+				start: round4(Math.max(0, loop.start + by)),
+				end: round4(Math.max(0, loop.end + by)),
+			};
+	}
+	/**
 	 * Comping: the region [from, to] of a clip taken from one of its takes
 	 * (utils/compRegion.ts): the clip becomes up to three pieces, the
 	 * middle playing the take, overlapping their neighbors by a short
@@ -2250,7 +2334,22 @@ class StudioEngine {
 	get markers(): StudioMarker[] {
 		return this.arrangement.markers ?? [];
 	}
-	addMarker(t = this.position, name?: string): StudioMarker | null {
+	/**
+	 * The song's sections: each section marker in time order, running to the
+	 * next one or to the song's end (the last clip's), never backward.
+	 */
+	get sections(): { id: string; name: string; start: number; end: number }[] {
+		const opens = this.markers.filter((m) => m.section).sort((a, b) => a.t - b.t);
+		const songEnd = this.duration;
+		return opens.map((m, i) => ({
+			id: m.id,
+			name: m.name,
+			start: m.t,
+			end: opens[i + 1]?.t ?? Math.max(songEnd, m.t),
+		}));
+	}
+	/** A marker at `t`; `section` makes it open a section. */
+	addMarker(t = this.position, name?: string, section?: boolean): StudioMarker | null {
 		if (this.markers.length >= MAX_STUDIO_MARKERS) {
 			this.notice = `A song holds at most ${MAX_STUDIO_MARKERS} markers.`;
 			return null;
@@ -2259,8 +2358,11 @@ class StudioEngine {
 		const marker: StudioMarker = {
 			id: localId(),
 			t: round4(Math.max(0, t)),
-			name: name ?? `Marker ${this.markers.length + 1}`,
+			name:
+				name ??
+				`${section ? "Section" : "Marker"} ${this.markers.filter((m) => !!m.section === !!section).length + 1}`,
 		};
+		if (section) marker.section = true;
 		this.arrangement.markers = [...this.markers, marker].sort((a, b) => a.t - b.t);
 		return marker;
 	}
@@ -2277,6 +2379,14 @@ class StudioEngine {
 		if (!m || !next || m.name === next) return;
 		this.#commit();
 		m.name = next;
+	}
+	/** A marker opens a section, or stops opening one (one undo step). */
+	toggleMarkerSection(id: string) {
+		const m = this.markers.find((x) => x.id === id);
+		if (!m) return;
+		this.#commit();
+		if (m.section) delete m.section;
+		else m.section = true;
 	}
 	deleteMarker(id: string) {
 		if (!this.markers.some((x) => x.id === id)) return;

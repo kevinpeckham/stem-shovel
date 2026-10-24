@@ -373,6 +373,8 @@ export const StudioMarkerSchema = v.object({
 	id: LocalIdSchema,
 	t: SecondsSchema,
 	name: v.pipe(v.string(), v.trim(), v.maxLength(40)),
+	/** A marker that opens a section, which runs to the next section marker or the song's end; drawn as a named band on the ruler. */
+	section: v.optional(v.boolean()),
 });
 export type StudioMarker = v.InferOutput<typeof StudioMarkerSchema>;
 

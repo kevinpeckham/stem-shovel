@@ -928,6 +928,16 @@
 	let selectedClip = $derived(studio.arrangement.clips.find((c) => c.id === selected) ?? null);
 	/** The selected clip's gain line shown on the timeline (docs/multitrack-recorder.md "Clip gain envelopes"). */
 	let gainLineOn = $state(false);
+	/** The time range selected on the ruler (Alt-drag; docs/multitrack-recorder.md "Range edits"); the range bar acts on it. */
+	let timeRange = $state<{ start: number; end: number } | null>(null);
+	/** A range edit's refusal (the clip limit) said as the engine put it; nothing to do is no news. */
+	function rangeEdit(ok: boolean) {
+		if (!ok && studio.notice) {
+			notify(studio.notice, { kind: "error" });
+			studio.notice = null;
+		}
+		return ok;
+	}
 	function splitSelected() {
 		if (!selectedClip) return;
 		const right = studio.splitClip(selectedClip.id, studio.position);
@@ -1353,9 +1363,9 @@
 			addMarker();
 		}
 	}
-	/** A marker at the playhead (M); the ruler shows it. */
-	function addMarker() {
-		if (!studio.addMarker() && studio.notice) {
+	/** A marker at the playhead (M); the ruler shows it. `section` makes it open a section. */
+	function addMarker(section = false) {
+		if (!studio.addMarker(undefined, undefined, section) && studio.notice) {
 			notify(studio.notice, { kind: "error" });
 			studio.notice = null;
 		}
@@ -1950,9 +1960,18 @@
 						type="button"
 						title="A marker at the playhead (M): a named spot on the ruler to jump to"
 						aria-label="Add marker"
-						onclick={addMarker}
+						onclick={() => addMarker()}
 					>
 						<span class="i-ph-flag" aria-hidden="true"></span>
+					</button>
+					<button
+						class="device-button-sm px-3 min-w-32px"
+						type="button"
+						title="A section from the playhead: a named band on the ruler that runs to the next section"
+						aria-label="Add section"
+						onclick={() => addMarker(true)}
+					>
+						<span class="i-ph-bookmark-simple" aria-hidden="true"></span>
 					</button>
 					<button
 						class="device-button-sm px-3 min-w-32px {studio.arrangement.punch ? 'text-accent' : ''}"
@@ -2103,6 +2122,7 @@
 						bind:selectedIds
 						bind:pxPerSecond
 						bind:envelope={gainLineOn}
+						bind:range={timeRange}
 						onfreeze={(t) => void freezeTrack(t)}
 						onunfreeze={unfreezeTrack}
 						comments={comments
@@ -2156,7 +2176,7 @@
 					</label>
 					<span class="text-12px text-dark/80 ml-auto hidden @2xl-inline">
 						Space play · R record · Home start · L loop · S split · ⌘D duplicate · ⇧L loop clip · ⇧M
-						clip off · ⌘-wheel zooms
+						clip off · ⌥-drag ruler range · ⌘-wheel zooms
 					</span>
 				</div>
 				{#if selectedClip}
@@ -2674,6 +2694,58 @@
 								</button>
 							</span>
 						{/if}
+					</div>
+				{:else if timeRange}
+					{@const r = timeRange}
+					<!-- The ruler's range with no clip selected (docs/multitrack-recorder.md "Range edits"): edits across every track. -->
+					<div
+						class="device-screen flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-12px"
+						role="group"
+						aria-label="Range"
+					>
+						<span class="tabular-nums">Range {formatTime(r.start)} – {formatTime(r.end)}</span>
+						<button
+							class="device-button-xs px-2"
+							type="button"
+							title="Remove what the range covers on every track (Delete)"
+							onclick={() => rangeEdit(studio.deleteRange(r.start, r.end, false))}
+						>
+							<span class="i-ph-trash" aria-hidden="true"></span> Delete
+						</button>
+						<button
+							class="device-button-xs px-2"
+							type="button"
+							title="Remove it and close the gap: everything after moves earlier (Shift+Delete)"
+							onclick={() => {
+								if (rangeEdit(studio.deleteRange(r.start, r.end, true))) timeRange = null;
+							}}
+						>
+							<span class="i-ph-arrows-in-line-horizontal" aria-hidden="true"></span> Ripple delete
+						</button>
+						<button
+							class="device-button-xs px-2"
+							type="button"
+							title="Push everything from the range's start later by its length (Insert)"
+							onclick={() => rangeEdit(studio.insertRange(r.start, r.end - r.start))}
+						>
+							<span class="i-ph-arrows-out-line-horizontal" aria-hidden="true"></span> Insert silence
+						</button>
+						<button
+							class="device-button-xs px-2"
+							type="button"
+							title="Loop the range"
+							onclick={() => studio.setLoop({ on: true, start: r.start, end: r.end })}
+						>
+							<span class="i-ph-repeat" aria-hidden="true"></span> Loop range
+						</button>
+						<button
+							class="device-button-xs px-2"
+							type="button"
+							title="Clear the range (Escape on the timeline)"
+							onclick={() => (timeRange = null)}
+						>
+							<span class="i-ph-x" aria-hidden="true"></span> Clear
+						</button>
 					</div>
 				{/if}
 			</section>

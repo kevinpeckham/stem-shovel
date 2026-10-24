@@ -172,9 +172,10 @@ describe("readRpp", () => {
 		expect(a.beatUnit).toBe(8);
 		expect(a.master).toBe(0.5);
 		expect(a.sampleRate).toBe(48000);
-		expect(a.markers?.map((m) => [m.t, m.name])).toEqual([
-			[1.5, "Verse one"],
-			[4, "Chorus"],
+		// The region is a section marker at its start.
+		expect(a.markers?.map((m) => [m.t, m.name, m.section])).toEqual([
+			[1.5, "Verse one", undefined],
+			[4, "Chorus", true],
 		]);
 		// Reaper's own color, kept as it is (near Dawn's sea, not it).
 		expect(a.buses?.map((b) => [b.name, b.gain, b.colour])).toEqual([["Drums", 0.8, "#7fcec6"]]);
@@ -227,7 +228,6 @@ describe("readRpp", () => {
 		expect(read.files[1]!.label).toBe("Kick - First take");
 		expect(read.dropped).toEqual([]);
 		expect(read.fixed).toEqual([
-			"Regions read as markers at their start",
 			"Envelope shapes other than linear read as linear",
 			"Bass sends to no output in Reaper: goes to the master here",
 			"Fade shapes other than linear read as equal power",

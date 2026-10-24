@@ -57,6 +57,8 @@ const fake = vi.hoisted(() => {
 		moveClips: vi.fn(),
 		deleteClip: vi.fn(),
 		deleteClips: vi.fn(),
+		deleteRange: vi.fn(() => true),
+		insertRange: vi.fn(() => true),
 		compFromTake: vi.fn(() => ({ id: "comp-mid" })),
 		get markers() {
 			return engine.arrangement.markers ?? [];
@@ -83,6 +85,18 @@ const fake = vi.hoisted(() => {
 		removeMeterChange: vi.fn(),
 		renameMarker: vi.fn(),
 		deleteMarker: vi.fn(),
+		toggleMarkerSection: vi.fn(),
+		markerFrom: vi.fn(),
+		// The engine's own rule: a section runs to the next section marker or the song's end.
+		get sections() {
+			const opens = engine.markers.filter((m) => m.section).sort((a, b) => a.t - b.t);
+			return opens.map((m, i) => ({
+				id: m.id,
+				name: m.name,
+				start: m.t,
+				end: opens[i + 1]?.t ?? Math.max(engine.duration, m.t),
+			}));
+		},
 		renameTrack: vi.fn(),
 		moveTrack: vi.fn(),
 		removeTrack: vi.fn(),
@@ -844,6 +858,48 @@ describe("StudioTimeline", () => {
 		expect(fake.seek).not.toHaveBeenCalled();
 	});
 
+	test("an Alt-drag on the ruler selects a range that Delete, Shift+Delete and Insert act on", async () => {
+		render(StudioTimeline, { props: { selected: "c1" } });
+		await fireEvent.pointerDown(ruler(), at(xAt(2), 0, { altKey: true }));
+		expect(fake.seek).not.toHaveBeenCalled();
+		await fireEvent.pointerMove(ruler(), at(xAt(5.1)));
+		await fireEvent.pointerUp(ruler(), at(xAt(5.1)));
+		// Snapped to the half second, drawn over every lane and labeled on the ruler; the clip selection gave way.
+		const band = document.querySelector("[data-range]") as HTMLElement;
+		expect(band.style.left).toBe(`${xAt(2)}px`);
+		expect(band.style.width).toBe("120px");
+		expect(document.querySelector("[data-range-ruler]")?.textContent?.trim()).toBe(
+			"0:02.0 – 0:05.0",
+		);
+		expect(clipEl("c1")).not.toHaveClass("border-accent");
+		await fireEvent.keyDown(timeline(), { key: "Delete" });
+		expect(fake.deleteRange).toHaveBeenLastCalledWith(2, 5, false);
+		expect(fake.deleteClips).not.toHaveBeenCalled();
+		await fireEvent.keyDown(timeline(), { key: "Insert" });
+		expect(fake.insertRange).toHaveBeenLastCalledWith(2, 3);
+		await fireEvent.keyDown(timeline(), { key: "I", shiftKey: true });
+		expect(fake.insertRange).toHaveBeenCalledTimes(2);
+		// A ripple delete closes the gap and lets the range go.
+		await fireEvent.keyDown(timeline(), { key: "Delete", shiftKey: true });
+		expect(fake.deleteRange).toHaveBeenLastCalledWith(2, 5, true);
+		expect(document.querySelector("[data-range]")).toBeNull();
+		// Escape clears a range; a plain press on the ruler seeks and clears one too, without making one.
+		await fireEvent.pointerDown(ruler(), at(xAt(1), 0, { altKey: true }));
+		await fireEvent.pointerUp(ruler(), at(xAt(1)));
+		// A click with Alt is still a range, at the shortest (0.05 s).
+		expect(
+			parseFloat((document.querySelector("[data-range]") as HTMLElement).style.width),
+		).toBeCloseTo(2);
+		await fireEvent.keyDown(timeline(), { key: "Escape" });
+		expect(document.querySelector("[data-range]")).toBeNull();
+		await fireEvent.pointerDown(ruler(), at(xAt(1), 0, { altKey: true }));
+		await fireEvent.pointerUp(ruler(), at(xAt(1)));
+		await fireEvent.pointerDown(ruler(), at(xAt(3)));
+		await fireEvent.pointerUp(ruler(), at(xAt(3)));
+		expect(fake.seek).toHaveBeenCalledWith(3);
+		expect(document.querySelector("[data-range]")).toBeNull();
+	});
+
 	test("an off loop is drawn faint", () => {
 		fake.arrangement.loop = { on: false, start: 1, end: 2 };
 		render(StudioTimeline);
@@ -1051,6 +1107,30 @@ describe("StudioTimeline: editing depth (D4)", () => {
 		await fireEvent.keyDown(chorus, { key: "Delete" });
 		expect(fake.deleteMarker).toHaveBeenCalledWith("m1");
 		expect(screen.getByRole("button", { name: /^Marker Bridge/ })).toBeInTheDocument();
+	});
+	test("a section marker draws a band to the next section, S toggles it, . and , jump between markers", async () => {
+		fake.arrangement.markers = [
+			{ id: "m1", t: 4, name: "Verse", section: true },
+			{ id: "m2", t: 8.5, name: "Chorus", section: true },
+			{ id: "m3", t: 6, name: "Fill" },
+		];
+		render(StudioTimeline);
+		const bands = document.querySelectorAll<HTMLElement>("[data-section]");
+		expect(bands).toHaveLength(2);
+		const verse = bands[0];
+		expect(verse.dataset.section).toBe("m1");
+		expect(verse.textContent?.trim()).toBe("Verse");
+		expect(verse.style.left).toBe(`${4 * PX}px`);
+		expect(verse.style.width).toBe(`${4.5 * PX}px`);
+		const fill = screen.getByRole("button", { name: "Marker Fill at 0:06.0" });
+		await fireEvent.keyDown(fill, { key: "s" });
+		expect(fake.toggleMarkerSection).toHaveBeenCalledWith("m3");
+		fake.markerFrom.mockReturnValueOnce({ id: "m1", t: 4, name: "Verse", section: true });
+		await fireEvent.keyDown(timeline(), { key: "." });
+		expect(fake.markerFrom).toHaveBeenLastCalledWith(fake.position, 1);
+		expect(fake.seek).toHaveBeenLastCalledWith(4);
+		await fireEvent.keyDown(timeline(), { key: "," });
+		expect(fake.markerFrom).toHaveBeenLastCalledWith(fake.position, -1);
 	});
 });
 

@@ -153,6 +153,49 @@ test.describe("Dawn editing", () => {
 		expect(quiet).toBeLessThan(loud * 0.6);
 		await page.getByRole("button", { name: "Gain line" }).click();
 
+		// A range on the ruler (docs/multitrack-recorder.md "Range edits"): Alt-drag 2 s to 4 s over the one clip, Insert silence
+		// splits it and pushes the right piece later; Ripple delete of the same range closes the gap again.
+		const rulerEl = page.locator(".cursor-text").first();
+		const rulerBox = (await rulerEl.boundingBox())!;
+		const pxPerSec = await hooked(page, ([w]) => {
+			const a = document.querySelector("[data-clip]") as HTMLElement;
+			return a.getBoundingClientRect().width / w.__studio.arrangement.clips[0].duration;
+		});
+		await page.keyboard.down("Alt");
+		await page.mouse.move(rulerBox.x + 2 * pxPerSec, rulerBox.y + rulerBox.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(rulerBox.x + 4 * pxPerSec, rulerBox.y + rulerBox.height / 2, {
+			steps: 4,
+		});
+		await page.mouse.up();
+		await page.keyboard.up("Alt");
+		await expect(page.locator("[data-range]")).toHaveCount(1);
+		const lengthBefore = await hooked(page, ([w]) => w.__studio.arrangement.clips[0].duration);
+		await page.getByRole("button", { name: "Insert silence" }).click();
+		await until(page, ([w]) => w.__studio.arrangement.clips.length === 2, { ms: 5_000 });
+		const split = await hooked(page, ([w]) =>
+			[...w.__studio.arrangement.clips]
+				.sort((a: any, b: any) => a.start - b.start)
+				.map((c: any) => [c.start, c.duration]),
+		);
+		expect(split[0][0]).toBe(0);
+		expect(split[0][1]).toBeCloseTo(2, 1);
+		expect(split[1][0]).toBeCloseTo(4, 1);
+		expect(split[1][1]).toBeCloseTo(lengthBefore - 2, 1);
+		await page.getByRole("button", { name: "Ripple delete" }).click();
+		await expect(page.locator("[data-range]")).toHaveCount(0);
+		const closed = await hooked(page, ([w]) =>
+			[...w.__studio.arrangement.clips]
+				.sort((a: any, b: any) => a.start - b.start)
+				.map((c: any) => [c.start, c.duration]),
+		);
+		expect(closed).toHaveLength(2);
+		expect(closed[1][0]).toBeCloseTo(2, 1);
+		// Undo twice: the one clip as it was.
+		await page.keyboard.press("ControlOrMeta+z");
+		await page.keyboard.press("ControlOrMeta+z");
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.clips.length)).toBe(1);
+
 		// A marker at 3 s: the flag on the ruler, a click on it brings the playhead back.
 		await hooked(page, ([w]) => w.__studio.seek(3));
 		await page.getByRole("button", { name: "Add marker" }).click();
@@ -161,6 +204,20 @@ test.describe("Dawn editing", () => {
 		await hooked(page, ([w]) => w.__studio.seek(12));
 		await marker.click();
 		expect(await hooked(page, ([w]) => w.__studio.position)).toBeCloseTo(3, 2);
+		// S on the focused flag makes it a section: a band along the ruler; "." jumps the playhead to it from the start.
+		await marker.focus();
+		await page.keyboard.press("s");
+		await expect(page.locator("[data-section]")).toHaveCount(1);
+		await expect(page.getByRole("button", { name: /^Section Marker 1 at/ })).toBeVisible();
+		await hooked(page, ([w]) => w.__studio.seek(0));
+		await page.locator("[data-clip]").first().click();
+		await page.keyboard.press("Escape");
+		await page.keyboard.press(".");
+		expect(await hooked(page, ([w]) => w.__studio.position)).toBeCloseTo(3, 2);
+		// Back to a plain marker (the flag is labeled "Section …" meanwhile, so find it by its attribute).
+		await page.locator("[data-marker]").first().focus();
+		await page.keyboard.press("s");
+		await expect(page.locator("[data-section]")).toHaveCount(0);
 		// The M key adds another; Delete on a focused flag removes it.
 		await page.keyboard.press("m");
 		await expect(page.getByRole("button", { name: /^Marker Marker 2 at/ })).toBeVisible();

@@ -46,6 +46,10 @@ Drag either end of a clip to **trim** it: the left edge moves where the clip beg
 
 **Shift-click** adds clips to the selection: drag them together, **Remove** them together, or press **Shift+Delete** to remove them and close the gap they leave. Where two clips on a track overlap they **crossfade**, equal power, so the join holds its level; slide one clip a little over its neighbor and the wedges show it. **Gain line** draws a line over the selected clip for riding a phrase without touching the track's fader: press on the clip to add a point, drag points up or down (and along the grid; hold Shift for free timing), use the arrow keys to nudge one, and Delete or Alt-click to take one out; **Clear line** removes them all. The line plays, bounces and consolidates with the clip.
 
+**Ranges.** Hold Alt (Option on a Mac) and drag along the ruler to select a stretch of time across every track. Press Delete to clear what it covers, Shift+Delete to cut it out and close the gap, or Insert (Shift+I on a Mac) to make room: everything after moves later by the range's length. The Range bar under the timeline does the same and can loop the range too.
+
+**Sections.** Press the bookmark button beside the marker flag to start a section at the playhead, or focus any marker on the ruler and press S to make it one: the section is drawn as a band along the ruler that runs to the next section, and a Reaper export carries it as a region. With the timeline focused, press , and . to jump to the previous and next marker.
+
 The clip tools make a new recording of a clip's audio and keep the original behind the scenes: **Reverse** plays it back to front, **Normalize** brings a quiet clip up to −1 dB, and **Consolidate** renders the selected clips of a track into one recording with their gains, fades and crossfades baked in, so a part built from pieces becomes one clip.
 
 ## Takes and comping

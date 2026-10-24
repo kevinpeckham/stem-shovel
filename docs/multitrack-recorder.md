@@ -779,16 +779,71 @@ one clip. A fade shape picker sits beside the fades.
 name; `MAX_STUDIO_MARKERS` 64) sit on the ruler as flags. **M** or the
 flag button in the transport adds one at the playhead (`addMarker`,
 named in order), a click jumps there, a double-click renames, Delete
-on a focused flag removes it; `moveMarker` and `markerFrom(t, step)`
-exist for a later jump-to-next key. Markers go with the song as part
-of the arrangement, so a revision keeps them.
+on a focused flag removes it; with the timeline focused, `,` and `.`
+jump the playhead to the previous and next marker (`markerFrom`).
+Markers go with the song as part of the arrangement, so a revision
+keeps them.
+
+**Sections (2026-10-24).** A marker can open a section
+(`StudioMarker.section`): the section runs from it to the next section
+marker, or to the song's end (the last clip's) after the last one, and
+the ruler draws it as a sky-blue band across its top with the name
+inside (`data-section`, pointer-transparent, so a press on it still
+seeks). Plain markers sit inside sections without ending them. The
+engine's `sections` getter is the one list of `{ id, name, start, end }`
+in time order; `addMarker(t, name, section)` makes one ("Add section"
+beside "Add marker" in the transport, named "Section N"), and S on a
+focused flag (`toggleMarkerSection`, one undo step) turns a marker into
+a section or back. In a Reaper project a section is a region (`MARKER …
+1` at its start and an unnamed end line), written and read as such; a
+DAWproject has only markers, so sections go out and come back as plain
+markers there.
 
 Browser spec `tests/e2e/studio-editing.spec.ts`; unit tests on each
 util; the timeline's component tests cover the selection, the drag of
-a selection, the wedges, the take lanes and the markers. Left for
-later: a range selection on the ruler with ripple insert, the song's
-sections drawn on the ruler, a jump-to-marker key. Clip gain envelopes
-came 2026-10-24 (below).
+a selection, the wedges, the take lanes, the markers, the sections, the
+gain line and the range selection. Clip gain envelopes, range edits,
+sections and the jump-to-marker keys came 2026-10-24 (below and above),
+closing D4.
+
+## Range edits (2026-10-24, docs/dawn-daw-plan.md D4)
+
+A range edit works on time, across every track at once. `deleteRange(from, to, ripple)`
+removes every clip's part inside [from, to) (`utils/rangeDelete.ts`): a clip wholly
+inside goes, one straddling `from` ends there, one straddling `to` keeps what comes
+after it with its offset moved to match, and one spanning the range becomes two, the
+right piece under a new id. `insertRange(at, seconds)` (`utils/rangeInsert.ts`) puts
+silence at `at`: clips at or after it move later, and a clip across it splits there.
+Both build their pieces with `utils/clipPart.ts`. A cut edge has no fade, and an edge
+the clip keeps holds its fade, shrunk to fit. A looped clip's offset follows its passes,
+and notes, lanes, warp, takes and the gain line are copied as they are, since they are
+in content seconds. Pieces under a millisecond are dropped. Each edit is one undo step
+and returns false when it changes nothing.
+
+With ripple (always, for an insert) the rest of the timeline moves too
+(`utils/shiftTimes.ts`): markers, tempo, meter and key changes, every automation lane
+(tracks, buses, master) and the loop region, when it starts at or after the edit. A
+ripple delete also removes the automation points inside the range. Markers and tempo,
+meter or key changes inside a deleted range stay where they are. A plain delete moves
+nothing and leaves automation alone. A frozen track's stored clips are not edited.
+
+An Alt-drag on the ruler selects a time range (`range`, bound on
+StudioTimeline): it snaps to the grid unless Shift is held, is at least
+0.05 s long, and clears the clip selection. It is drawn as a band on the
+ruler labeled with its start and end, and as a faint band over every lane
+(`data-range`, drawn like the playhead). A plain press on the ruler seeks as
+before and lets the range go; Escape clears it. With a range and no clip
+selected, Delete removes what it covers on every track (`deleteRange`),
+Shift+Delete ripples (the gap closes and the range goes), and Insert or
+Shift+I pushes everything from its start later by its length
+(`insertRange`; the range stays, over the silence). Selected clips keep the
+Delete key. The page shows a Range bar in the clip bar's place with Delete,
+Ripple delete, Insert silence, Loop range and Clear; each is one undo step,
+and a refusal (the clip limit) is a notification.
+
+Browser spec step in `tests/e2e/studio-editing.spec.ts`; component test
+in `StudioTimeline.svelte.test.ts`; unit tests beside each util and the
+engine's in `studio.svelte.test.ts`.
 
 ## Clip gain envelopes (2026-10-24, docs/dawn-daw-plan.md D4)
 

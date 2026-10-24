@@ -11,10 +11,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Added
 
 - **Clip gain lines in Dawn.** The clip bar's **Gain line** button draws a line over the selected clip: press the clip to add a point, drag points up or down and along the grid (Shift for free timing), nudge with the arrow keys, remove one with Delete or Alt-click, or **Clear line**. The line rides a phrase without automating the track's fader; it plays, bounces and consolidates with the clip, and a revision's Compare names it. Project exports to Reaper and DAWproject leave it out for now.
+- **Range edits in Dawn.** Alt-drag along the ruler selects a stretch of time across every track, drawn on the ruler and down the lanes. Delete clears what it covers, Shift+Delete cuts it out and closes the gap (markers, tempo and meter changes, automation and the loop move with the clips), and Insert or Shift+I pushes everything after it later by its length. A Range bar under the timeline offers the same plus Loop range; every edit is one undo step.
+- **Sections on the ruler in Dawn.** Add section in the transport, or S on a focused marker, makes a marker open a section: a named band along the ruler to the next section. A Reaper export writes sections as regions and reads regions back as sections. With the timeline focused, `,` and `.` jump to the previous and next marker.
 
 ### Technical
 
 - `gainEnvelope` on a clip (`StudioGainPointSchema`, 256 points); `utils/gainEnvelope.ts`; `envelopeNode` in the engine, `setClipGainEnvelope`; the timeline's `envelope` prop (docs/multitrack-recorder.md "Clip gain envelopes").
+- `deleteRange`/`insertRange` on the engine over `utils/rangeDelete.ts`, `utils/rangeInsert.ts`, `utils/clipPart.ts` and `utils/shiftTimes.ts`; the timeline's `range` prop; `StudioMarker.section`, the engine's `sections` getter and `toggleMarkerSection` (docs/multitrack-recorder.md "Range edits", "Sections"). D4 of docs/dawn-daw-plan.md is complete.
 
 ## [0.157.0] - 2026-10-24
 

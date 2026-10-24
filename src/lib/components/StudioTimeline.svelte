@@ -45,7 +45,8 @@
 	 * lane (snapped to the beat when the grid is on; Shift frees it) and
 	 * onto another track; a press on empty lane or on the ruler seeks;
 	 * Delete removes the selected clip. The loop region sits on the ruler
-	 * with its ends draggable.
+	 * with its ends draggable; an Alt-drag on the ruler selects a time range
+	 * that Delete, Shift+Delete and Insert act on across every track.
 	 */
 	interface Props {
 		/** The selected clip, if any (the last one clicked: the clip bar shows it). */
@@ -67,12 +68,15 @@
 		oncomment?: (id: string) => void;
 		/** The selected clip's gain envelope shown and edited (docs/multitrack-recorder.md "Clip gain envelopes"): a press on the clip adds a point. */
 		envelope?: boolean;
+		/** A time range selected on the ruler (Alt-drag; docs/multitrack-recorder.md "Range edits"): the page's Range tools act on it. */
+		range?: { start: number; end: number } | null;
 	}
 	let {
 		selected = $bindable(null),
 		selectedIds = $bindable([]),
 		pxPerSecond = $bindable(40),
 		envelope = $bindable(false),
+		range = $bindable(null),
 		onarm,
 		onrender,
 		onfreeze,
@@ -251,6 +255,14 @@
 		return Math.max(0, x / pxPerSecond);
 	}
 	let scrubbing = false;
+	/** Where an Alt-drag on the ruler began (the range's anchor), while one runs. */
+	let rangeFrom: number | null = null;
+	/** The range from the anchor to `t`, ordered and at least 0.05 s long. */
+	function rangeTo(t: number) {
+		const from = rangeFrom ?? t;
+		const start = Math.min(from, t);
+		return { start, end: Math.max(start + 0.05, Math.max(from, t)) };
+	}
 	function onrulerdown(e: PointerEvent) {
 		if (e.button !== 0) return;
 		const t = secondsAtClientX(e.clientX);
@@ -261,6 +273,16 @@
 			e.preventDefault();
 			return;
 		}
+		if (e.altKey) {
+			// Alt-drag selects a range (snapped unless Shift); the clip selection gives way to it.
+			rangeFrom = e.shiftKey ? t : engine.snap(t);
+			range = rangeTo(rangeFrom);
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+			clearSelection();
+			e.preventDefault();
+			return;
+		}
+		range = null;
 		scrubbing = true;
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		engine.seek(e.shiftKey ? t : engine.snap(t));
@@ -278,12 +300,18 @@
 					: { start: loop.start, end: Math.max(t, loop.start + 0.1) };
 			return;
 		}
+		if (rangeFrom !== null) {
+			const t = secondsAtClientX(e.clientX);
+			range = rangeTo(e.shiftKey ? t : engine.snap(t));
+			return;
+		}
 		if (!scrubbing) return;
 		const t = secondsAtClientX(e.clientX);
 		engine.seek(e.shiftKey ? t : engine.snap(t));
 	}
 	function onrulerup() {
 		scrubbing = false;
+		rangeFrom = null;
 		if (loopDrag && loopPreview) {
 			const loop = engine.arrangement.loop;
 			engine.setLoop({ on: loop?.on ?? true, ...loopPreview });
@@ -648,8 +676,27 @@
 			engine.deleteClips(chosen, e.shiftKey);
 			clearSelection();
 			e.preventDefault();
+		} else if (range && (e.key === "Delete" || e.key === "Backspace")) {
+			// The ruler's range with no clip selected: Delete cuts it from every track, Shift+Delete closes the gap too.
+			engine.deleteRange(range.start, range.end, e.shiftKey);
+			if (e.shiftKey) range = null;
+			e.preventDefault();
+		} else if (
+			range &&
+			(e.key === "Insert" || (e.shiftKey && (e.key === "I" || e.key === "i"))) &&
+			!(e.metaKey || e.ctrlKey || e.altKey)
+		) {
+			// Insert (or Shift+I) pushes everything from the range's start later by its length; the range stays, over the silence.
+			engine.insertRange(range.start, range.end - range.start);
+			e.preventDefault();
 		} else if (e.key === "Escape") {
 			clearSelection();
+			range = null;
+		} else if ((e.key === "," || e.key === ".") && !(e.metaKey || e.ctrlKey || e.altKey)) {
+			// Jump to the previous (,) or next (.) marker.
+			const m = engine.markerFrom(engine.position, e.key === "." ? 1 : -1);
+			if (m) engine.seek(m.t);
+			e.preventDefault();
 		}
 	}
 	/** ⌘/Ctrl + wheel zooms around the pointer; a plain wheel scrolls. */
@@ -1080,6 +1127,16 @@
 					title="Loop region: drag its ends"
 				></div>
 			{/if}
+			{#if range}
+				<div
+					class="pointer-events-none absolute inset-y-0 z-5 truncate border-x border-white/60 bg-white/15 px-1 text-10px leading-7 text-light"
+					style:left="{range.start * pxPerSecond}px"
+					style:width="{Math.max(1, (range.end - range.start) * pxPerSecond)}px"
+					data-range-ruler
+				>
+					{formatTime(range.start)} – {formatTime(range.end)}
+				</div>
+			{/if}
 			<!-- Tempo and meter changes (D5): a flag each at the top; double-click edits, Delete on a focused one removes it. -->
 			<!-- Keyed by time and place: two changes on one time (a jump an import wrote as two points) must not crash the ruler. -->
 			{#each engine.tempoChanges as c, i (`${c.start}#${i}`)}
@@ -1167,6 +1224,18 @@
 					}}>{c.key}</button
 				>
 			{/each}
+			<!-- Sections (D4): a band from each section marker to the next (or the song's end); the flag carries the name for assistive tech. -->
+			{#each engine.sections as sec (sec.id)}
+				<div
+					class="pointer-events-none absolute top-0 h-3 truncate border-l border-sky-300/60 bg-sky-400/25 px-1 text-9px leading-3 text-sky-100"
+					style:left="{sec.start * pxPerSecond}px"
+					style:width="{Math.max(0, sec.end - sec.start) * pxPerSecond}px"
+					data-section={sec.id}
+					aria-hidden="true"
+				>
+					{sec.name}
+				</div>
+			{/each}
 			<!-- Comments (D7): a dot each at the ruler's foot; a click seeks there and opens the thread. -->
 			{#each comments as c (c.id)}
 				<button
@@ -1183,15 +1252,19 @@
 					}}
 				></button>
 			{/each}
-			<!-- Markers (D4): a flag each; click jumps there, double-click renames, Delete on a focused one removes it. -->
+			<!-- Markers (D4): a flag each; click jumps there, double-click renames, S makes it a section, Delete on a focused one removes it. -->
 			{#each engine.markers as m (m.id)}
 				<button
 					type="button"
-					class="absolute bottom-0 z-10 h-4 max-w-32 truncate rounded-t px-1 text-10px leading-4 bg-maximumYellow/80 text-dark hover:bg-maximumYellow focus-visible:ring-1 focus-visible:ring-white"
+					class="absolute bottom-0 z-10 h-4 max-w-32 truncate rounded-t px-1 text-10px leading-4 text-dark focus-visible:ring-1 focus-visible:ring-white {m.section
+						? 'bg-sky-300/90 hover:bg-sky-200'
+						: 'bg-maximumYellow/80 hover:bg-maximumYellow'}"
 					style:left="{m.t * pxPerSecond}px"
 					data-marker={m.id}
-					aria-label="Marker {m.name} at {formatTime(m.t)}"
-					title="{m.name} · {formatTime(m.t)} (double-click to rename, Delete to remove)"
+					aria-label="{m.section ? 'Section' : 'Marker'} {m.name} at {formatTime(m.t)}"
+					title="{m.name} · {formatTime(m.t)} (double-click to rename, S {m.section
+						? 'makes it a plain marker'
+						: 'makes it a section'}, Delete to remove; , and . jump between markers)"
 					onpointerdown={(e) => e.stopPropagation()}
 					onclick={() => engine.seek(m.t)}
 					ondblclick={() => {
@@ -1202,6 +1275,11 @@
 						if (e.key === "Delete" || e.key === "Backspace") {
 							// The marker alone: the timeline's own Delete (the selected clips) must not hear it.
 							engine.deleteMarker(m.id);
+							e.preventDefault();
+							e.stopPropagation();
+						} else if ((e.key === "s" || e.key === "S") && !(e.metaKey || e.ctrlKey || e.altKey)) {
+							// Not the page's S (split the selected clip).
+							engine.toggleMarkerSection(m.id);
 							e.preventDefault();
 							e.stopPropagation();
 						}
@@ -1820,6 +1898,15 @@
 		</div>
 	{/each}
 
+	<!-- The ruler's range over every lane, like the playhead: below the sticky headers and the ruler. -->
+	{#if range}
+		<div
+			class="pointer-events-none absolute top-0 bottom-0 z-5 border-x border-white/50 bg-white/10"
+			data-range
+			style:left="{HEADER_W + range.start * pxPerSecond}px"
+			style:width="{Math.max(1, (range.end - range.start) * pxPerSecond)}px"
+		></div>
+	{/if}
 	<!-- The playhead over every lane: below the sticky headers (z-10) and the ruler, so it hides behind them as the lanes scroll. -->
 	<div
 		class="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-accent z-5"

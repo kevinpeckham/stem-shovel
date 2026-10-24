@@ -93,8 +93,18 @@ export function rppProject(input: RppProjectInput): string {
 		}
 		out(1, ">");
 	}
+	// Markers; a section marker is a region (docs/multitrack-recorder.md "Sections") from it to the next section or the song's end.
 	const markers = [...(a.markers ?? [])].sort((x, y) => x.t - y.t);
-	markers.forEach((m, i) => out(1, `MARKER ${i + 1} ${num(m.t)} ${q(m.name)} 0 0 1`));
+	const sectionsAfter = (t: number) => markers.find((m) => m.section && m.t > t)?.t;
+	const songEnd = Math.max(0, ...a.clips.map((c) => c.start + c.duration));
+	markers.forEach((m, i) => {
+		if (!m.section) {
+			out(1, `MARKER ${i + 1} ${num(m.t)} ${q(m.name)} 0 0 1`);
+			return;
+		}
+		out(1, `MARKER ${i + 1} ${num(m.t)} ${q(m.name)} 1 0 1`);
+		out(1, `MARKER ${i + 1} ${num(Math.max(m.t, sectionsAfter(m.t) ?? songEnd))} "" 1`);
+	});
 	out(1, `MASTER_VOLUME ${num(a.master)} 0 -1 -1 1`);
 
 	// The order: tracks to the master, then each bus as a folder holding the tracks routed to it and the buses routed

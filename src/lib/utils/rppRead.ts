@@ -214,18 +214,22 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 		}))
 		.slice(0, 64);
 
-	// ── Markers (a region's start carries its name; its end line is skipped), the notes, the rate, the master ──
+	// ── Markers (a region is a section marker at its start, docs/multitrack-recorder.md "Sections"; its end line is skipped), the notes, the rate, the master ──
 	const markers: StudioMarker[] = [];
 	for (const m of linesOf(project, "MARKER")) {
 		const region = (numAt(m, 4, 0) & 1) === 1;
 		const name = (m[3] ?? "").trim().slice(0, 40);
 		if (region && !name) continue;
-		if (region) fix("Regions read as markers at their start");
 		if (markers.length >= MAX_STUDIO_MARKERS) {
 			drop(`${name || "A marker"} (over the ${MAX_STUDIO_MARKERS}-marker limit)`);
 			continue;
 		}
-		markers.push({ id: nanoid(), t: seconds(Math.max(0, numAt(m, 2, 0))), name: name || "Marker" });
+		markers.push({
+			id: nanoid(),
+			t: seconds(Math.max(0, numAt(m, 2, 0))),
+			name: name || "Marker",
+			...(region ? { section: true } : {}),
+		});
 	}
 	const notesBlock = blocksOf(project, "NOTES")[0];
 	const notes = notesBlock

@@ -18,7 +18,7 @@ const arrangement: StudioArrangement = {
 	tempoChanges: [{ start: 8, bpm: 100 }],
 	meterChanges: [{ start: 8, beatsPerBar: 3 }],
 	markers: [
-		{ id: "m2", t: 8, name: "Verse" },
+		{ id: "m2", t: 8, name: "Verse", section: true },
 		{ id: "m1", t: 0, name: "Intro" },
 	],
 	buses: [{ id: "b1", name: "Drums", colour: "sea", gain: 0.8, pan: 0, muted: false }],
@@ -150,7 +150,10 @@ describe("rppProject", () => {
 		expect(text).toContain(
 			`    PT 0 120 1 ${(4 << 16) | 4} 0 1\n    PT 8 100 1 ${(4 << 16) | 3} 0 1\n`,
 		);
-		expect(text).toContain('  MARKER 1 0 "Intro" 0 0 1\n  MARKER 2 8 "Verse" 0 0 1\n');
+		// A section marker is a region, from it to the next section or the song's end (the last clip's).
+		expect(text).toContain('  MARKER 1 0 "Intro" 0 0 1\n  MARKER 2 8 "Verse" 1 0 1\n  MARKER 2 ');
+		const songEnd = Math.max(...arrangement.clips.map((c) => c.start + c.duration));
+		expect(text).toContain(`  MARKER 2 ${songEnd} "" 1\n`);
 		expect(text).toContain("  MASTER_VOLUME 0.9 0 -1 -1 1\n");
 		// Bass goes to the master and comes first; the Drums folder holds Kick and Hats, Hats closing it.
 		const names = [...text.matchAll(/^    NAME "(.+)"$/gm)].map((m) => m[1]);
