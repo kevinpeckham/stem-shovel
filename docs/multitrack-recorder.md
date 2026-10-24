@@ -789,7 +789,8 @@ keeps them.
 marker, or to the song's end (the last clip's) after the last one, and
 the ruler draws it as a sky-blue band across its top with the name
 inside (`data-section`, pointer-transparent, so a press on it still
-seeks). Plain markers sit inside sections without ending them. The
+seeks); while a song has any section the bar numbers move down a row
+(`top-3.5`) so no band's name sits on one. Plain markers sit inside sections without ending them. The
 engine's `sections` getter is the one list of `{ id, name, start, end }`
 in time order; `addMarker(t, name, section)` makes one ("Add section"
 beside "Add marker" in the transport, named "Section N"), and S on a

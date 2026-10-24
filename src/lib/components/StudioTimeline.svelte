@@ -1292,8 +1292,11 @@
 					style:left="{tick.x}px"
 				></div>
 				{#if tick.label}
+					<!-- Under the section bands when the song has any, so a band's name never sits on a bar number. -->
 					<span
-						class="absolute top-0.5 text-10px tabular-nums opacity-70 pl-1 leading-none"
+						class="absolute {engine.sections.length
+							? 'top-3.5'
+							: 'top-0.5'} text-10px tabular-nums opacity-70 pl-1 leading-none"
 						style:left="{tick.x}px">{tick.label}</span
 					>
 				{/if}

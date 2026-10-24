@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Section bands no longer cover the bar numbers.** While a song has sections, the ruler's bar numbers sit in their own row under the bands.
+
 ## [0.159.0] - 2026-10-24
 
 ### Added
