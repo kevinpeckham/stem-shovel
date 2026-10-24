@@ -77,6 +77,25 @@ describe("mixClipsToChannels", () => {
 		expect(out[0]![10]).toBeCloseTo(0.5, 6);
 		expect(out[0]![50]).toBeCloseTo(0.5, 6);
 	});
+	it("bakes a clip's gain envelope over its content, held flat beyond its points", () => {
+		// Source a is 0.5 throughout; the envelope halves it from one second in and is back to one by two seconds.
+		const shaped = clip({
+			id: "e",
+			sourceId: "a",
+			start: 0,
+			duration: 3,
+			gainEnvelope: [
+				{ t: 1, v: 0.5 },
+				{ t: 2, v: 1 },
+			],
+		});
+		const out = mixClipsToChannels([shaped], sourceOf, { from: 0, to: 3, sampleRate: 10 });
+		const left = Array.from(out[0]!).map((v) => Math.round(v * 1000) / 1000);
+		expect(left.slice(0, 10)).toEqual(Array.from({ length: 10 }, () => 0.25));
+		expect(left[10]).toBe(0.25);
+		expect(left[15]).toBe(0.375);
+		expect(left.slice(20)).toEqual(Array.from({ length: 10 }, () => 0.5));
+	});
 	it("applies a clip's own linear fades and skips a source it cannot find", () => {
 		const out = mixClipsToChannels(
 			[

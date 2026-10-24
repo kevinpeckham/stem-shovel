@@ -83,6 +83,7 @@ export function diffArrangements(before: StudioArrangement, after: StudioArrange
 		if (was.gain !== c.gain) changes.push("gain");
 		if (was.fadeIn !== c.fadeIn || was.fadeOut !== c.fadeOut || was.fadeShape !== c.fadeShape)
 			changes.push("fades");
+		if (!same(was.gainEnvelope, c.gainEnvelope)) changes.push("gain envelope");
 		if (was.sourceId !== c.sourceId) changes.push("another take");
 		if (!same(was.notes, c.notes)) changes.push("notes");
 		if (!same(was.lanes, c.lanes)) changes.push("expression");

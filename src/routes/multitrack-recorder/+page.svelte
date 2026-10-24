@@ -926,6 +926,8 @@
 		}
 	}
 	let selectedClip = $derived(studio.arrangement.clips.find((c) => c.id === selected) ?? null);
+	/** The selected clip's gain line shown on the timeline (docs/multitrack-recorder.md "Clip gain envelopes"). */
+	let gainLineOn = $state(false);
 	function splitSelected() {
 		if (!selectedClip) return;
 		const right = studio.splitClip(selectedClip.id, studio.position);
@@ -2100,6 +2102,7 @@
 						bind:selected
 						bind:selectedIds
 						bind:pxPerSecond
+						bind:envelope={gainLineOn}
 						onfreeze={(t) => void freezeTrack(t)}
 						onunfreeze={unfreezeTrack}
 						comments={comments
@@ -2431,6 +2434,29 @@
 									<option value="power">Equal power</option>
 								</select>
 							</label>
+							<!-- The gain line (docs/multitrack-recorder.md "Clip gain envelopes"): drawn over the clip on the timeline, its points dragged there. -->
+							<button
+								class="device-button-xs px-2"
+								type="button"
+								aria-pressed={gainLineOn}
+								title="Draw a gain line over the clip: with it shown, a press on the clip adds a point; drag points (Shift for free timing), arrows nudge, Delete or Alt-click removes one"
+								onclick={() => (gainLineOn = !gainLineOn)}
+							>
+								<span class="i-ph-chart-line" aria-hidden="true"></span> Gain line{clip.gainEnvelope
+									?.length
+									? ` (${clip.gainEnvelope.length})`
+									: ""}
+							</button>
+							{#if clip.gainEnvelope?.length}
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="Take every point of the gain line away"
+									onclick={() => studio.setClipGainEnvelope(clip.id, [])}
+								>
+									<span class="i-ph-eraser" aria-hidden="true"></span> Clear line
+								</button>
+							{/if}
 						{/if}
 						<span class="flex items-center gap-1">
 							<button

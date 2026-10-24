@@ -79,6 +79,7 @@ import { renderWarpAsync } from "./warpRenderer.js";
 import { clipCrossfades, type EffectiveFades } from "#lib/utils/clipCrossfades.js";
 import { compRegion } from "#lib/utils/compRegion.js";
 import { fadeCurve } from "#lib/utils/fadeCurve.js";
+import { gainEnvelopeRamps } from "#lib/utils/gainEnvelope.js";
 import { mixClipsToChannels } from "#lib/utils/mixClipsToChannels.js";
 import { reverseChannels } from "#lib/utils/reverseChannels.js";
 import { rippleDelete } from "#lib/utils/rippleDelete.js";
@@ -210,6 +211,28 @@ function scheduleFades(
 	param.value = 0;
 	param.setValueCurveAtTime(fadeCurve(f.inShape, "in", peak), at, inLen);
 	param.setValueCurveAtTime(fadeCurve(f.outShape, "out", peak), at + length - outLen, outLen);
+}
+/**
+ * A clip's gain envelope over one pass of it (utils/gainEnvelope.ts): the
+ * content span [offset, offset + length) plays from `at`, so each ramp
+ * lands at `at + (t - offset)` on a gain of its own in series with the
+ * fades (an AudioParam takes curves or ramps, not both over one stretch).
+ * Returns the node to put in the chain, or null when the envelope is flat.
+ */
+function envelopeNode(
+	ctx: BaseAudioContext,
+	points: StudioClip["gainEnvelope"],
+	at: number,
+	offset: number,
+	length: number,
+): GainNode | null {
+	const ramps = gainEnvelopeRamps(points, offset, offset + length);
+	if (!ramps.length) return null;
+	const node = ctx.createGain();
+	const param = node.gain;
+	param.setValueAtTime(ramps[0]!.v, at);
+	for (const r of ramps.slice(1)) param.linearRampToValueAtTime(r.v, at + (r.t - offset));
+	return node;
 }
 const LOAD_CONCURRENCY = 3;
 /** What the strip maps read before the context opens. */
@@ -1704,6 +1727,26 @@ class StudioEngine {
 		this.#reschedule();
 	}
 	/**
+	 * The clip's gain envelope replaced whole (docs/multitrack-recorder.md "Clip
+	 * gain envelopes"): points in content seconds with a factor each, kept in
+	 * time order; none takes the envelope away (a point at one is kept: it is
+	 * where the next drag starts). One undo step per call: the timeline
+	 * previews a drag and calls once at its end.
+	 */
+	setClipGainEnvelope(clipId: string, points: StudioClip["gainEnvelope"]) {
+		const c = this.#clip(clipId);
+		if (!c?.sourceId) return;
+		const next = (points ?? [])
+			.map((p) => ({ t: round4(Math.max(0, p.t)), v: round4(Math.max(0, Math.min(2, p.v))) }))
+			.sort((a, b) => a.t - b.t);
+		const kept = next.length ? next : undefined;
+		if (JSON.stringify(kept) === JSON.stringify(c.gainEnvelope)) return;
+		this.#commit();
+		if (kept) c.gainEnvelope = kept;
+		else delete c.gainEnvelope;
+		this.#reschedule();
+	}
+	/**
 	 * Loop (docs/multitrack-recorder.md, "Looping a clip"): on, the clip's
 	 * content as it stands becomes the loop and the clip can be dragged
 	 * longer to repeat it; off, the clip plays once and shrinks to what its
@@ -3023,9 +3066,12 @@ class StudioEngine {
 			const src = ctx.createBufferSource();
 			src.buffer = buffer;
 			const gain = ctx.createGain();
-			src.connect(gain);
-			gain.connect(nodes.input);
 			const at = when + (begins - from);
+			// The gain envelope rides its own node before the fades (docs/multitrack-recorder.md "Clip gain envelopes").
+			const env = envelopeNode(ctx, clip.gainEnvelope, at, offset, length);
+			if (env) src.connect(env).connect(gain);
+			else src.connect(gain);
+			gain.connect(nodes.input);
 			scheduleFades(gain.gain, clip.gain, at, length, {
 				fadeIn: begins === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
 				fadeOut: ends === clipEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
@@ -3036,6 +3082,7 @@ class StudioEngine {
 			const entry: Playing = { clipId: clip.id, src, gain };
 			src.onended = () => {
 				this.#playing = this.#playing.filter((p) => p !== entry);
+				env?.disconnect();
 				gain.disconnect();
 			};
 			this.#playing.push(entry);
@@ -3647,9 +3694,11 @@ class StudioEngine {
 				const src = off.createBufferSource();
 				src.buffer = buffer;
 				const gain = off.createGain();
-				src.connect(gain).connect(into);
 				const len = Math.min(seg.duration, Math.max(0, buffer.duration - seg.offset));
 				if (len <= 0) continue;
+				const env = envelopeNode(off, clip.gainEnvelope, seg.start, seg.offset, len);
+				if (env) src.connect(env).connect(gain).connect(into);
+				else src.connect(gain).connect(into);
 				scheduleFades(gain.gain, clip.gain, seg.start, len, {
 					...f,
 					fadeIn: seg.start === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,

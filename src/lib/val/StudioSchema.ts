@@ -214,6 +214,14 @@ export const StudioNoteSchema = v.object({
 });
 export type StudioNote = v.InferOutput<typeof StudioNoteSchema>;
 
+/** A breakpoint of a clip's gain envelope: content seconds like a note's `t`, a gain factor from silence to double. */
+export const StudioGainPointSchema = v.object({
+	t: SecondsSchema,
+	v: v.pipe(v.number(), v.minValue(0), v.maxValue(2)),
+});
+export type StudioGainPoint = v.InferOutput<typeof StudioGainPointSchema>;
+/** The most points a clip's gain envelope holds. */
+export const MAX_STUDIO_GAIN_POINTS = 256;
 /** A breakpoint of an expression lane: content seconds like a note's `t`, a normalized value held until the next point. */
 export const StudioLanePointSchema = v.object({
 	t: SecondsSchema,
@@ -284,6 +292,13 @@ export const StudioClipSchema = v.pipe(
 		alternates: v.optional(v.pipe(v.array(NanoIdSchema), v.maxLength(32))),
 		/** The shape of the clip's own fades (D4): linear, or equal-power (`power`) as a crossfade needs. Absent means linear. */
 		fadeShape: v.optional(v.picklist(STUDIO_FADE_SHAPES)),
+		/**
+		 * A gain envelope over the clip's content (docs/multitrack-recorder.md "Clip gain envelopes"): points in content seconds,
+		 * each a factor on the clip's gain, a line between them, held flat beyond the ends (utils/gainEnvelope.ts). Absent means one.
+		 */
+		gainEnvelope: v.optional(
+			v.pipe(v.array(StudioGainPointSchema), v.maxLength(MAX_STUDIO_GAIN_POINTS)),
+		),
 		/**
 		 * A loop over the content (docs/multitrack-recorder.md, "Looping a clip"): content seconds, like `offset`. The clip plays from
 		 * `offset` to `end`, then `start` to `end` again and again for its `duration` (utils/clipSegments.ts). Absent means it plays once.

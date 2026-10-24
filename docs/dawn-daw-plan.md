@@ -133,8 +133,10 @@ automatable parameters, so D2 adds sends and inserts in one place.
   (`compRegion`, `compFromTake`), multi-selection with grouped moves
   and ripple delete (`rippleDelete`), Reverse, Normalize and
   Consolidate as new recordings (`mixClipsToChannels`), markers on the
-  ruler. Left: gain envelopes, range edits on the ruler, sections drawn
-  on the ruler. docs/multitrack-recorder.md "Editing depth".
+  ruler, clip gain envelopes (2026-10-24, `gainEnvelope`,
+  `utils/gainEnvelope.ts`). Left: range edits on the ruler, sections
+  drawn on the ruler. docs/multitrack-recorder.md "Editing depth",
+  "Clip gain envelopes".
 
 ### D5. Time: the tempo map, meters, swing, stretch (built on `dawn-daw`, 2026-10-19)
 

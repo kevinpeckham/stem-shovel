@@ -2,6 +2,7 @@ import type { StudioClip } from "#lib/val/StudioSchema.js";
 import { clipCrossfades } from "./clipCrossfades";
 import { clipSegments } from "./clipSegments";
 import { fadeCurve } from "./fadeCurve";
+import { gainEnvelopeAt } from "./gainEnvelope";
 
 /** What a clip's source holds: its channels and rate (an AudioBuffer, or a test's arrays). */
 export interface ClipSource {
@@ -51,7 +52,10 @@ export function mixClipsToChannels(
 			if (f.fadeOut > 0 && left < f.fadeOut)
 				g *= outCurve[Math.min(255, Math.floor((1 - left / f.fadeOut) * 255))]!;
 			const s = segments[seg]!;
-			const srcIndex = Math.round((s.offset + (t - (s.start - c.start))) * src.sampleRate);
+			const contentAt = s.offset + (t - (s.start - c.start));
+			// The gain envelope over the content (utils/gainEnvelope.ts), baked in with the fades.
+			if (c.gainEnvelope) g *= gainEnvelopeAt(c.gainEnvelope, contentAt);
+			const srcIndex = Math.round(contentAt * src.sampleRate);
 			for (let ch = 0; ch < 2; ch++) {
 				const data = src.channels[Math.min(ch, src.channels.length - 1)]!;
 				const v = srcIndex < data.length ? data[srcIndex]! : 0;

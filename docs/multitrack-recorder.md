@@ -786,9 +786,52 @@ of the arrangement, so a revision keeps them.
 Browser spec `tests/e2e/studio-editing.spec.ts`; unit tests on each
 util; the timeline's component tests cover the selection, the drag of
 a selection, the wedges, the take lanes and the markers. Left for
-later: clip gain envelopes, a range selection on the ruler with
-ripple insert, the song's sections drawn on the ruler, a jump-to-marker
-key.
+later: a range selection on the ruler with ripple insert, the song's
+sections drawn on the ruler, a jump-to-marker key. Clip gain envelopes
+came 2026-10-24 (below).
+
+## Clip gain envelopes (2026-10-24, docs/dawn-daw-plan.md D4)
+
+A clip's `gainEnvelope` (`StudioGainPointSchema`: `t` in content
+seconds like a note's, `v` a factor from silence to double, at most
+`MAX_STUDIO_GAIN_POINTS` 256) rides a phrase without automating the
+whole track: a line between the points, held flat before the first and
+after the last, on top of the clip's gain and under its fades.
+`utils/gainEnvelope.ts` is the one source: `gainEnvelopeAt` for the
+factor at a second, `gainEnvelopeRamps` for the ramps a stretch of
+content needs (a point at each end of the span and every breakpoint
+inside; empty when the envelope is flat at one), `gainEnvelopeWith` to
+set a point (replacing one within half a millisecond, sorted, clamped).
+
+- **Playing.** `envelopeNode` in the engine puts a gain of its own
+  between the source and the fades' gain (an `AudioParam` takes curves
+  or ramps, not both over one stretch), `setValueAtTime` for the first
+  ramp and `linearRampToValueAtTime` for the rest, each at `at + (t -
+  offset)` of the pass; every pass of a looped clip replays the stretch
+  it plays. The same for the bounce. `mixClipsToChannels` bakes the
+  factor in with the fades, so Consolidate keeps the ride.
+- **Editing.** `setClipGainEnvelope(clipId, points)` replaces the
+  envelope whole, rounded and sorted; no points, or every point at one,
+  removes it. One undo step per call: the timeline previews a drag and
+  calls once at its end, the keys call per press. The clip bar's **Gain
+  line** button (`aria-pressed`, the count of points) binds the
+  timeline's `envelope` prop; **Clear line** empties it. With the line
+  shown on the selected audio clip, the timeline draws it as an SVG
+  polyline over the clip (`data-gain-line`, y from double at the top to
+  silence at the foot) with a round button per point
+  (`data-gain-point`, "Gain point at 0:04.0, -6.0 dB"): a press on the
+  clip's body adds a point there at the line's own value instead of
+  starting a move; a point drags sideways on the grid (Shift frees it)
+  and up or down over the clip's height; arrows nudge (a twentieth of
+  the range, a hundredth of a second; Shift for a fifth and a tenth);
+  Delete or Alt-click removes one. A looped clip draws the line over
+  its first pass's content. Revisions call a change "gain envelope"
+  (`diffArrangements`).
+- **Not in the files.** The Reaper and DAWproject writers leave the
+  envelope out (a Reaper take has a volume envelope of its own, and a
+  DAWproject clip could carry Points; neither is written or read yet),
+  so a project export plays the clip at its gain alone. Consolidate
+  first when the ride must travel.
 
 ## Time (2026-10-19, docs/dawn-daw-plan.md D5)
 

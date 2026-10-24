@@ -47,6 +47,7 @@ const fake = vi.hoisted(() => {
 		addWarpPoint: vi.fn(),
 		moveWarpPoint: vi.fn(),
 		removeWarpPoint: vi.fn(),
+		setClipGainEnvelope: vi.fn(),
 		livePeaksOf: vi.fn(() => [0.2, 0.8]),
 		seek: vi.fn(),
 		snap: vi.fn((t: number) => Math.round(t * 2) / 2),
@@ -743,6 +744,52 @@ describe("StudioTimeline", () => {
 		expect(fake.deleteClips).not.toHaveBeenCalled();
 		await fireEvent.pointerDown(marker, at(180, 10, { altKey: true }));
 		expect(fake.removeWarpPoint).toHaveBeenCalledTimes(2);
+	});
+
+	test("the gain line: the selected clip's points sit by their second and factor, drag, nudge and delete, and a press on the clip adds one", async () => {
+		fake.arrangement.clips[0]!.gainEnvelope = [
+			{ t: 1, v: 1 },
+			{ t: 2, v: 0.5 },
+		];
+		render(StudioTimeline, { props: { selected: "c1", envelope: true } });
+		const c1 = clipEl("c1");
+		c1.getBoundingClientRect = () =>
+			({ left: 280, right: 440, width: 160, top: 0, bottom: 100, height: 100 }) as DOMRect;
+		expect(c1.querySelector("[data-gain-line]")).not.toBeNull();
+		const points = c1.querySelectorAll("[data-gain-point]");
+		expect(points).toHaveLength(2);
+		const second = points[1] as HTMLElement;
+		// Two seconds of content is 80 px in; a factor of a half sits three quarters of the way down.
+		expect(second.style.left).toBe("80px");
+		expect(second.style.top).toBe("75%");
+		expect(second.getAttribute("aria-label")).toBe("Gain point at 0:04.0, -6.0 dB");
+		// Dragged 25 px down over a 100 px clip: half the range off, to silence; the preview follows, then the engine is told once.
+		await fireEvent.pointerDown(second, at(360, 75));
+		await fireEvent.pointerMove(second, at(360, 100));
+		expect(second.style.top).toBe("100%");
+		await fireEvent.pointerUp(second, at(360, 100));
+		expect(fake.setClipGainEnvelope).toHaveBeenLastCalledWith("c1", [
+			{ t: 1, v: 1 },
+			{ t: 2, v: 0 },
+		]);
+		expect(fake.moveClip).not.toHaveBeenCalled();
+		// The keys: up by a twentieth, Delete takes the point out.
+		await fireEvent.keyDown(second, { key: "ArrowUp" });
+		expect(fake.setClipGainEnvelope).toHaveBeenLastCalledWith("c1", [
+			{ t: 1, v: 1 },
+			{ t: 2, v: 0.55 },
+		]);
+		await fireEvent.keyDown(second, { key: "Delete" });
+		expect(fake.setClipGainEnvelope).toHaveBeenLastCalledWith("c1", [{ t: 1, v: 1 }]);
+		expect(fake.deleteClips).not.toHaveBeenCalled();
+		// A press on the clip's body with the line shown adds a point there at the line's value (3 s of content, where the line is at 0.5).
+		await fireEvent.pointerDown(c1, at(xAt(5), 50));
+		expect(fake.setClipGainEnvelope).toHaveBeenLastCalledWith("c1", [
+			{ t: 1, v: 1 },
+			{ t: 2, v: 0.5 },
+			{ t: 3, v: 0.5 },
+		]);
+		expect(fake.addWarpPoint).not.toHaveBeenCalled();
 	});
 
 	test("a warped clip wears its stretch on its label", async () => {

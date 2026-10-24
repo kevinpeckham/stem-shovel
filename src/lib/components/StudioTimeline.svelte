@@ -14,7 +14,14 @@
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import { insertsOf } from "#lib/utils/insertsFromFx.js";
 	import { clipCrossfades } from "#lib/utils/clipCrossfades.js";
-	import type { StudioClip, StudioInput, StudioNote, StudioTrack } from "#lib/val/StudioSchema.js";
+	import { GAIN_ENVELOPE_MAX, gainEnvelopeAt, gainEnvelopeWith } from "#lib/utils/gainEnvelope.js";
+	import type {
+		StudioClip,
+		StudioGainPoint,
+		StudioInput,
+		StudioNote,
+		StudioTrack,
+	} from "#lib/val/StudioSchema.js";
 	import type { Attachment } from "svelte/attachments";
 	import ComboBox from "./ComboBox.svelte";
 	import ContextMenu from "./ContextMenu.svelte";
@@ -58,11 +65,14 @@
 		/** Comments pinned to moments (D7), drawn on the ruler; a click seeks there and opens the thread. */
 		comments?: { id: string; at: number; by: string }[];
 		oncomment?: (id: string) => void;
+		/** The selected clip's gain envelope shown and edited (docs/multitrack-recorder.md "Clip gain envelopes"): a press on the clip adds a point. */
+		envelope?: boolean;
 	}
 	let {
 		selected = $bindable(null),
 		selectedIds = $bindable([]),
 		pxPerSecond = $bindable(40),
+		envelope = $bindable(false),
 		onarm,
 		onrender,
 		onfreeze,
@@ -363,6 +373,17 @@
 			e.stopPropagation();
 			return;
 		}
+		if (mode === "move" && wearsEnvelope(clip)) {
+			// With the gain line shown, a press on the clip's body sets a point there, at the line's own value.
+			const t = clip.offset + (secondsAtClientX(e.clientX) - clip.start);
+			engine.setClipGainEnvelope(
+				clip.id,
+				gainEnvelopeWith(clip.gainEnvelope, { t, v: gainEnvelopeAt(clip.gainEnvelope, t) }),
+			);
+			e.preventDefault();
+			e.stopPropagation();
+			return;
+		}
 		drag = {
 			clip,
 			pointerId: e.pointerId,
@@ -497,6 +518,125 @@
 			const step = (e.shiftKey ? 0.1 : 0.01) * (e.key === "ArrowLeft" ? -1 : 1);
 			engine.moveWarpPoint(clip.id, index, p.at + step);
 		} else return;
+		e.preventDefault();
+		e.stopPropagation();
+	}
+	// ── Gain envelope points (docs/multitrack-recorder.md "Clip gain envelopes") ──
+	interface PointDrag {
+		clip: StudioClip;
+		index: number;
+		pointerId: number;
+		startX: number;
+		startY: number;
+		/** The clip's height on screen, so a vertical move maps onto the factor's range. */
+		height: number;
+		/** The point as it is dragged (the preview). */
+		t: number;
+		v: number;
+		moved: boolean;
+	}
+	let pointDrag = $state<PointDrag | null>(null);
+	/** Whether the clip wears its envelope: the mode is on, the clip is the selected audio clip and nothing else is being dragged. */
+	const wearsEnvelope = (clip: StudioClip) =>
+		envelope && selected === clip.id && !!clip.sourceId && !drag;
+	/** The clip's points with the dragged one where the pointer has it. */
+	function envelopePoints(clip: StudioClip): StudioGainPoint[] {
+		const points = clip.gainEnvelope ?? [];
+		if (pointDrag?.clip.id !== clip.id) return points;
+		const d = pointDrag;
+		return points.map((p, i) => (i === d.index ? { t: d.t, v: d.v } : p));
+	}
+	/** Content second → the clip's x in pixels; factor → y in hundredths of its height (double at the top, silence at the foot). */
+	const pointX = (clip: StudioClip, t: number) => (t - clip.offset) * pxPerSecond;
+	const pointY = (v: number) => (1 - v / GAIN_ENVELOPE_MAX) * 100;
+	/** The line across the clip: flat at one without points, held beyond the first and last. */
+	function envelopeLine(clip: StudioClip): string {
+		const points = envelopePoints(clip);
+		const width = Math.max(6, clip.duration * pxPerSecond);
+		const span = [clip.offset, clip.offset + clip.duration];
+		const ys = [
+			`0,${pointY(gainEnvelopeAt(points, span[0]!))}`,
+			...points
+				.filter((p) => p.t > span[0]! && p.t < span[1]!)
+				.map((p) => `${pointX(clip, p.t)},${pointY(p.v)}`),
+			`${width},${pointY(gainEnvelopeAt(points, span[1]!))}`,
+		];
+		return ys.join(" ");
+	}
+	const dbText = (v: number) => (v <= 0.0005 ? "silence" : `${(20 * Math.log10(v)).toFixed(1)} dB`);
+	function onpointdown(e: PointerEvent, clip: StudioClip, index: number) {
+		if (e.button !== 0) return;
+		e.stopPropagation();
+		e.preventDefault();
+		const points = clip.gainEnvelope ?? [];
+		if (e.altKey) {
+			engine.setClipGainEnvelope(
+				clip.id,
+				points.filter((_, i) => i !== index),
+			);
+			return;
+		}
+		const el = e.currentTarget as HTMLElement;
+		el.focus({ preventScroll: true });
+		el.setPointerCapture(e.pointerId);
+		const height = (el.parentElement as HTMLElement).getBoundingClientRect().height || LANE_H;
+		pointDrag = {
+			clip,
+			index,
+			pointerId: e.pointerId,
+			startX: e.clientX,
+			startY: e.clientY,
+			height,
+			t: points[index]!.t,
+			v: points[index]!.v,
+			moved: false,
+		};
+	}
+	function onpointmove(e: PointerEvent) {
+		if (!pointDrag || e.pointerId !== pointDrag.pointerId) return;
+		const d = pointDrag;
+		const dx = e.clientX - d.startX;
+		const dy = e.clientY - d.startY;
+		if (!d.moved && Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+		d.moved = true;
+		const p = d.clip.gainEnvelope![d.index]!;
+		// Sideways follows the grid unless Shift is held, as a clip does; up and down run over the factor's range across the clip's height.
+		const raw = p.t + dx / pxPerSecond;
+		const timeline = d.clip.start + raw - d.clip.offset;
+		const snapped = e.shiftKey ? timeline : engine.snap(timeline);
+		d.t = Math.max(0, snapped - d.clip.start + d.clip.offset);
+		d.v = Math.max(0, Math.min(GAIN_ENVELOPE_MAX, p.v - (dy / d.height) * GAIN_ENVELOPE_MAX));
+	}
+	function onpointup(e: PointerEvent) {
+		if (!pointDrag || e.pointerId !== pointDrag.pointerId) return;
+		const d = pointDrag;
+		pointDrag = null;
+		if (!d.moved) return;
+		const points = (d.clip.gainEnvelope ?? []).filter((_, i) => i !== d.index);
+		engine.setClipGainEnvelope(d.clip.id, gainEnvelopeWith(points, { t: d.t, v: d.v }));
+	}
+	/** The points after a key on point `index`: Delete takes it out, the arrows nudge it; null for any other key. */
+	function pointAfterKey(e: KeyboardEvent, p: StudioGainPoint, others: StudioGainPoint[]) {
+		if (e.key === "Delete" || e.key === "Backspace") return others;
+		// A twentieth of the range up or down (a fifth with Shift); a hundredth of a second sideways (a tenth with Shift).
+		const dv = e.key === "ArrowUp" ? 1 : e.key === "ArrowDown" ? -1 : 0;
+		const dt = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+		if (!dv && !dt) return null;
+		const t = p.t + dt * (e.shiftKey ? 0.1 : 0.01);
+		const v = p.v + dv * (e.shiftKey ? 0.2 : 0.05);
+		return gainEnvelopeWith(others, { t, v });
+	}
+	function onpointkey(e: KeyboardEvent, clip: StudioClip, index: number) {
+		const points = clip.gainEnvelope ?? [];
+		const p = points[index];
+		if (!p) return;
+		const next = pointAfterKey(
+			e,
+			p,
+			points.filter((_, i) => i !== index),
+		);
+		if (!next) return;
+		engine.setClipGainEnvelope(clip.id, next);
 		e.preventDefault();
 		e.stopPropagation();
 	}
@@ -1454,6 +1594,43 @@
 												aria-hidden="true"
 											></span>
 										</button>
+									{/each}
+								{/if}
+								<!-- the gain line of the selected clip (docs/multitrack-recorder.md "Clip gain envelopes"): a press on the clip adds a point; points drag, Alt-click or Delete removes one -->
+								{#if wearsEnvelope(clip)}
+									<svg
+										class="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+										viewBox="0 0 {Math.max(6, clip.duration * pxPerSecond)} 100"
+										preserveAspectRatio="none"
+										aria-hidden="true"
+										data-gain-line
+									>
+										<polyline
+											points={envelopeLine(clip)}
+											fill="none"
+											stroke="rgb(253 224 71)"
+											stroke-width="1.5"
+											vector-effect="non-scaling-stroke"
+										/>
+									</svg>
+									{#each envelopePoints(clip) as p, index (index)}
+										<button
+											type="button"
+											class="absolute w-11px h-11px -ml-1.5 -mt-1.5 p-0 rounded-full border border-black/60 bg-yellow-300 cursor-move outline-none focus-visible:ring-1 focus-visible:ring-white touch-none"
+											style:left="{pointX(clip, p.t)}px"
+											style:top="{pointY(p.v)}%"
+											data-gain-point={index}
+											aria-label="Gain point at {formatTime(
+												clip.start + p.t - clip.offset,
+											)}, {dbText(p.v)}"
+											title="Gain point: drag to move it (Shift for free timing), arrows nudge, Delete or Alt-click removes it"
+											onpointerdown={(e) => onpointdown(e, clip, index)}
+											onpointermove={onpointmove}
+											onpointerup={onpointup}
+											onpointercancel={onpointup}
+											onkeydown={(e) => onpointkey(e, clip, index)}
+											ondblclick={(e) => e.stopPropagation()}
+										></button>
 									{/each}
 								{/if}
 								<span

@@ -108,6 +108,51 @@ test.describe("Dawn editing", () => {
 			ms: 60_000,
 		});
 
+		// The gain line (docs/multitrack-recorder.md "Clip gain envelopes"): shown, a press on the clip adds a point, a point
+		// dragged down lowers the factor there, the render carries it, and Clear line takes it away.
+		await page.locator("[data-clip]").first().click();
+		await page.getByRole("button", { name: "Gain line" }).click();
+		const clipBox = (await page.locator("[data-clip]").first().boundingBox())!;
+		await page.mouse.click(clipBox.x + clipBox.width * 0.5, clipBox.y + clipBox.height * 0.5);
+		await expect(page.locator("[data-gain-point]")).toHaveCount(1);
+		const point = page.locator("[data-gain-point]").first();
+		const pointBox = (await point.boundingBox())!;
+		await page.mouse.move(pointBox.x + pointBox.width / 2, pointBox.y + pointBox.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(
+			pointBox.x + pointBox.width / 2,
+			pointBox.y + pointBox.height / 2 + clipBox.height * 0.4,
+			{ steps: 4 },
+		);
+		await page.mouse.up();
+		const envelope = await hooked(page, ([w]) => w.__studio.arrangement.clips[0].gainEnvelope);
+		expect(envelope).toHaveLength(1);
+		expect(envelope[0].v).toBeLessThan(0.3);
+		await expect(page.getByRole("button", { name: "Gain line (1)" })).toBeVisible();
+		// Rendered, the clip is quieter after the point than the same clip without the line.
+		const quiet = await hooked(page, async ([w]) => {
+			const b = await w.__studio.render();
+			const d = b.getChannelData(0);
+			let p = 0;
+			for (let i = Math.floor(d.length * 0.8); i < d.length; i += 11)
+				p = Math.max(p, Math.abs(d[i]));
+			return p;
+		});
+		await page.getByRole("button", { name: "Clear line" }).click();
+		expect(
+			await hooked(page, ([w]) => w.__studio.arrangement.clips[0].gainEnvelope),
+		).toBeUndefined();
+		const loud = await hooked(page, async ([w]) => {
+			const b = await w.__studio.render();
+			const d = b.getChannelData(0);
+			let p = 0;
+			for (let i = Math.floor(d.length * 0.8); i < d.length; i += 11)
+				p = Math.max(p, Math.abs(d[i]));
+			return p;
+		});
+		expect(quiet).toBeLessThan(loud * 0.6);
+		await page.getByRole("button", { name: "Gain line" }).click();
+
 		// A marker at 3 s: the flag on the ruler, a click on it brings the playhead back.
 		await hooked(page, ([w]) => w.__studio.seek(3));
 		await page.getByRole("button", { name: "Add marker" }).click();
