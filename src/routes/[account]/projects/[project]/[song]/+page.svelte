@@ -721,7 +721,7 @@
 	 */
 	/** The history panel's subject: a document (the project's or the user's own note) or a comment (docs/data-model.md). */
 	let history = $state<
-		| { kind: "doc"; songId: string; doc: SongDocSaveKind; label: string }
+		| { kind: "doc"; songId: string; doc: SongDocSaveKind; label: string; current?: string }
 		| { kind: "comment"; commentId: string; label: string }
 		| null
 	>(null);
@@ -916,6 +916,8 @@
 						songId: data.song.id,
 						doc: notesMine ? "mynotes" : doc,
 						label: notesMine ? "your notes" : `the ${doc}`,
+						// The text as saved now, for "Changes" on a version (DocHistoryPanel.svelte).
+						current: notesMine ? myNote.markdown : DOC_TEXT[doc],
 					};
 				},
 			},

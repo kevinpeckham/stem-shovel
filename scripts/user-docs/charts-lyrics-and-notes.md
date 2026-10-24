@@ -38,4 +38,4 @@ Signed in, the Notes tab has a **Project / Mine** switch at its top right. Proje
 
 ## Earlier versions
 
-Every save that changes a chart, the lyrics, the notes or your own note keeps the text it replaced, ten versions at most. **History** in the panel's ⋯ menu lists them with who saved them and when; View shows one, and Restore makes it the current text again (the text it replaces is kept too). An edited comment's **edited** badge opens its earlier versions the same way, for its author or an admin to restore.
+Every save that changes a chart, the lyrics, the notes or your own note keeps the text it replaced, ten versions at most. **History** in the panel's ⋯ menu lists them with who saved them and when; View shows one, Changes shows what has changed since it (removed lines in red, added lines in green), and Restore makes it the current text again (the text it replaces is kept too). An edited comment's **edited** badge opens its earlier versions the same way, for its author or an admin to restore.

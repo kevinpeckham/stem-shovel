@@ -212,7 +212,15 @@ erDiagram
   `(song, user)` for a private note — are kept. Text is stored in the row,
   not Blob: a few KB. Read back and restored through `history.remote.ts`
   (`docHistory`, `restoreDocVersion`), which renders the markdown at read
-  time; a private note's revisions answer only to their owner.
+  time; a private note's revisions answer only to their owner. Each version
+  in the history panel (`DocHistoryPanel`) also offers **Changes** (2026-10-24):
+  what changed since that version, as a line diff of its markdown against the
+  document's text as currently saved, which the page passes as the target's
+  `current`. `utils/diffLines.ts` diffs by longest common subsequence (a
+  changed line reads as removed then added; past 2000 lines a side it marks
+  everything removed then added), and `utils/collapseDiffContext.ts` keeps
+  two unchanged lines around each change and folds longer runs into "… n
+  unchanged lines".
 
 - **song_user_note** — one person's private notepad on a song, the
   `mynotes` document on the song page: `markdown`, its sanitized `html`

@@ -7,6 +7,8 @@
 		restoreDocVersion,
 	} from "#lib/remote/history.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
+	import { collapseDiffContext } from "#lib/utils/collapseDiffContext.js";
+	import { diffLines } from "#lib/utils/diffLines.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
@@ -17,10 +19,18 @@
 	 * revisions, newest first, each with who saved it and when, shown on
 	 * request and restored with one click (a restore is a new save, so the
 	 * text it replaces is kept too). A FloatingPanel: dragged and resized from
-	 * lg, docked below on a phone.
+	 * lg, docked below on a phone. Given the document's current text, each
+	 * version also offers Changes: what changed since it, line by line.
 	 */
 	type Target =
-		| { kind: "doc"; songId: string; doc: SongDocSaveKind; label: string }
+		| {
+				kind: "doc";
+				songId: string;
+				doc: SongDocSaveKind;
+				label: string;
+				/** The document's markdown as currently saved; enables Changes. */
+				current?: string;
+		  }
 		| { kind: "comment"; commentId: string; label: string };
 	interface Props {
 		target: Target | null;
@@ -52,7 +62,12 @@
 	let commentVersions = $state<CommentVersion[]>([]);
 	let loading = $state(false);
 	let loadError = $state<string | null>(null);
-	let open = $state<string | null>(null);
+	/** The version shown, rendered (`view`) or as a diff against the current text (`changes`). */
+	let open = $state<{ id: string; mode: "view" | "changes" } | null>(null);
+	const toggle = (id: string, mode: "view" | "changes") =>
+		(open = open?.id === id && open.mode === mode ? null : { id, mode });
+	let current = $derived(target?.kind === "doc" ? target.current : undefined);
+	const changesOf = (v: DocVersion) => collapseDiffContext(diffLines(v.markdown, current ?? ""));
 	let restoring = $state<string | null>(null);
 
 	async function load(t: Target) {
@@ -139,11 +154,21 @@
 									<button
 										class="button button-xs"
 										type="button"
-										aria-expanded={open === v.id}
-										onclick={() => (open = open === v.id ? null : v.id)}
+										aria-expanded={open?.id === v.id && open.mode === "view"}
+										onclick={() => toggle(v.id, "view")}
 									>
-										{open === v.id ? "Hide" : "View"}
+										{open?.id === v.id && open.mode === "view" ? "Hide" : "View"}
 									</button>
+									{#if typeof current === "string"}
+										<button
+											class="button button-xs"
+											type="button"
+											aria-pressed={open?.id === v.id && open.mode === "changes"}
+											onclick={() => toggle(v.id, "changes")}
+										>
+											Changes
+										</button>
+									{/if}
 									{#if canRestore}
 										<button
 											class="button button-xs"
@@ -156,9 +181,33 @@
 									{/if}
 								</span>
 							</div>
-							{#if open === v.id}
+							{#if open?.id === v.id && open.mode === "view"}
 								<div class="chart-body border-t border-white/10 px-4 py-3 text-15px">
 									{@html v.html}
+								</div>
+							{:else if open?.id === v.id && open.mode === "changes"}
+								{@const rows = changesOf(v)}
+								<div
+									class="border-t border-white/10 px-3 py-2 font-mono text-13px whitespace-pre-wrap"
+									aria-label="Changes since version {v.versionNumber}"
+								>
+									{#if rows.every((r) => r.kind === "same" || r.kind === "skip")}
+										<p class="font-sans text-14px opacity-70">Same as the current text</p>
+									{:else}
+										{#each rows as r, n (n)}
+											{#if r.kind === "skip"}
+												<div class="px-1 italic opacity-50">
+													… {r.count} unchanged lines
+												</div>
+											{:else if r.kind === "removed"}
+												<div class="bg-red-500/15 px-1 text-red-200">{`− ${r.text}`}</div>
+											{:else if r.kind === "added"}
+												<div class="bg-emerald-500/15 px-1 text-emerald-200">{`+ ${r.text}`}</div>
+											{:else}
+												<div class="px-1 opacity-60">{`  ${r.text}`}</div>
+											{/if}
+										{/each}
+									{/if}
 								</div>
 							{/if}
 						</li>
