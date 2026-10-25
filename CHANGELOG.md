@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.163.0] - 2026-10-25
+
 ### Changed
 
 - **The Studio plays recordings from this device's copy without holding them in memory.** A recording the browser has a copy of plays streamed, a quarter of a second at a time, through a worklet voice fed from disk, so a long session's memory is no longer its decoded recordings; only what a tool needs (a warped clip's source, a sampler's recording, a render) is decoded, and released again when the song grows large. A song a browser has not opened before loads and plays as it did. The song menu's readout shows what is on disk beside what is in memory.
