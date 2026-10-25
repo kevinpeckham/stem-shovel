@@ -12,6 +12,7 @@ import {
 } from "#lib/server/data.js";
 import { mixKeyOf } from "#lib/server/mix.js";
 import ffmpegPath from "ffmpeg-static";
+import { FFMPEG_TIMEOUT_MS } from "#lib/constants/ffmpegTimeout.js";
 import { execFile } from "node:child_process";
 import { createWriteStream, existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -119,24 +120,28 @@ async function download(url: string, file: string) {
 async function decode(file: string, start: number, seconds: number, rate: number) {
 	if (!ffmpegPath) throw new Error("ffmpeg binary is not available on this platform");
 	const out = `${file}.${rate}.${Math.round(start)}.raw`;
-	await run(ffmpegPath, [
-		"-y",
-		"-loglevel",
-		"error",
-		"-ss",
-		String(start),
-		"-t",
-		String(seconds),
-		"-i",
-		file,
-		"-ac",
-		"1",
-		"-ar",
-		String(rate),
-		"-f",
-		"f32le",
-		out,
-	]);
+	await run(
+		ffmpegPath,
+		[
+			"-y",
+			"-loglevel",
+			"error",
+			"-ss",
+			String(start),
+			"-t",
+			String(seconds),
+			"-i",
+			file,
+			"-ac",
+			"1",
+			"-ar",
+			String(rate),
+			"-f",
+			"f32le",
+			out,
+		],
+		{ timeout: FFMPEG_TIMEOUT_MS },
+	);
 	const raw = await readFile(out);
 	return new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
 }

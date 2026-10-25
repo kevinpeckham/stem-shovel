@@ -3,6 +3,7 @@ import { deleteBlobs, mixPathname, putBlob, readBlob } from "#lib/server/blob.js
 import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "#lib/server/data.js";
 import { FADER_MAX } from "#lib/audio/engine.svelte.js";
 import ffmpegPath from "ffmpeg-static";
+import { FFMPEG_TIMEOUT_MS } from "#lib/constants/ffmpegTimeout.js";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
@@ -190,7 +191,7 @@ export async function renderMix(song: Mixable, req: MixRequest): Promise<Buffer>
 				`artist=${song.project.account.name}`,
 				output,
 			],
-			{ maxBuffer: 1024 * 1024 },
+			{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
 		);
 		return await readFile(output);
 	} finally {

@@ -43,14 +43,17 @@ function scheduleJob(kind: JobKind, ids: string[]) {
 	const unique = [...new Set(ids)];
 	if (unique.length === 0) return;
 	const origin = originOfRequest();
-	background(async () => {
-		const res = await fetch(`${origin}/api/jobs`, {
-			method: "POST",
-			headers: { "content-type": "application/json", authorization: `Bearer ${jobsToken()}` },
-			body: JSON.stringify({ kind, ids: unique }),
-		});
-		if (!res.ok) throw new Error(`jobs: ${kind} for ${unique.length} answered ${res.status}`);
-	});
+	background(
+		async () => {
+			const res = await fetch(`${origin}/api/jobs`, {
+				method: "POST",
+				headers: { "content-type": "application/json", authorization: `Bearer ${jobsToken()}` },
+				body: JSON.stringify({ kind, ids: unique }),
+			});
+			if (!res.ok) throw new Error(`jobs: ${kind} for ${unique.length} answered ${res.status}`);
+		},
+		{ kind: "schedule", count: unique.length },
+	);
 }
 
 /** Renders the songs' original mixes, one after another. */

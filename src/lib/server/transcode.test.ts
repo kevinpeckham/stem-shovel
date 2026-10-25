@@ -46,6 +46,7 @@ const h = vi.hoisted(() => ({
 	notes: { ensureSongNotes: vi.fn() },
 	fs: { removed: [] as string[], written: new Map<string, Buffer>() },
 	ffmpegPath: "/opt/ffmpeg" as string | null,
+	reportError: vi.fn(),
 }));
 
 vi.mock("ffmpeg-static", () => ({
@@ -106,6 +107,7 @@ vi.mock("#lib/server/data.js", () => h.data);
 vi.mock("#lib/server/blob.js", () => h.blob);
 vi.mock("#lib/server/mix.js", () => h.mix);
 vi.mock("#lib/server/notes.js", () => h.notes);
+vi.mock("#lib/server/reportError.js", () => ({ reportError: h.reportError }));
 
 const { renderStems, renderDemos, renderRecordings, flacStudioSources } =
 	await import("./transcode");
@@ -141,8 +143,16 @@ const silenceLog = [
 
 /** A fresh body per fetch: a Response's stream can be read once. */
 const fetched = () => new Response(new Blob(["audio"]), { status: 200, statusText: "OK" });
+/** One id's failure is reported (src/lib/server/eachJob.ts) under the job's kind, not thrown. */
+const expectReported = (kind: string, id: string, message: string) =>
+	expect(h.reportError).toHaveBeenCalledWith(
+		expect.objectContaining({ message: expect.stringContaining(message) }),
+		{ job: kind },
+		{ id },
+	);
 beforeEach(() => {
 	vi.resetAllMocks();
+	vi.spyOn(console, "error").mockImplementation(() => {});
 	h.runs.length = 0;
 	h.fs.removed.length = 0;
 	h.fs.written.clear();
@@ -241,12 +251,13 @@ describe("renderStems", () => {
 		expect(h.blob.readBlob).not.toHaveBeenCalled();
 		expect(h.mix.ensureOriginalMix).not.toHaveBeenCalled();
 	});
-	it("fails the row and rethrows when ffmpeg exits with an error, removing the temporary directory", async () => {
+	it("fails the row and reports when ffmpeg exits with an error, removing the temporary directory", async () => {
 		h.data.claimPlayback.mockResolvedValue(stemClaim());
 		h.answer.mockReturnValue(
 			Object.assign(new Error("ffmpeg exited 1"), { stderr: "Invalid data" }),
 		);
-		await expect(renderStems(["stem-1"])).rejects.toThrow("ffmpeg exited 1");
+		await renderStems(["stem-1"]);
+		expectReported("stem-playback", "stem-1", "ffmpeg exited 1");
 		expect(h.data.failPlayback).toHaveBeenCalledWith("stem-1");
 		expect(h.data.finishPlayback).not.toHaveBeenCalled();
 		expect(h.blob.putBlob).not.toHaveBeenCalled();
@@ -255,16 +266,32 @@ describe("renderStems", () => {
 	it("fails the row when the source cannot be fetched", async () => {
 		h.data.claimPlayback.mockResolvedValue(stemClaim());
 		h.blob.readBlob.mockResolvedValue(new Response(null, { status: 404, statusText: "Not Found" }));
-		await expect(renderStems(["stem-1"])).rejects.toThrow("404 Not Found fetching");
+		await renderStems(["stem-1"]);
+		expectReported("stem-playback", "stem-1", "404 Not Found fetching");
 		expect(h.data.failPlayback).toHaveBeenCalledWith("stem-1");
 		expect(h.runs).toEqual([]);
 	});
-	it("fails the row and throws when there is no ffmpeg binary", async () => {
+	it("fails the row and reports when there is no ffmpeg binary", async () => {
 		h.ffmpegPath = null;
 		h.data.claimPlayback.mockResolvedValue(stemClaim());
-		await expect(renderStems(["stem-1"])).rejects.toThrow("ffmpeg binary is not available");
+		await renderStems(["stem-1"]);
+		expectReported("stem-playback", "stem-1", "ffmpeg binary is not available");
 		expect(h.data.failPlayback).toHaveBeenCalledWith("stem-1");
 		expect(h.blob.readBlob).not.toHaveBeenCalled();
+	});
+	it("a failed stem leaves the others, and their songs' mix and notes, to run", async () => {
+		h.data.claimPlayback.mockImplementation(async (id: string) =>
+			stemClaim({ songId: id === "stem-1" ? "song-1" : "song-2" }),
+		);
+		h.blob.readBlob
+			.mockResolvedValueOnce(new Response(null, { status: 404, statusText: "Not Found" }))
+			.mockImplementation(async () => fetched());
+		h.blob.putBlob.mockResolvedValue({ url: `${PUBLIC}/x.m4a` });
+		await renderStems(["stem-1", "stem-2"]);
+		expectReported("stem-playback", "stem-1", "404 Not Found fetching");
+		expect(h.data.finishPlayback).toHaveBeenCalledTimes(1);
+		expect(h.mix.ensureOriginalMix.mock.calls).toEqual([["song-2"]]);
+		expect(h.notes.ensureSongNotes.mock.calls).toEqual([["song-2"]]);
 	});
 });
 
@@ -377,14 +404,15 @@ describe("renderDemos", () => {
 		]);
 		h.answer.mockReset();
 	});
-	it("fails the demo and rethrows on an ffmpeg error", async () => {
+	it("fails the demo and reports an ffmpeg error", async () => {
 		h.data.claimDemoPlayback.mockResolvedValue({
 			url: `${PUBLIC}/x/d1.caf`,
 			pathname: "x/d1.caf",
 			playbackUrl: null,
 		});
 		h.answer.mockReturnValue(new Error("boom"));
-		await expect(renderDemos(["demo-1"])).rejects.toThrow("boom");
+		await renderDemos(["demo-1"]);
+		expectReported("demo-playback", "demo-1", "boom");
 		expect(h.data.failDemoPlayback).toHaveBeenCalledWith("demo-1");
 	});
 });
@@ -532,7 +560,7 @@ describe("renderRecordings", () => {
 		expect(h.data.replaceRecordingSource).not.toHaveBeenCalled();
 		expect(h.data.finishRecordingPlayback).toHaveBeenCalledTimes(1);
 	});
-	it("fails the take and rethrows when the MP3 step breaks, after the FLAC was already swapped in", async () => {
+	it("fails the take and reports when the MP3 step breaks, after the FLAC was already swapped in", async () => {
 		h.data.claimRecordingPlayback.mockResolvedValue(takeClaim());
 		h.answer.mockImplementation((args) => {
 			const last = args[args.length - 1];
@@ -541,7 +569,8 @@ describe("renderRecordings", () => {
 			if (last.endsWith("demo.mp3")) return new Error("mp3 failed");
 			return { stderr: "" };
 		});
-		await expect(renderRecordings(["take-1"])).rejects.toThrow("mp3 failed");
+		await renderRecordings(["take-1"]);
+		expectReported("recording-playback", "take-1", "mp3 failed");
 		expect(h.data.replaceRecordingSource).toHaveBeenCalledTimes(1);
 		expect(h.data.failRecordingPlayback).toHaveBeenCalledWith("take-1");
 		expect(h.data.finishRecordingPlayback).not.toHaveBeenCalled();

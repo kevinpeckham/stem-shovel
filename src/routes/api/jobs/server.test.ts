@@ -12,6 +12,8 @@ import { asSignedOut, fakeId, httpError } from "../../../../tests/helpers/fakeRe
 const h = vi.hoisted(() => ({
 	env: { BETTER_AUTH_SECRET: "s3cret-of-the-test" } as Record<string, string | undefined>,
 	pending: [] as Promise<void>[],
+	contexts: [] as unknown[],
+	reportError: vi.fn(),
 	ensureOriginalMix: vi.fn(),
 	ensureSongNotes: vi.fn(),
 	traceTranscriptionDeps: vi.fn(),
@@ -25,10 +27,12 @@ const h = vi.hoisted(() => ({
 vi.mock("varlock/env", () => ({ ENV: h.env, initVarlockEnv: () => {} }));
 vi.mock("$app/env", () => ({ dev: false, building: false, browser: false, version: "0" }));
 vi.mock("#lib/server/background.js", () => ({
-	background: (work: () => Promise<void>) => {
+	background: (work: () => Promise<void>, context?: unknown) => {
+		h.contexts.push(context);
 		h.pending.push(work());
 	},
 }));
+vi.mock("#lib/server/reportError.js", () => ({ reportError: h.reportError }));
 vi.mock("#lib/server/mix.js", () => ({ ensureOriginalMix: h.ensureOriginalMix }));
 vi.mock("#lib/server/notes.js", () => ({
 	ensureSongNotes: h.ensureSongNotes,
@@ -64,6 +68,7 @@ const settled = () => Promise.all(h.pending.splice(0));
 beforeEach(() => {
 	vi.clearAllMocks();
 	h.pending.length = 0;
+	h.contexts.length = 0;
 });
 
 describe("POST /api/jobs", () => {
@@ -88,6 +93,18 @@ describe("POST /api/jobs", () => {
 		expect(await res.json()).toEqual({ accepted: "mix", count: 2 });
 		await settled();
 		expect(h.ensureOriginalMix.mock.calls).toEqual([[A], [B]]);
+	});
+	it("tells background the kind and count, and one song's failed mix leaves the next to run", async () => {
+		const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+		const boom = new Error("ffmpeg exited 1");
+		h.ensureOriginalMix.mockRejectedValueOnce(boom);
+		await post({ kind: "mix", ids: [A, B] });
+		await settled();
+		expect(h.contexts).toEqual([{ kind: "mix", count: 2 }]);
+		expect(h.ensureOriginalMix.mock.calls).toEqual([[A], [B]]);
+		expect(h.reportError).toHaveBeenCalledTimes(1);
+		expect(h.reportError).toHaveBeenCalledWith(boom, { job: "mix" }, { id: A });
+		logged.mockRestore();
 	});
 	it("notes transcribe per song", async () => {
 		await post({ kind: "notes", ids: [A] });

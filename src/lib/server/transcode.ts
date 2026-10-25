@@ -32,6 +32,8 @@ import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSile
 import { deleteBlobs, playbackPathname, putBlob, readBlob } from "#lib/server/blob.js";
 import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes } from "#lib/server/notes.js";
+import { eachJob } from "#lib/server/eachJob.js";
+import { FFMPEG_TIMEOUT_MS } from "#lib/constants/ffmpegTimeout.js";
 import ffmpegPath from "ffmpeg-static";
 import { execFile, spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
@@ -69,12 +71,12 @@ const run = promisify(execFile);
  */
 export async function renderStems(stemIds: string[]): Promise<void> {
 	const songIds = new Set<string>();
-	for (const id of stemIds) {
+	await eachJob("stem-playback", stemIds, async (id) => {
 		const songId = await transcodeStem(id);
 		if (songId) songIds.add(songId);
-	}
-	for (const id of songIds) await ensureOriginalMix(id);
-	for (const id of songIds) await ensureSongNotes(id);
+	});
+	await eachJob("mix", [...songIds], ensureOriginalMix);
+	await eachJob("notes", [...songIds], ensureSongNotes);
 }
 
 /**
@@ -85,9 +87,9 @@ export async function renderStems(stemIds: string[]): Promise<void> {
  * writes nothing new.
  */
 export async function measureStemMetadata(stemIds: string[]): Promise<void> {
-	for (const id of stemIds) {
+	await eachJob("stem-metadata", stemIds, async (id) => {
 		const row = await stemForMetadata(id);
-		if (!row) continue;
+		if (!row) return;
 		const dir = await mkdtemp(join(tmpdir(), "stem-meta-"));
 		try {
 			const file = join(dir, "source");
@@ -100,7 +102,7 @@ export async function measureStemMetadata(stemIds: string[]): Promise<void> {
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}
-	}
+	});
 }
 
 /**
@@ -110,7 +112,10 @@ export async function measureStemMetadata(stemIds: string[]): Promise<void> {
 async function probeStream(file: string): Promise<{ channels: number; sampleRate: number | null }> {
 	if (!ffmpegPath) return { channels: 2, sampleRate: null };
 	try {
-		await run(ffmpegPath, ["-hide_banner", "-i", file], { maxBuffer: 1024 * 1024 });
+		await run(ffmpegPath, ["-hide_banner", "-i", file], {
+			maxBuffer: 1024 * 1024,
+			timeout: FFMPEG_TIMEOUT_MS,
+		});
 	} catch (e) {
 		const err = String((e as { stderr?: string }).stderr ?? "");
 		const line = err.match(/Audio: [^\n]*/)?.[0] ?? "";
@@ -164,7 +169,7 @@ async function transcodeStem(stemId: string): Promise<string | null> {
 				"+faststart",
 				output,
 			],
-			{ maxBuffer: 1024 * 1024 },
+			{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
 		);
 
 		const bytes = await readFile(output);
@@ -183,7 +188,7 @@ async function transcodeStem(stemId: string): Promise<string | null> {
 
 /** Demo recordings become MP3s (192 kbps, source channels up to stereo), one at a time, each with its waveform measured. */
 export async function renderDemos(demoIds: string[]): Promise<void> {
-	for (const id of demoIds) await transcodeToMp3(id, DEMO_TARGET);
+	await eachJob("demo-playback", demoIds, (id) => transcodeToMp3(id, DEMO_TARGET));
 }
 
 /**
@@ -192,10 +197,14 @@ export async function renderDemos(demoIds: string[]): Promise<void> {
  * measured one at a time (docs/uploads-and-blob.md, "Sessions" review).
  */
 export async function measureDemos(demoIds: string[]): Promise<void> {
-	for (const id of demoIds) await measureRendition(id, claimDemoPeaks, finishDemoPeaks);
+	await eachJob("demo-peaks", demoIds, (id) =>
+		measureRendition(id, claimDemoPeaks, finishDemoPeaks),
+	);
 }
 export async function measureSessions(recordingIds: string[]): Promise<void> {
-	for (const id of recordingIds) await measureRendition(id, claimSessionPeaks, finishSessionPeaks);
+	await eachJob("session-peaks", recordingIds, (id) =>
+		measureRendition(id, claimSessionPeaks, finishSessionPeaks),
+	);
 }
 async function measureRendition(
 	id: string,
@@ -250,10 +259,24 @@ function measurePeaks(file: string): Promise<{ peaks: number[]; durationSeconds:
 			"-",
 		]);
 		let stderr = "";
+		let timedOut = false;
+		// execFile's `timeout`, by hand: spawn has none that rejects.
+		const timer = setTimeout(() => {
+			timedOut = true;
+			child.kill();
+		}, FFMPEG_TIMEOUT_MS);
 		child.stdout.on("data", (chunk: Buffer) => acc.push(chunk));
 		child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
-		child.on("error", reject);
+		child.on("error", (e) => {
+			clearTimeout(timer);
+			reject(e);
+		});
 		child.on("close", (code) => {
+			clearTimeout(timer);
+			if (timedOut) {
+				reject(new Error(`ffmpeg timed out after ${FFMPEG_TIMEOUT_MS} ms measuring peaks`));
+				return;
+			}
 			if (code !== 0) {
 				reject(new Error(`ffmpeg exited ${code} measuring peaks: ${stderr.trim()}`));
 				return;
@@ -266,17 +289,17 @@ function measurePeaks(file: string): Promise<{ peaks: number[]; durationSeconds:
 
 /** Mixes (docs/mixes.md) get the same MP3. */
 export async function renderMixes(mixIds: string[]): Promise<void> {
-	for (const id of mixIds) await transcodeToMp3(id, MIX_TARGET);
+	await eachJob("mix-playback", mixIds, (id) => transcodeToMp3(id, MIX_TARGET));
 }
 
 /** Takes (docs/demo-recording.md) get the same MP3. */
 export async function renderRecordings(recordingIds: string[]): Promise<void> {
-	for (const id of recordingIds) await transcodeToMp3(id, RECORDING_TARGET);
+	await eachJob("recording-playback", recordingIds, (id) => transcodeToMp3(id, RECORDING_TARGET));
 }
 
 /** Session recordings (docs/uploads-and-blob.md, "Sessions") get the same MP3, for playback and the session's download. */
 export async function renderSessions(recordingIds: string[]): Promise<void> {
-	for (const id of recordingIds) await transcodeToMp3(id, SESSION_TARGET);
+	await eachJob("session-playback", recordingIds, (id) => transcodeToMp3(id, SESSION_TARGET));
 }
 
 /**
@@ -332,7 +355,7 @@ async function flacStudioSource(id: string): Promise<void> {
 				"5",
 				flac,
 			],
-			{ maxBuffer: 1024 * 1024 },
+			{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
 		);
 		const bytes = await readFile(flac);
 		const { size } = await stat(source);
@@ -418,7 +441,10 @@ const RECORDING_TARGET: Mp3Target = {
 async function isRawPcm(file: string): Promise<boolean> {
 	if (!ffmpegPath) return false;
 	try {
-		await run(ffmpegPath, ["-hide_banner", "-i", file], { maxBuffer: 1024 * 1024 });
+		await run(ffmpegPath, ["-hide_banner", "-i", file], {
+			maxBuffer: 1024 * 1024,
+			timeout: FFMPEG_TIMEOUT_MS,
+		});
 	} catch (e) {
 		// ffmpeg exits 1 with no output file; the probe is in stderr.
 		const err = String((e as { stderr?: string }).stderr ?? "");
@@ -431,7 +457,10 @@ async function isRawPcm(file: string): Promise<boolean> {
 async function isMp3(file: string): Promise<boolean> {
 	if (!ffmpegPath) return false;
 	try {
-		await run(ffmpegPath, ["-hide_banner", "-i", file], { maxBuffer: 1024 * 1024 });
+		await run(ffmpegPath, ["-hide_banner", "-i", file], {
+			maxBuffer: 1024 * 1024,
+			timeout: FFMPEG_TIMEOUT_MS,
+		});
 	} catch (e) {
 		const err = String((e as { stderr?: string }).stderr ?? "");
 		return /Audio: mp3/.test(err);
@@ -459,7 +488,7 @@ async function findSilence(file: string): Promise<SilenceBounds | null> {
 				"null",
 				"-",
 			],
-			{ maxBuffer: 4 * 1024 * 1024 },
+			{ maxBuffer: 4 * 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
 		);
 		return silenceBounds(stderr);
 	} catch {
@@ -519,7 +548,7 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 					"5",
 					flac,
 				],
-				{ maxBuffer: 1024 * 1024 },
+				{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
 			);
 			const bytes = await readFile(flac);
 			const pathname = claim.pathname.replace(/\.[a-z0-9]+$/i, "") + ".flac";
@@ -558,7 +587,7 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 					lossless ? claim.codec! : "copy",
 					trimmed,
 				],
-				{ maxBuffer: 1024 * 1024 },
+				{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
 			);
 			const bytes = await readFile(trimmed);
 			const pathname =
@@ -616,7 +645,7 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 				"3",
 				output,
 			],
-			{ maxBuffer: 1024 * 1024 },
+			{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
 		);
 		const bytes = await readFile(output);
 		const pathname =

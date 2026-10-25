@@ -13,6 +13,7 @@ import { SITE_ORIGIN } from "#lib/server/siteOrigin.js";
 import { dawproject, type DawprojectAudio as DawprojectAudioFile } from "#lib/utils/dawproject.js";
 import ffmpegPath from "ffmpeg-static";
 import { strToU8, zipSync, type Zippable } from "fflate";
+import { FFMPEG_TIMEOUT_MS } from "#lib/constants/ffmpegTimeout.js";
 import { execFile } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -91,7 +92,7 @@ export async function renderDawprojectExport(fileId: string): Promise<void> {
 					...format.args,
 					out,
 				],
-				{ maxBuffer: 1024 * 1024 },
+				{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
 			);
 			const bytes = await readFile(out);
 			await rm(source, { force: true });
