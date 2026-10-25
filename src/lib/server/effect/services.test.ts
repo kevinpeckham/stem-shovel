@@ -42,6 +42,40 @@ describe("Ffmpeg.live", () => {
 		expect(running(marker)).toEqual([]);
 	});
 
+	test("a timeout interrupts a stream and kills the child", async () => {
+		const marker = `title=effect-stream-kill-${process.pid}`;
+		let bytes = 0;
+		// Endless silence decoded to PCM on stdout: chunks arrive until the kill.
+		const args = ["-f", "lavfi", "-i", "anullsrc", "-metadata", marker, "-f", "s16le", "-"];
+		const job = Effect.gen(function* () {
+			const ffmpeg = yield* Ffmpeg;
+			return yield* ffmpeg
+				.stream(args, (chunk) => (bytes += chunk.byteLength))
+				.pipe(Effect.timeout("300 millis"));
+		}).pipe(Effect.provide(Ffmpeg.live));
+		const exit = await Effect.runPromiseExit(job);
+		expect(Exit.isFailure(exit) && Cause.squash(exit.cause)).toMatchObject({
+			_tag: "TimeoutError",
+		});
+		expect(bytes).toBeGreaterThan(0);
+		for (let i = 0; i < 20 && running(marker).length > 0; i++)
+			await new Promise((r) => setTimeout(r, 50));
+		expect(running(marker)).toEqual([]);
+	});
+
+	test("a stream that exits non-zero is an FfmpegError with the end of stderr", async () => {
+		const job = Effect.gen(function* () {
+			return yield* (yield* Ffmpeg).stream(
+				["-hide_banner", "-i", "/nonexistent-input.wav", "-f", "s16le", "-"],
+				() => {},
+			);
+		}).pipe(Effect.provide(Ffmpeg.live));
+		const exit = await Effect.runPromiseExit(job);
+		const error = Exit.isFailure(exit) ? Cause.squash(exit.cause) : null;
+		expect(error).toMatchObject({ _tag: "FfmpegError", code: 254, timedOut: false });
+		expect((error as Error).message).toMatch(/^ffmpeg exited with 254: Error opening input/);
+	});
+
 	test("a non-zero exit is an FfmpegError with the end of stderr", async () => {
 		const job = Effect.gen(function* () {
 			return yield* (yield* Ffmpeg).run([

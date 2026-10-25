@@ -1,6 +1,6 @@
 import { ENV } from "varlock/env";
 import { DRUM_VOICES } from "#lib/constants/drumMachine.js";
-import { logAiRequest } from "#lib/server/data.js";
+import { askForJson, runAi, type Message } from "#lib/server/effect/ai.js";
 import { parseTextToBeatReply, type TextToBeatResult } from "#lib/utils/parseTextToBeatReply.js";
 import { resizeDrumPattern } from "#lib/utils/resizeDrumPattern.js";
 import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
@@ -16,116 +16,40 @@ import type { TextToBeatInput } from "#lib/val/TextToBeatSchema.js";
  * off answers in a few seconds. The model writes the pattern in the
  * presets' row-string form, which is compact, readable and easy to check;
  * `parseTextToBeatReply` validates it, and a reply that fails gets one
- * more go with the reason. The model is TEXT_TO_BEAT_MODEL, an
- * open-weight one by preference (Kimi K2.6 to start), so it can be
- * swapped to compare musicality without a deploy. Every call is logged
+ * more go with the reason (the loop and the gateway call, with its
+ * timeout and transport retry, are `askForJson` and the `Ai` service in
+ * effect/ai.ts). The model is TEXT_TO_BEAT_MODEL, an open-weight one by
+ * preference (Kimi K2.6 to start), so it can be swapped to compare
+ * musicality without a deploy. Every call is logged
  * (ai_request, kind "text-to-beat") with its tokens.
  */
-export const DEFAULT_TEXT_TO_BEAT_MODEL = "moonshotai/kimi-k2.6";
+const DEFAULT_TEXT_TO_BEAT_MODEL = "moonshotai/kimi-k2.6";
 export const textToBeatModel = () => ENV.TEXT_TO_BEAT_MODEL || DEFAULT_TEXT_TO_BEAT_MODEL;
-const GATEWAY = "https://ai-gateway.vercel.sh/v1/chat/completions";
-/** A beat is a few hundred tokens; this is the guard against a model that rambles. */
-const MAX_OUTPUT_TOKENS = 1500;
 
 const CELL_CHAR = [".", "o", "x", "X"];
-
-export interface Message {
-	role: "system" | "user" | "assistant";
-	content: string;
-}
 
 export async function textToBeat(
 	input: TextToBeatInput,
 	who: { userId: string | null },
 ): Promise<TextToBeatResult & { model: string }> {
-	const key = ENV.AI_GATEWAY_API_KEY;
-	if (!key) throw new Error("AI_GATEWAY_API_KEY is not configured");
 	const model = textToBeatModel();
-	const system = systemPrompt(input);
 	const messages: Message[] = [
-		{ role: "system", content: system },
+		{ role: "system", content: systemPrompt(input) },
 		{ role: "user", content: input.prompt },
 	];
-	let lastError = "";
-	for (let attempt = 0; attempt < 2; attempt++) {
-		const started = Date.now();
-		const log = {
+	const parsed = await runAi(
+		"ai.text-to-beat",
+		askForJson({
 			kind: "text-to-beat",
 			model,
-			userId: who.userId,
-			songId: null,
-			prompt: messages.map((m) => `${m.role.toUpperCase()}:\n${m.content}`).join("\n\n"),
-		};
-		let text = "";
-		let usage: { inputTokens?: number; outputTokens?: number } = {};
-		try {
-			({ text, usage } = await complete(key, model, messages));
-		} catch (e) {
-			await logAiRequest({
-				...log,
-				error: e instanceof Error ? e.message : String(e),
-				durationMs: Date.now() - started,
-			});
-			throw e;
-		}
-		try {
-			const parsed = parseTextToBeatReply(text, input.meter, input.steps);
-			await logAiRequest({
-				...log,
-				response: text,
-				parsed,
-				durationMs: Date.now() - started,
-				...usage,
-			});
-			return { ...parsed, model };
-		} catch (e) {
-			lastError = e instanceof Error ? e.message : String(e);
-			await logAiRequest({
-				...log,
-				response: text,
-				error: lastError,
-				durationMs: Date.now() - started,
-				...usage,
-			});
-			messages.push(
-				{ role: "assistant", content: text },
-				{
-					role: "user",
-					content: `That reply was rejected: ${lastError}. Reply again with the JSON object only, every row exactly ${input.steps} characters.`,
-				},
-			);
-		}
-	}
-	throw new Error(`The model's answer could not be read (${lastError})`);
-}
-
-/** One chat completion through the gateway, reasoning off, the text and the token counts back (Text-to-Progression shares it). */
-export async function complete(key: string, model: string, messages: Message[]) {
-	const res = await fetch(GATEWAY, {
-		method: "POST",
-		headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-		body: JSON.stringify({
-			model,
+			who,
 			messages,
-			reasoning: { effort: "none" },
-			max_tokens: MAX_OUTPUT_TOKENS,
-			stream: false,
+			parse: (text) => parseTextToBeatReply(text, input.meter, input.steps),
+			rejectionNote: (reason) =>
+				`That reply was rejected: ${reason}. Reply again with the JSON object only, every row exactly ${input.steps} characters.`,
 		}),
-	});
-	const body = (await res.json().catch(() => null)) as {
-		error?: { message?: string } | string;
-		choices?: { message?: { content?: string | null } }[];
-		usage?: { prompt_tokens?: number; completion_tokens?: number };
-	} | null;
-	if (!res.ok || !body) {
-		const detail =
-			typeof body?.error === "string" ? body.error : (body?.error?.message ?? res.statusText);
-		throw new Error(`The gateway answered ${res.status}: ${detail}`);
-	}
-	return {
-		text: body.choices?.[0]?.message?.content ?? "",
-		usage: { inputTokens: body.usage?.prompt_tokens, outputTokens: body.usage?.completion_tokens },
-	};
+	);
+	return { ...parsed, model };
 }
 
 /** The instructions: the voices, the notation, the pattern's shape, and an example of exactly that shape. */

@@ -29,20 +29,22 @@ import { createPcm16Peaks } from "#lib/utils/pcm16Peaks.js";
 import { studioSourceWantsFlac } from "#lib/utils/studioSourceWantsFlac.js";
 import { silenceBounds, type SilenceBounds } from "#lib/utils/silenceBounds.js";
 import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
-import { deleteBlobs, playbackPathname, putBlob, readBlob } from "#lib/server/blob.js";
+import type { JobKind } from "#lib/val/JobSchema.js";
+import { playbackPathname } from "#lib/server/blob.js";
 import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes } from "#lib/server/notes.js";
 import { eachJob } from "#lib/server/eachJob.js";
-import { FFMPEG_TIMEOUT_MS } from "#lib/constants/ffmpegTimeout.js";
-import ffmpegPath from "ffmpeg-static";
-import { execFile, spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { promisify } from "node:util";
+import { downloadToFile } from "#lib/server/effect/blobIo.js";
+import type { BlobError, DbError, FfmpegError } from "#lib/server/effect/errors.js";
+import { requireFfmpeg, runFfmpeg, streamFfmpeg } from "#lib/server/effect/ffmpeg.js";
+import { tempDir } from "#lib/server/effect/resources.js";
+import { runJob } from "#lib/server/effect/runJob.js";
+import { BlobStore, Db, type Services } from "#lib/server/effect/services.js";
+import type * as Cause from "effect/Cause";
+import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
+import { readFile, stat } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 /**
  * Playback renditions. A stem's source (often a 70 MB WAV) stays in Blob for
@@ -59,10 +61,52 @@ import { promisify } from "node:util";
  * Lossless sources are also kept smaller here: a raw PCM take of the Idea
  * Recorder and a WAV source of the Studio (`flacStudioSources`) are
  * replaced by FLAC, the same samples at about half the bytes.
+ *
+ * Each id is an Effect program (docs/effect-adoption.md, Phase 2) run by
+ * `runJob` under `eachJob`: the claim is a scoped resource failed on any
+ * failure or interruption, the temp dir is scoped, Blob reads retry a
+ * transient failure, and every ffmpeg runs under `JobTuning`'s time limit
+ * with the child killed when it is reached.
  */
 
 const BITRATE = { mono: "128k", stereo: "192k" };
-const run = promisify(execFile);
+
+/** What a media job can fail with: Blob, the database, ffmpeg, or ffmpeg's time limit. */
+type JobError = BlobError | DbError | FfmpegError | Cause.TimeoutError;
+type Job<A> = Effect.Effect<A, JobError, Services>;
+
+/** Runs `job` for each id under eachJob (one at a time, a failure reported and the rest still run). */
+function eachRun(kind: JobKind, ids: readonly string[], job: (id: string) => Job<unknown>) {
+	return eachJob(kind, ids, async (id) => {
+		await runJob(`job.${kind}`, job(id));
+	});
+}
+
+/**
+ * A row's claim, held for the scope: when the work after it fails or is
+ * interrupted, `fail` marks the row failed (so the next visit retries);
+ * on success nothing is released, the work's own finish having settled the row.
+ */
+function claimOrFail<C>(
+	kind: JobKind,
+	id: string,
+	claim: (id: string) => Promise<C | null | undefined>,
+	fail: (id: string) => Promise<unknown>,
+) {
+	return Effect.gen(function* () {
+		const db = yield* Db;
+		return yield* Effect.acquireRelease(
+			db.call(`${kind}:claim`, () => claim(id)),
+			(claimed, exit) =>
+				claimed && Exit.isFailure(exit)
+					? Effect.ignore(db.call(`${kind}:fail`, () => fail(id)))
+					: Effect.void,
+		);
+	});
+}
+
+const readBytes = (file: string) => Effect.promise(() => readFile(file));
+const sizeOf = (file: string) => Effect.promise(() => stat(file)).pipe(Effect.map((s) => s.size));
 
 /**
  * Renders the stems in turn (one ffmpeg at a time keeps memory flat), then
@@ -72,7 +116,7 @@ const run = promisify(execFile);
 export async function renderStems(stemIds: string[]): Promise<void> {
 	const songIds = new Set<string>();
 	await eachJob("stem-playback", stemIds, async (id) => {
-		const songId = await transcodeStem(id);
+		const songId = await runJob("job.stem-playback", transcodeStem(id));
 		if (songId) songIds.add(songId);
 	});
 	await eachJob("mix", [...songIds], ensureOriginalMix);
@@ -87,67 +131,69 @@ export async function renderStems(stemIds: string[]): Promise<void> {
  * writes nothing new.
  */
 export async function measureStemMetadata(stemIds: string[]): Promise<void> {
-	await eachJob("stem-metadata", stemIds, async (id) => {
-		const row = await stemForMetadata(id);
-		if (!row) return;
-		const dir = await mkdtemp(join(tmpdir(), "stem-meta-"));
-		try {
-			const file = join(dir, "source");
-			const res = await readBlob(row.url);
-			if (!res.ok || !res.body)
-				throw new Error(`${res.status} ${res.statusText} fetching ${row.url}`);
-			await pipeline(Readable.fromWeb(res.body as never), createWriteStream(file));
-			const [probed, measured] = await Promise.all([probeStream(file), measurePeaks(file)]);
-			await finishStemMetadata(id, { ...measured, ...probed });
-		} finally {
-			await rm(dir, { recursive: true, force: true });
-		}
-	});
+	await eachRun("stem-metadata", stemIds, (id) =>
+		Effect.gen(function* () {
+			const db = yield* Db;
+			const row = yield* db.call("stem-metadata:read", () => stemForMetadata(id));
+			if (!row) return;
+			const file = join(yield* tempDir("stem-meta-"), "source");
+			yield* downloadToFile(row.url, file);
+			const [probed, measured] = yield* Effect.all([probeStream(file), measurePeaks(file)], {
+				concurrency: 2,
+			});
+			yield* db.call("stem-metadata:finish", () =>
+				finishStemMetadata(id, { ...measured, ...probed }),
+			);
+		}).pipe(Effect.scoped, Effect.withSpan("transcode.stemMetadata", { attributes: { id } })),
+	);
+}
+
+/** ffmpeg's probe stderr can be long (tags, chapters, cover art) before the line that matters. */
+const PROBE_STDERR = 64 * 1024;
+
+/**
+ * ffmpeg's probe: `-i file` with no output exits 1 with the stream lines in
+ * stderr, so that exit is the result, not a failure (and so is an ffmpeg
+ * that cannot run: the caller's defaults). Only the time limit fails it.
+ */
+function probe(file: string): Effect.Effect<string, Cause.TimeoutError, Services> {
+	return runFfmpeg(["-hide_banner", "-i", file], {
+		stderrTail: PROBE_STDERR,
+		span: "transcode.probe",
+	}).pipe(
+		Effect.as(""),
+		Effect.catchTag("FfmpegError", (e) => Effect.succeed(e.stderr)),
+	);
 }
 
 /**
  * How many channels a file has ("stereo", "mono", "2 channels"; 2 when it says nothing) and its sample
  * rate ("48000 Hz"; null when it says nothing), from ffmpeg's probe line.
  */
-async function probeStream(file: string): Promise<{ channels: number; sampleRate: number | null }> {
-	if (!ffmpegPath) return { channels: 2, sampleRate: null };
-	try {
-		await run(ffmpegPath, ["-hide_banner", "-i", file], {
-			maxBuffer: 1024 * 1024,
-			timeout: FFMPEG_TIMEOUT_MS,
-		});
-	} catch (e) {
-		const err = String((e as { stderr?: string }).stderr ?? "");
+function probeStream(file: string) {
+	return Effect.map(probe(file), (err) => {
 		const line = err.match(/Audio: [^\n]*/)?.[0] ?? "";
 		const hz = line.match(/(\d+) Hz/)?.[1];
 		const sampleRate = hz ? Number(hz) : null;
 		if (/\bmono\b/.test(line)) return { channels: 1, sampleRate };
 		const n = line.match(/(\d+) channels/)?.[1];
 		return { channels: n ? Math.max(1, Number(n)) : 2, sampleRate };
-	}
-	return { channels: 2, sampleRate: null };
+	});
 }
 
 /** Returns the stem's song id when a rendition was made, null when nothing was done. */
-async function transcodeStem(stemId: string): Promise<string | null> {
-	const claim = await claimPlayback(stemId);
-	if (!claim) return null;
-	if (!ffmpegPath) {
-		await failPlayback(stemId);
-		throw new Error("ffmpeg binary is not available on this platform");
-	}
-	const dir = await mkdtemp(join(tmpdir(), "stem-"));
-	try {
+function transcodeStem(stemId: string): Job<string | null> {
+	return Effect.gen(function* () {
+		const claim = yield* claimOrFail("stem-playback", stemId, claimPlayback, failPlayback);
+		if (!claim) return null;
+		yield* requireFfmpeg;
+		const dir = yield* tempDir("stem-");
 		const input = join(dir, "source");
 		const output = join(dir, "playback.m4a");
-		const res = await readBlob(claim.url);
-		if (!res.ok || !res.body)
-			throw new Error(`${res.status} ${res.statusText} fetching ${claim.url}`);
-		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(input));
+		yield* downloadToFile(claim.url, input);
 
 		const mono = claim.channels === 1;
-		await run(
-			ffmpegPath,
+		yield* runFfmpeg(
 			[
 				"-hide_banner",
 				"-loglevel",
@@ -169,26 +215,24 @@ async function transcodeStem(stemId: string): Promise<string | null> {
 				"+faststart",
 				output,
 			],
-			{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
+			{ span: "transcode.stem.encode" },
 		);
 
-		const bytes = await readFile(output);
+		const bytes = yield* readBytes(output);
 		const pathname = playbackPathname(claim.pathname);
-		const blob = await putBlob(pathname, bytes, "audio/mp4", accessOfUrl(claim.url));
-		await finishPlayback(stemId, { url: blob.url, pathname, bytes: bytes.byteLength });
-		if (claim.playbackUrl) await deleteBlobs([claim.playbackUrl]);
+		const store = yield* BlobStore;
+		const blob = yield* store.put(pathname, bytes, "audio/mp4", accessOfUrl(claim.url));
+		yield* (yield* Db).call("stem-playback:finish", () =>
+			finishPlayback(stemId, { url: blob.url, pathname, bytes: bytes.byteLength }),
+		);
+		if (claim.playbackUrl) yield* store.delete([claim.playbackUrl]);
 		return claim.songId;
-	} catch (e) {
-		await failPlayback(stemId);
-		throw e;
-	} finally {
-		await rm(dir, { recursive: true, force: true });
-	}
+	}).pipe(Effect.scoped, Effect.withSpan("transcode.stem", { attributes: { stemId } }));
 }
 
 /** Demo recordings become MP3s (192 kbps, source channels up to stereo), one at a time, each with its waveform measured. */
 export async function renderDemos(demoIds: string[]): Promise<void> {
-	await eachJob("demo-playback", demoIds, (id) => transcodeToMp3(id, DEMO_TARGET));
+	await eachRun("demo-playback", demoIds, (id) => transcodeToMp3(id, DEMO_TARGET));
 }
 
 /**
@@ -197,33 +241,30 @@ export async function renderDemos(demoIds: string[]): Promise<void> {
  * measured one at a time (docs/uploads-and-blob.md, "Sessions" review).
  */
 export async function measureDemos(demoIds: string[]): Promise<void> {
-	await eachJob("demo-peaks", demoIds, (id) =>
-		measureRendition(id, claimDemoPeaks, finishDemoPeaks),
+	await eachRun("demo-peaks", demoIds, (id) =>
+		measureRendition("demo-peaks", id, claimDemoPeaks, finishDemoPeaks),
 	);
 }
 export async function measureSessions(recordingIds: string[]): Promise<void> {
-	await eachJob("session-peaks", recordingIds, (id) =>
-		measureRendition(id, claimSessionPeaks, finishSessionPeaks),
+	await eachRun("session-peaks", recordingIds, (id) =>
+		measureRendition("session-peaks", id, claimSessionPeaks, finishSessionPeaks),
 	);
 }
-async function measureRendition(
+function measureRendition(
+	kind: JobKind,
 	id: string,
 	claim: (id: string) => Promise<{ id: string; url: string } | null>,
 	finish: (id: string, r: { peaks: number[]; durationSeconds: number }) => Promise<void>,
-): Promise<void> {
-	const claimed = await claim(id);
-	if (!claimed) return;
-	const dir = await mkdtemp(join(tmpdir(), "peaks-"));
-	try {
-		const file = join(dir, "rendition.mp3");
-		const res = await readBlob(claimed.url);
-		if (!res.ok || !res.body)
-			throw new Error(`${res.status} ${res.statusText} fetching ${claimed.url}`);
-		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(file));
-		await finish(id, await measurePeaks(file));
-	} finally {
-		await rm(dir, { recursive: true, force: true });
-	}
+): Job<void> {
+	return Effect.gen(function* () {
+		const db = yield* Db;
+		const claimed = yield* db.call(`${kind}:claim`, () => claim(id));
+		if (!claimed) return;
+		const file = join(yield* tempDir("peaks-"), "rendition.mp3");
+		yield* downloadToFile(claimed.url, file);
+		const measured = yield* measurePeaks(file);
+		yield* db.call(`${kind}:finish`, () => finish(id, measured));
+	}).pipe(Effect.scoped, Effect.withSpan("transcode.measureRendition", { attributes: { id } }));
 }
 
 /** The waveform's rate: coarse frames of a tenth of a second, reduced to the bins at the end. */
@@ -236,70 +277,49 @@ const PEAKS_FRAME = PEAKS_RATE / 10;
  * streams, so an hour's recording costs a few floats per tenth of a second
  * and never sits decoded in memory.
  */
-function measurePeaks(file: string): Promise<{ peaks: number[]; durationSeconds: number }> {
-	return new Promise((resolve, reject) => {
-		if (!ffmpegPath) {
-			reject(new Error("ffmpeg binary is not available on this platform"));
-			return;
-		}
+function measurePeaks(file: string) {
+	return Effect.suspend(() => {
 		const acc = createPcm16Peaks(PEAKS_FRAME);
-		const child = spawn(ffmpegPath, [
-			"-hide_banner",
-			"-loglevel",
-			"error",
-			"-i",
-			file,
-			"-vn",
-			"-ac",
-			"1",
-			"-ar",
-			String(PEAKS_RATE),
-			"-f",
-			"s16le",
-			"-",
-		]);
-		let stderr = "";
-		let timedOut = false;
-		// execFile's `timeout`, by hand: spawn has none that rejects.
-		const timer = setTimeout(() => {
-			timedOut = true;
-			child.kill();
-		}, FFMPEG_TIMEOUT_MS);
-		child.stdout.on("data", (chunk: Buffer) => acc.push(chunk));
-		child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
-		child.on("error", (e) => {
-			clearTimeout(timer);
-			reject(e);
-		});
-		child.on("close", (code) => {
-			clearTimeout(timer);
-			if (timedOut) {
-				reject(new Error(`ffmpeg timed out after ${FFMPEG_TIMEOUT_MS} ms measuring peaks`));
-				return;
-			}
-			if (code !== 0) {
-				reject(new Error(`ffmpeg exited ${code} measuring peaks: ${stderr.trim()}`));
-				return;
-			}
-			const { peaks, samples } = acc.finish();
-			resolve({ peaks, durationSeconds: samples / PEAKS_RATE });
-		});
+		return streamFfmpeg(
+			[
+				"-hide_banner",
+				"-loglevel",
+				"error",
+				"-i",
+				file,
+				"-vn",
+				"-ac",
+				"1",
+				"-ar",
+				String(PEAKS_RATE),
+				"-f",
+				"s16le",
+				"-",
+			],
+			(chunk) => acc.push(chunk),
+			"transcode.peaks",
+		).pipe(
+			Effect.map(() => {
+				const { peaks, samples } = acc.finish();
+				return { peaks, durationSeconds: samples / PEAKS_RATE };
+			}),
+		);
 	});
 }
 
 /** Mixes (docs/mixes.md) get the same MP3. */
 export async function renderMixes(mixIds: string[]): Promise<void> {
-	await eachJob("mix-playback", mixIds, (id) => transcodeToMp3(id, MIX_TARGET));
+	await eachRun("mix-playback", mixIds, (id) => transcodeToMp3(id, MIX_TARGET));
 }
 
 /** Takes (docs/demo-recording.md) get the same MP3. */
 export async function renderRecordings(recordingIds: string[]): Promise<void> {
-	await eachJob("recording-playback", recordingIds, (id) => transcodeToMp3(id, RECORDING_TARGET));
+	await eachRun("recording-playback", recordingIds, (id) => transcodeToMp3(id, RECORDING_TARGET));
 }
 
 /** Session recordings (docs/uploads-and-blob.md, "Sessions") get the same MP3, for playback and the session's download. */
 export async function renderSessions(recordingIds: string[]): Promise<void> {
-	await eachJob("session-playback", recordingIds, (id) => transcodeToMp3(id, SESSION_TARGET));
+	await eachRun("session-playback", recordingIds, (id) => transcodeToMp3(id, SESSION_TARGET));
 }
 
 /**
@@ -314,7 +334,7 @@ export async function renderSessions(recordingIds: string[]): Promise<void> {
 export async function flacStudioSources(ids: string[]): Promise<void> {
 	for (const id of ids) {
 		try {
-			await flacStudioSource(id);
+			await runJob("job.studio-flac", flacStudioSource(id));
 		} catch (e) {
 			console.error(`[studio-flac] ${id}:`, e);
 		}
@@ -325,20 +345,17 @@ export async function flacStudioSources(ids: string[]): Promise<void> {
 const dueForFlac = (row: Awaited<ReturnType<typeof studioSourceForTranscode>>) =>
 	row?.status === "ready" && !!row.url && studioSourceWantsFlac({ ...row, name: row.pathname });
 
-async function flacStudioSource(id: string): Promise<void> {
-	const row = await studioSourceForTranscode(id);
-	if (!row || !dueForFlac(row)) return;
-	if (!ffmpegPath) throw new Error("ffmpeg binary is not available on this platform");
-	const dir = await mkdtemp(join(tmpdir(), "studio-flac-"));
-	try {
+function flacStudioSource(id: string): Job<void> {
+	return Effect.gen(function* () {
+		const db = yield* Db;
+		const row = yield* db.call("studio-flac:read", () => studioSourceForTranscode(id));
+		if (!row || !dueForFlac(row)) return;
+		yield* requireFfmpeg;
+		const dir = yield* tempDir("studio-flac-");
 		const source = join(dir, "source.wav");
 		const flac = join(dir, "source.flac");
-		const res = await readBlob(row.url);
-		if (!res.ok || !res.body)
-			throw new Error(`${res.status} ${res.statusText} fetching ${row.url}`);
-		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(source));
-		await run(
-			ffmpegPath,
+		yield* downloadToFile(row.url, source);
+		yield* runFfmpeg(
 			[
 				"-hide_banner",
 				"-loglevel",
@@ -355,34 +372,33 @@ async function flacStudioSource(id: string): Promise<void> {
 				"5",
 				flac,
 			],
-			{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
+			{ span: "transcode.studioFlac.encode" },
 		);
-		const bytes = await readFile(flac);
-		const { size } = await stat(source);
-		if (bytes.byteLength >= size) return;
+		const bytes = yield* readBytes(flac);
+		if (bytes.byteLength >= (yield* sizeOf(source))) return;
 		const pathname = row.pathname.replace(/\.[a-z0-9]+$/i, "") + ".flac";
-		const blob = await putBlob(pathname, bytes, "audio/flac", accessOfUrl(row.url));
-		const replaced = await replaceStudioSourceFile(row.accountId, id, {
-			url: blob.url,
-			pathname,
-			filename: row.filename.replace(/\.[a-z0-9]+$/i, "") + ".flac",
-			contentType: "audio/flac",
-			sizeBytes: bytes.byteLength,
-			codec: "flac",
-		});
+		const store = yield* BlobStore;
+		const blob = yield* store.put(pathname, bytes, "audio/flac", accessOfUrl(row.url));
+		const replaced = yield* db.call("studio-flac:replace", () =>
+			replaceStudioSourceFile(row.accountId, id, {
+				url: blob.url,
+				pathname,
+				filename: row.filename.replace(/\.[a-z0-9]+$/i, "") + ".flac",
+				contentType: "audio/flac",
+				sizeBytes: bytes.byteLength,
+				codec: "flac",
+			}),
+		);
 		// Deleted while it converted: the FLAC goes too, the WAV went with the row.
-		if (!replaced) {
-			await deleteBlobs([blob.url]);
-			return;
-		}
-		if (row.url !== blob.url) await deleteBlobs([row.url]);
-	} finally {
-		await rm(dir, { recursive: true, force: true });
-	}
+		if (!replaced) return yield* store.delete([blob.url]);
+		if (row.url !== blob.url) yield* store.delete([row.url]);
+	}).pipe(Effect.scoped, Effect.withSpan("transcode.studioFlac", { attributes: { id } }));
 }
 
 /** The row family an MP3 is made for: how to claim it, record the result or give up. */
 interface Mp3Target {
+	/** The job kind, which names the target's database calls and its span. */
+	kind: JobKind;
 	claim: (id: string) => Promise<{
 		url: string;
 		pathname: string;
@@ -414,23 +430,27 @@ interface Mp3Target {
 	) => Promise<void>;
 }
 const DEMO_TARGET: Mp3Target = {
+	kind: "demo-playback",
 	claim: claimDemoPlayback,
 	finish: finishDemoPlayback,
 	fail: failDemoPlayback,
 	measure: true,
 };
 const MIX_TARGET: Mp3Target = {
+	kind: "mix-playback",
 	claim: claimMixPlayback,
 	finish: finishMixPlayback,
 	fail: failMixPlayback,
 };
 const SESSION_TARGET: Mp3Target = {
+	kind: "session-playback",
 	claim: claimSessionPlayback,
 	finish: finishSessionPlayback,
 	fail: failSessionPlayback,
 	measure: true,
 };
 const RECORDING_TARGET: Mp3Target = {
+	kind: "recording-playback",
 	claim: claimRecordingPlayback,
 	finish: finishRecordingPlayback,
 	fail: failRecordingPlayback,
@@ -438,122 +458,107 @@ const RECORDING_TARGET: Mp3Target = {
 };
 
 /** Whether a file's audio is raw PCM (ffmpeg's probe line names the codec). */
-async function isRawPcm(file: string): Promise<boolean> {
-	if (!ffmpegPath) return false;
-	try {
-		await run(ffmpegPath, ["-hide_banner", "-i", file], {
-			maxBuffer: 1024 * 1024,
-			timeout: FFMPEG_TIMEOUT_MS,
-		});
-	} catch (e) {
-		// ffmpeg exits 1 with no output file; the probe is in stderr.
-		const err = String((e as { stderr?: string }).stderr ?? "");
-		return /Audio: pcm_/.test(err);
-	}
-	return false;
-}
+const isRawPcm = (file: string) => Effect.map(probe(file), (err) => /Audio: pcm_/.test(err));
 
 /** Whether a file is an MP3 already (the probe's stream line): it serves as its own rendition (Kevin, 2026-10-19). */
-async function isMp3(file: string): Promise<boolean> {
-	if (!ffmpegPath) return false;
-	try {
-		await run(ffmpegPath, ["-hide_banner", "-i", file], {
-			maxBuffer: 1024 * 1024,
-			timeout: FFMPEG_TIMEOUT_MS,
-		});
-	} catch (e) {
-		const err = String((e as { stderr?: string }).stderr ?? "");
-		return /Audio: mp3/.test(err);
-	}
-	return false;
-}
+const isMp3 = (file: string) => Effect.map(probe(file), (err) => /Audio: mp3/.test(err));
 
 /**
  * Where a take's sound starts and ends, from a silencedetect pass over the
  * whole file; null when there is nothing worth cutting (src/lib/utils/silenceBounds.ts).
  */
-async function findSilence(file: string): Promise<SilenceBounds | null> {
-	if (!ffmpegPath) return null;
-	try {
-		const { stderr } = await run(
-			ffmpegPath,
-			[
-				"-hide_banner",
-				"-i",
-				file,
-				"-vn",
-				"-af",
-				`silencedetect=noise=${TRIM_NOISE_DB}dB:d=${TRIM_MIN_SILENCE_SECONDS}`,
-				"-f",
-				"null",
-				"-",
-			],
-			{ maxBuffer: 4 * 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
-		);
-		return silenceBounds(stderr);
-	} catch {
-		return null; // an unreadable file: the MP3 step reports it
-	}
+function findSilence(file: string): Effect.Effect<SilenceBounds | null, never, Services> {
+	return runFfmpeg(
+		[
+			"-hide_banner",
+			"-i",
+			file,
+			"-vn",
+			"-af",
+			`silencedetect=noise=${TRIM_NOISE_DB}dB:d=${TRIM_MIN_SILENCE_SECONDS}`,
+			"-f",
+			"null",
+			"-",
+		],
+		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.silence" },
+	).pipe(
+		Effect.map(({ stderr }) => silenceBounds(stderr)),
+		// An unreadable file (or one that will not finish): the MP3 step reports it.
+		Effect.orElseSucceed(() => null),
+	);
 }
 
 /** `-ss`/`-to` after the input, so a re-encode cuts to the sample and a stream copy to the packet. */
 const cut = (b: SilenceBounds | null) =>
 	b ? ["-ss", b.start.toFixed(3), "-to", b.end.toFixed(3)] : [];
 
+type Mp3Claim = NonNullable<Awaited<ReturnType<Mp3Target["claim"]>>>;
+type ReplaceSource = NonNullable<Mp3Target["replaceSource"]>;
+
 /**
- * A demo as uploaded may be anything a phone produces — ALAC in .m4a, CAF,
- * AMR — which browsers cannot all play. The MP3 is what the page plays and
- * offers for download; the original stays in Blob.
+ * A take's source replaced before its MP3 is made: raw PCM kept as FLAC,
+ * or the silence the recorder asked to lose cut off. Returns the file the
+ * MP3 is made from (the source as downloaded when nothing changed).
  */
-async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
-	const claim = await target.claim(id);
-	if (!claim) return;
-	if (!ffmpegPath) {
-		await target.fail(id);
-		throw new Error("ffmpeg binary is not available on this platform");
-	}
-	const dir = await mkdtemp(join(tmpdir(), "demo-"));
-	try {
-		const source = join(dir, "source");
-		const output = join(dir, "demo.mp3");
-		const res = await readBlob(claim.url);
-		if (!res.ok || !res.body)
-			throw new Error(`${res.status} ${res.statusText} fetching ${claim.url}`);
-		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(source));
+function replaceTakeSource(
+	id: string,
+	kind: JobKind,
+	replaceSource: ReplaceSource,
+	claim: Mp3Claim,
+	source: string,
+): Job<string> {
+	return Effect.gen(function* () {
 		// The recorder may ask for the silence at both ends to be cut. The cut is
-		// made on the source, and the MP3 below is made from the cut source, so
-		// the two stay the same length and timecode.
-		let input = source;
-		const bounds = target.replaceSource && claim.trimSilence ? await findSilence(source) : null;
+		// made on the source, and the MP3 is made from the cut source, so the two
+		// stay the same length and timecode.
+		const bounds = claim.trimSilence ? yield* findSilence(source) : null;
 		// Chrome's lossless recording is raw PCM in WebM, twice the size it needs to be
 		// and playable almost nowhere: the source becomes FLAC (same samples, half the bytes).
-		if (target.replaceSource && (await isRawPcm(input))) {
-			const flac = join(dir, "source.flac");
-			await run(
-				ffmpegPath,
-				[
-					"-hide_banner",
-					"-loglevel",
-					"error",
-					"-y",
-					"-i",
-					input,
-					...cut(bounds),
-					"-vn",
-					"-map_metadata",
-					"-1",
-					"-c:a",
-					"flac",
-					"-compression_level",
-					"5",
-					flac,
-				],
-				{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
-			);
-			const bytes = await readFile(flac);
-			const pathname = claim.pathname.replace(/\.[a-z0-9]+$/i, "") + ".flac";
-			const blob = await putBlob(pathname, bytes, "audio/flac", accessOfUrl(claim.url));
-			await target.replaceSource(id, {
+		if (yield* isRawPcm(source))
+			return yield* flacTake(id, kind, replaceSource, claim, source, bounds);
+		if (bounds) return yield* trimTake(id, kind, replaceSource, claim, source, bounds);
+		return source;
+	}).pipe(Effect.withSpan("transcode.replaceTakeSource", { attributes: { id } }));
+}
+
+/** A raw PCM take as FLAC (cut when `bounds` says so), put in Blob and made the take's source. */
+function flacTake(
+	id: string,
+	kind: JobKind,
+	replaceSource: ReplaceSource,
+	claim: Mp3Claim,
+	source: string,
+	bounds: SilenceBounds | null,
+): Job<string> {
+	return Effect.gen(function* () {
+		const db = yield* Db;
+		const store = yield* BlobStore;
+		const flac = join(dirname(source), "source.flac");
+		yield* runFfmpeg(
+			[
+				"-hide_banner",
+				"-loglevel",
+				"error",
+				"-y",
+				"-i",
+				source,
+				...cut(bounds),
+				"-vn",
+				"-map_metadata",
+				"-1",
+				"-c:a",
+				"flac",
+				"-compression_level",
+				"5",
+				flac,
+			],
+			{ span: "transcode.mp3.flacSource" },
+		);
+		const bytes = yield* readBytes(flac);
+		const pathname = claim.pathname.replace(/\.[a-z0-9]+$/i, "") + ".flac";
+		const blob = yield* store.put(pathname, bytes, "audio/flac", accessOfUrl(claim.url));
+		yield* db.call(`${kind}:replaceSource`, () =>
+			replaceSource(id, {
 				url: blob.url,
 				pathname,
 				filename: pathname.split("/").pop() ?? "take.flac",
@@ -561,40 +566,57 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 				sizeBytes: bytes.byteLength,
 				codec: "flac",
 				...(bounds ? { durationSeconds: bounds.end - bounds.start } : {}),
-			});
-			if (claim.url !== blob.url) await deleteBlobs([claim.url]);
-			input = flac;
-		} else if (target.replaceSource && bounds) {
-			// Lossless sources (ALAC, FLAC) are re-encoded to the sample; a compressed
-			// one (Opus, AAC) is stream-copied, cut at a packet, so nothing is re-encoded.
-			const ext = claim.pathname.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin";
-			const lossless = claim.codec === "alac" || claim.codec === "flac";
-			const trimmed = join(dir, `trimmed.${ext}`);
-			await run(
-				ffmpegPath,
-				[
-					"-hide_banner",
-					"-loglevel",
-					"error",
-					"-y",
-					"-i",
-					input,
-					...cut(bounds),
-					"-vn",
-					"-map_metadata",
-					"-1",
-					"-c:a",
-					lossless ? claim.codec! : "copy",
-					trimmed,
-				],
-				{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
-			);
-			const bytes = await readFile(trimmed);
-			const pathname =
-				claim.pathname.replace(/\.[a-z0-9]+$/i, "") + `-t${Date.now().toString(36)}.${ext}`;
-			const contentType = claim.contentType ?? "application/octet-stream";
-			const blob = await putBlob(pathname, bytes, contentType, accessOfUrl(claim.url));
-			await target.replaceSource(id, {
+			}),
+		);
+		if (claim.url !== blob.url) yield* store.delete([claim.url]);
+		return flac;
+	});
+}
+
+/**
+ * A take cut to `bounds`: lossless sources (ALAC, FLAC) are re-encoded to
+ * the sample; a compressed one (Opus, AAC) is stream-copied, cut at a
+ * packet, so nothing is re-encoded. Put in Blob and made the take's source.
+ */
+function trimTake(
+	id: string,
+	kind: JobKind,
+	replaceSource: ReplaceSource,
+	claim: Mp3Claim,
+	source: string,
+	bounds: SilenceBounds,
+): Job<string> {
+	return Effect.gen(function* () {
+		const db = yield* Db;
+		const store = yield* BlobStore;
+		const ext = claim.pathname.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin";
+		const lossless = claim.codec === "alac" || claim.codec === "flac";
+		const trimmed = join(dirname(source), `trimmed.${ext}`);
+		yield* runFfmpeg(
+			[
+				"-hide_banner",
+				"-loglevel",
+				"error",
+				"-y",
+				"-i",
+				source,
+				...cut(bounds),
+				"-vn",
+				"-map_metadata",
+				"-1",
+				"-c:a",
+				lossless ? claim.codec! : "copy",
+				trimmed,
+			],
+			{ span: "transcode.mp3.trim" },
+		);
+		const bytes = yield* readBytes(trimmed);
+		const pathname =
+			claim.pathname.replace(/\.[a-z0-9]+$/i, "") + `-t${Date.now().toString(36)}.${ext}`;
+		const contentType = claim.contentType ?? "application/octet-stream";
+		const blob = yield* store.put(pathname, bytes, contentType, accessOfUrl(claim.url));
+		yield* db.call(`${kind}:replaceSource`, () =>
+			replaceSource(id, {
 				url: blob.url,
 				pathname,
 				filename: pathname.split("/").pop() ?? `take.${ext}`,
@@ -602,27 +624,47 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 				sizeBytes: bytes.byteLength,
 				codec: claim.codec ?? null,
 				durationSeconds: bounds.end - bounds.start,
-			});
-			if (claim.url !== blob.url) await deleteBlobs([claim.url]);
-			input = trimmed;
-		}
+			}),
+		);
+		if (claim.url !== blob.url) yield* store.delete([claim.url]);
+		return trimmed;
+	});
+}
+
+/**
+ * A demo as uploaded may be anything a phone produces — ALAC in .m4a, CAF,
+ * AMR — which browsers cannot all play. The MP3 is what the page plays and
+ * offers for download; the original stays in Blob. The claim is failed when
+ * anything after it fails or is interrupted, even past a source already
+ * replaced, so the row is retried.
+ */
+function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
+	return Effect.gen(function* () {
+		const claim = yield* claimOrFail(target.kind, id, target.claim, target.fail);
+		if (!claim) return;
+		yield* requireFfmpeg;
+		const db = yield* Db;
+		const store = yield* BlobStore;
+		const dir = yield* tempDir("demo-");
+		const source = join(dir, "source");
+		const output = join(dir, "demo.mp3");
+		yield* downloadToFile(claim.url, source);
+		const input = target.replaceSource
+			? yield* replaceTakeSource(id, target.kind, target.replaceSource, claim, source)
+			: source;
 		// An MP3 as uploaded is its own rendition: nothing to encode, one file kept,
 		// played as it came (a second MP3 would cost storage and a little quality).
-		if (input === source && /\.mp3$/i.test(claim.pathname) && (await isMp3(source))) {
-			const { size } = await stat(source);
-			const measured = target.measure ? await measurePeaks(source) : {};
-			await target.finish(id, {
-				url: claim.url,
-				pathname: claim.pathname,
-				bytes: size,
-				...measured,
-			});
+		if (input === source && /\.mp3$/i.test(claim.pathname) && (yield* isMp3(source))) {
+			const size = yield* sizeOf(source);
+			const measured = target.measure ? yield* measurePeaks(source) : {};
+			yield* db.call(`${target.kind}:finish`, () =>
+				target.finish(id, { url: claim.url, pathname: claim.pathname, bytes: size, ...measured }),
+			);
 			if (claim.playbackUrl && claim.playbackUrl !== claim.url)
-				await deleteBlobs([claim.playbackUrl]);
+				yield* store.delete([claim.playbackUrl]);
 			return;
 		}
-		await run(
-			ffmpegPath,
+		yield* runFfmpeg(
 			[
 				"-hide_banner",
 				"-loglevel",
@@ -645,22 +687,19 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 				"3",
 				output,
 			],
-			{ maxBuffer: 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS },
+			{ span: "transcode.mp3.encode" },
 		);
-		const bytes = await readFile(output);
+		const bytes = yield* readBytes(output);
 		const pathname =
 			claim.pathname.replace(/\.[a-z0-9]+$/i, "") + `.play-${Date.now().toString(36)}.mp3`;
-		const blob = await putBlob(pathname, bytes, "audio/mpeg", accessOfUrl(claim.url));
+		const blob = yield* store.put(pathname, bytes, "audio/mpeg", accessOfUrl(claim.url));
 		// The waveform from the MP3 itself (what plays), so the peaks and the length match it to the sample.
-		const measured = target.measure ? await measurePeaks(output) : {};
-		await target.finish(id, { url: blob.url, pathname, bytes: bytes.byteLength, ...measured });
+		const measured = target.measure ? yield* measurePeaks(output) : {};
+		yield* db.call(`${target.kind}:finish`, () =>
+			target.finish(id, { url: blob.url, pathname, bytes: bytes.byteLength, ...measured }),
+		);
 		// The old rendition goes, unless it was the source itself (an MP3 adopted earlier).
 		if (claim.playbackUrl && claim.playbackUrl !== claim.url)
-			await deleteBlobs([claim.playbackUrl]);
-	} catch (e) {
-		await target.fail(id);
-		throw e;
-	} finally {
-		await rm(dir, { recursive: true, force: true });
-	}
+			yield* store.delete([claim.playbackUrl]);
+	}).pipe(Effect.scoped, Effect.withSpan(`transcode.${target.kind}`, { attributes: { id } }));
 }

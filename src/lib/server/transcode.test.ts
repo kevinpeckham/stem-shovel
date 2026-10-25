@@ -81,12 +81,14 @@ vi.mock("node:child_process", () => ({
 		_file: string,
 		args: string[],
 		_opts: unknown,
-		cb: (e: Error | null, out?: { stdout: string; stderr: string }) => void,
+		cb: (e: Error | null, stdout: string, stderr: string) => void,
 	) => {
 		h.runs.push(args);
 		const a = h.answer(args);
-		if (a instanceof Error) cb(a);
-		else cb(null, { stdout: "", stderr: a?.stderr ?? "" });
+		// execFile's own callback shape: the error, then stdout and stderr (a probe's answer is in stderr).
+		if (a instanceof Error) cb(a, "", (a as { stderr?: string }).stderr ?? "");
+		else cb(null, "", a?.stderr ?? "");
+		return { kill: () => {} };
 	},
 }));
 vi.mock("node:fs", () => ({
@@ -257,7 +259,7 @@ describe("renderStems", () => {
 			Object.assign(new Error("ffmpeg exited 1"), { stderr: "Invalid data" }),
 		);
 		await renderStems(["stem-1"]);
-		expectReported("stem-playback", "stem-1", "ffmpeg exited 1");
+		expectReported("stem-playback", "stem-1", "ffmpeg failed: Invalid data");
 		expect(h.data.failPlayback).toHaveBeenCalledWith("stem-1");
 		expect(h.data.finishPlayback).not.toHaveBeenCalled();
 		expect(h.blob.putBlob).not.toHaveBeenCalled();
@@ -267,7 +269,7 @@ describe("renderStems", () => {
 		h.data.claimPlayback.mockResolvedValue(stemClaim());
 		h.blob.readBlob.mockResolvedValue(new Response(null, { status: 404, statusText: "Not Found" }));
 		await renderStems(["stem-1"]);
-		expectReported("stem-playback", "stem-1", "404 Not Found fetching");
+		expectReported("stem-playback", "stem-1", "answered 404");
 		expect(h.data.failPlayback).toHaveBeenCalledWith("stem-1");
 		expect(h.runs).toEqual([]);
 	});
@@ -288,7 +290,7 @@ describe("renderStems", () => {
 			.mockImplementation(async () => fetched());
 		h.blob.putBlob.mockResolvedValue({ url: `${PUBLIC}/x.m4a` });
 		await renderStems(["stem-1", "stem-2"]);
-		expectReported("stem-playback", "stem-1", "404 Not Found fetching");
+		expectReported("stem-playback", "stem-1", "answered 404");
 		expect(h.data.finishPlayback).toHaveBeenCalledTimes(1);
 		expect(h.mix.ensureOriginalMix.mock.calls).toEqual([["song-2"]]);
 		expect(h.notes.ensureSongNotes.mock.calls).toEqual([["song-2"]]);

@@ -2,23 +2,18 @@ import { accessOfUrl } from "#lib/utils/blobAccess.js";
 import { mixPathname } from "#lib/server/blob.js";
 import type { songForMix } from "#lib/server/data.js";
 import { FADER_MAX } from "#lib/audio/engine.svelte.js";
-import { FFMPEG_TIMEOUT_MS } from "#lib/constants/ffmpegTimeout.js";
+import { downloadToFile } from "#lib/server/effect/blobIo.js";
 import { BlobError, type DbError, type FfmpegError } from "#lib/server/effect/errors.js";
+import { runFfmpeg } from "#lib/server/effect/ffmpeg.js";
+import { tempDir } from "#lib/server/effect/resources.js";
 import { runJob } from "#lib/server/effect/runJob.js";
-import { BlobStore, Db, Ffmpeg } from "#lib/server/effect/services.js";
+import { BlobStore, Db, type Ffmpeg } from "#lib/server/effect/services.js";
 import type * as Cause from "effect/Cause";
-import * as Context from "effect/Context";
-import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
-import * as Schedule from "effect/Schedule";
 import { createHash } from "node:crypto";
-import { createWriteStream } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 
 /**
  * MP3 mixdowns, rendered server-side with ffmpeg from the playback renditions
@@ -140,67 +135,6 @@ export function panFilter(pan: number): string {
 /** What a mix can fail with: Blob, the database, ffmpeg, or ffmpeg's time limit. */
 export type MixError = BlobError | DbError | FfmpegError | Cause.TimeoutError;
 
-/**
- * The retry's base delay and ffmpeg's time limit. Production uses the
- * defaults; a test provides shorter ones with `Effect.provideService`.
- */
-export const MixTuning = Context.Reference<{
-	readonly retryBase: Duration.Input;
-	readonly ffmpegTimeout: Duration.Input;
-}>("MixTuning", {
-	defaultValue: () => ({
-		retryBase: "500 millis",
-		ffmpegTimeout: Duration.millis(FFMPEG_TIMEOUT_MS),
-	}),
-});
-
-/** A temp directory removed when the scope closes: on success, failure and interruption. */
-const tempDir = Effect.acquireRelease(
-	Effect.promise(() => mkdtemp(join(tmpdir(), "mix-"))),
-	(dir) => Effect.promise(() => rm(dir, { recursive: true, force: true })),
-);
-
-/**
- * Worth another try: the store answering 5xx, or the connection failing
- * (undici's `TypeError: fetch failed`, a system error with a `code` such as
- * ECONNRESET mid-stream). A 404 is not, and neither is a plain throw such as
- * `readBlob`'s refusal of a URL outside our stores.
- */
-function isTransient(e: BlobError) {
-	if (e.status !== undefined) return e.status >= 500;
-	const cause = e.cause;
-	return (
-		cause instanceof TypeError ||
-		(typeof cause === "object" &&
-			cause !== null &&
-			typeof (cause as { code?: unknown }).code === "string")
-	);
-}
-
-/** Streams one stem into `file`, retrying a transient failure up to three times with jittered backoff. */
-function download(url: string, file: string): Effect.Effect<void, BlobError, BlobStore> {
-	return Effect.gen(function* () {
-		const { retryBase } = yield* MixTuning;
-		const once = Effect.gen(function* () {
-			const store = yield* BlobStore;
-			const res = yield* store.read(url);
-			if (!res.ok || !res.body)
-				return yield* new BlobError({ op: "read", url, status: res.status });
-			const body = res.body;
-			yield* Effect.tryPromise({
-				try: (signal) =>
-					pipeline(Readable.fromWeb(body as never), createWriteStream(file), { signal }),
-				catch: (cause) => new BlobError({ op: "read", url, cause }),
-			});
-		});
-		yield* Effect.retry(once, {
-			schedule: Schedule.jittered(Schedule.exponential(retryBase)),
-			times: 3,
-			while: isTransient,
-		});
-	}).pipe(Effect.withSpan("mix.download", { attributes: { url } }));
-}
-
 /** Renders the request to an MP3 and returns its bytes. */
 function renderMixEffect(
 	song: Mixable,
@@ -213,13 +147,13 @@ function renderMixEffect(
 			if (!stem) return yield* Effect.die(new Error(`stem ${r.id} is not in this song`));
 			inputs.push({ url: playbackOrSource(stem), gain: r.gain, pan: r.pan ?? 0 });
 		}
-		const dir = yield* tempDir;
+		const dir = yield* tempDir("mix-");
 		// concurrency 3: one failure interrupts the other downloads.
 		const files = yield* Effect.forEach(
 			inputs,
 			({ url }, i) => {
 				const file = join(dir, `in-${i}`);
-				return Effect.as(download(url, file), file);
+				return Effect.as(downloadToFile(url, file), file);
 			},
 			{ concurrency: 3 },
 		);
@@ -233,41 +167,37 @@ function renderMixEffect(
 			`${sum}amix=inputs=${inputs.length}:normalize=0:dropout_transition=0,volume=${req.master},alimiter=limit=0.98[out]`,
 		].join(";");
 		const output = join(dir, "mix.mp3");
-		const ffmpeg = yield* Ffmpeg;
-		const { ffmpegTimeout } = yield* MixTuning;
-		// The timeout interrupts the run, and interrupting it kills the child.
-		yield* ffmpeg
-			.run(
-				[
-					"-hide_banner",
-					"-loglevel",
-					"error",
-					"-y",
-					...files.flatMap((f) => ["-i", f]),
-					"-filter_complex",
-					filter,
-					"-map",
-					"[out]",
-					"-c:a",
-					"libmp3lame",
-					"-b:a",
-					BITRATE,
-					// The renditions carry MP4 branding and chapter atoms; start the tags clean.
-					"-map_metadata",
-					"-1",
-					"-map_chapters",
-					"-1",
-					"-id3v2_version",
-					"3",
-					"-metadata",
-					`title=${song.title}`,
-					"-metadata",
-					`artist=${song.project.account.name}`,
-					output,
-				],
-				{ maxBuffer: 1024 * 1024 },
-			)
-			.pipe(Effect.timeout(ffmpegTimeout), Effect.withSpan("mix.ffmpeg"));
+		// Under JobTuning's time limit: the timeout interrupts the run, and interrupting it kills the child.
+		yield* runFfmpeg(
+			[
+				"-hide_banner",
+				"-loglevel",
+				"error",
+				"-y",
+				...files.flatMap((f) => ["-i", f]),
+				"-filter_complex",
+				filter,
+				"-map",
+				"[out]",
+				"-c:a",
+				"libmp3lame",
+				"-b:a",
+				BITRATE,
+				// The renditions carry MP4 branding and chapter atoms; start the tags clean.
+				"-map_metadata",
+				"-1",
+				"-map_chapters",
+				"-1",
+				"-id3v2_version",
+				"3",
+				"-metadata",
+				`title=${song.title}`,
+				"-metadata",
+				`artist=${song.project.account.name}`,
+				output,
+			],
+			{ maxBuffer: 1024 * 1024, span: "mix.ffmpeg" },
+		);
 		return yield* Effect.promise(() => readFile(output));
 	}).pipe(Effect.scoped, Effect.withSpan("mix.render"));
 }

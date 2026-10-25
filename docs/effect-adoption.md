@@ -223,13 +223,13 @@ runtime, `runJob`; 221 lines plus a 61-line service test) and `mix.ts`
 inside Effect behind its unchanged exports. The v4 names and traps met on
 the way are in FINDINGS.md ("Effect 4 in practice").
 
-| Measure | Before | After |
-|---|---|---|
-| `mix.ts` lines | 249 | 351 (plus the 221-line foundation, shared from here on) |
-| `mix.test.ts` lines | 148 (pure parsers only) | 297 (plus six behavior cases: happy path, 404 without retry, 503 then 200, hanging ffmpeg killed, failing `setSongMix`, refused claim) |
-| `vi.mock` calls in `mix.test.ts` | 4 | 2 (the data and blob modules, so loading the live layers never reaches `db/index.js` in CI) |
-| Mix chunk, bundled | ‑ | 70 kB minified, 24 kB min+gzip including mix.ts (the server bundle; nothing reaches the client) |
-| Jobs function cold start, untouched preview, `POST /api/jobs` → the app's own 401 | 4.46 s (warm 0.13–0.18 s) | 4.34 s (warm 0.12–0.17 s): no measurable change, as expected for the function that already carries ffmpeg and tfjs |
+| Measure                                                                           | Before                    | After                                                                                                                                  |
+| --------------------------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `mix.ts` lines                                                                    | 249                       | 351 (plus the 221-line foundation, shared from here on)                                                                                |
+| `mix.test.ts` lines                                                               | 148 (pure parsers only)   | 297 (plus six behavior cases: happy path, 404 without retry, 503 then 200, hanging ffmpeg killed, failing `setSongMix`, refused claim) |
+| `vi.mock` calls in `mix.test.ts`                                                  | 4                         | 2 (the data and blob modules, so loading the live layers never reaches `db/index.js` in CI)                                            |
+| Mix chunk, bundled                                                                | ‑                         | 70 kB minified, 24 kB min+gzip including mix.ts (the server bundle; nothing reaches the client)                                        |
+| Jobs function cold start, untouched preview, `POST /api/jobs` → the app's own 401 | 4.46 s (warm 0.13–0.18 s) | 4.34 s (warm 0.12–0.17 s): no measurable change, as expected for the function that already carries ffmpeg and tfjs                     |
 
 Behavior exercised by tests rather than on dev: a stem that 404s fails
 with `BlobError` 404 after no retry, the claim released and the temp dir
@@ -240,6 +240,14 @@ the service test, checked with `pgrep`); a failing `setSongMix` is a
 Still to do for the evaluation: Kevin reads the new `mix.ts` cold (the
 decisive criterion); two weeks on dev and staging; the three failure modes
 provoked on dev and seen in Sentry with their tags.
+
+## Phase 2 progress
+
+- 2026-10-25: step 1 (transcode.ts, the shared helpers), step 4 (the `Ai`
+  service) and step 6 (`moveBlob` buffering under 256 MB) landed. Left:
+  step 2 (notes.ts, notationPdf.ts, dawprojectExport.ts), step 3 (the jobs
+  switch as a table, the dispatch fetch bounded), step 5 (the digest's
+  time budget and idempotent sends).
 
 ## Decision record
 

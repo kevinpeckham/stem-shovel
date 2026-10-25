@@ -53,9 +53,20 @@ export class FfmpegError extends Data.TaggedError("FfmpegError")<{
 			? "timed out"
 			: args.signal
 				? `was killed (${args.signal})`
-				: `exited with ${args.code}`;
+				: args.code === null
+					? "failed"
+					: `exited with ${args.code}`;
 		const last = args.stderr.trim().split("\n").at(-1);
 		this.message = `ffmpeg ${how}${last ? `: ${last}` : ""}`;
+	}
+
+	/** No binary for this platform (ffmpeg-static has none). */
+	static unavailable() {
+		return new FfmpegError({
+			code: null,
+			stderr: "ffmpeg binary is not available on this platform",
+			timedOut: false,
+		});
 	}
 }
 

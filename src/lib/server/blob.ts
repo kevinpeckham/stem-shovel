@@ -369,19 +369,28 @@ export async function presentUrl(
 	return presignedUrl;
 }
 
+/** Up to this size a moved file is read whole, so the SDK can retry a failed part; above it the body is streamed. */
+const MOVE_BUFFER_MAX_BYTES = 256 * 1024 * 1024;
+
 /**
  * Moves a file to the other store (same pathname), returning its new URL.
- * Streams, so a 500 MB stem never sits in memory; the old copy is deleted
- * once the new one is in place.
+ * The old copy is deleted once the new one is in place. The body is read
+ * whole when it is under MOVE_BUFFER_MAX_BYTES, for the same reason as
+ * `copyBlob`: a stream handed to `put` is read once, and the SDK's retry of
+ * a failed part then finds it locked. A larger file still streams, so a
+ * 500 MB stem never sits in memory, at the cost of that retry.
  */
 export async function moveBlob(url: string, to: BlobAccess): Promise<string> {
 	if (accessOfUrl(url) === to) return url;
 	const res = await readBlob(url);
 	if (!res.ok || !res.body) throw new Error(`${res.status} ${res.statusText} reading ${url}`);
 	const contentType = res.headers.get("content-type") ?? "application/octet-stream";
+	const length = Number(res.headers.get("content-length") ?? NaN);
+	const body =
+		length > 0 && length <= MOVE_BUFFER_MAX_BYTES ? Buffer.from(await res.arrayBuffer()) : res.body;
 	// A fresh pathname each move: the CDN remembers a deleted pathname as gone
 	// for a while, so moving back onto the old one would answer 404 at first.
-	const moved = await putBlob(movedPathname(blobPathname(url)), res.body, contentType, to);
+	const moved = await putBlob(movedPathname(blobPathname(url)), body, contentType, to);
 	// The CDN can lag a fresh put by a moment; keep the old copy until the new
 	// one answers, so a page that loads mid-move never points at nothing.
 	await untilReadable(moved.url);

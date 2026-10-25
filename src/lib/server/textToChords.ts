@@ -1,21 +1,20 @@
-import { ENV } from "varlock/env";
 import { AUTO_STRUM_PATTERNS } from "#lib/constants/autoStrum.js";
 import { CHORD_STYLES } from "#lib/constants/chordStyles.js";
 import { CHORD_VOICINGS, STRUMS } from "#lib/constants/circleOfFifths.js";
 import { PIANO_INSTRUMENTS } from "#lib/constants/piano.js";
-import { logAiRequest } from "#lib/server/data.js";
+import { askForJson, runAi, type Message } from "#lib/server/effect/ai.js";
 import {
 	parseTextToChordsReply,
 	type TextToChordsResult,
 } from "#lib/utils/parseTextToChordsReply.js";
 import { KEY_NAMES, type TextToChordsInput } from "#lib/val/TextToChordsSchema.js";
-import { complete, textToBeatModel, type Message } from "./textToBeat";
+import { textToBeatModel } from "./textToBeat";
 
 /**
  * Text-to-Progression (docs/chord-player.md, "Text-to-Progression"): a
  * chord progression described in words becomes one on the pad through the
- * same gateway call as Text-to-Beat (textToBeat.ts: reasoning off, the
- * same model), the model writing chords as Roman numerals relative to a
+ * same gateway call as Text-to-Beat (effect/ai.ts: reasoning off, the
+ * same model as textToBeat.ts), the model writing chords as Roman numerals relative to a
  * key with their beats, which `parseTextToChordsReply` checks; a reply
  * that fails gets one more go with the reason. Every call is logged
  * (ai_request, kind "text-to-chords").
@@ -24,64 +23,24 @@ export async function textToChords(
 	input: TextToChordsInput,
 	who: { userId: string | null },
 ): Promise<TextToChordsResult & { model: string }> {
-	const key = ENV.AI_GATEWAY_API_KEY;
-	if (!key) throw new Error("AI_GATEWAY_API_KEY is not configured");
 	const model = textToBeatModel();
 	const messages: Message[] = [
 		{ role: "system", content: systemPrompt(input) },
 		{ role: "user", content: input.prompt },
 	];
-	let lastError = "";
-	for (let attempt = 0; attempt < 2; attempt++) {
-		const started = Date.now();
-		const log = {
+	const parsed = await runAi(
+		"ai.text-to-chords",
+		askForJson({
 			kind: "text-to-chords",
 			model,
-			userId: who.userId,
-			songId: null,
-			prompt: messages.map((m) => `${m.role.toUpperCase()}:\n${m.content}`).join("\n\n"),
-		};
-		let text = "";
-		let usage: { inputTokens?: number; outputTokens?: number } = {};
-		try {
-			({ text, usage } = await complete(key, model, messages));
-		} catch (e) {
-			await logAiRequest({
-				...log,
-				error: e instanceof Error ? e.message : String(e),
-				durationMs: Date.now() - started,
-			});
-			throw e;
-		}
-		try {
-			const parsed = parseTextToChordsReply(text, input.beatsPerBar);
-			await logAiRequest({
-				...log,
-				response: text,
-				parsed,
-				durationMs: Date.now() - started,
-				...usage,
-			});
-			return { ...parsed, model };
-		} catch (e) {
-			lastError = e instanceof Error ? e.message : String(e);
-			await logAiRequest({
-				...log,
-				response: text,
-				error: lastError,
-				durationMs: Date.now() - started,
-				...usage,
-			});
-			messages.push(
-				{ role: "assistant", content: text },
-				{
-					role: "user",
-					content: `That reply was rejected: ${lastError}. Reply again with the JSON object only.`,
-				},
-			);
-		}
-	}
-	throw new Error(`The model's answer could not be read (${lastError})`);
+			who,
+			messages,
+			parse: (text) => parseTextToChordsReply(text, input.beatsPerBar),
+			rejectionNote: (reason) =>
+				`That reply was rejected: ${reason}. Reply again with the JSON object only.`,
+		}),
+	);
+	return { ...parsed, model };
 }
 
 /** The instructions: the notation (Roman numerals in a key), the meter, the styles on offer, and an example. */

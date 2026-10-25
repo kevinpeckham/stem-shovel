@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Phase 2 of the Effect plan, steps 1, 4 and 6** (docs/effect-adoption.md): the pilot's shared pieces move to `src/lib/server/effect/` (`JobTuning`, `tempDir`, `downloadToFile` with its transient rule, `runFfmpeg` and `streamFfmpeg`; the `Ffmpeg` service gains `stream`, the `Db` service a generic `call(op, run)` for the long tail); `transcode.ts` runs inside Effect behind its unchanged exports (every claim an `acquireRelease` that fails the row on failure or interruption, every ffmpeg under the timeout that kills it, downloads retried when transient, `transcodeToMp3` split into `replaceTakeSource`, `flacTake` and `trimTake`); an `Ai` service (`effect/ai.ts`) with a 60 s timeout and one transport retry on 5xx, 429, a network error or a timeout, and `askForJson`, the one parse-retry loop that `textToBeat.ts` and `textToChords.ts` now share (162 → 86 and 102 → 61 lines; `complete` no longer exported); `moveBlob` reads a file under 256 MB whole so the SDK can retry a failed part, as `copyBlob` does. Tests: `blobIo.test.ts`, `ai.test.ts` (nine cases over a fake layer and a stubbed `fetch`), the ffmpeg stream killed on timeout; the transcode tests kept with their `child_process` fake. The Vercel tracer's glob trap is in FINDINGS.md.
+
 ## [0.167.0] - 2026-10-25
 
 ### Changed

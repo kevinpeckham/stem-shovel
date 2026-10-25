@@ -1,14 +1,14 @@
 /**
  * The services of the Effect pilot (docs/effect-adoption.md, Phase 1):
  * Blob, the database and ffmpeg as `Context.Service`s, with live layers
- * that wrap the existing modules. Nothing outside `src/lib/server/mix.ts`
- * uses them yet. A test provides fake layers instead of `vi.mock`.
+ * that wrap the existing modules, used by the media jobs (`mix.ts`,
+ * `transcode.ts`). A test provides fake layers instead of `vi.mock`.
  */
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import ffmpegPath from "ffmpeg-static";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import type { BlobAccess } from "#lib/utils/blobAccess.js";
 import { deleteBlobs, putBlob, readBlob } from "#lib/server/blob.js";
 import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "#lib/server/data.js";
@@ -34,26 +34,31 @@ export class BlobStore extends Context.Service<
 	static readonly live = Layer.succeed(BlobStore, {
 		read: (url) =>
 			Effect.tryPromise({
-				try: () => readBlob(url),
+				try: async () => readBlob(url),
 				catch: (cause) => new BlobError({ op: "read", url, cause }),
 			}),
 		put: (pathname, body, contentType, access) =>
 			Effect.tryPromise({
-				try: () => putBlob(pathname, Buffer.from(body), contentType, access),
+				try: async () => putBlob(pathname, Buffer.from(body), contentType, access),
 				catch: (cause) => new BlobError({ op: "put", url: pathname, cause }),
 			}),
 		delete: (urls) =>
 			Effect.tryPromise({
-				try: () => deleteBlobs(urls),
+				try: async () => deleteBlobs(urls),
 				catch: (cause) => new BlobError({ op: "delete", url: urls.join(" "), cause }),
 			}),
 	});
 }
 
-/** The song-mix rows (`#lib/server/data.js`). */
+/**
+ * The database (`#lib/server/data.js`): the song-mix rows as typed methods,
+ * and `call` for the long tail, which wraps any data function's promise as
+ * a `DbError` named `op` (a fake layer can switch on `op`).
+ */
 export class Db extends Context.Service<
 	Db,
 	{
+		readonly call: <A>(op: string, run: () => Promise<A>) => Effect.Effect<A, DbError>;
 		readonly songForMix: (songId: string) => Effect.Effect<SongForMix, DbError>;
 		readonly claimSongMix: (songId: string, key: string) => Effect.Effect<boolean, DbError>;
 		readonly releaseSongMix: (songId: string) => Effect.Effect<void, DbError>;
@@ -64,6 +69,7 @@ export class Db extends Context.Service<
 	}
 >()("Db") {
 	static readonly live = Layer.succeed(Db, {
+		call: db,
 		songForMix: (songId) => db("songForMix", () => songForMix(songId)),
 		claimSongMix: (songId, key) => db("claimSongMix", () => claimSongMix(songId, key)),
 		releaseSongMix: (songId) => db("releaseSongMix", () => releaseSongMix(songId)),
@@ -71,39 +77,41 @@ export class Db extends Context.Service<
 	});
 }
 
+/** `async` so a synchronous throw in `call` is a `DbError` too, not a defect. */
 function db<A>(op: string, call: () => Promise<A>): Effect.Effect<A, DbError> {
-	return Effect.tryPromise({ try: call, catch: (cause) => new DbError({ op, cause }) });
+	return Effect.tryPromise({
+		try: async () => call(),
+		catch: (cause) => new DbError({ op, cause }),
+	});
 }
 
 const STDERR_TAIL = 2048;
 
 /**
- * Runs the bundled ffmpeg. Interrupting the effect (a timeout, a sibling's
- * failure) kills the child. No timeout of its own: the caller applies
- * `Effect.timeout`, which interrupts.
+ * Runs the bundled ffmpeg: `run` collects stdout and stderr, `stream` hands
+ * stdout over chunk by chunk as it arrives (a decode to PCM that should
+ * never sit in memory whole). Interrupting either (a timeout, a sibling's
+ * failure) kills the child. No timeout of their own: the caller applies
+ * `Effect.timeout`, which interrupts (`effect/ffmpeg.ts`).
  */
 export class Ffmpeg extends Context.Service<
 	Ffmpeg,
 	{
 		readonly run: (
 			args: string[],
-			options?: { maxBuffer?: number },
+			options?: { maxBuffer?: number; stderrTail?: number },
 		) => Effect.Effect<{ stdout: string; stderr: string }, FfmpegError>;
+		readonly stream: (
+			args: string[],
+			onStdout: (chunk: Buffer) => void,
+		) => Effect.Effect<{ stderr: string }, FfmpegError>;
 	}
 >()("Ffmpeg") {
 	static readonly live = Layer.succeed(Ffmpeg, {
 		run: (args, options) =>
 			Effect.callback<{ stdout: string; stderr: string }, FfmpegError>((resume) => {
 				if (!ffmpegPath) {
-					resume(
-						Effect.fail(
-							new FfmpegError({
-								code: null,
-								stderr: "ffmpeg binary is not available on this platform",
-								timedOut: false,
-							}),
-						),
-					);
+					resume(Effect.fail(FfmpegError.unavailable()));
 					return;
 				}
 				const child = execFile(
@@ -118,12 +126,38 @@ export class Ffmpeg extends Context.Service<
 								new FfmpegError({
 									code,
 									signal: error.signal ?? null,
-									stderr: (stderr || error.message).slice(-STDERR_TAIL),
+									stderr: (stderr || error.message).slice(-(options?.stderrTail ?? STDERR_TAIL)),
 									timedOut: false,
 								}),
 							),
 						);
 					},
+				);
+				return Effect.sync(() => {
+					child.kill();
+				});
+			}),
+		stream: (args, onStdout) =>
+			Effect.callback<{ stderr: string }, FfmpegError>((resume) => {
+				if (!ffmpegPath) {
+					resume(Effect.fail(FfmpegError.unavailable()));
+					return;
+				}
+				const child = spawn(ffmpegPath, args);
+				let stderr = "";
+				child.stdout.on("data", onStdout);
+				child.stderr.on("data", (chunk: Buffer) => {
+					stderr = (stderr + chunk.toString()).slice(-STDERR_TAIL);
+				});
+				child.on("error", (e) =>
+					resume(Effect.fail(new FfmpegError({ code: null, stderr: e.message, timedOut: false }))),
+				);
+				child.on("close", (code, signal) =>
+					resume(
+						code === 0
+							? Effect.succeed({ stderr })
+							: Effect.fail(new FfmpegError({ code, signal, stderr, timedOut: false })),
+					),
 				);
 				return Effect.sync(() => {
 					child.kill();

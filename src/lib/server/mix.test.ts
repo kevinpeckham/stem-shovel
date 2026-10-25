@@ -8,6 +8,7 @@ import { dirname } from "node:path";
 import { describe, expect, test, vi } from "vite-plus/test";
 import { BlobError, DbError } from "#lib/server/effect/errors.js";
 import { BlobStore, Db, Ffmpeg } from "#lib/server/effect/services.js";
+import { JobTuning } from "#lib/server/effect/tuning.js";
 
 // The live layers wrap these modules, and loading the real data.ts opens the
 // database; the Effect tests below provide fake layers instead, so these
@@ -17,7 +18,7 @@ vi.mock("#lib/server/blob.js", () => ({
 	mixPathname: (_account: string, song: string, key: string) => `songs/${song}/mix-${key}.mp3`,
 }));
 
-const { ensureOriginalMixEffect, isOriginal, MixTuning, mixKeyOf, panFilter, parseMixRequest } =
+const { ensureOriginalMixEffect, isOriginal, mixKeyOf, panFilter, parseMixRequest } =
 	await import("./mix");
 type Mixable = Parameters<typeof parseMixRequest>[0];
 
@@ -184,6 +185,7 @@ describe("ensureOriginalMixEffect", () => {
 				delete: (urls) => Effect.sync(() => void log.deleted.push(urls)),
 			}),
 			Layer.succeed(Db, {
+				call: (op) => Effect.die(new Error(`unexpected Db.call ${op}`)),
 				songForMix: () => Effect.succeed(ready),
 				claimSongMix: () => Effect.succeed(claim),
 				releaseSongMix: () => Effect.sync(() => void log.released++),
@@ -202,6 +204,7 @@ describe("ensureOriginalMixEffect", () => {
 						Effect.as({ stdout: "", stderr: "" }),
 					);
 				},
+				stream: () => Effect.die(new Error("the mix does not stream")),
 			}),
 		);
 		return { log, layer };
@@ -211,7 +214,7 @@ describe("ensureOriginalMixEffect", () => {
 		const { log, layer } = fakes(options);
 		const job = ensureOriginalMixEffect("s1").pipe(
 			Effect.provide(layer),
-			Effect.provideService(MixTuning, { retryBase: "1 millis", ffmpegTimeout: "50 millis" }),
+			Effect.provideService(JobTuning, { retryBase: "1 millis", ffmpegTimeout: "50 millis" }),
 		);
 		return Effect.runPromiseExit(job).then((exit) => ({ exit, log }));
 	}
