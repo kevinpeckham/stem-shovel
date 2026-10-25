@@ -314,6 +314,7 @@ check and the tests without any secret.
 - [docs/billing.md](docs/billing.md) — what an account costs us (Blob, Turso, Vercel), the free/founder tiers, and the plan for Stripe subscriptions.
 - [docs/environments.md](docs/environments.md) — the three stages (dev, staging, production), each with its own 1Password environment, Turso database and Blob stores; migrations per stage; snapshots and restores.
 - [docs/demo-recording.md](docs/demo-recording.md) — the in-app demo recorder: what shipped, the plan it came from, and the phone realities.
+- [docs/effect-adoption.md](docs/effect-adoption.md) — the Effect library assessed against the server's error handling, timeouts and cleanup today; a Phase 0 of plain fixes and a pilot on the mix job, with its evaluation criteria.
 - [docs/daw-sync.md](docs/daw-sync.md) — DAW project storage and sync as a paid add-on (research): sizes, who has tried, costs, three options, a recommendation.
 - [docs/drum-machine.md](docs/drum-machine.md) — the drum machine: what the precedents teach, the phases shipped and planned, the pattern model, the share-link format, the samples and their credits.
 - [docs/notifications.md](docs/notifications.md) — the inbox, email and the digest: what is sent, to whom, and when.
