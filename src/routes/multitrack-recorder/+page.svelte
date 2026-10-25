@@ -1394,18 +1394,31 @@
 		}
 	}
 	/** The clip tools (D4): the result of one becomes the selection. */
-	function reverseSelected() {
+	/** The clip tools read samples: a clip playing from this device's copy is decoded first (docs/multitrack-recorder.md "Scale and structure"). */
+	async function decodedSelected(): Promise<boolean> {
+		if (!selectedClip?.sourceId) return !!selectedClip;
+		await studio.ensureDecoded([selectedClip.sourceId]);
+		return true;
+	}
+	async function reverseSelected() {
+		if (!(await decodedSelected())) return;
 		if (selectedClip && !studio.reverseClip(selectedClip.id))
 			notify("Nothing to reverse: the clip's audio is not loaded", { kind: "error" });
 	}
-	function normalizeSelected() {
+	async function normalizeSelected() {
+		if (!(await decodedSelected())) return;
 		if (selectedClip && !studio.normalizeClip(selectedClip.id))
 			notify("Nothing to do: the clip is already at full level or near silence");
 	}
-	function consolidateSelected() {
-		const made = studio.consolidateClips(
-			selectedIds.length ? selectedIds : selected ? [selected] : [],
+	async function consolidateSelected() {
+		const ids = selectedIds.length ? selectedIds : selected ? [selected] : [];
+		await studio.ensureDecoded(
+			ids.flatMap((id) => {
+				const c = studio.arrangement.clips.find((x) => x.id === id);
+				return c?.sourceId ? [c.sourceId] : [];
+			}),
 		);
+		const made = studio.consolidateClips(ids);
 		if (made) {
 			selected = made.id;
 			selectedIds = [made.id];
@@ -1455,8 +1468,9 @@
 		notify(`${meterChangeBeats}/${meterChangeUnit} from ${formatTime(studio.position)}`);
 	}
 	/** The clip's tempo from its onsets, into the song's tempo. */
-	function detectTempoOfSelected() {
+	async function detectTempoOfSelected() {
 		if (!selectedClip) return;
+		await decodedSelected();
 		const bpm = studio.detectClipTempo(selectedClip.id);
 		if (bpm === null) {
 			notify("Could not tell the tempo: too quiet or too short", { kind: "error" });
@@ -1491,8 +1505,9 @@
 		clipTempoField = null;
 		notify("Back to the recording's own speed");
 	}
-	function stretchSelected() {
+	async function stretchSelected() {
 		if (!selectedClip) return;
+		await decodedSelected();
 		if (!studio.stretchClip(selectedClip.id, { ratio: stretchRatio, semitones: stretchSemitones }))
 			notify("Nothing to stretch: set a ratio or a shift, with the clip's audio loaded", {
 				kind: "error",
@@ -1773,10 +1788,10 @@
 							{
 								id: "free",
 								kind: "button",
-								label: "Unload recordings nothing plays",
+								label: "Unload recordings from memory",
 								iconClass: "i-ph-memory",
 								title:
-									"Drop from memory what no clip plays; it comes back from the server when wanted",
+									"Drop from memory what no clip plays and what plays from this device's copy; it comes back from the copy or the server when wanted",
 								action: freeMemory,
 							},
 							{
@@ -1883,6 +1898,11 @@
 							{#if studio.memoryBytes > 0}
 								<span class={studio.memoryBytes > STUDIO_MEMORY_WARNING_BYTES ? "text-red-300" : ""}
 									>· {mb(studio.memoryBytes)} in memory</span
+								>
+							{/if}
+							{#if studio.diskBytes > 0}
+								<span title="Played from this device's copy, not held in memory"
+									>· {mb(studio.diskBytes)} on disk</span
 								>
 							{/if}
 							{#each failed as f (f.sourceId)}

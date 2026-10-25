@@ -829,6 +829,18 @@ From a probe (a project with `TEMPO 120 6 8` and a tempo point carrying `(8 << 1
 - **`TimeMap2_GetDividedBpmAtTime` is 240 there**: the tempo in beats of the bottom number, which is what Reaper's transport displays ("240" for that 6/8). `TimeMap_GetTimeSigAtTime` returns 120, the stored tempo, with 6/8.
 - So a DAW-style tempo (Live, Bitwig, a MIDI file and Dawn all count quarter notes) goes into an `.rpp` unscaled whatever the signature, and the `(denominator << 16) | numerator` on a point carries the bottom number.
 
+## A message-fed AudioWorklet voice: transfers, duplicate needs, offline timing (2026-10-25)
+
+From building the Studio's streaming voice (static/worklets/stream-voice.js, audio/streamVoice.ts; docs/multitrack-recorder.md "Scale and structure"), proved in headless Chromium live (a voice scheduled 0.5 s ahead began on time, ended at 2.56 s against 2.552 expected, nothing starved) and offline (first non-zero sample exactly at a mid-block start frame).
+
+- **Planes that are views of one `ArrayBuffer`** (as a cache range read returns them) must list that buffer **once** in `postMessage`'s transfer list; listing it per plane throws `DataCloneError`.
+- **A voice's first blocks can run before its pre-read has all landed**, since feed messages arrive between render quanta, so the processor posts a `need` it does not need; the facade keeps one read pump and takes `want = max(want, upto)`, which makes the duplicates harmless.
+- **An `OfflineAudioContext` renders far ahead of messages**, so testing a message-fed worklet offline needs `ctx.suspend(t)` checkpoints to let the feeds land before the frames they cover.
+- **The cache worker's writes block range reads unless sliced:** a 160 MB write took 844 ms whole; in 8 MB slices with a `MessageChannel` yield between (a chained `setTimeout` gets throttled), reads of another file completed during it at a median of 22 ms, worst 154 ms (the final flush and move), well inside the voice's 1.5 s lead.
+- **`pcmCache.write` resolves the same whether the copy was written or not** (a miss is never an error), so the engine confirms a copy with a `stat` afterwards before marking a source `onDisk`; and a buffer read back from disk says nothing about its origin, so a source held as a blob (the browser-kept song) is excluded explicitly or it would be marked on disk with no copy.
+- **The singleton engine opens its context once per module**, so a test of the "worklet refused" fallback re-imports it with `vi.resetModules()`.
+- **A 16-tap Kaiser-windowed sinc (β 7, cutoff 0.9 of the lower Nyquist, 512 tabulated phases)** resamples 48 to 44.1 kHz at -72 dB error at 1 kHz and -65 dB at 10 kHz, about 3 ms per second of stereo; 44.1 to 48 at 15 kHz is only -39 dB, the short kernel's roll-off.
+
 ## OPFS from a Studio page: fast in Chromium, closed in Playwright's Linux WebKit (2026-10-24)
 
 From a spike for the Studio's disk cache of decoded sources (docs/multitrack-recorder.md "Scale and structure"; docs/dawn-daw-plan.md D8), a Playwright page on the dev server's origin writing and reading a four-minute stereo file (46 MB at 16-bit) in the Origin Private File System.

@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The Studio plays recordings from this device's copy without holding them in memory.** A recording the browser has a copy of plays streamed, a quarter of a second at a time, through a worklet voice fed from disk, so a long session's memory is no longer its decoded recordings; only what a tool needs (a warped clip's source, a sampler's recording, a render) is decoded, and released again when the song grows large. A song a browser has not opened before loads and plays as it did. The song menu's readout shows what is on disk beside what is in memory.
+
+### Technical
+
+- `stream-voice` worklet (static/worklets/stream-voice.js), `StreamVoice`, `Resampler` (a 16-tap Kaiser-windowed sinc when the copy's rate differs from the context's), the cache worker's `stat` and `readRange` with sliced writes (`createSliceQueue`); the engine's `onDisk` sources, `ensureReferenced` decoding only what cannot stream, `releaseUnused` dropping on-disk referenced buffers; diagnostics `streaming` and `starved` (docs/multitrack-recorder.md "Scale and structure", FINDINGS.md).
+
 ## [0.162.0] - 2026-10-25
 
 ### Added

@@ -38,6 +38,8 @@ export interface ExportEngine {
 	arrangement: StudioArrangement;
 	render(target?: RenderTarget): Promise<AudioBuffer>;
 	bufferOf(sourceId: string): AudioBuffer | null;
+	/** Every source decoded and held: a source playing from this device's copy has no buffer until then (docs/multitrack-recorder.md "Scale and structure"). */
+	ensureDecoded?(): Promise<void>;
 	/** A warped clip's content as it plays (docs/multitrack-recorder.md "Warping a clip"); the source itself when absent. */
 	clipBufferOf?(clip: StudioClip): AudioBuffer | null;
 	/** Whether a track can be rendered at all (an engine with no instrument says no to a MIDI track); every track when absent. */
@@ -146,6 +148,7 @@ export async function exportSong(
 	const out: ExportFile[] = [];
 	const base = fileSafe(title);
 	const ext = options.format === "mp3" ? "mp3" : "wav";
+	await engine.ensureDecoded?.();
 	const a = engine.arrangement;
 	const hasClips = (trackId: string) => a.clips.some((c) => c.trackId === trackId);
 	if (options.mix) {

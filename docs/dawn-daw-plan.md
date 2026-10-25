@@ -210,8 +210,9 @@ automatable parameters, so D2 adds sends and inserts in one place.
   of sources in the jobs function (2026-10-24, `flacStudioSources`),
   windowed clip scheduling (`STUDIO_SCHEDULE_HORIZON_S`) and undo as
   patches (`UndoStack`, `structuralPatch`), both 2026-10-24.
-  A disk copy of every decoded source in OPFS (`pcmCache`, 2026-10-24).
-  Left: the streaming voice over those copies.
+  A disk copy of every decoded source in OPFS (`pcmCache`, 2026-10-24)
+  and the streaming voice over those copies (`StreamVoice`, the
+  `stream-voice` worklet, 2026-10-25). Nothing left.
   docs/multitrack-recorder.md "Scale and structure".
 
 ### Cross-cutting, every phase

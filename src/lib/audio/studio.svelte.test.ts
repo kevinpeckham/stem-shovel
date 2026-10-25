@@ -25,8 +25,64 @@ const disk = vi.hoisted(() => ({
 	),
 	write: vi.fn(async (_key: string, _buffer: AudioBuffer) => {}),
 	forget: vi.fn(async (_key: string) => {}),
+	/** Off but in the streaming tests, so the rest load and play from buffers as before. */
+	available: false,
+	stat: vi.fn(
+		async (
+			_key: string,
+		): Promise<{ sampleRate: number; channels: number; frames: number; bytes: number } | null> =>
+			null,
+	),
+	readRange: vi.fn(
+		async (
+			_key: string,
+			fromFrame: number,
+			frames: number,
+		): Promise<{ fromFrame: number; sampleRate: number; channels: Float32Array[] } | null> => ({
+			fromFrame,
+			sampleRate: 48000,
+			channels: [new Float32Array(frames)],
+		}),
+	),
 }));
 vi.mock("./pcmCache", () => ({ pcmCache: disk }));
+/** The streaming voice (audio/streamVoice.ts), a stand-in that logs what the engine asks of it. */
+interface FakeVoice {
+	opts: { key: string; frames: number; read: (f: number, n: number) => Promise<unknown> };
+	connected: unknown[];
+	started: [number, number, number] | null;
+	stopped: boolean;
+	starved: number;
+}
+const voices = vi.hoisted(() => ({ made: [] as FakeVoice[], install: true }));
+vi.mock("./streamVoice", () => ({
+	StreamVoice: class {
+		static supported = () => true;
+		static install = async () => voices.install;
+		onended: (() => void) | null = null;
+		starved = 0;
+		connected: unknown[] = [];
+		started: [number, number, number] | null = null;
+		stopped = false;
+		constructor(
+			_ctx: unknown,
+			public opts: FakeVoice["opts"],
+		) {
+			voices.made.push(this);
+		}
+		connect<T>(node: T): T {
+			this.connected.push(node);
+			return node;
+		}
+		disconnect() {}
+		start(at: number, offset: number, duration: number) {
+			this.started = [at, offset, duration];
+		}
+		stop() {
+			this.stopped = true;
+		}
+	},
+}));
 const { studio, STUDIO_SCHEDULE_HORIZON_S } = await import("./studio.svelte");
 
 const clip = (id: string, trackId: string, start: number, duration: number): StudioClip => ({
@@ -411,5 +467,188 @@ describe("studio clip scheduling", () => {
 		studio.arrangement = song();
 		await studio.render();
 		expect(starts.map(([when]) => when)).toEqual([0, 2, 10, 30]);
+	});
+});
+
+/**
+ * Playing from disk (docs/dawn-daw-plan.md D8): a source the disk holds is
+ * ready without a decode and plays through a StreamVoice; what reads the
+ * samples (a warp, a sampler, a render) still decodes, and so does a
+ * source without saved peaks or a context without the worklet.
+ */
+describe("studio streaming from disk", () => {
+	const id = "src_streamed00000000000";
+	const other = "src_warped0000000000000";
+	const view = (sourceId: string, peaks: number[] = [0.1, 0.2]) => ({
+		id: sourceId,
+		kind: "take",
+		takeNumber: 1,
+		trackLabel: "Keys",
+		url: `https://blob.example/${sourceId}.wav`,
+		filename: "keys.wav",
+		codec: null,
+		sampleRate: 44100,
+		channels: 1,
+		durationSeconds: 10,
+		sizeBytes: 1,
+		peaks,
+		createdAt: new Date(0),
+	});
+	const on = (sourceId: string, extra: Partial<StudioClip> = {}): StudioClip => ({
+		...clip(`c_${sourceId}`, "t1", 0, 2),
+		sourceId,
+		offset: 1,
+		...extra,
+	});
+	const song = (clips: StudioClip[], sources = [view(id)], tracks: unknown[] = [track("t1")]) => ({
+		current: { ...arrangement(), loop: null, markers: [], tempoChanges: [], tracks, clips },
+		sources,
+	});
+	const fetchSpy = vi.fn(async () => new Response(new ArrayBuffer(8)));
+	const flush = () => new Promise((r) => setTimeout(r, 0));
+	beforeEach(() => {
+		vi.stubGlobal("AudioContext", function () {
+			return fakeContext();
+		});
+		vi.stubGlobal("OfflineAudioContext", function () {
+			return fakeContext();
+		});
+		for (const node of ["AudioWorkletNode", "GainNode", "ConstantSourceNode", "OscillatorNode"])
+			vi.stubGlobal(node, function () {
+				return stub();
+			});
+		vi.stubGlobal("AudioBuffer", FakeAudioBuffer);
+		vi.stubGlobal("requestAnimationFrame", () => 0);
+		vi.stubGlobal("cancelAnimationFrame", () => {});
+		vi.stubGlobal("fetch", fetchSpy);
+		clock.now = 0;
+		starts.length = 0;
+		voices.made.length = 0;
+		voices.install = true;
+		fetchSpy.mockClear();
+		disk.available = true;
+		disk.stat.mockReset().mockResolvedValue({
+			sampleRate: 48000,
+			channels: 1,
+			frames: 480_000,
+			bytes: 1_920_016,
+		});
+		disk.readRange.mockClear();
+		disk.read.mockReset().mockResolvedValue({
+			sampleRate: 48000,
+			channels: [new Float32Array(480_000)],
+		});
+		disk.write.mockClear();
+	});
+	afterEach(() => {
+		studio.stop();
+		disk.available = false;
+		vi.unstubAllGlobals();
+	});
+
+	it("loads a source the disk holds with no decode: ready, on disk, nothing in memory", async () => {
+		await studio.load(song([on(id)]) as never);
+		expect(disk.stat).toHaveBeenCalledWith(id);
+		expect(disk.read).not.toHaveBeenCalled();
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(studio.sources[id]).toMatchObject({
+			status: "ready",
+			durationSeconds: 10,
+			onDisk: { sampleRate: 48000, channels: 1, frames: 480_000 },
+		});
+		expect(studio.bufferOf(id)).toBeNull();
+		expect(studio.memoryBytes).toBe(0);
+		expect(studio.diskBytes).toBe(1_920_000);
+	});
+	it("plays the clip through a StreamVoice reading the disk copy, started like a buffer source", async () => {
+		await studio.load(song([on(id)]) as never);
+		await studio.play({ from: 0, ahead: 0.1 });
+		expect(starts).toHaveLength(0);
+		expect(voices.made).toHaveLength(1);
+		const voice = voices.made[0]!;
+		expect(voice.opts).toMatchObject({ key: id, frames: 480_000 });
+		expect(voice.started).toEqual([0.1, 1, 2]);
+		expect(voice.connected).toHaveLength(1);
+		expect(studio.diagnostics()).toMatchObject({ streaming: 1, starved: 0, playing: 1 });
+		await voice.opts.read(4800, 12000);
+		expect(disk.readRange).toHaveBeenCalledWith(id, 4800, 12000);
+		expect(studio.sources[id]?.onDisk).toBeDefined();
+		studio.stop();
+		expect(voice.stopped).toBe(true);
+		expect(studio.diagnostics().streaming).toBe(0);
+	});
+	it("a warped clip's source still decodes, and plays from its rendering", async () => {
+		await studio.load(
+			song([
+				on(id, {
+					warp: [
+						{ at: 0, source: 0 },
+						{ at: 4, source: 2 },
+					],
+				}),
+			]) as never,
+		);
+		expect(disk.read).toHaveBeenCalledWith(id);
+		expect(studio.bufferOf(id)).not.toBeNull();
+	});
+	it("a sampler's source still decodes", async () => {
+		const sampler = { sourceId: id, root: 60, attack: 0, release: 0.2, loop: false };
+		await studio.load(song([], [view(id)], [{ ...track("t1"), sampler }]) as never);
+		expect(studio.bufferOf(id)).not.toBeNull();
+		await studio.play({ from: 0, ahead: 0.1 });
+		expect(studio.bufferOf(id)).not.toBeNull();
+	});
+	it("a source without saved peaks decodes for the lane", async () => {
+		await studio.load(song([on(id)], [view(id, [])]) as never);
+		expect(disk.read).toHaveBeenCalledWith(id);
+		expect(studio.bufferOf(id)).not.toBeNull();
+		expect(studio.sources[id]?.peaks.length).toBeGreaterThan(0);
+	});
+	it("releaseUnused lets go of a playing source's buffer when it can stream, and keeps a warped one's", async () => {
+		const warp = [
+			{ at: 0, source: 0 },
+			{ at: 4, source: 2 },
+		];
+		await studio.load(
+			song([on(id), { ...on(other, { warp }), id: "w" }], [view(id), view(other)]) as never,
+		);
+		expect(await studio.ensureSource(id)).not.toBeNull();
+		expect(studio.bufferOf(other)).not.toBeNull();
+		expect(studio.releaseUnused()).toBe(1);
+		expect(studio.bufferOf(id)).toBeNull();
+		expect(studio.bufferOf(other)).not.toBeNull();
+		expect(studio.sources[id]?.status).toBe("ready");
+	});
+	it("a render decodes what streams, and plays it from the buffer", async () => {
+		await studio.load(song([on(id)]) as never);
+		await studio.render();
+		expect(disk.read).toHaveBeenCalledWith(id);
+		expect(studio.bufferOf(id)).not.toBeNull();
+		expect(starts).toEqual([[0, 1, 2]]);
+	});
+	it("a copy whose first window does not come was evicted: decoded, and the pass restarts from the buffer", async () => {
+		await studio.load(song([on(id)]) as never);
+		await studio.play({ from: 0, ahead: 0.1 });
+		const voice = voices.made[0]!;
+		disk.readRange.mockResolvedValueOnce(null);
+		expect(await voice.opts.read(48000, 12000)).toBeNull();
+		expect(studio.sources[id]?.onDisk).toBeUndefined();
+		await flush();
+		expect(disk.read).toHaveBeenCalledWith(id);
+		expect(voice.stopped).toBe(true);
+		expect(starts).toHaveLength(1);
+		expect(voices.made).toHaveLength(1);
+	});
+	it("a context that will not take the worklet decodes sources on disk to play them", async () => {
+		vi.resetModules();
+		voices.install = false;
+		const fresh = (await import("./studio.svelte")).studio;
+		await fresh.load(song([on(id)]) as never);
+		expect(fresh.bufferOf(id)).toBeNull();
+		await fresh.play({ from: 0, ahead: 0.1 });
+		expect(fresh.bufferOf(id)).not.toBeNull();
+		expect(voices.made).toHaveLength(0);
+		expect(starts).toEqual([[0.1, 1, 2]]);
+		fresh.stop();
 	});
 });

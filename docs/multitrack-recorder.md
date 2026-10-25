@@ -2265,14 +2265,12 @@ Cycling to a cold take, comping from one, dropping one from the
 library and choosing one for the sampler fetch it and restart the
 pass once it is in; the library's play fetches it first (`previewSource`
 is async). `releaseUnused()` drops the buffers nothing plays (cold
-again, listed still; a recording still uploading is kept), and
-`#recount` calls it on its own once memory passes
-`STUDIO_MEMORY_WARNING_BYTES`; the song menu's "Unload recordings
-nothing plays" does it by hand. The timeline draws a cold clip from the
-saved peaks, as it already drew a decoding one. A streaming playback
-worklet over OPFS, the plan's further step, stays open: on-demand
-decoding and release already keep a long session's memory to what it
-plays.
+again, listed still; a recording still uploading is kept) and, since
+the streaming voice (below), the buffers of sources playing from this
+device's copy; `#recount` calls it on its own once memory passes
+`STUDIO_MEMORY_WARNING_BYTES`, and the song menu's "Unload recordings
+from memory" does it by hand. The timeline draws a cold or streamed
+clip from the saved peaks, as it already drew a decoding one.
 
 **Freeze.** `freezeTrack(trackId)` renders the track through its
 inserts (`render({ track, freeze: true })`: fader 1, pan 0, only the
@@ -2381,10 +2379,40 @@ Playwright's WebKit, an error, a worker that does not answer in 5 s) is
 a miss and a normal network load. Memory while playing is unchanged: the
 streaming voice over these files is the next step.
 
-Left for later, named in the plan: the streaming voice over these disk
-copies (a worker reading ranges, a worklet playing them), so a source
-no longer lives decoded in memory while it plays. The spike's numbers
-are in FINDINGS.md ("OPFS from a Studio page").
+**The streaming voice (2026-10-25).** A source this device keeps a copy
+of plays without being decoded. `load` asks the cache for each needed
+source's header first (`stat`); one that answers is `ready` with
+`onDisk` (`{ sampleRate, channels, frames }`) and no buffer, unless the
+row has no peaks (the lane needs them, so it decodes once), a warped
+clip uses it (a warp renders from the decoded source) or a sampler does
+(an instrument takes a buffer). `ensureReferenced()`, which `play`
+awaits, decodes only what cannot stream (`#ensurePlayable`);
+`ensureDecoded(ids?)` decodes everything for a tool: `render`, freeze
+and render-to-audio await it, the page's clip tools (reverse, normalize,
+consolidate, stretch, detect tempo) await it for the clip's source, and
+`exportSong` awaits it first. A segment carries the buffer when one is
+held, else the disk descriptor (`#clipMedia`), and `#startSegment` makes
+an `AudioBufferSourceNode` or a `StreamVoice` (`#voiceFor`) wired the
+same way: envelope node, the fades' gain, the strip. The voice
+(`audio/streamVoice.ts`, `static/worklets/stream-voice.js`) is a worklet
+processor per segment on the context's `currentFrame` clock, fed windows
+of 0.25 s read 1.5 s ahead from the cache worker's `readRange` (about 1
+ms a window; a big write is sliced so reads overtake it) and resampled
+through a 16-tap windowed sinc when the copy's rate is not the
+context's; `StreamVoice.install` adds the module in `#openNow`, and a
+browser that refuses it falls back to decoding. A first window that
+comes back null means the copy went (evicted): `#lostDiskCopy` clears
+`onDisk`, decodes and reschedules once. `releaseUnused()` now also drops
+a referenced source's buffer when it is on disk and may stream (not
+while a `Playing` entry sounds from it, not during a render, which pins
+every buffer), so a song a tool decoded goes back to disk once memory
+passes the line. `diskBytes` beside `memoryBytes` on the song menu's
+readout; `diagnostics()` gains `streaming` and `starved`. Proved in
+Chromium: a reloaded song opened with 0 bytes in memory, played with one
+voice streaming, nothing starved and the track meter showing signal. A
+private tab (no OPFS) and a song held as blobs keep the decoded path.
+
+Nothing of D8 is left: the memory of a long session is its clips' metadata, the voices' windows and whatever a tool holds for the moment.
 
 Browser spec `tests/e2e/studio-scale.spec.ts`; unit tests on the graph
 over stand-in strips and on the persistence with fake timers; a schema

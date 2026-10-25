@@ -77,6 +77,7 @@ import {
 } from "./warp.js";
 import { renderWarpAsync } from "./warpRenderer.js";
 import { pcmCache } from "./pcmCache";
+import { StreamVoice } from "./streamVoice";
 import { clipCrossfades, type EffectiveFades } from "#lib/utils/clipCrossfades.js";
 import { compRegion } from "#lib/utils/compRegion.js";
 import { fadeCurve } from "#lib/utils/fadeCurve.js";
@@ -165,6 +166,12 @@ interface StudioSource {
 	status: "cold" | "decoding" | "ready" | "failed";
 	/** Recorded here and not yet on the server (the queue is uploading it). */
 	pending: boolean;
+	/**
+	 * The source's copy on this device (audio/pcmCache.ts) as the disk has
+	 * it: the rate it was decoded at, its channels and length. Set, the
+	 * source can play from disk through a StreamVoice without a decode (D8).
+	 */
+	onDisk?: { sampleRate: number; channels: number; frames: number };
 }
 
 /** A finished take from one armed track, for the page to upload and the engine already holds. */
@@ -189,6 +196,15 @@ const START_AHEAD = 0.1;
 const RAMP = 0.015;
 /** The shortest fade at a clip's edges, so a cut never clicks. */
 const EDGE_FADE = 0.003;
+/** A segment's fades: the clip's own where the segment meets the clip's edge, else a few milliseconds so a cut never clicks. */
+function edgeFades(f: EffectiveFades, atStart: boolean, atEnd: boolean): EffectiveFades {
+	return {
+		fadeIn: atStart ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
+		fadeOut: atEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
+		inShape: f.inShape,
+		outShape: f.outShape,
+	};
+}
 /** A clip's fades as stored, in its own shape (no neighbor in play). */
 const fadesOf = (c: StudioClip): EffectiveFades => ({
 	fadeIn: c.fadeIn,
@@ -283,14 +299,27 @@ function localId(): string {
 
 interface Playing {
 	clipId: string;
-	src: AudioBufferSourceNode;
+	/** A buffer source, or a voice streaming the source's disk copy (audio/streamVoice.ts, D8). */
+	src: AudioBufferSourceNode | StreamVoice;
 	gain: GainNode;
 }
+/** A source played from its disk copy: its key in the cache and its shape there. */
+interface DiskSource {
+	key: string;
+	sampleRate: number;
+	channels: number;
+	frames: number;
+}
+/** What a clip segment plays from: a buffer held in memory, else the source's disk copy, and the audio's length in seconds. */
+interface ClipMedia {
+	buffer: AudioBuffer | null;
+	disk: DiskSource | null;
+	seconds: number;
+}
 /** A segment of an audio clip in a pass, waiting for its source: started by the look-ahead once `at` is within the horizon. */
-interface QueuedSegment {
+interface QueuedSegment extends ClipMedia {
 	at: number;
 	clip: StudioClip;
-	buffer: AudioBuffer;
 	seg: ClipSegment;
 	/** The pass it belongs to. */
 	from: number;
@@ -438,6 +467,10 @@ class StudioEngine {
 	/** Which load the decode workers belong to: a song loaded over one still decoding must not count that one's finishes against its own tally. */
 	#loadGeneration = 0;
 	#loading = new Map<string, Promise<AudioBuffer | null>>();
+	/** The context would not take the streaming voice's worklet (StreamVoice.install): sources on disk decode as before. */
+	#streamRefused = false;
+	/** Renders under way: they read every played source's samples, so nothing they need is released meanwhile. */
+	#pinned = 0;
 	get #tracks(): Map<string, StripGraph> {
 		return this.#graph?.tracks ?? NO_STRIPS;
 	}
@@ -550,6 +583,8 @@ class StudioEngine {
 			INSTRUMENTS[s].host(ctx, { bufferOf: (id) => this.#buffers.get(id) ?? null });
 		metronome.hostContext(ctx);
 		await ctx.audioWorklet.addModule("/worklets/track-capture.js");
+		// The streaming voice (D8): without it, a source on disk is decoded to play, as before.
+		this.#streamRefused = !(await StreamVoice.install(ctx));
 		// The Practice Amp too (docs/practice-amp.md, "The band"): a track takes its output as heard, pedals and all.
 		amp.hostContext(ctx, { gateWorklet: await loadAmpWorklet(ctx) });
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
@@ -683,6 +718,8 @@ class StudioEngine {
 				const s = queue.shift();
 				if (!s) return;
 				try {
+					// On disk and free to stream: ready without a decode (D8).
+					if (await this.#streamsWithoutDecode(s.id)) continue;
 					const { buffer, fetched } = await this.#sourceBuffer(s.id, s.url);
 					this.#holdLoaded(s.id, buffer, fetched);
 				} catch {
@@ -704,12 +741,98 @@ class StudioEngine {
 		const entry = this.sources[sourceId];
 		if (!entry) return false;
 		this.#buffers.set(sourceId, buffer);
-		if (fetched) void pcmCache.write(sourceId, buffer);
+		if (fetched) this.#keepOnDisk(sourceId, buffer);
+		else if (!this.#blobs.has(sourceId))
+			entry.onDisk = {
+				sampleRate: buffer.sampleRate,
+				channels: buffer.numberOfChannels,
+				frames: buffer.length,
+			};
 		entry.status = "ready";
 		entry.durationSeconds = buffer.duration;
 		if (entry.peaks.length === 0) entry.peaks = computePeaks(buffer, 1024);
-		this.#fillUnknownClips(sourceId, buffer);
+		this.#fillUnknownClips(sourceId, buffer.duration);
 		return true;
+	}
+	/** The buffer copied to disk (audio/pcmCache.ts); once the copy answers a stat, the source can stream from it (`onDisk`). */
+	#keepOnDisk(sourceId: string, buffer: AudioBuffer) {
+		void pcmCache.write(sourceId, buffer).then(async () => {
+			if (!this.#canStream || this.#blobs.has(sourceId)) return;
+			const stat = await pcmCache.stat(sourceId);
+			const entry = this.sources[sourceId];
+			if (stat && entry)
+				entry.onDisk = {
+					sampleRate: stat.sampleRate,
+					channels: stat.channels,
+					frames: stat.frames,
+				};
+		});
+	}
+	/** Whether this browser can play a source from its disk copy: the cache, the worklet, and a context that took its module. */
+	get #canStream(): boolean {
+		return !this.#streamRefused && pcmCache.available && typeof AudioWorkletNode !== "undefined";
+	}
+	/**
+	 * Whether a source may play from disk rather than memory (D8): not a blob
+	 * (the browser-kept song decodes as before), and neither a warped clip
+	 * of it (the warp renders from the samples) nor a sampler on it (the
+	 * instrument takes the buffer).
+	 */
+	#mayStream(sourceId: string): boolean {
+		if (!this.#canStream || this.#blobs.has(sourceId)) return false;
+		if (this.arrangement.tracks.some((t) => t.sampler?.sourceId === sourceId)) return false;
+		return !this.arrangement.clips.some((c) => c.sourceId === sourceId && c.warp);
+	}
+	/** Whether a source can play now without a decode: held, or on disk and free to stream. */
+	#playable(sourceId: string): boolean {
+		return (
+			this.#buffers.has(sourceId) || (!!this.sources[sourceId]?.onDisk && this.#mayStream(sourceId))
+		);
+	}
+	/** At load: a source on disk and free to stream is marked ready from its copy's header; one without saved peaks decodes for the lane. */
+	async #streamsWithoutDecode(sourceId: string): Promise<boolean> {
+		const entry = this.sources[sourceId];
+		if (!entry || entry.peaks.length === 0 || !this.#mayStream(sourceId)) return false;
+		return this.#statOnDisk(sourceId);
+	}
+	/** Asks the disk for the source's copy and, when there is one, marks the source ready from it (`onDisk`, its length); false when there is none. */
+	async #statOnDisk(sourceId: string): Promise<boolean> {
+		const stat = await pcmCache.stat(sourceId);
+		const entry = this.sources[sourceId];
+		if (!stat || !entry || stat.frames < 1 || stat.sampleRate <= 0) return false;
+		entry.onDisk = { sampleRate: stat.sampleRate, channels: stat.channels, frames: stat.frames };
+		entry.status = "ready";
+		entry.durationSeconds = stat.frames / stat.sampleRate;
+		this.#fillUnknownClips(sourceId, entry.durationSeconds);
+		return true;
+	}
+	/** A source ready to play (D8): streamed from its disk copy where it may be (a stat, no decode), else decoded. */
+	async #ensurePlayable(sourceId: string): Promise<void> {
+		if (this.#playable(sourceId)) {
+			const entry = this.sources[sourceId];
+			if (entry?.status === "cold") entry.status = "ready";
+			return;
+		}
+		if (
+			this.#mayStream(sourceId) &&
+			!this.#loading.has(sourceId) &&
+			(await this.#statOnDisk(sourceId))
+		)
+			return;
+		await this.ensureSource(sourceId);
+	}
+	/**
+	 * A copy that answered a stat but not its first window is gone (evicted):
+	 * forgotten, the source decoded (fetched) and the pass restarted once it
+	 * is in, so it sounds again.
+	 */
+	#lostDiskCopy(sourceId: string) {
+		const entry = this.sources[sourceId];
+		if (!entry?.onDisk) return;
+		delete entry.onDisk;
+		void this.ensureSource(sourceId).then((b) => {
+			if (b && this.running) this.#reschedule();
+		});
 	}
 	/**
 	 * A source's samples: the disk copy when this browser keeps one
@@ -746,22 +869,31 @@ class StudioEngine {
 		const scratch = new OfflineAudioContext(1, 1, 48000);
 		return scratch.decodeAudioData(bytes);
 	}
-	#recount() {
+	#heldBytes(): number {
 		let bytes = 0;
 		for (const b of this.#buffers.values()) bytes += b.length * b.numberOfChannels * 4;
 		for (const b of this.#warped.values()) bytes += b.length * b.numberOfChannels * 4;
-		this.memoryBytes = bytes;
-		// Past the warning line, what nothing plays goes cold on its own (D8).
-		if (bytes > STUDIO_MEMORY_WARNING_BYTES && !this.#releasing) {
-			this.#releasing = true;
-			try {
-				this.releaseUnused();
-			} finally {
-				this.#releasing = false;
-			}
-		}
+		return bytes;
 	}
-	#releasing = false;
+	#recount() {
+		const bytes = this.#heldBytes();
+		this.memoryBytes = bytes;
+		// Past the warning line, what nothing plays goes cold and what streams lets go of its buffer, on its own (D8).
+		// On the next task, so a caller that awaited a decode (a tool, a render) reads the buffer first.
+		if (bytes > STUDIO_MEMORY_WARNING_BYTES && !this.#releaseTimer)
+			this.#releaseTimer = setTimeout(() => {
+				this.#releaseTimer = null;
+				if (this.memoryBytes > STUDIO_MEMORY_WARNING_BYTES) this.releaseUnused();
+			}, 0);
+	}
+	#releaseTimer: ReturnType<typeof setTimeout> | null = null;
+	/** What the disk copies of the song's sources hold, in bytes (32-bit floats), for the readout beside `memoryBytes`. */
+	get diskBytes(): number {
+		let bytes = 0;
+		for (const s of Object.values(this.sources))
+			if (s.onDisk) bytes += s.onDisk.frames * s.onDisk.channels * 4;
+		return bytes;
+	}
 	/** The sources the arrangement plays: every clip's, their takes aside, and the samplers'. */
 	#referencedSourceIds(): Set<string> {
 		const ids = new Set<string>();
@@ -781,7 +913,7 @@ class StudioEngine {
 		if (inFlight) return inFlight;
 		const url = this.#urls.get(sourceId);
 		const entry = this.sources[sourceId];
-		if ((!url && !this.#blobs.has(sourceId)) || !entry) return null;
+		if (!entry || (!url && !this.#blobs.has(sourceId) && !entry.onDisk)) return null;
 		entry.status = "decoding";
 		this.decoding++;
 		const job = (async () => {
@@ -800,27 +932,52 @@ class StudioEngine {
 		this.#loading.set(sourceId, job);
 		return job;
 	}
-	/** Every source the arrangement plays, decoded (play, record and a bounce wait for this). */
+	/** Every source the arrangement plays, ready to play: streamed from its disk copy where it may be, else decoded (play and record wait for this). */
 	async ensureReferenced(): Promise<void> {
-		await Promise.all([...this.#referencedSourceIds()].map((id) => this.ensureSource(id)));
+		await Promise.all([...this.#referencedSourceIds()].map((id) => this.#ensurePlayable(id)));
 	}
-	/** The buffers nothing plays dropped from memory; the sources stay listed, cold, fetched again when wanted. Returns how many went. */
+	/** Every source the arrangement plays (or those named), decoded and held, for what reads the samples (a render, a tool, an export). */
+	async ensureDecoded(sourceIds?: Iterable<string>): Promise<void> {
+		const ids = [...(sourceIds ?? this.#referencedSourceIds())];
+		await Promise.all(ids.map((id) => this.ensureSource(id)));
+	}
+	/**
+	 * Buffers let go of; returns how many went. What nothing plays goes cold
+	 * (listed still, fetched again when wanted); what plays but may stream
+	 * from its disk copy (D8) stays ready and streams. Kept: a recording
+	 * still uploading, a source a warp or a sampler reads, one sounding from
+	 * its buffer now, and everything a render under way reads.
+	 */
 	releaseUnused(): number {
 		const needed = this.#referencedSourceIds();
+		const busy = this.#sourcesSounding();
 		let n = 0;
 		for (const id of Array.from(this.#buffers.keys())) {
 			const entry = this.sources[id];
-			if (needed.has(id) || !entry || entry.pending || !this.#urls.has(id)) continue;
+			if (!entry || entry.pending || busy.has(id)) continue;
+			const plays = needed.has(id);
+			if (!this.#releasable(entry, plays)) continue;
 			this.#buffers.delete(id);
-			entry.status = "cold";
+			if (!plays) entry.status = "cold";
 			n++;
 		}
-		if (n) {
-			let bytes = 0;
-			for (const b of this.#buffers.values()) bytes += b.length * b.numberOfChannels * 4;
-			this.memoryBytes = bytes;
-		}
+		if (n) this.memoryBytes = this.#heldBytes();
 		return n;
+	}
+	/** Whether a held buffer may go: one that plays only when it can stream from disk (and no render reads it), one nothing plays when it can come back. */
+	#releasable(entry: StudioSource, plays: boolean): boolean {
+		if (plays) return this.#pinned === 0 && !!entry.onDisk && this.#mayStream(entry.id);
+		return this.#urls.has(entry.id) || !!entry.onDisk;
+	}
+	/** The sources a clip sounding or queued now plays from its buffer. */
+	#sourcesSounding(): Set<string> {
+		const ids = new Set<string>();
+		for (const q of this.#clipQueue) if (q.buffer && q.clip.sourceId) ids.add(q.clip.sourceId);
+		const clips = new Set(
+			this.#playing.filter((p) => !(p.src instanceof StreamVoice)).map((p) => p.clipId),
+		);
+		for (const c of this.arrangement.clips) if (c.sourceId && clips.has(c.id)) ids.add(c.sourceId);
+		return ids;
 	}
 	/** For the export (audio/studioExport.ts): a source at the song's rate when the device decoded it at another. */
 	resample(buffer: AudioBuffer, sampleRate: number): Promise<AudioBuffer> {
@@ -939,11 +1096,11 @@ class StudioEngine {
 	 * the source's end once the source decodes. Saved with the song, not an
 	 * undo step: nothing the band did.
 	 */
-	#fillUnknownClips(sourceId: string, buffer: AudioBuffer) {
+	#fillUnknownClips(sourceId: string, seconds: number) {
 		let changed = false;
 		for (const c of this.arrangement.clips) {
 			if (c.sourceId !== sourceId || c.duration > 0.001) continue;
-			const length = (c.warp ? warpContentAt(c.warp, buffer.duration) : buffer.duration) - c.offset;
+			const length = (c.warp ? warpContentAt(c.warp, seconds) : seconds) - c.offset;
 			if (length <= 0.001) continue;
 			c.duration = length;
 			changed = true;
@@ -1621,8 +1778,8 @@ class StudioEngine {
 		const t = this.#track(trackId);
 		const src = this.sources[sourceId];
 		if (!t || t.kind === "midi" || !src) return null;
-		if (!this.#buffers.has(sourceId))
-			void this.ensureSource(sourceId).then(() => this.#reschedule());
+		if (!this.#playable(sourceId))
+			void this.#ensurePlayable(sourceId).then(() => this.#reschedule());
 		return this.addClip({
 			trackId,
 			sourceId,
@@ -2016,7 +2173,7 @@ class StudioEngine {
 		c.alternates = ring.filter((id) => id !== next);
 		c.sourceId = next;
 		// A take not heard since the song opened is cold: fetched now, and the pass restarted once it is in.
-		if (!this.#buffers.has(next)) void this.ensureSource(next).then(() => this.#reschedule());
+		if (!this.#playable(next)) void this.#ensurePlayable(next).then(() => this.#reschedule());
 		const srcEnd = this.#sourceSeconds(c);
 		if (c.offset >= srcEnd) c.offset = 0;
 		if (!c.loop) c.duration = round4(Math.min(c.duration, srcEnd - c.offset));
@@ -2172,8 +2329,8 @@ class StudioEngine {
 		this.arrangement.clips.splice(i, 1, ...made);
 		this.#stopClip(clipId);
 		this.#reschedule();
-		if (!this.#buffers.has(takeSourceId))
-			void this.ensureSource(takeSourceId).then(() => this.#reschedule());
+		if (!this.#playable(takeSourceId))
+			void this.#ensurePlayable(takeSourceId).then(() => this.#reschedule());
 		return made.find((m) => m.sourceId === takeSourceId) ?? made[0]!;
 	}
 	/** A new source from channel data, held here and handed to the page to upload (as an import is). */
@@ -2189,7 +2346,7 @@ class StudioEngine {
 		const sourceId = nanoid();
 		this.#buffers.set(sourceId, buffer);
 		// On disk before the upload finishes, so a reload while it is still going reads it back (audio/pcmCache.ts).
-		void pcmCache.write(sourceId, buffer);
+		this.#keepOnDisk(sourceId, buffer);
 		this.sources[sourceId] = {
 			id: sourceId,
 			label,
@@ -2217,7 +2374,10 @@ class StudioEngine {
 	/** The clip's span of its source as plain channels (a looped clip's passes laid end to end), for a tool that makes a new source of it. */
 	#clipChannels(c: StudioClip): { channels: Float32Array[]; sampleRate: number } | null {
 		const buffer = this.clipBufferOf(c);
-		if (!buffer) return null;
+		if (!buffer) {
+			this.#wantDecoded([c]);
+			return null;
+		}
 		const sr = buffer.sampleRate;
 		const spans = clipSegments(c)
 			.map((seg) => ({
@@ -2290,6 +2450,8 @@ class StudioEngine {
 			.map((id) => this.#clip(id))
 			.filter((c): c is StudioClip => !!c && !!c.sourceId);
 		if (clips.length === 0 || new Set(clips.map((c) => c.trackId)).size !== 1) return null;
+		// A clip streaming from disk has no samples here yet (D8): decoded now, so the next try has them.
+		if (this.#wantDecoded(clips)) return null;
 		const from = Math.min(...clips.map((c) => c.start));
 		const to = Math.max(...clips.map((c) => c.start + c.duration));
 		const sampleRate = this.sampleRate;
@@ -2334,6 +2496,19 @@ class StudioEngine {
 		for (const id of gone) this.#stopClip(id);
 		this.#reschedule();
 		return made;
+	}
+
+	/**
+	 * A tool that reads a clip's samples on a source playing from disk (D8)
+	 * finds no buffer: the sources are decoded in the background (a caller
+	 * can await `ensureDecoded` first). True when one was missing.
+	 */
+	#wantDecoded(clips: StudioClip[]): boolean {
+		const missing = clips
+			.map((c) => c.sourceId)
+			.filter((id): id is string => !!id && !this.#buffers.has(id));
+		for (const id of missing) void this.ensureSource(id);
+		return missing.length > 0;
 	}
 
 	// ── Freeze (D8) ───────────────────────────────────────────────────────
@@ -2400,8 +2575,8 @@ class StudioEngine {
 		for (const c of rendered) this.#stopClip(c.id);
 		this.#tracks.get(trackId)?.setInserts(this.#synced(insertsOf(track)), 0);
 		for (const c of frozen.clips)
-			if (c.sourceId && !this.#buffers.has(c.sourceId))
-				void this.ensureSource(c.sourceId).then(() => this.#reschedule());
+			if (c.sourceId && !this.#playable(c.sourceId))
+				void this.#ensurePlayable(c.sourceId).then(() => this.#reschedule());
 		this.#reschedule();
 		return true;
 	}
@@ -2750,7 +2925,7 @@ class StudioEngine {
 		const sourceId = nanoid();
 		const label = file.filename.replace(/\.[a-z0-9]+$/i, "").slice(0, 60) || "Import";
 		this.#buffers.set(sourceId, buffer);
-		void pcmCache.write(sourceId, buffer);
+		this.#keepOnDisk(sourceId, buffer);
 		this.sources[sourceId] = {
 			id: sourceId,
 			label,
@@ -2803,7 +2978,7 @@ class StudioEngine {
 		fileSampleRate?: number,
 	): StudioTake {
 		this.#buffers.set(sourceId, buffer);
-		void pcmCache.write(sourceId, buffer);
+		this.#keepOnDisk(sourceId, buffer);
 		this.sources[sourceId] = {
 			id: sourceId,
 			label: trackLabel.slice(0, 60) || "Import",
@@ -3246,8 +3421,8 @@ class StudioEngine {
 		fades?: EffectiveFades,
 	): QueuedSegment[] {
 		if (!clip.sourceId) return []; // a MIDI clip: its notes are queued by #queueMidi
-		const buffer = this.clipBufferOf(clip);
-		if (clip.muted || !this.#ctx || !buffer || !this.#tracks.has(clip.trackId)) return [];
+		const media = this.#clipMedia(clip);
+		if (clip.muted || !this.#ctx || !media || !this.#tracks.has(clip.trackId)) return [];
 		// Fades: the clip's own at its edges (widened over an overlap into a crossfade, utils/clipCrossfades.ts), else a few milliseconds so a cut never clicks.
 		const f = fades ?? fadesOf(clip);
 		// A source per pass of the clip (utils/clipSegments.ts): one for a clip without a loop, the loop's repeats for one with; those in the pass.
@@ -3256,7 +3431,7 @@ class StudioEngine {
 			.map((seg) => ({
 				at: when + (Math.max(seg.start, from) - from),
 				clip,
-				buffer,
+				...media,
 				seg,
 				from,
 				when,
@@ -3269,7 +3444,56 @@ class StudioEngine {
 	 * pass), it starts now from where the pass has reached in it, so it stays
 	 * in time with the rest.
 	 */
-	#startSegment({ clip, buffer, seg, from, when, to, fades: f }: QueuedSegment) {
+	/**
+	 * What a clip plays from (D8): the buffer when one is held (a source
+	 * decoded for a tool plays from memory until released), else, for an
+	 * unwarped clip, the source's disk copy; null when neither is there.
+	 */
+	#clipMedia(clip: StudioClip): ClipMedia | null {
+		const buffer = this.clipBufferOf(clip);
+		if (buffer) return { buffer, disk: null, seconds: buffer.duration };
+		const id = clip.sourceId;
+		const d =
+			id && !clip.warp && this.#canStream && !this.#blobs.has(id) && this.sources[id]?.onDisk;
+		if (!id || !d) return null;
+		return { buffer: null, disk: { key: id, ...d }, seconds: d.frames / d.sampleRate };
+	}
+	/**
+	 * A segment's voice, wired into `into`: a buffer source over the buffer,
+	 * else a StreamVoice reading the disk copy window by window. A copy
+	 * whose first window does not come was evicted (`#lostDiskCopy`).
+	 */
+	#voiceFor(
+		ctx: AudioContext,
+		{ buffer, disk }: ClipMedia,
+		into: AudioNode,
+	): AudioBufferSourceNode | StreamVoice | null {
+		if (buffer) {
+			const src = ctx.createBufferSource();
+			src.buffer = buffer;
+			src.connect(into);
+			return src;
+		}
+		if (!disk) return null;
+		let first = true;
+		try {
+			const voice = new StreamVoice(ctx, {
+				...disk,
+				read: async (fromFrame, frames) => {
+					const range = await pcmCache.readRange(disk.key, fromFrame, frames);
+					if (first && !range) this.#lostDiskCopy(disk.key);
+					first = false;
+					return range?.channels ?? null;
+				},
+			});
+			voice.connect(into);
+			return voice;
+		} catch {
+			return null;
+		}
+	}
+	#startSegment(q: QueuedSegment) {
+		const { clip, seg, from, when, to, fades: f, seconds } = q;
 		const ctx = this.#ctx;
 		const nodes = this.#tracks.get(clip.trackId);
 		if (!ctx || !nodes) return;
@@ -3279,23 +3503,23 @@ class StudioEngine {
 		const ends = to === null ? segEnd : Math.min(segEnd, to);
 		const offset = seg.offset + (begins - seg.start);
 		const length = ends - begins;
-		if (length <= 0 || offset >= buffer.duration) return;
-		const src = ctx.createBufferSource();
-		src.buffer = buffer;
+		if (length <= 0 || offset >= seconds) return;
 		const gain = ctx.createGain();
 		const at = when + (begins - from);
 		// The gain envelope rides its own node before the fades (docs/multitrack-recorder.md "Clip gain envelopes").
 		const env = envelopeNode(ctx, clip.gainEnvelope, at, offset, length);
-		if (env) src.connect(env).connect(gain);
-		else src.connect(gain);
+		if (env) env.connect(gain);
+		const src = this.#voiceFor(ctx, q, env ?? gain);
+		if (!src) return;
 		gain.connect(nodes.input);
-		scheduleFades(gain.gain, clip.gain, at, length, {
-			fadeIn: begins === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
-			fadeOut: ends === clipEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
-			inShape: f.inShape,
-			outShape: f.outShape,
-		});
-		src.start(at, offset, Math.min(length, buffer.duration - offset));
+		scheduleFades(
+			gain.gain,
+			clip.gain,
+			at,
+			length,
+			edgeFades(f, begins === clip.start, ends === clipEnd),
+		);
+		src.start(at, offset, Math.min(length, seconds - offset));
 		const entry: Playing = { clipId: clip.id, src, gain };
 		src.onended = () => {
 			this.#playing = this.#playing.filter((p) => p !== entry);
@@ -3696,7 +3920,7 @@ class StudioEngine {
 					: sliceBuffer(ctx, whole, piece.from, piece.to);
 			const sourceId = nanoid();
 			this.#buffers.set(sourceId, buffer);
-			void pcmCache.write(sourceId, buffer);
+			this.#keepOnDisk(sourceId, buffer);
 			this.sources[sourceId] = {
 				id: sourceId,
 				label,
@@ -3815,8 +4039,7 @@ class StudioEngine {
 	 * inserts and fader. A second of tail lets reverbs and delays ring out.
 	 */
 	async render(target: RenderTarget = {}): Promise<AudioBuffer> {
-		await this.ensureReferenced();
-		await this.ensureWarped();
+		await this.#readyToRender();
 		const trackId = target.track ?? null;
 		const busId = target.bus ?? null;
 		const alone = Boolean(trackId || busId);
@@ -3930,6 +4153,20 @@ class StudioEngine {
 		await Promise.all(midi);
 		return off.startRendering();
 	}
+	/**
+	 * Before a render: every played source decoded (those streaming from disk
+	 * too, D8) and every warp rendered, nothing released meanwhile. The
+	 * render takes its buffers in the same turn, before any release can run.
+	 */
+	async #readyToRender() {
+		this.#pinned++;
+		try {
+			await this.ensureDecoded();
+			await this.ensureWarped();
+		} finally {
+			this.#pinned--;
+		}
+	}
 	/** Any buffer as a 24-bit WAV blob. */
 	wavOf(buffer: AudioBuffer): Blob {
 		const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
@@ -3941,7 +4178,13 @@ class StudioEngine {
 	/** What the engine holds, for a diagnostic (the dev server's e2e scripts). */
 	diagnostics() {
 		const ctx = this.#ctx;
+		const voices = this.#playing
+			.map((p) => p.src)
+			.filter((s): s is StreamVoice => s instanceof StreamVoice);
 		return {
+			/** Clip segments playing from disk now (D8), and the gaps they played as silence. */
+			streaming: voices.length,
+			starved: voices.reduce((n, v) => n + v.starved, 0),
 			context: ctx ? { state: ctx.state, time: ctx.currentTime, sampleRate: ctx.sampleRate } : null,
 			tracks: Array.from(this.#tracks.keys()),
 			monoTracks: Array.from(this.#tracks.entries())
