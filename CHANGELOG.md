@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.165.0] - 2026-10-25
+
 ### Added
 
 - **Mentions in the chat** (Kevin): type **@** and a name in a song's or a session's chat to mention one of the people on it; they are told in their inbox (and by email under the comments-and-chat setting) even when the rest of the conversation is folded for them, and the name is highlighted in the message.
