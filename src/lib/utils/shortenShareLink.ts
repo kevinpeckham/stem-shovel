@@ -1,5 +1,6 @@
 import { mintShortLink } from "#lib/remote/shortLinks.remote.js";
 import { shortLinkTarget } from "#lib/utils/shortLinkTarget.js";
+import type { ShortLinkKind } from "#lib/val/ShortLinkSchema.js";
 
 /**
  * A share link made short (docs/security.md, "Short links"; Kevin: the
@@ -9,10 +10,7 @@ import { shortLinkTarget } from "#lib/utils/shortLinkTarget.js";
  * limit, no network, the long URL itself comes back, so copying never
  * fails for want of a code.
  */
-export async function shortenShareLink(
-	longUrl: string,
-	kind: "chord-player" | "drum-machine" | "piano" | "practice-amp" | "song" | "project" | "other",
-): Promise<string> {
+export async function shortenShareLink(longUrl: string, kind: ShortLinkKind): Promise<string> {
 	try {
 		const target = shortLinkTarget(longUrl, window.location.origin);
 		if (!target) return longUrl;

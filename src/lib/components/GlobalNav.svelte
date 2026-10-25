@@ -548,6 +548,18 @@
 							<span class="i-ph-bell mr-2 inline-block align-[-2px]" aria-hidden="true"
 							></span>Notifications
 						</a>
+						<a
+							class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								'/settings/links',
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/settings/links"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-link mr-2 inline-block align-[-2px]" aria-hidden="true"></span>Links
+						</a>
 						{#if user.isSystemAdmin}
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active('/admin')

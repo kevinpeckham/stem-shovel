@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Short links for songs, projects and Studio songs** (Kevin): a link button in a song page's and a project page's header, and **Copy link to this song** in the Studio's song menu, copy a short link (shvl.me in production) to the page, as the instruments' Copy link already did; a song's or project's link is the page without its query, so a viewing code never travels along.
+- **A Links page** (Kevin): **Links** under your settings lists every short link you have made, where it goes, how often and when last it was opened, with **Copy** and **Revoke** on each.
+- **Custom addresses for short links** (Kevin): a word of your choosing in place of the random code (`shvl.me/our-set-list`), three to thirty-two lowercase letters, digits and hyphens, first come first served, for a link you will say aloud; the old code stops working once a link has one.
+
+### Technical
+
+- `copyShortLink` (utils) over `shortenShareLink`, whose kind is now `ShortLinkKind` with a new `studio` kind; `/settings/links`, `listShortLinksOf`, `revokeShortLink`, `setShortLinkSlug`, `ShortLinkSlugSchema` and `SHORT_LINK_RESERVED_SLUGS`; the resolver, the short-domain route and `resolveShortLink` take a code or a slug (a slug lowercased after an exact miss). No migration: a slug lives in the `code` column.
+
 ## [0.163.0] - 2026-10-25
 
 ### Changed

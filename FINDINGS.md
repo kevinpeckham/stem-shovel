@@ -829,6 +829,14 @@ From a probe (a project with `TEMPO 120 6 8` and a tempo point carrying `(8 << 1
 - **`TimeMap2_GetDividedBpmAtTime` is 240 there**: the tempo in beats of the bottom number, which is what Reaper's transport displays ("240" for that 6/8). `TimeMap_GetTimeSigAtTime` returns 120, the stored tempo, with 6/8.
 - So a DAW-style tempo (Live, Bitwig, a MIDI file and Dawn all count quarter notes) goes into an `.rpp` unscaled whatever the signature, and the `(denominator << 16) | numerator` on a point carries the bottom number.
 
+## Remote forms in Playwright, and Fallow's view of a prop passed straight through (2026-10-25)
+
+From the short links page (/settings/links, docs/security.md "Short links").
+
+- **A remote form field's `as("text", …)` input renders with no `type` attribute**, so a Playwright `input[type=text]` locator misses it; locate by placeholder, label or name. The `name` of a `.for(id)` form's field carries a suffix (`slug/<hash>/setShortLinkSlug`), so match it with `name^=`.
+- **Fallow reports a Svelte prop unused when its only use is as an attribute on a child component** (`<Child before={prefix} />`); deriving the value inside the child instead keeps the audit quiet.
+- **`pcmCache`-style "never throws" facades hide a failed write from a `write` call's result**; see the engine entry above for the `stat` confirmation.
+
 ## A message-fed AudioWorklet voice: transfers, duplicate needs, offline timing (2026-10-25)
 
 From building the Studio's streaming voice (static/worklets/stream-voice.js, audio/streamVoice.ts; docs/multitrack-recorder.md "Scale and structure"), proved in headless Chromium live (a voice scheduled 0.5 s ahead began on time, ended at 2.56 s against 2.552 expected, nothing starved) and offline (first non-zero sample exactly at a mid-block start frame).

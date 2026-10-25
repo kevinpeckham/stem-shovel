@@ -95,3 +95,68 @@ describe("mintShortLink", () => {
 		expect(shortLinks.mintShortLink).not.toHaveBeenCalled();
 	});
 });
+
+const LINK = "l".repeat(21);
+
+describe("revokeShortLink", () => {
+	it("a signed-in user revokes their own link", async () => {
+		asEditorOf(ACCOUNT);
+		shortLinks.revokeShortLink.mockResolvedValue("revoked");
+		await expect(call(remote.revokeShortLink, { id: LINK })).resolves.toEqual({ revoked: LINK });
+		expect(shortLinks.revokeShortLink).toHaveBeenCalledWith(LINK, USER);
+	});
+	it("someone else's link is a 403, a gone one a 404", async () => {
+		asEditorOf(ACCOUNT);
+		shortLinks.revokeShortLink.mockResolvedValue("forbidden");
+		await expect(call(remote.revokeShortLink, { id: LINK })).rejects.toMatchObject(httpError(403));
+		shortLinks.revokeShortLink.mockResolvedValue("missing");
+		await expect(call(remote.revokeShortLink, { id: LINK })).rejects.toMatchObject(httpError(404));
+	});
+	it("a visitor is a 401 before anything is touched", async () => {
+		asSignedOut();
+		await expect(call(remote.revokeShortLink, { id: LINK })).rejects.toMatchObject(httpError(401));
+		expect(shortLinks.revokeShortLink).not.toHaveBeenCalled();
+	});
+});
+
+describe("setShortLinkSlug", () => {
+	it("saves the lowered slug for the user's own link, limited per user", async () => {
+		asEditorOf(ACCOUNT);
+		shortLinks.setShortLinkSlug.mockResolvedValue("saved");
+		await expect(call(remote.setShortLinkSlug, { linkId: LINK, slug: "My-Band" })).resolves.toEqual(
+			{ slug: "my-band" },
+		);
+		expect(rateLimited).toHaveBeenCalledWith(`short-link-slug:user:${USER}`, 30, 600_000);
+		expect(shortLinks.setShortLinkSlug).toHaveBeenCalledWith(LINK, USER, "my-band");
+	});
+	it("a taken slug goes back to the slug field", async () => {
+		asEditorOf(ACCOUNT);
+		shortLinks.setShortLinkSlug.mockResolvedValue("taken");
+		await expect(
+			call(remote.setShortLinkSlug, { linkId: LINK, slug: "my-band" }),
+		).rejects.toMatchObject({
+			issues: [{ path: ["slug"], message: "Another link already has that address." }],
+		});
+	});
+	it("a reserved or malformed slug is refused before the server module", async () => {
+		asEditorOf(ACCOUNT);
+		for (const slug of ["admin", "ab", "-tour", "my band"])
+			await expect(call(remote.setShortLinkSlug, { linkId: LINK, slug })).rejects.toThrow();
+		expect(shortLinks.setShortLinkSlug).not.toHaveBeenCalled();
+	});
+	it("someone else's link is a 403; a visitor a 401; past the limit a 429", async () => {
+		asEditorOf(ACCOUNT);
+		shortLinks.setShortLinkSlug.mockResolvedValue("forbidden");
+		await expect(
+			call(remote.setShortLinkSlug, { linkId: LINK, slug: "my-band" }),
+		).rejects.toMatchObject(httpError(403));
+		rateLimited.mockResolvedValue(true);
+		await expect(
+			call(remote.setShortLinkSlug, { linkId: LINK, slug: "my-band" }),
+		).rejects.toMatchObject(httpError(429));
+		asSignedOut();
+		await expect(
+			call(remote.setShortLinkSlug, { linkId: LINK, slug: "my-band" }),
+		).rejects.toMatchObject(httpError(401));
+	});
+});

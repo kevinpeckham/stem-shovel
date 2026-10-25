@@ -80,6 +80,7 @@
 	import { diffArrangements } from "#lib/utils/diffArrangements.js";
 	import type { StudioCommentView } from "#lib/val/StudioSchema.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
+	import { copyShortLink } from "#lib/utils/copyShortLink.js";
 	import {
 		postJson,
 		uploadDemoFile,
@@ -1793,6 +1794,19 @@
 								title:
 									"Drop from memory what no clip plays and what plays from this device's copy; it comes back from the copy or the server when wanted",
 								action: freeMemory,
+							},
+							{
+								id: "link",
+								kind: "button",
+								label: "Copy link to this song",
+								iconClass: "i-ph-link",
+								title: "A short link that opens this song in the Studio for whoever may see it",
+								condition: !!songId,
+								action: () =>
+									void copyShortLink(
+										`${page.url.origin}/multitrack-recorder?song=${encodeURIComponent(songId ?? "")}`,
+										"studio",
+									),
 							},
 							{
 								id: "disk",

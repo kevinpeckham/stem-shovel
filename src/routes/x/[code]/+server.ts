@@ -3,11 +3,11 @@ import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /**
- * A short link resolved on the app's own origin: `/x/<code>` sends the
- * visitor to the page the code stands for, query and hash included (the
- * chord player's settings ride in the hash, which a Location header
- * carries). The short domain (`SHORT_LINK_ORIGIN`, src/hooks.server.ts)
- * resolves the same codes as `/<code>`; this address is what a stage
+ * A short link resolved on the app's own origin: `/x/<code>`, or a
+ * custom address `/x/<slug>` in any case, sends the visitor to the page
+ * the link stands for, query and hash included (the chord player's
+ * settings ride in the hash, which a Location header carries). The short domain (`SHORT_LINK_ORIGIN`, src/hooks.server.ts)
+ * resolves the same addresses as `/<code>`; this address is what a stage
  * without the domain hands out, and a fallback everywhere. A code nobody
  * made, or one that has expired, is a 404. Never cached: a link that
  * expires must stop.

@@ -138,7 +138,7 @@ are 8 from a 57-symbol one (no 0/O/1/l/I).
 ## Short links
 
 A short link (`short_link`, `src/lib/server/shortLinks.ts`) is an
-8-character code for a page on the app with its query and hash, so the
+8-character code (or a custom address, below) for a page on the app with its query and hash, so the
 instruments' long share links (the chord player's settings ride after `#`)
 fit in a message. The rules:
 
@@ -166,6 +166,31 @@ fit in a message. The rules:
   page. The hook ignores a short domain that names the site itself, so a
   misconfiguration cannot swallow every page. Hits are counted after the
   response and never fail the redirect.
+- **Your links** (`/settings/links`, signed in): the user's own links
+  (`listShortLinksOf`, `created_by` = the user, newest first) with their
+  address, destination, visits and last visit. **Revoke** (the
+  `revokeShortLink` command) deletes the row, so the address stops at once;
+  only the link's creator may (someone else's, or an anonymous one, is a
+  403). Anonymous links belong to nobody and are on no one's page.
+- **Custom addresses.** A signed-in user may give one of their links a
+  chosen address in place of the random code (`setShortLinkSlug`, a form):
+  3 to 32 lowercase letters, digits and hyphens, a letter or digit at each
+  end (`ShortLinkSlugSchema`, which lowers and trims what is typed). The
+  code column simply becomes the slug, so the old address stops working and
+  the same user minting the same target again still gets this row (reuse
+  looks up by target). Creator-only like Revoke; a slug another link holds
+  goes back to the field as taken (checked first, and the unique index's
+  violation caught for a race); 30 changes per ten minutes per user.
+  `SHORT_LINK_RESERVED_SLUGS` may not be taken: the short domain's and the
+  app's own paths (`x`, `s`, `f`, `go`, `api`, `admin`, `www`, `app`,
+  `help`, `docs`, `sign-in`, `sign-up`, `settings`) and every first segment
+  of `src/routes` (a test keeps the list in step with the tree), so
+  `shvl.me/piano` is never someone's link posing as the page.
+- **Case.** A random code is case-sensitive and matched exactly. A custom
+  address is stored lowercase; resolving (`ShortLinkAddressSchema`: a code,
+  or a slug in any case) tries the address as given and, on a miss, its
+  lowercase form, so `shvl.me/My-Band` finds `my-band`. On the short
+  domain `/x/<address>` (either case of `x`) resolves like `/<address>`.
 
 ## Headers
 

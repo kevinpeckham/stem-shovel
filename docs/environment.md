@@ -199,7 +199,8 @@ handed out on: `https://shvl.me` in production, once the domain is attached;
 unset on dev and staging, where a minted link reads `/x/<code>` on the app's
 own origin, which resolves the same codes on every stage. With it set,
 `src/hooks.server.ts` answers any request whose host is that origin's
-(with or without `www.`): `/<code>` is a 302 to the page the code stands for
+(with or without `www.`): `/<code>`, a custom address `/<slug>` and the
+same under `/x/` are a 302 to the page the link stands for
 on production's own origin (`SITE_ORIGIN`, `src/lib/server/siteOrigin.ts`,
 from `VERCEL_PROJECT_PRODUCTION_URL`), everything else a 302 to its front
 page. It belongs with the other non-secret values in the production

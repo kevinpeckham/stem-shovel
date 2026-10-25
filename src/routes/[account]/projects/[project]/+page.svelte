@@ -11,6 +11,8 @@
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { songStage } from "#lib/utils/songStage.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
+	import { page } from "$app/state";
+	import { copyShortLink } from "#lib/utils/copyShortLink.js";
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { slugify } from "#lib/utils/slugify.js";
 	import { reorderSongs, updateProject } from "#lib/remote/projects.remote.js";
@@ -278,8 +280,8 @@
 			</div>
 		</div>
 		<!-- </div> -->
-		{#if data.canEdit}
-			<div class="flex gap-4 items-center mt-5">
+		<div class="flex gap-4 items-center mt-5">
+			{#if data.canEdit}
 				<button class="button sm-button-sm" type="button" popovertarget="add-song">
 					<span class="i-ph-plus"></span>
 					<span class="hidden sm-inline">Add Song</span>
@@ -295,8 +297,19 @@
 					<span class="block i-ph-gear"></span>
 					<span class="hidden sm-inline">Project Settings</span>
 				</button>
-			</div>
-		{/if}
+			{/if}
+			<!-- The project's own address made short (docs/security.md "Short links"), for members and visitors alike. -->
+			<button
+				class="button sm-button-sm"
+				type="button"
+				title="Copy a short link to this project"
+				aria-label="Copy a short link to this project"
+				onclick={() => void copyShortLink(page.url.origin + page.url.pathname, "project")}
+			>
+				<span class="block i-ph-link"></span>
+				<span class="hidden sm-inline">Copy Link</span>
+			</button>
+		</div>
 	</header>
 
 	{#if data.canEdit}

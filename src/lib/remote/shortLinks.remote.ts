@@ -1,9 +1,18 @@
-import { command, getRequestEvent } from "$app/server";
+import { command, form, getRequestEvent } from "$app/server";
+import { requireUser } from "#lib/server/access.js";
 import { MINUTE, rateLimited } from "#lib/server/rateLimit.js";
-import { mintShortLink as mint } from "#lib/server/shortLinks.js";
+import {
+	mintShortLink as mint,
+	revokeShortLink as revoke,
+	setShortLinkSlug as setSlug,
+} from "#lib/server/shortLinks.js";
 import { shortLinkUrl } from "#lib/utils/shortLinkUrl.js";
-import { ShortLinkMintSchema } from "#lib/val/ShortLinkSchema.js";
-import { error } from "@sveltejs/kit";
+import {
+	ShortLinkIdSchema,
+	ShortLinkMintSchema,
+	ShortLinkSlugFormSchema,
+} from "#lib/val/ShortLinkSchema.js";
+import { error, invalid } from "@sveltejs/kit";
 import { ENV } from "varlock/env";
 
 /**
@@ -29,4 +38,30 @@ export const mintShortLink = command(ShortLinkMintSchema, async ({ target, kind 
 		(slug && locals.memberships.find((m) => m.slug === slug && !m.actingAs)?.accountId) ?? null;
 	const { code } = await mint({ target, kind, userId: user?.id ?? null, accountId });
 	return { code, url: shortLinkUrl(code, ENV.SHORT_LINK_ORIGIN, url.origin) };
+});
+
+/** Deletes one of the signed-in user's links (/settings/links); someone else's is a 403. */
+export const revokeShortLink = command(ShortLinkIdSchema, async ({ id }) => {
+	const user = requireUser(getRequestEvent().locals);
+	const result = await revoke(id, user.id);
+	if (result === "missing") error(404, "That link is already gone.");
+	if (result === "forbidden") error(403, "Only the person who made a link can revoke it.");
+	return { revoked: id };
+});
+
+/**
+ * A custom address for one of the signed-in user's links (/settings/links):
+ * the schema lowers it and refuses the pattern and the reserved words; a
+ * taken one goes back to the field. 30 changes in ten minutes per user, so
+ * nobody walks the namespace looking for free names.
+ */
+export const setShortLinkSlug = form(ShortLinkSlugFormSchema, async ({ linkId, slug }, issue) => {
+	const user = requireUser(getRequestEvent().locals);
+	if (await rateLimited(`short-link-slug:user:${user.id}`, 30, 10 * MINUTE))
+		error(429, "That is a lot of address changes; try again in a few minutes.");
+	const result = await setSlug(linkId, user.id, slug);
+	if (result === "missing") error(404, "That link is gone.");
+	if (result === "forbidden") error(403, "Only the person who made a link can change its address.");
+	if (result === "taken") invalid(issue.slug("Another link already has that address."));
+	return { slug };
 });

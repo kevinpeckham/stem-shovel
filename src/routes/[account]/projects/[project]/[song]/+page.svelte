@@ -69,6 +69,7 @@
 	import { parseBarsText } from "#lib/utils/parseBarsText.js";
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
+	import { copyShortLink } from "#lib/utils/copyShortLink.js";
 	import { FRAME_RATES } from "#lib/constants/frameRates.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { formatKhz } from "#lib/utils/formatKhz.js";
@@ -2072,6 +2073,16 @@
 					onclick={() => (ampOpen = !ampOpen)}
 				>
 					<span class="block i-ph-speaker-high"></span>
+				</button>
+				<!-- The song's own address made short (docs/security.md "Short links"): the page without its query, so a viewing code never travels along. -->
+				<button
+					class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+					type="button"
+					title="Copy a short link to this song"
+					aria-label="Copy a short link to this song"
+					onclick={() => void copyShortLink(page.url.origin + page.url.pathname, "song")}
+				>
+					<span class="block i-ph-link"></span>
 				</button>
 				{#if data.canEdit}
 					<button
