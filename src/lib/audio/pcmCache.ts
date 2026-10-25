@@ -3,7 +3,10 @@ import type {
 	PcmCacheEstimate,
 	PcmCacheReply,
 	PcmCacheRequest,
+	PcmStat,
 } from "#lib/workers/pcmCache.worker.js";
+
+export type { PcmStat };
 
 /**
  * A disk copy of each decoded source, kept in this browser's Origin
@@ -19,7 +22,7 @@ import type {
 type WithoutId<T> = T extends unknown ? Omit<T, "id"> : never;
 type Payload = WithoutId<PcmCacheRequest>;
 
-/** How long a read waits before the load goes to the network instead. */
+/** How long a read (whole, a header or a window) waits before it counts as a miss. */
 const READ_TIMEOUT_MS = 5000;
 const OTHER_TIMEOUT_MS = 30_000;
 
@@ -106,6 +109,36 @@ export class PcmCache {
 	async read(key: string): Promise<{ sampleRate: number; channels: Float32Array[] } | null> {
 		const reply = await this.#ask({ op: "read", key }, [], READ_TIMEOUT_MS);
 		return reply?.bytes ? decodePcmFile(reply.bytes) : null;
+	}
+
+	/** The source's header and file size without its samples, or null when there is no good copy (or one is being written). */
+	async stat(key: string): Promise<PcmStat | null> {
+		const reply = await this.#ask({ op: "stat", key }, [], READ_TIMEOUT_MS);
+		return reply?.stat ?? null;
+	}
+
+	/**
+	 * A window of the source: up to `frames` of every channel from
+	 * `fromFrame`, clipped to the source's end (the channels' length says
+	 * how many came), as views on one transferred buffer. Null when there
+	 * is no good copy, it is being written, or `fromFrame` is past the end.
+	 */
+	async readRange(
+		key: string,
+		fromFrame: number,
+		frames: number,
+	): Promise<{ fromFrame: number; sampleRate: number; channels: Float32Array[] } | null> {
+		const reply = await this.#ask({ op: "readRange", key, fromFrame, frames }, [], READ_TIMEOUT_MS);
+		const range = reply?.range;
+		if (!range || range.data.byteLength !== range.channels * range.frames * 4) return null;
+		return {
+			fromFrame: range.fromFrame,
+			sampleRate: range.sampleRate,
+			channels: Array.from(
+				{ length: range.channels },
+				(_, i) => new Float32Array(range.data, i * range.frames * 4, range.frames),
+			),
+		};
 	}
 
 	/** Keeps a copy of the buffer's samples (copied, so the buffer's own data is never detached). */

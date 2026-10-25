@@ -114,6 +114,63 @@ describe("pcmCache with a worker", () => {
 		expect(await cache.read("b")).toBeNull();
 		expect(posted).toHaveLength(1);
 	});
+	it("stat answers the header and size, and null for a miss or an error", async () => {
+		const cache = new PcmCache();
+		const stat = { sampleRate: 48000, channels: 2, frames: 96000, bytes: 20 + 2 * 96000 * 4 };
+		answer = () => ({ stat });
+		expect(await cache.stat("src_s")).toEqual(stat);
+		expect(posted[0]!.req).toMatchObject({ op: "stat", key: "src_s" });
+		answer = () => ({ stat: null });
+		expect(await cache.stat("gone")).toBeNull();
+		answer = () => ({ error: "NotFoundError" });
+		expect(await cache.stat("x")).toBeNull();
+	});
+	it("readRange asks for the window and returns views on the one buffer it was handed", async () => {
+		const data = new Float32Array([1, 2, 3, -1, -2, -3]).buffer;
+		let reply: Omit<PcmCacheReply, "id"> = {
+			range: { fromFrame: 10, frames: 3, channels: 2, sampleRate: 44100, data },
+		};
+		answer = () => reply;
+		const cache = new PcmCache();
+		const got = await cache.readRange("src_r", 10, 5);
+		expect(posted[0]!.req).toMatchObject({
+			op: "readRange",
+			key: "src_r",
+			fromFrame: 10,
+			frames: 5,
+		});
+		expect(got?.fromFrame).toBe(10);
+		expect(got?.sampleRate).toBe(44100);
+		expect(got!.channels.map((c) => Array.from(c))).toEqual([
+			[1, 2, 3],
+			[-1, -2, -3],
+		]);
+		expect(got!.channels.every((c) => c.buffer === data)).toBe(true);
+		reply = { range: null };
+		expect(await cache.readRange("src_r", 1e9, 5)).toBeNull();
+		reply = { range: { fromFrame: 0, frames: 4, channels: 2, sampleRate: 44100, data } };
+		expect(await cache.readRange("src_r", 0, 4)).toBeNull();
+		reply = { error: "short read" };
+		expect(await cache.readRange("src_r", 0, 4)).toBeNull();
+	});
+	it("stat and readRange are misses after the short read timeout", async () => {
+		vi.useFakeTimers();
+		const cache = new PcmCache();
+		answer = () => "silent";
+		const stat = cache.stat("a");
+		const range = cache.readRange("a", 0, 100);
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(await stat).toBeNull();
+		expect(await range).toBeNull();
+	});
+	it("a worker that dies during a range read turns the cache off", async () => {
+		const cache = new PcmCache();
+		answer = () => "crash";
+		expect(await cache.readRange("a", 0, 10)).toBeNull();
+		expect(cache.available).toBe(false);
+		expect(await cache.stat("a")).toBeNull();
+		expect(posted).toHaveLength(1);
+	});
 	it("a worker that never answers reads as a miss after the timeout", async () => {
 		vi.useFakeTimers();
 		const cache = new PcmCache();

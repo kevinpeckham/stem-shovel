@@ -8,7 +8,14 @@
  * so anything narrower would degrade the export; disk is cheap.
  */
 const MAGIC = "SSPCM1";
-const HEADER_BYTES = 20;
+export const PCM_HEADER_BYTES = 20;
+const HEADER_BYTES = PCM_HEADER_BYTES;
+
+export interface PcmHeader {
+	sampleRate: number;
+	channels: number;
+	frames: number;
+}
 
 export function encodePcmFile(channels: Float32Array[], sampleRate: number): Uint8Array {
 	const frames = channels[0]?.length ?? 0;
@@ -23,22 +30,52 @@ export function encodePcmFile(channels: Float32Array[], sampleRate: number): Uin
 	return out;
 }
 
-/** The channels back (views on `bytes`, not copies), or null when the bytes are not such a file or are cut short. */
-export function decodePcmFile(
-	bytes: ArrayBuffer,
-): { sampleRate: number; channels: Float32Array[] } | null {
+/** The header alone, from the file's first 20 bytes (or more), or null when they are not such a file's: another magic, no rate, no channels. */
+export function readPcmHeader(bytes: ArrayBuffer): PcmHeader | null {
 	if (bytes.byteLength < HEADER_BYTES) return null;
 	const head = new Uint8Array(bytes, 0, MAGIC.length);
 	for (let i = 0; i < MAGIC.length; i++) if (head[i] !== MAGIC.charCodeAt(i)) return null;
 	const view = new DataView(bytes);
 	const sampleRate = view.getUint32(8, true);
-	const count = view.getUint32(12, true);
+	const channels = view.getUint32(12, true);
 	const frames = view.getUint32(16, true);
-	if (!sampleRate || !count || bytes.byteLength !== HEADER_BYTES + count * frames * 4) return null;
+	if (!sampleRate || !channels) return null;
+	return { sampleRate, channels, frames };
+}
+
+/** The file's whole length by its header: what a cut-short or padded file fails. */
+export function pcmFileBytes(header: PcmHeader): number {
+	return HEADER_BYTES + header.channels * header.frames * 4;
+}
+
+/**
+ * Where one channel's frames `fromFrame` to `fromFrame + frames` lie in
+ * the file: the byte offset and length, clipped to the frames the file
+ * has (a window past the end is zero bytes, and so is a channel it lacks).
+ */
+export function pcmPlaneRange(
+	header: PcmHeader,
+	channel: number,
+	fromFrame: number,
+	frames: number,
+): { at: number; bytes: number } {
+	const from = Math.max(0, Math.min(fromFrame, header.frames));
+	const count = Math.max(0, Math.min(frames, header.frames - from));
+	const at = HEADER_BYTES + (channel * header.frames + from) * 4;
+	return { at, bytes: channel >= 0 && channel < header.channels ? count * 4 : 0 };
+}
+
+/** The channels back (views on `bytes`, not copies), or null when the bytes are not such a file or are cut short. */
+export function decodePcmFile(
+	bytes: ArrayBuffer,
+): { sampleRate: number; channels: Float32Array[] } | null {
+	const header = readPcmHeader(bytes);
+	if (!header || bytes.byteLength !== pcmFileBytes(header)) return null;
+	const { sampleRate, channels, frames } = header;
 	return {
 		sampleRate,
 		channels: Array.from(
-			{ length: count },
+			{ length: channels },
 			(_, i) => new Float32Array(bytes, HEADER_BYTES + i * frames * 4, frames),
 		),
 	};
