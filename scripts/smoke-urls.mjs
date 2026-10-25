@@ -103,6 +103,7 @@ const ROUTES = [
 	["reset-password", "/reset-password", [200], [200, 303]],
 	["settings/security", "/settings/security", [401], [200]],
 	["settings/notifications", "/settings/notifications", [303], [200]],
+	["settings/links", "/settings/links", [303], [200]],
 	["inbox", "/inbox", [303], [200]],
 	["api/notifications/digest (server)", "/api/notifications/digest", [200], [200]],
 	["sign-in", "/sign-in", [200], [303]],
