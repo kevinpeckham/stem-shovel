@@ -69,6 +69,21 @@
 					what: "Captures the looper's loops and Dawn's takes sample by sample, lossless and lined up with the measured latency.",
 				},
 				{
+					name: "WebCodecs",
+					url: "https://developer.mozilla.org/docs/Web/API/WebCodecs_API",
+					what: "Decodes the streamed stems with the browser's own AAC decoder, a few seconds ahead of the playhead, so a long song starts at once.",
+				},
+				{
+					name: "mediabunny and LAME",
+					url: "https://mediabunny.dev",
+					what: "Reads each stem's rendition by byte range for streaming, and writes the MP3 exports in the browser with the LAME encoder compiled to WebAssembly.",
+				},
+				{
+					name: "Screen Wake Lock API",
+					url: "https://developer.mozilla.org/docs/Web/API/Screen_Wake_Lock_API",
+					what: "Keeps a phone's screen on while a session or a demo is recording.",
+				},
+				{
 					name: "Web MIDI API",
 					url: "https://developer.mozilla.org/docs/Web/API/Web_MIDI_API",
 					what: "Lets a MIDI keyboard or pad play the piano, the chord player and the drum machine, and record into Dawn's MIDI tracks.",
@@ -127,7 +142,7 @@
 				{
 					name: "Our own code",
 					url: "https://github.com/kevinpeckham/stem-shovel",
-					what: "Tempo, key and time signature from the stems, the tuner's pitch detection, the synth voices and the electronic drum kit, the effects, and the MIDI files Dawn reads and writes, all written for Stem Shovel.",
+					what: "Tempo, key and time signature from the stems, the tuner's pitch detection, the synth voices and the electronic drum kit, the effects, the MIDI files Dawn reads and writes, and the DAWproject, Reaper, Ableton Live and Sandyne project files the converter and Dawn read and write, all written for Stem Shovel.",
 				},
 			],
 		},
@@ -157,9 +172,14 @@
 					what: "Keeps the looper's loop and the Idea Recorder's and Dawn's takes in your browser while they wait to upload, so a dropped connection loses nothing.",
 				},
 				{
-					name: "fflate",
+					name: "fflate and client-zip",
 					url: "https://github.com/101arrowz/fflate",
-					what: "Zips the stems for a download, in the browser.",
+					what: "Zip the stems and the MP3s for a download and open DAWproject and MusicXML archives, in the browser.",
+				},
+				{
+					name: "Cache Storage",
+					url: "https://developer.mozilla.org/docs/Web/API/Cache",
+					what: "Keeps the piano's samples in your browser after the first load, so the next visit plays at once.",
 				},
 				{
 					name: "Valibot",
@@ -206,12 +226,12 @@
 				{
 					name: "DOMPurify",
 					url: "https://github.com/cure53/DOMPurify",
-					what: "Cleans anything rendered from user text.",
+					what: "Cleans anything rendered from user text, with parse5 reading the HTML on the server.",
 				},
 				{
 					name: "PDFKit and pdf-lib",
 					url: "https://pdfkit.org",
-					what: "Make the PDFs: charts, notes and sheet music.",
+					what: "Make the PDFs: charts, notes and sheet music, Verovio's pages placed through svg-to-pdfkit.",
 				},
 				{
 					name: "PDF.js",
@@ -244,7 +264,12 @@
 				{
 					name: "Vercel",
 					url: "https://vercel.com",
-					what: "Hosts the app, its background jobs and the daily digest.",
+					what: "Hosts the app, its background jobs and the daily digest, with its firewall in front.",
+				},
+				{
+					name: "Bun",
+					url: "https://bun.sh",
+					what: "Installs the packages and runs the scripts and tests; on Vercel the app itself runs on Node.",
 				},
 				{
 					name: "1Password and varlock",
@@ -260,7 +285,12 @@
 				{
 					name: "GitHub Actions, Vitest and Playwright",
 					url: "https://github.com/kevinpeckham/stem-shovel/actions",
-					what: "Tests, type checks, lint, spelling, dead-code and house-rule checks, secret scanning and a code review on every change.",
+					what: "Tests, type checks, lint, spelling (cspell), dead-code and house-rule checks (Fallow), secret scanning (gitleaks) and CodeQL on every change, and a review by a person on every pull request.",
+				},
+				{
+					name: "Swamp",
+					url: "https://swamp-club.com",
+					what: "Runs the site's own audits, every page's reachability and indexability, as one repeatable workflow against a stage, and keeps each run's results to compare.",
 				},
 			],
 		},
