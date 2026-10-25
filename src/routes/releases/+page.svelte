@@ -10,6 +10,10 @@
 
 <svelte:head>
 	<title>{pageTitle("Releases")}</title>
+	<meta
+		name="description"
+		content="What changed in Stem Shovel, release by release: new features, changes and fixes a user would notice."
+	/>
 </svelte:head>
 
 <main class="page">

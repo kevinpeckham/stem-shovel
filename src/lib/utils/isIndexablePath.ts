@@ -18,7 +18,10 @@ export function isIndexablePath(pathname: string): boolean {
 			"/piano",
 			"/chord-player",
 			"/looper",
+			"/practice-amp",
+			"/multitrack-recorder",
 			"/multitrack-recorder/features",
+			"/convert",
 			"/pricing",
 			"/built-with",
 		].includes(pathname)

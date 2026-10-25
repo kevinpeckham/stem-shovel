@@ -26,6 +26,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			entry(url.origin, "/piano", "monthly"),
 			entry(url.origin, "/chord-player", "monthly"),
 			entry(url.origin, "/looper", "monthly"),
+			entry(url.origin, "/practice-amp", "monthly"),
+			entry(url.origin, "/multitrack-recorder", "monthly"),
 			entry(url.origin, "/multitrack-recorder/features", "monthly"),
 			entry(url.origin, "/convert", "monthly"),
 			entry(url.origin, "/pricing", "monthly"),

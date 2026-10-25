@@ -12,162 +12,19 @@
  * made-up token and must answer with their "not valid" page. The bot pass
  * needs PREVIEW_AUTH_TOKEN in the environment (docs/agent-screenshots.md);
  * without it the script runs the signed-out pass alone. Every route under
- * src/routes must have a row here, or the script fails, so a new route is
+ * src/routes must have a row in scripts/lib/siteRoutes.mjs (shared with the
+ * indexability audit), or the script fails, so a new route is
  * added to the smoke test the day it is written. Production's bot
  * protection is bypassed for the dev VM's address by a firewall rule
  * (docs/security.md); from elsewhere, expect challenges.
  */
-import { readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
-import { createClient } from "@libsql/client";
+import { fillUrl, loadSegments, missingRoutes, ROUTES } from "./lib/siteRoutes.mjs";
 
 const base = (process.env.SMOKE_BASE ?? "http://localhost:5173").replace(/\/$/, "");
 const token = process.env.PREVIEW_AUTH_TOKEN ?? "";
-const BOT_EMAIL = "screenshot-bot@stem-shovel.com";
-const BAD_TOKEN = "A".repeat(32);
 
 // ---- what to test ------------------------------------------------------------
 
-/** One route file → the URL to hit and the statuses each pass accepts. */
-const ROUTES = [
-	// route (as under src/routes), url, anonymous statuses, bot statuses
-	["", "/", [200], [200]],
-	["accounts", "/accounts", [303], [200]],
-	["[account]/projects", "/{account}/projects", [200], [200]],
-	["[account]/projects/[project]", "/{account}/projects/{project}", [200], [200]],
-	["[account]/projects/[project]/[song]", "/{account}/projects/{project}/{song}", [200], [200]],
-	[
-		"[account]/projects/[project]/[song]/mixes/[mix]",
-		"/{account}/projects/{project}/{song}/mixes/nope",
-		[404],
-		[404],
-	],
-	[
-		"[account]/projects/[project]/[song]/[doc=songDoc]",
-		"/{account}/projects/{project}/{song}/chart",
-		[303],
-		[200],
-	],
-	["[account]/ideas", "/{account}/ideas", [303], [303]],
-	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303], [303]],
-	["idea-recorder", "/idea-recorder", [303], [200]],
-	// The old address: a permanent redirect for everyone (vercel.json on a deployment, 308; src/routes/ideas/recorder/+server.ts on dev, 301).
-	["ideas/recorder (server)", "/ideas/recorder", [301, 308], [301, 308]],
-	["looper", "/looper", [200], [200]],
-	["practice-amp", "/practice-amp", [200], [200]],
-	["multitrack-recorder", "/multitrack-recorder", [200], [200]],
-	["multitrack-recorder/features", "/multitrack-recorder/features", [200], [200]],
-	// The old address: a permanent redirect for everyone (vercel.json on a deployment, 308; src/routes/studio/+server.ts on dev, 301).
-	["studio (server)", "/studio", [301, 308], [301, 308]],
-	["[account]/settings", "/{account}/settings", [303], [200]],
-	["[account]/artists", "/{account}/artists", [303], [200]],
-	["sessions", "/sessions", [303], [307]],
-	["[account]/sessions", "/{account}/sessions", [303], [200]],
-	["[account]/sessions/record", "/{account}/sessions/record", [303], [200]],
-	// A recording's own page: a member's, or a share link's; nobody else (an id nobody has: 404 either way).
-	["[account]/sessions/r/[recording]", "/{account}/sessions/r/x", [404], [404]],
-	["[account]/artists/[id]", "/{account}/artists/x", [303], [404]],
-	["admin/accounts", "/admin/accounts", [404], [200]],
-	["admin/ai-requests", "/admin/ai-requests", [404], [200]],
-	["admin/audit-log", "/admin/audit-log", [404], [200]],
-	["admin/bug-reports", "/admin/bug-reports", [404], [200]],
-	["admin/feature-requests", "/admin/feature-requests", [404], [200]],
-	["admin/home", "/admin/home", [404], [200]],
-	["admin/drum-kits", "/admin/drum-kits", [404], [200]],
-	["admin/invite-codes", "/admin/invite-codes", [404], [200]],
-	["admin/playback", "/admin/playback", [404], [200]],
-	["admin/users", "/admin/users", [404], [200]],
-	["admin/users/[id]", "/admin/users/x", [404], [404]],
-	["admin/support-requests", "/admin/support-requests", [404], [200]],
-	["admin/waitlist", "/admin/waitlist", [404], [200]],
-	["admin/sign-up", "/admin/sign-up", [404], [200]],
-	["docs", "/docs", [200], [200]],
-	["releases", "/releases", [200], [200]],
-	["support", "/support", [200], [200]],
-	["tuner", "/tuner", [200], [200]],
-	["metronome", "/metronome", [200], [200]],
-	["drum-machine", "/drum-machine", [200], [200]],
-	["piano", "/piano", [200], [200]],
-	["chord-player", "/chord-player", [200], [200]],
-	["convert", "/convert", [200], [200]],
-	["pricing", "/pricing", [200], [200]],
-	["blog", "/blog", [200], [200]],
-	["built-with", "/built-with", [200], [200]],
-	// The newest published post, or a 404 on a stage with none yet (an array of expectations, or a function of the fetched rows).
-	["blog/[slug]", "/blog/{post}", () => (post ? [200] : [404]), () => (post ? [200] : [404])],
-	["blog/[slug]/edit", "/blog/{post}/edit", [401, 403, 404], () => (post ? [200] : [404])],
-	["feature-requests", "/feature-requests", [200], [200]],
-	["docs/[slug]", "/docs/{doc}", [200], [200]],
-	["docs/[slug]/edit", "/docs/{doc}/edit", [401, 403, 404], [200]],
-	["forgot-password", "/forgot-password", [200], [200, 303]],
-	["invite/[token]", `/invite/${BAD_TOKEN}`, [200], [200]],
-	["reset-password", "/reset-password", [200], [200, 303]],
-	["settings/security", "/settings/security", [401], [200]],
-	["settings/notifications", "/settings/notifications", [303], [200]],
-	["settings/links", "/settings/links", [303], [200]],
-	["inbox", "/inbox", [303], [200]],
-	["api/notifications/digest (server)", "/api/notifications/digest", [200], [200]],
-	["sign-in", "/sign-in", [200], [303]],
-	["sign-up", "/sign-up", [200], [200, 303]],
-	["verify-2fa", "/verify-2fa", [200], [303]],
-	["verify-email", "/verify-email", [200], [200, 303]],
-	["waitlist", "/waitlist", [200], [200]],
-	["waitlist/confirm/[token]", `/waitlist/confirm/${BAD_TOKEN}`, [200], [200]],
-	["waitlist/manage/[token]", `/waitlist/manage/${BAD_TOKEN}`, [404], [404]],
-	// API: GET where it exists; POST-only routes answer 405, which proves they are mounted.
-	[
-		"api/songs/[id]/mix (server)",
-		"/api/songs/{songId}/mix",
-		[200, 302, 303, 307, 308],
-		[200, 302, 303, 307, 308],
-	],
-	// Documentation downloads build in the request; a nonsense id is a 404 either way.
-	["api/songs/[id]/documentation.pdf (server)", "/api/songs/x/documentation.pdf", [404], [404]],
-	[
-		"api/projects/[id]/documentation.zip (server)",
-		"/api/projects/x/documentation.zip",
-		[404],
-		[404],
-	],
-	["api/projects/[id]/charts.zip (server)", "/api/projects/x/charts.zip", [404], [404]],
-	["api/demos (server)", "/api/demos", [405], [405]],
-	["api/sessions (server)", "/api/sessions", [405], [405]],
-	["api/sessions/[id]/ready (server)", "/api/sessions/x/ready", [405], [405]],
-	[
-		"api/recording-sessions/[id]/mp3.zip (server)",
-		"/api/recording-sessions/x/mp3.zip",
-		[401],
-		[404],
-	],
-	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
-	["api/mixes (server)", "/api/mixes", [405], [405]],
-	["api/mixes/[id]/ready (server)", "/api/mixes/x/ready", [405], [405]],
-	["api/files (server)", "/api/files", [405], [405]],
-	["api/files/[id]/ready (server)", "/api/files/x/ready", [405], [405]],
-	["api/notation (server)", "/api/notation", [405], [405]],
-	["api/notation/[id]/ready (server)", "/api/notation/x/ready", [405], [405]],
-	["f/[code] (server)", "/f/x", [404], [404]],
-	// A short link nobody made is a 404 (an unknown code, and a code outside the alphabet).
-	["x/[code] (server)", "/x/AbCd2345", [404], [404]],
-	["api/drum-samples (server)", "/api/drum-samples", [405], [405]],
-	["api/drum-samples/[id]/ready (server)", "/api/drum-samples/x/ready", [405], [405]],
-	["api/recordings (server)", "/api/recordings", [405], [405]],
-	["robots.txt (server)", "/robots.txt", [200], [200]],
-	["sitemap.xml (server)", "/sitemap.xml", [200], [200]],
-	["api/warm (server)", "/api/warm", [200], [200]],
-	["api/jobs (server)", "/api/jobs", [405], [405]],
-	["api/recordings/[id]/ready (server)", "/api/recordings/x/ready", [405], [405]],
-	["api/recordings/[id]/stems (server)", "/api/recordings/x/stems", [405], [405]],
-	["api/recording-stems/[id]/ready (server)", "/api/recording-stems/x/ready", [405], [405]],
-	["api/studio/sources (server)", "/api/studio/sources", [405], [405]],
-	["api/studio/sources/[id]/ready (server)", "/api/studio/sources/x/ready", [405], [405]],
-	["api/stems (server)", "/api/stems", [405], [405]],
-	["api/stems/[id]/ready (server)", "/api/stems/x/ready", [405], [405]],
-	["api/stems/[id]/replace (server)", "/api/stems/x/replace", [405], [405]],
-	["api/stems/[id]/midi (server)", "/api/stems/x/midi", [405], [405]],
-	["api/stems/[id]/midi/ready (server)", "/api/stems/x/midi/ready", [405], [405]],
-	["api/upload (server)", "/api/upload", [405], [405]],
-];
 /** Not routes, but must serve. */
 const STATIC = [
 	["/robots.txt", [200]],
@@ -188,22 +45,10 @@ const BAD_BODY = [
 
 // ---- every route file must be listed ------------------------------------------
 
-function routeFiles(dir, prefix = "") {
-	const out = [];
-	for (const name of readdirSync(dir)) {
-		const full = join(dir, name);
-		if (statSync(full).isDirectory())
-			out.push(...routeFiles(full, prefix ? `${prefix}/${name}` : name));
-		else if (name === "+page.svelte") out.push(prefix);
-		else if (name === "+server.ts") out.push(`${prefix} (server)`);
-	}
-	return out;
-}
-const known = new Set(ROUTES.map((r) => r[0]));
-const missing = routeFiles("src/routes").filter((r) => !known.has(r));
+const missing = missingRoutes();
 if (missing.length) {
 	console.error(
-		"Routes with no smoke-test row (add them to scripts/smoke-urls.mjs):\n  " +
+		"Routes with no smoke-test row (add them to scripts/lib/siteRoutes.mjs):\n  " +
 			missing.join("\n  "),
 	);
 	process.exit(2);
@@ -211,45 +56,8 @@ if (missing.length) {
 
 // ---- the values for dynamic segments -------------------------------------------
 
-const db = createClient({
-	// Turso's newer dashboard prints turso:// URLs; the client wants libsql:// (src/lib/utils/libsqlUrl.ts).
-	url: process.env.TURSO_DATABASE_URL.replace(/^turso:\/\//i, "libsql://"),
-	authToken: process.env.TURSO_AUTH_TOKEN,
-});
-const q = async (sql, args = []) => (await db.execute({ sql, args })).rows;
-const [bot] = await q("select id from user where email = ?", [BOT_EMAIL]);
-const [acct] = bot
-	? await q(
-			`select a.slug from account a join account_member m on m.account_id = a.id
-			 where m.user_id = ? and a.status = 'active' order by a.created_at asc limit 1`,
-			[bot.id],
-		)
-	: await q("select slug from account where status = 'active' order by created_at asc limit 1");
-const [proj] = await q(
-	`select p.slug from project p join account a on a.id = p.account_id
-	 where a.slug = ? and p.status = 'active' and p.is_private = 0 order by p.created_at asc limit 1`,
-	[acct.slug],
-);
-const [song] = await q(
-	`select s.slug, s.id from song s join project p on p.id = s.project_id join account a on a.id = p.account_id
-	 where a.slug = ? and p.slug = ? and s.status = 'active' and s.is_private = 0 and s.mix_url is not null
-	 order by s.created_at asc limit 1`,
-	[acct.slug, proj.slug],
-);
-const [doc] = await q(
-	"select slug from user_doc where kind = 'doc' order by sort_order asc limit 1",
-);
-const [post] = await q(
-	"select slug from user_doc where kind = 'post' and published_at is not null order by published_at desc limit 1",
-);
-const fill = (url) =>
-	url
-		.replace("{account}", acct.slug)
-		.replace("{project}", proj.slug)
-		.replace("{song}", song.slug)
-		.replace("{songId}", song.id)
-		.replace("{doc}", doc.slug)
-		.replace("{post}", post?.slug ?? "no-post-yet");
+const segments = await loadSegments();
+const fill = (url) => fillUrl(url, segments);
 
 // ---- run --------------------------------------------------------------------------
 
@@ -266,32 +74,33 @@ async function probe(url, headers) {
 		location: res.headers.get("location"),
 	};
 }
+/** The note after a result: a bad body's phrase, or where a redirect points. */
+function noteOf(r) {
+	if (r.bad) return `  body: ${r.bad}`;
+	return r.location ? `  → ${r.location.replace(base, "")}` : "";
+}
+/** One URL: probe it, print its line, and say whether it passed. */
+async function check(url, ok, headers) {
+	const target = fill(url);
+	const r = await probe(target, headers).catch((e) => ({
+		status: 0,
+		ms: 0,
+		bad: String(e).slice(0, 80),
+	}));
+	const good = ok.includes(r.status) && !r.bad;
+	console.log(
+		`  ${good ? "ok " : "FAIL"} ${String(r.status).padStart(3)} ${String(r.ms).padStart(5)}ms  ${target}${good ? "" : `  (wanted ${ok.join("/")})`}${noteOf(r)}`,
+	);
+	return good;
+}
 async function pass(name, headers, pick) {
 	let failed = 0;
 	console.log(`\n${name}  (${base})`);
 	const checks = [...ROUTES.map((r) => [r[1], pick(r)]), ...STATIC].map(([url, ok]) => [
 		url,
-		typeof ok === "function" ? ok() : ok,
+		typeof ok === "function" ? ok(segments) : ok,
 	]);
-	for (const [url, ok] of checks) {
-		const target = fill(url);
-		let r;
-		try {
-			r = await probe(target, headers);
-		} catch (e) {
-			r = { status: 0, ms: 0, bad: String(e).slice(0, 80) };
-		}
-		const good = ok.includes(r.status) && !r.bad;
-		if (!good) failed++;
-		const note = r.bad
-			? `  body: ${r.bad}`
-			: r.location
-				? `  → ${r.location.replace(base, "")}`
-				: "";
-		console.log(
-			`  ${good ? "ok " : "FAIL"} ${String(r.status).padStart(3)} ${String(r.ms).padStart(5)}ms  ${target}${good ? "" : `  (wanted ${ok.join("/")})`}${note}`,
-		);
-	}
+	for (const [url, ok] of checks) if (!(await check(url, ok, headers))) failed++;
 	return failed;
 }
 

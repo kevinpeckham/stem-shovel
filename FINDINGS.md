@@ -829,6 +829,14 @@ From a probe (a project with `TEMPO 120 6 8` and a tempo point carrying `(8 << 1
 - **`TimeMap2_GetDividedBpmAtTime` is 240 there**: the tempo in beats of the bottom number, which is what Reaper's transport displays ("240" for that 6/8). `TimeMap_GetTimeSigAtTime` returns 120, the stored tempo, with 6/8.
 - So a DAW-style tempo (Live, Bitwig, a MIDI file and Dawn all count quarter notes) goes into an `.rpp` unscaled whatever the signature, and the `(denominator << 16) | numerator` on a point carries the bottom number.
 
+## Vercel redirects skip header rules; vp check types scripts; package.json edits bounce the dev server (2026-10-25)
+
+From the indexability audit (scripts/seo-audit.ts, docs/security.md "Indexability audit").
+
+- **vercel.json's `redirects` answer before any `headers` rule applies**, so a 308 from an old address carries no `X-Robots-Tag`; harmless when the target is noindex, but the audit lists such routes as exceptions rather than clean.
+- **`vp check` type-checks `scripts/*.ts` and infers types from imported `.mjs` modules**: reassigning a field of a value a JS function returned fails until the value is typed as `Record<string, unknown>`.
+- **Editing package.json restarts the Vite dev server for a moment**; a script hitting it right then is refused. Wait a second before probing.
+
 ## Drizzle `with` objects, and a chat panel that reopens itself (2026-10-25)
 
 From the chat's mentions and reactions (docs/chat.md).

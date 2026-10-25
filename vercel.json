@@ -52,7 +52,7 @@
 			]
 		},
 		{
-			"source": "/((?!docs|blog|releases|tuner$|metronome$|drum-machine$|piano$|chord-player$|looper$|multitrack-recorder/features$|pricing$|built-with$).+)",
+			"source": "/((?!docs|blog|releases|tuner$|metronome$|drum-machine$|piano$|chord-player$|looper$|practice-amp$|multitrack-recorder$|multitrack-recorder/features$|convert$|pricing$|built-with$).+)",
 			"headers": [
 				{
 					"key": "X-Robots-Tag",

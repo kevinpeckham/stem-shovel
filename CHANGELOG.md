@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The practice amp, the Studio and the converter are indexable** (the audit's first catch): each carried a search title and description and the converter sat in the sitemap, yet all three were noindex, disallowed by robots.txt and matched by the deployment's header rule; they now join every list like the other instrument pages. The Releases page has a meta description, and a doc or blog page no longer renders two `<h1>`s (the body's opening `# Title` is dropped, since the page shows the title itself).
+
+### Technical
+
+- **An indexability audit**, `bun run audit:seo` (scripts/seo-audit.ts): every route, anonymously, against its intent from `isIndexablePath`: the sitemap, robots.txt (longest-match semantics), the live `X-Robots-Tag` and vercel.json's rule, the robots meta, title, description, one h1 and `lang`; sitemap and robots.txt outliers, duplicate titles; exceptions documented in the shared route list (`scripts/lib/siteRoutes.mjs`, which the smoke script now shares); `SEO_BASE` for production; part of the release's post-deploy checks (docs/security.md "Indexability audit").
+
 ## [0.165.1] - 2026-10-25
 
 ### Fixed

@@ -1,6 +1,7 @@
 import { PAGE_COPY } from "#lib/constants/pageCopy.js";
 import { getUserDoc, listUserDocs } from "#lib/server/data.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
+import { stripLeadingHeading } from "#lib/utils/stripLeadingHeading.js";
 import { excerpt } from "#lib/utils/excerpt.js";
 import { RELEASES_DOC_SLUG } from "#lib/constants/releasesDoc.js";
 import { error, redirect } from "@sveltejs/kit";
@@ -23,7 +24,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			updatedAt: doc.updatedAt,
 			editor: doc.editor?.name ?? null,
 		},
-		html: renderMarkdown(doc.markdown),
+		// The page shows the title as its h1; the body's own `# Title` would make a second (the indexability audit).
+		html: renderMarkdown(stripLeadingHeading(doc.markdown)),
 		/** The first paragraph, for the meta description search engines show. */
 		description: excerpt(doc.markdown),
 		docs: await listUserDocs(),

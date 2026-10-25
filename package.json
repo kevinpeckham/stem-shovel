@@ -26,6 +26,7 @@
 		"samples:eguitar": "bun scripts/instrument-samples.ts eguitar",
 		"smoke:blob": "varlock run -- node scripts/blob-smoke.mjs",
 		"smoke:urls": "varlock run -- node scripts/smoke-urls.mjs",
+		"audit:seo": "varlock run -- bun run scripts/seo-audit.ts",
 		"check:swing": "varlock run -- node scripts/drum-swing-check.mjs",
 		"interop:bundle": "bun scripts/interop/bundle.ts",
 		"interop:reaper": "node scripts/interop/reaper.mjs",

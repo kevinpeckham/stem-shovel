@@ -202,7 +202,7 @@ default for `-create` is already self), and SvelteKit's CSP with a per-request s
 (docs/environment.md). Search engines get the front page, the user docs
 (`/docs`, each page, not the editors), the blog (`/blog`, each published
 post; a draft carries noindex and is a 404 to everyone but a system admin),
-the Releases page, the instrument and tool pages (tuner, metronome, drum machine, piano, chord player, looper), the Dawn features page, the pricing page and the built-with page (`src/lib/utils/isIndexablePath.ts`): every other path carries
+the Releases page, the instrument and tool pages (tuner, metronome, drum machine, piano, chord player, looper, practice amp, the Studio, the converter), the Dawn features page, the pricing page and the built-with page (`src/lib/utils/isIndexablePath.ts`): every other path carries
 `X-Robots-Tag: noindex, nofollow, noarchive` (the hook, and vercel.json's
 rule for static files) and a matching robots meta from the root layout;
 `robots.txt` allows those paths alone and points at `sitemap.xml`, which
@@ -211,6 +211,39 @@ description from their first paragraph. A new public page joins four
 lists, or it stays hidden: `isIndexablePath`, the `robots.txt` route,
 vercel.json's `X-Robots-Tag` rule and `sitemap.xml` (the Dawn features
 page shipped in v0.165.0 with only the first and last of them).
+
+### Indexability audit
+
+`bun run audit:seo` (`scripts/seo-audit.ts`) checks the four lists against
+each other and against what the pages serve. It visits every route in the
+smoke test's list (`scripts/lib/siteRoutes.mjs`, shared with
+`smoke:urls`, so a new route joins both) and every `sitemap.xml` entry,
+signed out and without following redirects (the chain is followed by hand),
+and holds each page to its intent, `isIndexablePath`. A public page must
+answer 200 with no redirect, carry neither the noindex header nor the
+robots meta, be allowed by `robots.txt` (`robotsTxtAllows`: Google's
+longest-match rules), escape vercel.json's `X-Robots-Tag` rule
+(`vercelHeaderRuleMatches`, read from disk), be in the sitemap, and have a
+title, a meta description, one `<h1>` and `<html lang>`. An app page must
+be noindex by header and meta, disallowed, matched by the vercel rule and
+absent from the sitemap. It also reports sitemap entries no route serves,
+`Allow` lines no public page uses, and public pages sharing a title or a
+description.
+
+    bun run audit:seo                                      # the dev server
+    SEO_BASE=https://www.stemshovel.com bun run audit:seo  # production
+    bun run audit:seo --report out.md --json out.json      # also as files
+
+Off production every page is noindex by design, so there the header and
+meta must say noindex everywhere, and the `robots.txt` and sitemap checks
+read the production branch out of their route sources: a page that missed
+a list shows up on dev before it ships. The script exits 1 on any finding.
+A finding a route means to have (vercel.json's own redirects carry no
+header; the editors under `/docs` and `/blog` escape the vercel rule but
+get the hook's header) goes in `SEO_EXPECTATIONS` in
+`scripts/lib/siteRoutes.mjs`: `"route:check"` (or a bare route for every
+check) mapped to the reason, which the report prints as
+"exception: <reason>" instead of a finding.
 
 ## Error reports
 

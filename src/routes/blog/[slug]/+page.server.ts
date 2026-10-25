@@ -1,5 +1,6 @@
 import { getUserDoc } from "#lib/server/data.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
+import { stripLeadingHeading } from "#lib/utils/stripLeadingHeading.js";
 import { excerpt } from "#lib/utils/excerpt.js";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
@@ -20,7 +21,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			updatedAt: post.updatedAt,
 			author: post.editor?.name ?? null,
 		},
-		html: renderMarkdown(post.markdown),
+		// The page shows the title as its h1; the body's own `# Title` would make a second (the indexability audit).
+		html: renderMarkdown(stripLeadingHeading(post.markdown)),
 		/** The first paragraph, for the meta description search engines show. */
 		description: excerpt(post.markdown),
 		canEdit,
