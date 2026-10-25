@@ -1,3 +1,4 @@
+import type * as Duration from "effect/Duration";
 import { DEFAULT_PREFS } from "#lib/utils/notificationPolicy.js";
 import {
 	afterAll,
@@ -19,6 +20,8 @@ const mail = vi.hoisted(() => ({
 	sendDigestEmail: vi.fn(async (_opts: unknown) => {}),
 }));
 vi.mock("#lib/server/email.js", () => mail);
+const reported = vi.hoisted(() => ({ reportError: vi.fn() }));
+vi.mock("#lib/server/reportError.js", () => reported);
 
 const {
 	checkSeats,
@@ -38,8 +41,12 @@ const {
 	prefsOf,
 	savePrefs,
 	sendDigests,
+	digests,
+	DigestTuning,
 	unreadCount,
 } = await import("./notifications");
+const { runMail } = await import("./effect/mail");
+const Effect = await import("effect/Effect");
 
 const NOW = Date.UTC(2026, 9, 8, 12, 0, 0);
 const MINUTE = 60_000;
@@ -135,7 +142,9 @@ afterAll(() => vi.useRealTimers());
 beforeEach(() => {
 	reset(base());
 	mail.sendNotificationEmail.mockClear();
-	mail.sendDigestEmail.mockClear();
+	mail.sendDigestEmail.mockReset();
+	mail.sendDigestEmail.mockImplementation(async () => {});
+	reported.reportError.mockClear();
 	errors = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 afterEach(() => errors.mockRestore());
@@ -342,7 +351,26 @@ describe("notifyComment", () => {
 		await notifyComment("a1", "s1", "u1");
 		expect(inboxOf("u2")).toEqual([expect.objectContaining({ emailedAt: null })]);
 		expect(errors).toHaveBeenCalledWith("[notifications] email", expect.any(Error));
+		expect(reported.reportError).toHaveBeenCalledWith(
+			expect.objectContaining({
+				_tag: "MailError",
+				message: "The notification email failed: resend down",
+			}),
+			{ job: "notification-email" },
+			{ userId: "u2", notificationId: inboxOf("u2")[0].id },
+		);
+		expect(mail.sendNotificationEmail).toHaveBeenCalledTimes(1);
 		expect(inboxOf("u3")).toHaveLength(1);
+	});
+	test("the row is stamped before the email goes, so a failed stamp can never mean a second email", async () => {
+		reset(base({ notificationPreference: [prefRow("u2", { emailComments: true })] }));
+		let stampAtSend: unknown = "unset";
+		mail.sendNotificationEmail.mockImplementationOnce(async () => {
+			stampAtSend = inboxOf("u2")[0].emailedAt;
+		});
+		await notifyComment("a1", "s1", "u1");
+		expect(stampAtSend).toEqual(at(NOW));
+		expect(inboxOf("u2")[0].emailedAt).toEqual(at(NOW));
 	});
 	test("a person with no user row gets the inbox row but no email", async () => {
 		reset(
@@ -952,7 +980,103 @@ describe("sendDigests", () => {
 		expect(await sendDigests(now)).toEqual({ sent: 0 });
 		expect(notificationById("n1")?.emailedAt).toBeNull();
 		expect(prefOf("u2")?.digestSentAt).toBeNull();
-		expect(errors).toHaveBeenCalledWith("[notifications] digest", expect.any(Error));
+		expect(errors).toHaveBeenCalledWith(
+			"[digest]",
+			"u2",
+			expect.objectContaining({ _tag: "MailError" }),
+		);
+	});
+	test("a failed send puts the stamps back to what they were, reports, and sends nothing more", async () => {
+		const before = at(NOW - 2 * DAY);
+		reset(
+			base({
+				notificationPreference: [
+					prefRow("u2", { emailComments: true, digest: "daily", digestSentAt: before }),
+				],
+				notification: [item("n1"), item("n2")],
+			}),
+		);
+		mail.sendDigestEmail.mockRejectedValueOnce(new Error("resend down"));
+		expect(await sendDigests(now)).toEqual({ sent: 0 });
+		expect(mail.sendDigestEmail).toHaveBeenCalledTimes(1);
+		expect(fake.rows("notification").map((r) => r.emailedAt)).toEqual([null, null]);
+		expect(prefOf("u2")?.digestSentAt).toEqual(before);
+		expect(reported.reportError).toHaveBeenCalledWith(
+			expect.objectContaining({
+				_tag: "MailError",
+				message: "The digest email failed: resend down",
+			}),
+			{ job: "digest" },
+			{ userId: "u2" },
+		);
+	});
+	test("the items and the person are stamped before the digest goes", async () => {
+		reset(
+			base({
+				notificationPreference: [prefRow("u2", { emailComments: true, digest: "daily" })],
+				notification: [item("n1")],
+			}),
+		);
+		const atSend: unknown[] = [];
+		mail.sendDigestEmail.mockImplementationOnce(async () => {
+			atSend.push(notificationById("n1")?.emailedAt, prefOf("u2")?.digestSentAt);
+		});
+		expect(await sendDigests(now)).toEqual({ sent: 1 });
+		expect(atSend).toEqual([now, now]);
+	});
+
+	/** Bob, Cy and Dee each have a due daily digest with one item. */
+	const threeDue = () =>
+		reset(
+			base({
+				notificationPreference: ["u2", "u3", "u4"].map((u) =>
+					prefRow(u, { emailComments: true, digest: "daily" }),
+				),
+				notification: [item("n1"), item("n2", { userId: "u3" }), item("n3", { userId: "u4" })],
+			}),
+		);
+	const tuned = (tuning: { budget: Duration.Input; perUser: Duration.Input }) =>
+		runMail(digests(now).pipe(Effect.provideService(DigestTuning, tuning)));
+
+	test("past the time budget the run stops starting people and says how many are left", async () => {
+		threeDue();
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		mail.sendDigestEmail.mockImplementation(async () => {
+			vi.setSystemTime(Date.now() + 600);
+		});
+		try {
+			expect(await tuned({ budget: "1 second", perUser: "30 seconds" })).toEqual({ sent: 2 });
+		} finally {
+			vi.setSystemTime(NOW);
+		}
+		expect(mail.sendDigestEmail).toHaveBeenCalledTimes(2);
+		expect(notificationById("n3")?.emailedAt).toBeNull();
+		expect(prefOf("u4")?.digestSentAt).toBeNull();
+		expect(warn).toHaveBeenCalledWith(
+			"[digest] time budget spent; 1 of 3 people left for the next run",
+		);
+		warn.mockRestore();
+	});
+	test("a person whose digest runs past their time is reported, unstamped, and the next person still gets theirs", async () => {
+		threeDue();
+		mail.sendDigestEmail.mockImplementationOnce(() => new Promise<void>(() => {}));
+		expect(await tuned({ budget: "240 seconds", perUser: "50 millis" })).toEqual({ sent: 2 });
+		expect(mail.sendDigestEmail).toHaveBeenCalledTimes(3);
+		expect(notificationById("n1")?.emailedAt).toBeNull();
+		expect(prefOf("u2")?.digestSentAt).toBeNull();
+		expect(notificationById("n2")?.emailedAt).toEqual(now);
+		expect(notificationById("n3")?.emailedAt).toEqual(now);
+		expect(reported.reportError).toHaveBeenCalledTimes(1);
+		expect(reported.reportError).toHaveBeenCalledWith(
+			expect.objectContaining({ _tag: "TimeoutError" }),
+			{ job: "digest" },
+			{ userId: "u2" },
+		);
+		expect(errors).toHaveBeenCalledWith(
+			"[digest]",
+			"u2",
+			expect.objectContaining({ _tag: "TimeoutError" }),
+		);
 	});
 	test("a digest carries at most fifty items; the oldest wait for the next", async () => {
 		reset(

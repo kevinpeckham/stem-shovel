@@ -8,7 +8,14 @@ import {
 import { permalink } from "#lib/utils/permalink.js";
 import { isEditor } from "#lib/server/access.js";
 import { db, schema } from "#lib/server/db/index.js";
-import { sendDigestEmail, sendNotificationEmail } from "#lib/server/email.js";
+import type { sendNotificationEmail } from "#lib/server/email.js";
+import { reportError } from "#lib/server/reportError.js";
+import { Mail, markedUntilFailure, runMail } from "#lib/server/effect/mail.js";
+import { Db } from "#lib/server/effect/services.js";
+import * as Clock from "effect/Clock";
+import * as Context from "effect/Context";
+import * as Duration from "effect/Duration";
+import * as Effect from "effect/Effect";
 import { formatBytes } from "#lib/utils/formatBytes.js";
 import { sessionDisplayName } from "#lib/utils/sessionName.js";
 import {
@@ -153,22 +160,43 @@ async function notifyUsers(userIds: string[], notice: Notice) {
 		});
 		if (!person) continue;
 		try {
-			await sendNotificationEmail({
-				to: person.email,
-				name: person.name,
-				title: notice.title,
-				body: bodyFor(1),
-				href: notice.href,
-			});
-			await db
-				.update(notification)
-				.set({ emailedAt: new Date() })
-				.where(eq(notification.id, row.id));
+			await runMail(
+				emailOnce(row.id, {
+					to: person.email,
+					name: person.name,
+					title: notice.title,
+					body: bodyFor(1),
+					href: notice.href,
+				}),
+			);
 		} catch (e) {
 			console.error("[notifications] email", e);
+			reportError(e, { job: "notification-email" }, { userId, notificationId: row.id });
 		}
 		if (priority === "high") await deliverSms(prefs, notice.title);
 	}
+}
+
+/**
+ * Emails one inbox item: `emailedAt` is set first (it was null: the caller
+ * skips an item already emailed), then the send; a failed or timed-out
+ * send sets it back to null, so the item can go in a later email or
+ * digest. A mark that fails stops the send (markedUntilFailure).
+ */
+function emailOnce(id: string, email: Parameters<typeof sendNotificationEmail>[0]) {
+	return Effect.gen(function* () {
+		const store = yield* Db;
+		const mail = yield* Mail;
+		yield* markedUntilFailure(
+			store.call("markEmailed", async () => {
+				await db.update(notification).set({ emailedAt: new Date() }).where(eq(notification.id, id));
+			}),
+			store.call("unmarkEmailed", async () => {
+				await db.update(notification).set({ emailedAt: null }).where(eq(notification.id, id));
+			}),
+		);
+		yield* mail.notification(email);
+	}).pipe(Effect.scoped);
 }
 
 /**
@@ -716,56 +744,120 @@ export async function markAllRead(userId: string) {
 // ---- the digest ------------------------------------------------------------
 
 /**
- * Sends each person's daily or weekly summary when it is due: the opt-in
- * items not yet emailed nor read in the app. Called by the cron (vercel.json) once a day;
- * harmless to call more often, since due-ness gates it.
+ * The digest run's limits: the cron function has 300 s (`maxDuration` in
+ * src/routes/api/notifications/digest/+server.ts), so the run stops
+ * starting people after `budget` and leaves the rest to the next call, and
+ * one person's work (the query, the marks, the send) gets `perUser`.
+ * A test shortens them with `Effect.provideService(DigestTuning, …)`.
  */
-export async function sendDigests(now = new Date()) {
-	const rows = await db.query.notificationPreference.findMany({
+export const DigestTuning = Context.Reference<{
+	readonly budget: Duration.Input;
+	readonly perUser: Duration.Input;
+}>("DigestTuning", {
+	defaultValue: () => ({ budget: "240 seconds", perUser: "30 seconds" }),
+});
+
+const DIGEST_KINDS = ["comment", "stems", "song", "demo", "mix", "session"] as const;
+
+type DigestRow = Awaited<ReturnType<typeof digestPeople>>[number];
+
+function digestPeople() {
+	return db.query.notificationPreference.findMany({
 		where: ne(notificationPreference.digest, "none"),
 		with: { user: { columns: { email: true, name: true } } },
 	});
-	let sent = 0;
-	for (const r of rows) {
-		if (r.digest === "none" || !digestDue(r.digest, r.digestSentAt, now)) continue;
+}
+
+/**
+ * Sends each person's daily or weekly summary when it is due: the opt-in
+ * items not yet emailed nor read in the app. Called by the cron (vercel.json) once a day;
+ * harmless to call more often, since due-ness gates it. People go one at
+ * a time, each under DigestTuning.perUser; a person's failure is logged
+ * and reported and the run goes on; past DigestTuning.budget the run
+ * stops starting people and returns, the rest due on the next call.
+ */
+export function sendDigests(now = new Date()) {
+	return runMail(digests(now));
+}
+
+/** `sendDigests` as an effect, for a test that shortens DigestTuning. */
+export function digests(now: Date) {
+	return Effect.gen(function* () {
+		const { budget, perUser } = yield* DigestTuning;
+		const started = yield* Clock.currentTimeMillis;
+		const store = yield* Db;
+		const rows = yield* store.call("digestPeople", digestPeople);
+		let sent = 0;
+		for (const [i, r] of rows.entries()) {
+			if ((yield* Clock.currentTimeMillis) - started > Duration.toMillis(budget)) {
+				console.warn(
+					`[digest] time budget spent; ${rows.length - i} of ${rows.length} people left for the next run`,
+				);
+				break;
+			}
+			const went = yield* digestFor(r, now).pipe(
+				Effect.timeout(perUser),
+				Effect.catch((e) =>
+					Effect.sync(() => {
+						console.error("[digest]", r.userId, e);
+						reportError(e, { job: "digest" }, { userId: r.userId });
+						return false;
+					}),
+				),
+			);
+			if (went) sent++;
+		}
+		return { sent };
+	});
+}
+
+/**
+ * One person's digest, when due and with something in it. Mark first:
+ * the items' `emailedAt` (null before: the query asks for that) and the
+ * person's `digestSentAt` are set to `now`, then the send; a failed or
+ * interrupted send puts the items back to null and `digestSentAt` back to
+ * its previous value, so the next run tries again (markedUntilFailure has
+ * the trade-off). True when a digest went.
+ */
+function digestFor(r: DigestRow, now: Date) {
+	return Effect.gen(function* () {
+		if (r.digest === "none" || !digestDue(r.digest, r.digestSentAt, now)) return false;
 		const period = r.digest;
 		const prefs: NotificationPrefs = r;
-		const kinds = (["comment", "stems", "song", "demo", "mix", "session"] as const).filter(
-			(k) => emailDelivery(k, prefs) === "digest",
+		const kinds = DIGEST_KINDS.filter((k) => emailDelivery(k, prefs) === "digest");
+		if (kinds.length === 0) return false;
+		const store = yield* Db;
+		const mail = yield* Mail;
+		const items = yield* store.call("digestItems", () =>
+			db.query.notification.findMany({
+				where: and(
+					eq(notification.userId, r.userId),
+					isNull(notification.emailedAt),
+					// Read in the app already: nothing to tell (Kevin, 2026-10-08).
+					isNull(notification.readAt),
+					inArray(notification.kind, kinds),
+				),
+				orderBy: [desc(notification.updatedAt)],
+				limit: 50,
+				columns: { id: true, title: true, body: true, href: true },
+			}),
 		);
-		if (kinds.length === 0) continue;
-		const items = await db.query.notification.findMany({
-			where: and(
-				eq(notification.userId, r.userId),
-				isNull(notification.emailedAt),
-				// Read in the app already: nothing to tell (Kevin, 2026-10-08).
-				isNull(notification.readAt),
-				inArray(notification.kind, kinds),
-			),
-			orderBy: [desc(notification.updatedAt)],
-			limit: 50,
-			columns: { id: true, title: true, body: true, href: true },
-		});
-		if (items.length === 0) continue;
-		try {
-			await sendDigestEmail({ to: r.user.email, name: r.user.name, period, items });
-			await db
-				.update(notification)
-				.set({ emailedAt: now })
-				.where(
-					inArray(
-						notification.id,
-						items.map((i) => i.id),
-					),
-				);
-			await db
-				.update(notificationPreference)
-				.set({ digestSentAt: now })
-				.where(eq(notificationPreference.userId, r.userId));
-			sent++;
-		} catch (e) {
-			console.error("[notifications] digest", e);
-		}
-	}
-	return { sent };
+		if (items.length === 0) return false;
+		const ids = items.map((i) => i.id);
+		const stampItems = (emailedAt: Date | null) =>
+			store.call("stampDigestItems", async () => {
+				await db.update(notification).set({ emailedAt }).where(inArray(notification.id, ids));
+			});
+		const stampPerson = (digestSentAt: Date | null) =>
+			store.call("stampDigestSent", async () => {
+				await db
+					.update(notificationPreference)
+					.set({ digestSentAt })
+					.where(eq(notificationPreference.userId, r.userId));
+			});
+		yield* markedUntilFailure(stampItems(now), stampItems(null));
+		yield* markedUntilFailure(stampPerson(now), stampPerson(r.digestSentAt));
+		yield* mail.digest({ to: r.user.email, name: r.user.name, period, items });
+		return true;
+	}).pipe(Effect.scoped);
 }

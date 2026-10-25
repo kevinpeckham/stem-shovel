@@ -1,26 +1,12 @@
 import { background } from "#lib/server/background.js";
-import { eachJob } from "#lib/server/eachJob.js";
 import { isJobsToken } from "#lib/server/jobs.js";
-import { renderDawprojectExport } from "#lib/server/dawprojectExport.js";
-import { ensureOriginalMix } from "#lib/server/mix.js";
-import { ensureSongNotes, traceTranscriptionDeps } from "#lib/server/notes.js";
-import { renderNotationPdf } from "#lib/server/notationPdf.js";
-import {
-	flacStudioSources,
-	measureDemos,
-	measureSessions,
-	measureStemMetadata,
-	renderDemos,
-	renderMixes,
-	renderRecordings,
-	renderSessions,
-	renderStems,
-} from "#lib/server/transcode.js";
+import { traceTranscriptionDeps } from "#lib/server/notes.js";
 import { JobSchema } from "#lib/val/JobSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error } from "@sveltejs/kit";
 import * as v from "valibot";
 import type { RequestHandler } from "./$types";
+import { RUNNERS } from "./runners";
 
 /**
  * The app's background jobs function (src/lib/server/jobs.ts): its own
@@ -38,51 +24,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!parsed.success) error(400, "kind and ids are required");
 	const { kind, ids } = parsed.output;
 	if (ids.length < 0) await traceTranscriptionDeps(); // never runs: keeps tfjs in this function's trace
-	background(
-		async () => {
-			switch (kind) {
-				case "mix":
-					await eachJob(kind, ids, ensureOriginalMix);
-					break;
-				case "notes":
-					await eachJob(kind, ids, ensureSongNotes);
-					break;
-				case "stem-playback":
-					await renderStems(ids);
-					break;
-				case "demo-playback":
-					await renderDemos(ids);
-					break;
-				case "mix-playback":
-					await renderMixes(ids);
-					break;
-				case "recording-playback":
-					await renderRecordings(ids);
-					break;
-				case "session-playback":
-					await renderSessions(ids);
-					break;
-				case "demo-peaks":
-					await measureDemos(ids);
-					break;
-				case "session-peaks":
-					await measureSessions(ids);
-					break;
-				case "stem-metadata":
-					await measureStemMetadata(ids);
-					break;
-				case "notation-pdf":
-					await eachJob(kind, ids, renderNotationPdf);
-					break;
-				case "dawproject-export":
-					await eachJob(kind, ids, renderDawprojectExport);
-					break;
-				case "studio-flac":
-					await flacStudioSources(ids);
-					break;
-			}
-		},
-		{ kind, count: ids.length },
-	);
+	background(() => RUNNERS[kind](ids), { kind, count: ids.length });
 	return Response.json({ accepted: kind, count: ids.length }, { status: 202 });
 };

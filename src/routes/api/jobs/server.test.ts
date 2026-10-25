@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { createHmac } from "node:crypto";
+import { JOB_KINDS } from "#lib/val/JobSchema.js";
 import { callRoute, jsonPost } from "../../../../tests/helpers/fakeApiEvent";
 import { asSignedOut, fakeId, httpError } from "../../../../tests/helpers/fakeRequestEvent";
 
@@ -22,6 +23,11 @@ const h = vi.hoisted(() => ({
 	renderStems: vi.fn(),
 	renderDemos: vi.fn(),
 	renderRecordings: vi.fn(),
+	renderMixes: vi.fn(),
+	renderSessions: vi.fn(),
+	measureDemos: vi.fn(),
+	measureSessions: vi.fn(),
+	measureStemMetadata: vi.fn(),
 	flacStudioSources: vi.fn(),
 }));
 vi.mock("varlock/env", () => ({ ENV: h.env, initVarlockEnv: () => {} }));
@@ -46,10 +52,16 @@ vi.mock("#lib/server/transcode.js", () => ({
 	renderStems: h.renderStems,
 	renderDemos: h.renderDemos,
 	renderRecordings: h.renderRecordings,
+	renderMixes: h.renderMixes,
+	renderSessions: h.renderSessions,
+	measureDemos: h.measureDemos,
+	measureSessions: h.measureSessions,
+	measureStemMetadata: h.measureStemMetadata,
 	flacStudioSources: h.flacStudioSources,
 }));
 
 const { POST } = await import("./+server");
+const { RUNNERS } = await import("./runners");
 
 /** The token src/lib/server/jobs.ts derives: the same HMAC over the same label. */
 const TOKEN = createHmac("sha256", h.env.BETTER_AUTH_SECRET ?? "")
@@ -135,5 +147,22 @@ describe("POST /api/jobs", () => {
 		await post({ kind: "studio-flac", ids: [A, B] });
 		await settled();
 		expect(h.flacStudioSources).toHaveBeenCalledWith([A, B]);
+	});
+	it("every job kind has a runner, and every runner a kind", () => {
+		expect(Object.keys(RUNNERS).toSorted()).toEqual([...JOB_KINDS].toSorted());
+		for (const kind of JOB_KINDS) expect(RUNNERS[kind]).toBeTypeOf("function");
+	});
+	it("mix, session and the measuring kinds each reach their batch function", async () => {
+		await post({ kind: "mix-playback", ids: [A] });
+		await post({ kind: "session-playback", ids: [A] });
+		await post({ kind: "demo-peaks", ids: [A] });
+		await post({ kind: "session-peaks", ids: [B] });
+		await post({ kind: "stem-metadata", ids: [A, B] });
+		await settled();
+		expect(h.renderMixes).toHaveBeenCalledWith([A]);
+		expect(h.renderSessions).toHaveBeenCalledWith([A]);
+		expect(h.measureDemos).toHaveBeenCalledWith([A]);
+		expect(h.measureSessions).toHaveBeenCalledWith([B]);
+		expect(h.measureStemMetadata).toHaveBeenCalledWith([A, B]);
 	});
 });

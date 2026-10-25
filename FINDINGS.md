@@ -23,6 +23,11 @@ From the pilot in `src/lib/server/mix.ts` and `src/lib/server/effect/` (docs/eff
 - **ffmpeg's probe line can sit far from the end of stderr**, so a probe keeps 64 kB (`stderrTail`) where a failure keeps 2 kB.
 - **`Context.Reference(key, { defaultValue })` has requirement type `never`**: `yield* JobTuning` adds nothing to `R`, and a test overrides it with `Effect.provideService(JobTuning, …)`. `Effect.catchIf(Cause.isTimeoutError, …)` folds a timeout into a domain error so the channel stays one type; `Effect.timeout` inside `Effect.retry` gives each attempt its own clock; `Effect.flip` is the short way to assert on the error value.
 - **Test seams.** `vi.mock("varlock/env", () => ({ ENV: hoisted }))` lets a test change env values per case. Running `oxfmt` directly ignores the repo config; use `bunx vp check --fix <file>` or `bun run format`.
+- **A `vi.mock` factory must list every export the module reads at load time.** The jobs table (`src/routes/api/jobs/runners.ts`) reads all thirteen runners when it loads, where the old `switch` read one per call, so the route test's transcode mock had to name them all or the module failed to import.
+- **`Effect.ignore(effect, { log: true })`** keeps a "could not record the failure" log; **`Effect.onError`** fires on interruption as well as failure; **`Effect.catch`** catches typed errors only, so a defect ends the run (which is why database calls go through `Db.call`, turning throws into `DbError`). A plain `message` field in `Data.TaggedError`'s props works; only a getter clashes.
+- **Clocks in tests.** `Clock.currentTimeMillis` follows Vitest's faked `Date` (`vi.setSystemTime` moves a budget), while `Effect.timeout` uses the real `setTimeout` and still fires under `toFake: ["Date"]`.
+- **Resend's client takes no abort signal**, so an `Effect.timeout` around a send stops the wait, not the send: a late arrival after the mark was cleared is a duplicate. The digest marks first and clears on failure, accepting that.
+- **Fallow counts a rewritten function as new**, and with no coverage file estimates CRAP above its threshold from cyclomatic 10 up, so a function rewritten inside Effect has to come in under that or be split (`transcodeToMp3`, `ensureSongNotes` were).
 
 ## Fallow's `$effect` findings in Svelte files land on the wrong line (2026-10-25)
 

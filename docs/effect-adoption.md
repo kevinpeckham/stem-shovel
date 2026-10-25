@@ -244,10 +244,16 @@ provoked on dev and seen in Sentry with their tags.
 ## Phase 2 progress
 
 - 2026-10-25: step 1 (transcode.ts, the shared helpers), step 4 (the `Ai`
-  service) and step 6 (`moveBlob` buffering under 256 MB) landed. Left:
-  step 2 (notes.ts, notationPdf.ts, dawprojectExport.ts), step 3 (the jobs
-  switch as a table, the dispatch fetch bounded), step 5 (the digest's
-  time budget and idempotent sends).
+  service) and step 6 (`moveBlob` buffering under 256 MB) landed; then
+  steps 2 (notes.ts, notationPdf.ts, dawprojectExport.ts), 3 (the jobs
+  switch as a table, the dispatch bounded) and 5 (the digest's budget and
+  mark-first sends). Phase 2 is complete. Every job and the two AI
+  features run inside Effect; remote functions, components and validation
+  are untouched, as planned.
+- A consequence to watch: `jobs.ts` (the `schedule*` helpers) and
+  `mix.ts` (`mixKeyOf`) are imported by page functions, so Effect is now in
+  their bundles too, deep-imported and bundled. The page cold start is
+  measured below.
 
 ## Decision record
 

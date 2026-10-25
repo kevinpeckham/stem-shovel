@@ -1,9 +1,11 @@
 import { background } from "#lib/server/background.js";
+import { dispatchJob } from "#lib/server/effect/dispatch.js";
 import type { JobKind } from "#lib/val/JobSchema.js";
 import { dev } from "$app/env";
 import { getRequestEvent } from "$app/server";
 import { ENV } from "varlock/env";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import * as Effect from "effect/Effect";
 
 /**
  * Background work (renditions, mixes, notes, notation PDFs) runs in the app's own jobs
@@ -11,7 +13,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * page functions then never load ffmpeg or the transcription stack, which
  * keeps their cold starts short and their bundles small (docs/environment.md
  * "Cold starts"). The scheduler posts the job after the response
- * (`background`); the jobs route answers 202 at once and does the work in
+ * (`background`), with a timeout and one retry of a transport failure
+ * (src/lib/server/effect/dispatch.ts); the jobs route answers 202 at once and does the work in
  * its own `waitUntil`. The route is for this app only: the caller proves
  * itself with a token derived from the auth secret, so no extra secret is
  * configured per stage. In development the dev server serves both sides.
@@ -44,14 +47,12 @@ function scheduleJob(kind: JobKind, ids: string[]) {
 	if (unique.length === 0) return;
 	const origin = originOfRequest();
 	background(
-		async () => {
-			const res = await fetch(`${origin}/api/jobs`, {
-				method: "POST",
-				headers: { "content-type": "application/json", authorization: `Bearer ${jobsToken()}` },
-				body: JSON.stringify({ kind, ids: unique }),
-			});
-			if (!res.ok) throw new Error(`jobs: ${kind} for ${unique.length} answered ${res.status}`);
-		},
+		() =>
+			Effect.runPromise(
+				dispatchJob(`${origin}/api/jobs`, jobsToken(), { kind, ids: unique }).pipe(
+					Effect.withSpan("jobs.dispatch", { attributes: { kind, count: unique.length } }),
+				),
+			),
 		{ kind: "schedule", count: unique.length },
 	);
 }

@@ -2,7 +2,6 @@ import { extractFeatures } from "#lib/audio/analysis.js";
 import modelSpec from "./basic-pitch/model.json";
 import modelWeights from "./basic-pitch/weights.json";
 import type { Note } from "#lib/audio/chords.js";
-import { readBlob } from "#lib/server/blob.js";
 import {
 	appendSongNotes,
 	claimSongNotes,
@@ -11,16 +10,21 @@ import {
 	songForNotes,
 } from "#lib/server/data.js";
 import { mixKeyOf } from "#lib/server/mix.js";
-import ffmpegPath from "ffmpeg-static";
-import { FFMPEG_TIMEOUT_MS } from "#lib/constants/ffmpegTimeout.js";
+import { downloadToFile } from "#lib/server/effect/blobIo.js";
+import type { BlobError, DbError, FfmpegError } from "#lib/server/effect/errors.js";
+import { requireFfmpeg, runFfmpeg } from "#lib/server/effect/ffmpeg.js";
+import { tempDir } from "#lib/server/effect/resources.js";
+import { runJob } from "#lib/server/effect/runJob.js";
+import { Db, type Services } from "#lib/server/effect/services.js";
+import { TranscriberError } from "#lib/server/effect/transcriptionErrors.js";
+import { JobTuning } from "#lib/server/effect/tuning.js";
+import type * as Cause from "effect/Cause";
+import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import { execFile } from "node:child_process";
-import { createWriteStream, existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { promisify } from "node:util";
 
 /**
  * Transcribes a song's tonal stems to notes on the server with Basic Pitch
@@ -30,11 +34,21 @@ import { promisify } from "node:util";
  * song row, stopping after BUDGET_MS so a function lifetime is never
  * exceeded; the next trigger carries on from `notesDoneSeconds`. Skipped
  * for songs (or projects) marked "no AI".
+ *
+ * An Effect program (docs/effect-adoption.md, Phase 2) behind the Promise
+ * export: the `notesStartedAt` lock is a scoped resource released on any
+ * failure or interruption, the temp dir is scoped, Blob reads retry a
+ * transient failure, the tonalness decodes run two at a time, and every
+ * ffmpeg and the transcriber child run under `JobTuning`'s time limit with
+ * the child killed when it is reached.
  */
-const run = promisify(execFile);
 const SEGMENT = 60;
 const BUDGET_MS = 200_000;
 const MODEL_RATE = 22050;
+/** Decodes in flight at once for the tonalness pass (each a 30 s PCM file and an ffmpeg). */
+const DECODES = 2;
+
+type NotesError = BlobError | DbError | FfmpegError | TranscriberError | Cause.TimeoutError;
 
 /**
  * The model runs in a child process, like ffmpeg: TensorFlow.js on the CPU
@@ -84,12 +98,48 @@ const notes = noteFramesToTime(outputToNotesPoly(frames, onsets, 0.5, 0.3, 11, t
 process.stdout.write(JSON.stringify(notes.map((e) => [e.startTimeSeconds, e.durationSeconds, e.pitchMidi, e.amplitude])));
 `;
 
+const STDERR_TAIL = 2048;
+
+/**
+ * The transcriber child: Node running CHILD_SCRIPT, its stdout the notes as
+ * JSON. Not ffmpeg, so not the `Ffmpeg` service, but held the same way:
+ * under `JobTuning.ffmpegTimeout`, and killed when interrupted.
+ */
+function runTranscriber(
+	args: string[],
+): Effect.Effect<string, TranscriberError | Cause.TimeoutError> {
+	return Effect.gen(function* () {
+		const { ffmpegTimeout } = yield* JobTuning;
+		return yield* Effect.callback<string, TranscriberError>((resume) => {
+			const child = execFile(
+				process.execPath,
+				args,
+				{ maxBuffer: 64 * 1024 * 1024 },
+				(error, stdout, stderr) => {
+					if (!error) return resume(Effect.succeed(stdout));
+					resume(
+						Effect.fail(
+							new TranscriberError({
+								code: typeof error.code === "number" ? error.code : null,
+								signal: error.signal ?? null,
+								stderr: (stderr || error.message).slice(-STDERR_TAIL),
+							}),
+						),
+					);
+				},
+			);
+			return Effect.sync(() => {
+				child.kill();
+			});
+		}).pipe(Effect.timeout(ffmpegTimeout));
+	}).pipe(Effect.withSpan("notes.transcriber"));
+}
+
 /** Transcribes one f32le mono 22050 Hz file in a child process; seconds are relative to the file. */
-async function transcribeFile(file: string): Promise<Note[]> {
-	const model = await modelFiles(dirname(file));
-	const { stdout } = await run(
-		process.execPath,
-		[
+function transcribeFile(file: string) {
+	return Effect.gen(function* () {
+		const model = yield* Effect.promise(() => modelFiles(dirname(file)));
+		const stdout = yield* runTranscriber([
 			"--input-type=module",
 			"-e",
 			CHILD_SCRIPT,
@@ -98,30 +148,25 @@ async function transcribeFile(file: string): Promise<Note[]> {
 			model.json,
 			model.weights,
 			file,
-		],
-		{ maxBuffer: 64 * 1024 * 1024, timeout: 240_000 },
-	);
-	const rows = JSON.parse(stdout) as [number, number, number, number][];
-	return rows.map(([start, duration, pitch, amplitude]) => ({
-		start,
-		end: start + duration,
-		pitch,
-		amplitude,
-	}));
-}
-
-async function download(url: string, file: string) {
-	const res = await readBlob(url);
-	if (!res.ok || !res.body) throw new Error(`${res.status} ${res.statusText} fetching ${url}`);
-	await pipeline(Readable.fromWeb(res.body as never), createWriteStream(file));
+		]);
+		const rows = yield* Effect.try({
+			try: () => JSON.parse(stdout) as [number, number, number, number][],
+			catch: () =>
+				new TranscriberError({ code: 0, stderr: `unreadable output: ${stdout.slice(0, 200)}` }),
+		});
+		return rows.map(([start, duration, pitch, amplitude]): Note => ({
+			start,
+			end: start + duration,
+			pitch,
+			amplitude,
+		}));
+	});
 }
 
 /** PCM float32 mono of `file` from `start` for `seconds` at `rate`. */
-async function decode(file: string, start: number, seconds: number, rate: number) {
-	if (!ffmpegPath) throw new Error("ffmpeg binary is not available on this platform");
+function decode(file: string, start: number, seconds: number, rate: number) {
 	const out = `${file}.${rate}.${Math.round(start)}.raw`;
-	await run(
-		ffmpegPath,
+	return runFfmpeg(
 		[
 			"-y",
 			"-loglevel",
@@ -140,10 +185,11 @@ async function decode(file: string, start: number, seconds: number, rate: number
 			"f32le",
 			out,
 		],
-		{ timeout: FFMPEG_TIMEOUT_MS },
+		{ span: "notes.decode" },
+	).pipe(
+		Effect.andThen(Effect.promise(() => readFile(out))),
+		Effect.map((raw) => new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4)),
 	);
-	const raw = await readFile(out);
-	return new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
 }
 
 const asBuffer = (data: Float32Array, sampleRate: number) =>
@@ -154,68 +200,123 @@ const asBuffer = (data: Float32Array, sampleRate: number) =>
 		getChannelData: () => data,
 	}) as unknown as AudioBuffer;
 
-export async function ensureSongNotes(songId: string): Promise<void> {
-	const song = await songForNotes(songId);
-	if (!song || song.noAi || song.project.noAi) return;
+type NotesSong = NonNullable<Awaited<ReturnType<typeof songForNotes>>>;
+
+/** The stems a run reads: none when the song is marked "no AI" or a rendition is still coming. */
+function readyStems(song: NotesSong) {
+	if (song.noAi || song.project.noAi) return [];
 	const stems = song.stems.filter((s) => s.status === "ready" && s.url);
-	if (stems.length === 0 || stems.some((s) => s.playbackStatus === "pending")) return;
+	return stems.some((s) => s.playbackStatus === "pending") ? [] : stems;
+}
+
+/** What a run would do for this song, or null when there is nothing to do (no AI, nothing ready, already complete). */
+function planOf(song: NotesSong | undefined) {
+	if (!song) return null;
+	const stems = readyStems(song);
+	if (stems.length === 0) return null;
 	const key = mixKeyOf(stems);
 	const duration = Math.max(...stems.map((s) => s.durationSeconds ?? 0));
-	if (duration <= 0) return;
-	if (song.notesKey === key && song.notesDoneSeconds >= duration) return;
+	if (duration <= 0) return null;
+	if (song.notesKey === key && song.notesDoneSeconds >= duration) return null;
 	// New stems since the last run (the key is written at the claim): start over.
 	const fresh = song.notesKey !== key;
-	if (!(await claimSongNotes(songId, key, fresh))) return;
-	const started = Date.now();
-	const dir = await mkdtemp(join(tmpdir(), "notes-"));
-	try {
-		const files: string[] = [];
-		for (const [i, s] of stems.entries()) {
-			const file = join(dir, `stem-${i}`);
-			await download(s.playbackStatus === "ready" && s.playbackUrl ? s.playbackUrl : s.url, file);
-			files.push(file);
-		}
-		// Which stems carry harmony: the same tonalness the browser uses, on 30 s.
-		const tonal = await Promise.all(
-			files.map(
-				async (f) => extractFeatures(asBuffer(await decode(f, 0, 30, 32000), 32000), 30).tonal,
+	return { stems, key, duration, fresh, from: fresh ? 0 : song.notesDoneSeconds };
+}
+
+/** Each stem's rendition (or its source when it has none) into `dir`, one at a time. */
+function downloadStems(stems: NonNullable<ReturnType<typeof planOf>>["stems"], dir: string) {
+	return Effect.forEach(stems, (s, i) => {
+		const file = join(dir, `stem-${i}`);
+		const url = s.playbackStatus === "ready" && s.playbackUrl ? s.playbackUrl : s.url;
+		return Effect.as(downloadToFile(url, file), file);
+	});
+}
+
+/** Which stems carry harmony: the same tonalness the browser uses, on 30 s, relative to the most tonal. */
+function tonalWeights(files: string[]) {
+	return Effect.forEach(
+		files,
+		(f) =>
+			Effect.map(
+				decode(f, 0, 30, 32000),
+				(data) => extractFeatures(asBuffer(data, 32000), 30).tonal,
 			),
-		);
-		const top = Math.max(...tonal, 1e-9);
-		const weights = tonal.map((t) => t / top);
-		let done = fresh ? 0 : song.notesDoneSeconds;
-		while (done < duration && Date.now() - started < BUDGET_MS) {
-			const seconds = Math.min(SEGMENT, duration - done);
-			let mono: Float32Array | null = null;
-			for (const [i, f] of files.entries()) {
-				if (weights[i] < 0.35) continue;
-				const data = await decode(f, done, seconds, MODEL_RATE);
-				mono ??= new Float32Array(data.length);
-				for (let k = 0; k < Math.min(data.length, mono.length); k++)
-					mono[k] += data[k] * weights[i];
-			}
-			const notes: Note[] = [];
-			if (mono) {
-				let peak = 0;
-				for (let k = 0; k < mono.length; k++) peak = Math.max(peak, Math.abs(mono[k]));
-				if (peak > 0) for (let k = 0; k < mono.length; k++) mono[k] /= peak;
-				const segmentFile = join(dir, `segment-${Math.round(done)}.raw`);
-				await writeFile(segmentFile, Buffer.from(mono.buffer, mono.byteOffset, mono.byteLength));
-				for (const n of await transcribeFile(segmentFile)) {
-					notes.push({ ...n, start: done + n.start, end: done + n.end });
-				}
-			}
-			done += seconds;
-			await appendSongNotes(songId, notes, done);
+		{ concurrency: DECODES },
+	).pipe(
+		Effect.map((tonal) => {
+			const top = Math.max(...tonal, 1e-9);
+			return tonal.map((t) => t / top);
+		}),
+	);
+}
+
+/** The notes of `seconds` from `start`: the tonal stems mixed by weight, normalized, transcribed. */
+function transcribeSegment(
+	files: string[],
+	weights: number[],
+	dir: string,
+	start: number,
+	seconds: number,
+) {
+	return Effect.gen(function* () {
+		let mono: Float32Array | null = null;
+		for (const [i, f] of files.entries()) {
+			if (weights[i] < 0.35) continue;
+			const data = yield* decode(f, start, seconds, MODEL_RATE);
+			mono ??= new Float32Array(data.length);
+			for (let k = 0; k < Math.min(data.length, mono.length); k++) mono[k] += data[k] * weights[i];
 		}
-		if (done >= duration) await finishSongNotes(songId);
-		else await releaseSongNotes(songId); // the next trigger continues from `done`
-	} catch (e) {
-		await releaseSongNotes(songId);
-		throw e;
-	} finally {
-		await rm(dir, { recursive: true, force: true });
-	}
+		if (!mono) return [];
+		let peak = 0;
+		for (let k = 0; k < mono.length; k++) peak = Math.max(peak, Math.abs(mono[k]));
+		if (peak > 0) for (let k = 0; k < mono.length; k++) mono[k] /= peak;
+		const segmentFile = join(dir, `segment-${Math.round(start)}.raw`);
+		const pcm = Buffer.from(mono.buffer, mono.byteOffset, mono.byteLength);
+		yield* Effect.promise(() => writeFile(segmentFile, pcm));
+		const notes = yield* transcribeFile(segmentFile);
+		return notes.map((n): Note => ({ ...n, start: start + n.start, end: start + n.end }));
+	});
+}
+
+/**
+ * One run of the transcription (see the module comment). On success the
+ * lock is cleared by `finishSongNotes`, or by `releaseSongNotes` when the
+ * budget ran out first (the next trigger continues from `done`); on a
+ * failure or interruption the scope releases it.
+ */
+export function ensureSongNotesEffect(songId: string): Effect.Effect<void, NotesError, Services> {
+	return Effect.gen(function* () {
+		const db = yield* Db;
+		const plan = planOf(yield* db.call("notes:read", () => songForNotes(songId)));
+		if (!plan) return;
+		const claimed = yield* Effect.acquireRelease(
+			db.call("notes:claim", () => claimSongNotes(songId, plan.key, plan.fresh)),
+			(claimed, exit) =>
+				claimed && Exit.isFailure(exit)
+					? Effect.ignore(db.call("notes:release", () => releaseSongNotes(songId)))
+					: Effect.void,
+		);
+		if (!claimed) return;
+		yield* requireFfmpeg;
+		const started = Date.now();
+		const dir = yield* tempDir("notes-");
+		const files = yield* downloadStems(plan.stems, dir);
+		const weights = yield* tonalWeights(files);
+		let done = plan.from;
+		while (done < plan.duration && Date.now() - started < BUDGET_MS) {
+			const seconds = Math.min(SEGMENT, plan.duration - done);
+			const notes = yield* transcribeSegment(files, weights, dir, done, seconds);
+			done += seconds;
+			const through = done;
+			yield* db.call("notes:append", () => appendSongNotes(songId, notes, through));
+		}
+		if (done >= plan.duration) yield* db.call("notes:finish", () => finishSongNotes(songId));
+		else yield* db.call("notes:release", () => releaseSongNotes(songId));
+	}).pipe(Effect.scoped, Effect.withSpan("notes.ensure", { attributes: { songId } }));
+}
+
+export function ensureSongNotes(songId: string): Promise<void> {
+	return runJob("job.notes", ensureSongNotesEffect(songId));
 }
 
 /**
