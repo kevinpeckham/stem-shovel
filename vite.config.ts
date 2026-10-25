@@ -57,6 +57,9 @@ export default defineConfig({
 		jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
 		rules: { "vite-plus/prefer-vite-plus-imports": "error" },
 		options: { typeAware: true, typeCheck: true },
+		// Swamp behavior types run on swamp's own Deno (`Deno`, `npm:` specifiers):
+		// `~/.swamp/deno/deno check extensions/behaviors/<file>.ts` checks them.
+		ignorePatterns: ["extensions/**", ".swamp/**"],
 	},
 	// Oxfmt. Formats .svelte end to end (script AND template) via the bundled
 	// prettier-plugin-svelte — the part Biome couldn't do.

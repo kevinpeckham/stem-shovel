@@ -1,0 +1,10 @@
+type: "@kevin/site-audit"
+typeVersion: 2026.10.25.1
+id: 540e6eed-0762-44da-9f08-647dbaa8af50
+name: site-dev
+version: 1
+tags: {}
+globalArguments:
+  stage: dev
+  base: "http://localhost:5173"
+methods: {}

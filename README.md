@@ -165,6 +165,12 @@ check and the tests without any secret.
   `bun run db:update-docs <slug...>` refreshes named pages from the sources,
   skipping any edited in the app since (`--force` overwrites; `--list` and
   `--restore <slug> <version>` work with a page's versions).
+- `extensions/behaviors/site_audit.ts`, `models/@kevin/site-audit/`,
+  `workflows/workflow-site-audit.yaml` — the Swamp behavior type, the
+  per-stage definitions and the workflow that run `audit:seo` and
+  `smoke:urls` against a stage and keep the results as data
+  (`bunx varlock run -- swamp workflow run site-audit --input stage=production`;
+  docs/security.md "Through Swamp"). `.swamp/` is the run data, gitignored.
 - `src/routes/docs/`, `src/lib/remote/userDocs.remote.ts` — user documentation:
   public pages, edited by system admins with `MarkdownDocEditor.svelte`, the
   editor the song-document pages use too.

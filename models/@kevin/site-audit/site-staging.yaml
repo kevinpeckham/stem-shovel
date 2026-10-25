@@ -1,0 +1,10 @@
+type: "@kevin/site-audit"
+typeVersion: 2026.10.25.1
+id: f791eded-43b5-426c-aa3e-bf762616e7f7
+name: site-staging
+version: 1
+tags: {}
+globalArguments:
+  stage: staging
+  base: "https://staging.stemshovel.dev"
+methods: {}

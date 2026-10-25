@@ -245,6 +245,34 @@ get the hook's header) goes in `SEO_EXPECTATIONS` in
 check) mapped to the reason, which the report prints as
 "exception: <reason>" instead of a finding.
 
+### Through Swamp
+
+The audits are also behaviors of [Swamp](https://swamp-club.com/manual),
+so a run is one command and its results stay queryable.
+`extensions/behaviors/site_audit.ts` defines the type `@kevin/site-audit`
+with a `seo` method (runs `bun run audit:seo --json --report`) and a
+`smoke` method (`bun run smoke:urls --json`); each records a typed
+resource (`seo`: pages, public pages, findings, exceptions, `ok`, the
+summary and every finding; `smoke`: checks, failures, whether the bot pass
+ran, `ok`, every failed URL), and `seo` keeps the Markdown report as a
+file. `models/@kevin/site-audit/` holds one definition per stage
+(`site-dev`, `site-staging`, `site-production`: the stage and its base
+URL), and `workflows/workflow-site-audit.yaml` runs both methods against
+`site-<stage>` in parallel, then asserts both came back clean:
+
+    bunx varlock run -- swamp workflow run site-audit                           # dev
+    bunx varlock run -- swamp workflow run site-audit --input stage=production
+    bunx varlock run -- swamp data query 'behavior("site-production") && name == "seo"' --select content
+    bunx varlock run -- swamp workflow history search --json                    # every run
+
+The run fails on a finding, like the scripts. Every swamp command needs a
+swamp-club.com credential, which `.env.schema` declares as
+`SWAMP_API_KEY` and `SWAMP_SIGNIN_TOKEN` (a collective token and its signin
+token, in the dev 1Password environment only), hence the `varlock run`.
+The scripts resolve their own env the same way inside the behavior, so
+Swamp holds no secret of the app's. The run data lives in `.swamp/`
+(gitignored); the type, definitions and workflow are committed.
+
 ## Error reports
 
 Sentry (`@sentry/sveltekit`; `src/hooks.client.ts` for the browser,

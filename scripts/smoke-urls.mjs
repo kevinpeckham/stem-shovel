@@ -6,6 +6,7 @@
  *   bun run smoke:urls                                   # dev server, both passes
  *   SMOKE_BASE=https://staging.stemshovel.dev bun run smoke:urls  # staging (bot pass once its token is there)
  *   SMOKE_BASE=https://www.stemshovel.com bun run smoke:urls   # production (anonymous pass only)
+ *   bun run smoke:urls --json out.json                          # also write every check as JSON
  *
  * Dynamic segments are filled from the database (an account the bot
  * belongs to, its first project and song, a user doc); token routes get a
@@ -18,10 +19,19 @@
  * protection is bypassed for the dev VM's address by a firewall rule
  * (docs/security.md); from elsewhere, expect challenges.
  */
+import { writeFileSync } from "node:fs";
+
 import { fillUrl, loadSegments, missingRoutes, ROUTES } from "./lib/siteRoutes.mjs";
 
 const base = (process.env.SMOKE_BASE ?? "http://localhost:5173").replace(/\/$/, "");
 const token = process.env.PREVIEW_AUTH_TOKEN ?? "";
+/** The value after a flag, if given. */
+function argPath(flag) {
+	const i = process.argv.indexOf(flag);
+	return i > 0 ? process.argv[i + 1] : undefined;
+}
+/** Every check of every pass, for --json (the Swamp behavior reads it). */
+const passes = [];
 
 // ---- what to test ------------------------------------------------------------
 
@@ -91,10 +101,23 @@ async function check(url, ok, headers) {
 	console.log(
 		`  ${good ? "ok " : "FAIL"} ${String(r.status).padStart(3)} ${String(r.ms).padStart(5)}ms  ${target}${good ? "" : `  (wanted ${ok.join("/")})`}${noteOf(r)}`,
 	);
+	record(target, r, ok, good);
 	return good;
+}
+/** Keep the check for --json. */
+function record(url, r, wanted, ok) {
+	passes.at(-1)?.checks.push({
+		url,
+		status: r.status,
+		ms: r.ms,
+		ok,
+		wanted,
+		note: noteOf(r).trim() || undefined,
+	});
 }
 async function pass(name, headers, pick) {
 	let failed = 0;
+	passes.push({ name, checks: [] });
 	console.log(`\n${name}  (${base})`);
 	const checks = [...ROUTES.map((r) => [r[1], pick(r)]), ...STATIC].map(([url, ok]) => [
 		url,
@@ -115,4 +138,10 @@ else
 		`\n(signed-in pass skipped: ${token ? "this server does not recognise PREVIEW_AUTH_TOKEN" : "no PREVIEW_AUTH_TOKEN"})`,
 	);
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
+const json = argPath("--json");
+if (json)
+	writeFileSync(
+		json,
+		JSON.stringify({ base, botPass: Boolean(recognised), failures, passes }, null, "\t"),
+	);
 process.exit(failures ? 1 : 0);

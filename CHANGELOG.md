@@ -15,6 +15,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Technical
 
 - **An indexability audit**, `bun run audit:seo` (scripts/seo-audit.ts): every route, anonymously, against its intent from `isIndexablePath`: the sitemap, robots.txt (longest-match semantics), the live `X-Robots-Tag` and vercel.json's rule, the robots meta, title, description, one h1 and `lang`; sitemap and robots.txt outliers, duplicate titles; exceptions documented in the shared route list (`scripts/lib/siteRoutes.mjs`, which the smoke script now shares); `SEO_BASE` for production; part of the release's post-deploy checks (docs/security.md "Indexability audit").
+- **Swamp** (swamp-club.com) joins the repo for repeatable audits: `extensions/behaviors/site_audit.ts` is a behavior type whose `seo` and `smoke` methods run `audit:seo` and `smoke:urls` (which gained `--json`) against a stage and keep typed results; `models/@kevin/site-audit/` has a definition per stage and the `site-audit` workflow runs both in parallel and asserts they came back clean (`bunx varlock run -- swamp workflow run site-audit --input stage=production`; docs/security.md "Through Swamp"). The swamp-club.com credential comes from 1Password through varlock (`SWAMP_API_KEY`, `SWAMP_SIGNIN_TOKEN`); `extensions/` and `.swamp/` are outside tsconfig, Oxlint and Fallow.
 
 ## [0.165.1] - 2026-10-25
 

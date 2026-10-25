@@ -53,6 +53,10 @@ test when they are written. `SMOKE_BASE=https://www.stemshovel.com` runs it
 against production, where the signed-in pass is skipped unless the token is
 recognized there (it is kept out of 1Password on purpose); the dev VM's
 address bypasses the firewall's bot challenge (docs/security.md).
+`--json <file>` also writes every check (the Swamp behavior reads it);
+`bunx varlock run -- swamp workflow run site-audit --input stage=<stage>`
+runs this and the indexability audit together and keeps both results
+(docs/security.md "Through Swamp").
 
 Vitest, bundled with Vite+ (`vp test`), in two projects configured in
 `vite.config.ts` — replicator's split, with Vitest for both halves:

@@ -1,0 +1,50 @@
+id: 3367b2ad-0d96-4307-b6b2-7341b5900426
+name: site-audit
+description: >-
+  Audit one stage of the site: the indexability audit (bun run audit:seo) and
+  the smoke test (bun run smoke:urls), run at once by site-<stage>'s audit
+  method, then assert both came back clean. `swamp workflow run site-audit --input
+  stage=production` after a deploy; the results stay queryable as data
+  (docs/security.md "Indexability audit").
+tags:
+  area: site-audit
+inputs:
+  properties:
+    stage:
+      type: string
+      enum: [dev, staging, production]
+      default: dev
+      description: Which stage to audit; picks the site-<stage> behavior
+  required: [stage]
+jobs:
+  - name: audit
+    description: Run both audits against the stage at once
+    steps:
+      - name: audit
+        description: Indexability of every route against its intent, and every route answering as expected
+        task:
+          type: behavior
+          behavior: site-${{ inputs.stage }}
+          methodName: audit
+  - name: verify
+    description: Fail the run when either audit found something
+    dependsOn:
+      - job: audit
+        condition:
+          type: succeeded
+    steps:
+      - name: seo-clean
+        description: No indexability finding outside the documented exceptions
+        task:
+          type: assert
+          expr: data.latest("site-" + inputs.stage, "seo").attributes.ok
+          message: '${{ "Indexability: " + data.latest("site-" + inputs.stage, "seo").attributes.summary }}'
+          severity: high
+      - name: smoke-clean
+        description: Every URL answered as expected
+        task:
+          type: assert
+          expr: data.latest("site-" + inputs.stage, "smoke").attributes.ok
+          message: '${{ "Smoke: " + string(data.latest("site-" + inputs.stage, "smoke").attributes.failures) + " check(s) failed" }}'
+          severity: high
+version: 1

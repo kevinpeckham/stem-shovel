@@ -121,6 +121,24 @@ export type CoercedEnvSchema = {
   PREVIEW_AUTH_TOKEN?: string;
   
   /**
+   * **SWAMP_API_KEY** 🔐 _sensitive_  
+   * Swamp (https://swamp-club.com) needs a swamp-club.com credential for every  
+   * command; the VM has no terminal for the browser login, so the agent runs  
+   * `bunx varlock run -- swamp …` with a collective API key and the signin token  
+   * issued with it (lets runs pass while swamp-club.com is unreachable), both  
+   * from the dev 1Password environment, never production's. Optional: the app  
+   * never reads them.  
+   * ![icon](data:image/svg+xml;utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20fill%3D%22%23808080%22%20d%3D%22M29%2022h-5a2.003%202.003%200%200%201-2-2v-6a2%202%200%200%201%202-2h5v2h-5v6h5ZM18%2012h-4V8h-2v14h6a2.003%202.003%200%200%200%202-2v-6a2%202%200%200%200-2-2m-4%208v-6h4v6Zm-6-8H3v2h5v2H4a2%202%200%200%200-2%202v2a2%202%200%200%200%202%202h6v-8a2%202%200%200%200-2-2m0%208H4v-2h4Z%22%2F%3E%3C%2Fsvg%3E)   
+   */
+  SWAMP_API_KEY?: string;
+  
+  /**
+   * **SWAMP_SIGNIN_TOKEN** 🔐 _sensitive_  
+   * ![icon](data:image/svg+xml;utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20fill%3D%22%23808080%22%20d%3D%22M29%2022h-5a2.003%202.003%200%200%201-2-2v-6a2%202%200%200%201%202-2h5v2h-5v6h5ZM18%2012h-4V8h-2v14h6a2.003%202.003%200%200%200%202-2v-6a2%202%200%200%200-2-2m-4%208v-6h4v6Zm-6-8H3v2h5v2H4a2%202%200%200%200-2%202v2a2%202%200%200%200%202%202h6v-8a2%202%200%200%200-2-2m0%208H4v-2h4Z%22%2F%3E%3C%2Fsvg%3E)   
+   */
+  SWAMP_SIGNIN_TOKEN?: string;
+  
+  /**
    * **AI_GATEWAY_API_KEY** 🔐 _sensitive_  
    * Vercel AI Gateway — https://vercel.com/docs/ai-gateway — the "Ask AI" second  
    * opinion on a song's tempo, key and time signature (src/lib/server/aiDetect.ts).  
@@ -197,11 +215,11 @@ export type CoercedEnvSchema = {
   
 };
 
-type _CoercedEnvSchema_90c6100c = CoercedEnvSchema;
+type _CoercedEnvSchema_7dccd202 = CoercedEnvSchema;
 
 declare module 'varlock/env' {
-  export interface TypedEnvSchema extends Readonly<_CoercedEnvSchema_90c6100c> {}
-  export interface PublicTypedEnvSchema extends Readonly<Pick<_CoercedEnvSchema_90c6100c, 'VERCEL_ENV' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_GIT_COMMIT_SHA' | 'APP_ENV' | 'BLOB_STORE_ID' | 'BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY' | 'BLOB_PRIVATE_STORE_ID' | 'BLOB_WEBHOOK_PUBLIC_KEY' | 'TURSO_DATABASE_URL' | 'TEXT_TO_BEAT_MODEL' | 'RESEND_MAIL_DOMAIN' | 'KV_REST_API_URL' | 'SHORT_LINK_ORIGIN'>> {}
+  export interface TypedEnvSchema extends Readonly<_CoercedEnvSchema_7dccd202> {}
+  export interface PublicTypedEnvSchema extends Readonly<Pick<_CoercedEnvSchema_7dccd202, 'VERCEL_ENV' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_GIT_COMMIT_SHA' | 'APP_ENV' | 'BLOB_STORE_ID' | 'BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY' | 'BLOB_PRIVATE_STORE_ID' | 'BLOB_WEBHOOK_PUBLIC_KEY' | 'TURSO_DATABASE_URL' | 'TEXT_TO_BEAT_MODEL' | 'RESEND_MAIL_DOMAIN' | 'KV_REST_API_URL' | 'SHORT_LINK_ORIGIN'>> {}
 }
 
 
@@ -211,17 +229,17 @@ export type EnvSchemaAsStrings = {
       : (NonNullable<CoercedEnvSchema[Property]> extends boolean ? ('true' | 'false') : string)
 };
 
-type _EnvSchemaAsStrings_90c6100c = EnvSchemaAsStrings;
+type _EnvSchemaAsStrings_7dccd202 = EnvSchemaAsStrings;
 declare global {
 
   // add types for global import.meta.env
-  interface ImportMetaEnv extends _EnvSchemaAsStrings_90c6100c {}
+  interface ImportMetaEnv extends _EnvSchemaAsStrings_7dccd202 {}
   interface ImportMeta {
     readonly env: ImportMetaEnv;
   }
 
   // add types for global process.env
   namespace NodeJS {
-    interface ProcessEnv extends _EnvSchemaAsStrings_90c6100c {}
+    interface ProcessEnv extends _EnvSchemaAsStrings_7dccd202 {}
   }
 }

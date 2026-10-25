@@ -98,7 +98,11 @@ git push && git push --tags
 
 Pushing `main` deploys to production. Watch the deployment
 (`vercel ls`, `vercel inspect <url>`) and confirm the live pages respond
-before reporting the release as done: `SMOKE_BASE=https://www.stemshovel.com bun run smoke:urls`
-and `SEO_BASE=https://www.stemshovel.com bun run audit:seo` (every page's
-sitemap, robots and noindex state against its intent; a new public page
-that joined only some of the four lists shows up here).
+before reporting the release as done:
+`bunx varlock run -- swamp workflow run site-audit --input stage=production`
+runs the smoke test and the indexability audit together and fails on a
+finding (every page's sitemap, robots and noindex state against its intent;
+a new public page that joined only some of the four lists shows up here),
+keeping the results as data. The scripts alone are
+`SMOKE_BASE=https://www.stemshovel.com bun run smoke:urls` and
+`SEO_BASE=https://www.stemshovel.com bun run audit:seo`.

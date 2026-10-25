@@ -1,0 +1,10 @@
+type: "@kevin/site-audit"
+typeVersion: 2026.10.25.1
+id: 2218eec0-5232-4269-b02a-ef224af2ede0
+name: site-production
+version: 1
+tags: {}
+globalArguments:
+  stage: production
+  base: "https://www.stemshovel.com"
+methods: {}

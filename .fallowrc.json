@@ -36,7 +36,16 @@
 			{ "from": "constants", "allow": ["constants", "val"] }
 		]
 	},
-	"ignorePatterns": [".svelte-kit/**", ".vercel/**", ".screenshots/**", "static/**", "drizzle/**"],
+	// extensions/ holds Swamp behavior types: Deno code with npm: specifiers, run by swamp's own runtime (docs/security.md "Indexability audit").
+	"ignorePatterns": [
+		".svelte-kit/**",
+		".vercel/**",
+		".screenshots/**",
+		"static/**",
+		"drizzle/**",
+		"extensions/**",
+		".swamp/**"
+	],
 	"duplicates": {
 		// Hide pair-only clones; focus on widespread copy-paste
 		// worth refactoring. Lower to 2 to report every duplicate pair.

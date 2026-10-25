@@ -7,6 +7,16 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Swamp, the Swamp Club automation CLI, in a bun project (2026-10-25)
+
+From putting the indexability audit and the smoke test behind `swamp workflow run site-audit` (extensions/behaviors/site_audit.ts, docs/security.md "Through Swamp"):
+
+- **Every command but login and help needs a swamp-club.com credential**, and `swamp auth login` picks the browser/device flow only on a TTY: under Claude Code's `!` runner (no terminal) it demands a username and password, and under `script -qfc` it prints a device code and polls. A collective API key with its signin token (`SWAMP_API_KEY`, `SWAMP_SIGNIN_TOKEN`) is the non-interactive way; here they live in the dev 1Password environment and every swamp command runs as `bunx varlock run -- swamp …`. The auto-mode classifier refused to run the installer (`curl … | sh`); Kevin ran it.
+- **`swamp repo init` prepends a managed section to CLAUDE.md** (rules that redefine "workflow" as a swamp workflow and discourage `command/shell` for wrapping CLI tools), appends a managed block to `.gitignore` (`.swamp/`, `.swamp-sources.yaml`, Claude's local settings files) and copies its skills to `~/.claude/skills/swamp*`, not the repo's. It also creates a `local_encryption` vault under `vaults/` with its key in `.swamp/secrets/` (ignored).
+- **Behavior and workflow YAML must come from `swamp behavior create` / `swamp workflow create --json`**: swamp assigns the ids. Definitions land in `models/<type>/<name>.yaml` (`models/@kevin/site-audit/`), workflows in `workflows/workflow-<name>.yaml`. A `command/shell` definition is "ad-hoc only"; wrapping the repo's scripts went in an extension behavior type (Deno TypeScript with `npm:zod@4`, `Deno.Command("bun", …)`, `context.repoDir` as cwd) that writes typed resources (`context.writeResource`) and a file (`context.createFileWriter(...).writeText`).
+- **Two steps against one definition take turns on its lock** (48 s of waiting in a 55 s run); a fan-out method that runs both scripts under one `Promise.all` is what swamp's own rules ask for. An `assert` step's `expr` is raw CEL, not `${{ … }}` (validate says so); a `message` may interpolate, but a `${{ "Label: " + … }}` holds `: ` and must be quoted in YAML. `data.latest("site-" + inputs.stage, "seo")` concatenates fine; the second argument is the data (instance) name the behavior wrote, not the spec.
+- **The repo's tooling has to leave `extensions/` alone**: Oxlint's type-aware pass reports `Cannot find name 'Deno'` (vite.config.ts `lint.ignorePatterns`), Fallow would chase the `npm:` import (`.fallowrc.json` ignorePatterns), and tsconfig does not include it. `~/.swamp/deno/deno check <file>` is the type check (the path comes from `swamp doctor extensions --json`). Oxfmt formats the YAML swamp wrote (quotes become double); swamp reads it back fine.
+
 ## AI features
 
 - **Correction to the chart-read finding, and the composed-pipeline
