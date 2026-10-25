@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.166.0] - 2026-10-25
+
 ### Fixed
 
 - **The practice amp, the Studio and the converter are indexable** (the audit's first catch): each carried a search title and description and the converter sat in the sitemap, yet all three were noindex, disallowed by robots.txt and matched by the deployment's header rule; they now join every list like the other instrument pages. The Releases page has a meta description, and a doc or blog page no longer renders two `<h1>`s (the body's opening `# Title` is dropped, since the page shows the title itself).
