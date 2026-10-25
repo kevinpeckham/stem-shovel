@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.162.0] - 2026-10-25
+
 ### Added
 
 - **The Studio keeps a copy of each recording on this device.** A song's recordings are cached decoded in the browser's private storage once they have loaded, so reopening a song or bringing back an unloaded recording reads from disk instead of fetching it again, and a fresh take is on disk before its upload finishes. The cache keeps itself within a budget and drops what was used longest ago; the song menu's "Clear the copies on this device" shows what it holds and clears it, and deleting a song drops its copies.
