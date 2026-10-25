@@ -56,6 +56,7 @@ const ROUTES = [
 	["looper", "/looper", [200], [200]],
 	["practice-amp", "/practice-amp", [200], [200]],
 	["multitrack-recorder", "/multitrack-recorder", [200], [200]],
+	["multitrack-recorder/features", "/multitrack-recorder/features", [200], [200]],
 	// The old address: a permanent redirect for everyone (vercel.json on a deployment, 308; src/routes/studio/+server.ts on dev, 301).
 	["studio (server)", "/studio", [301, 308], [301, 308]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
