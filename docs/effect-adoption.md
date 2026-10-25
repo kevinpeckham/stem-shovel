@@ -252,8 +252,11 @@ provoked on dev and seen in Sentry with their tags.
   are untouched, as planned.
 - A consequence to watch: `jobs.ts` (the `schedule*` helpers) and
   `mix.ts` (`mixKeyOf`) are imported by page functions, so Effect is now in
-  their bundles too, deep-imported and bundled. The page cold start is
-  measured below.
+  their bundles too, deep-imported and bundled. Measured on untouched
+  previews (first hit cold, then warm): the releases page 4.84 s → 4.90 s
+  cold, 0.18 s warm both before and after; the jobs function 4.46 s → 4.52
+  s cold, 0.13–0.16 s warm. Both within the run-to-run noise of a cold
+  start, so no measurable cost.
 
 ## Decision record
 
