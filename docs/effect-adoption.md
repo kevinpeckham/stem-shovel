@@ -229,7 +229,7 @@ the way are in FINDINGS.md ("Effect 4 in practice").
 | `mix.test.ts` lines | 148 (pure parsers only) | 297 (plus six behavior cases: happy path, 404 without retry, 503 then 200, hanging ffmpeg killed, failing `setSongMix`, refused claim) |
 | `vi.mock` calls in `mix.test.ts` | 4 | 2 (the data and blob modules, so loading the live layers never reaches `db/index.js` in CI) |
 | Mix chunk, bundled | ‑ | 70 kB minified, 24 kB min+gzip including mix.ts (the server bundle; nothing reaches the client) |
-| Jobs function cold start, untouched preview, `POST /api/jobs` → the app's own 401 | 4.46 s (warm 0.13–0.18 s) | see below |
+| Jobs function cold start, untouched preview, `POST /api/jobs` → the app's own 401 | 4.46 s (warm 0.13–0.18 s) | 4.34 s (warm 0.12–0.17 s): no measurable change, as expected for the function that already carries ffmpeg and tfjs |
 
 Behavior exercised by tests rather than on dev: a stem that 404s fails
 with `BlobError` 404 after no retry, the claim released and the temp dir
