@@ -72,8 +72,10 @@ export default defineConfig({
 	// better-auth is pure ESM but Vercel's file tracer (@vercel/nft) resolves
 	// its package to package.json alone and never copies dist/, so the function
 	// would fail with "Cannot find module 'better-auth'". Bundling it into the
-	// server chunk sidesteps the tracer; its dependencies trace fine.
-	ssr: { noExternal: [/^better-auth(\/|$)/] },
+	// server chunk sidesteps the tracer; its dependencies trace fine. effect
+	// is bundled for speed: loaded file by file from node_modules it costs
+	// about 0.2 s at a cold start, bundled about 18 kB (docs/effect-adoption.md).
+	ssr: { noExternal: [/^better-auth(\/|$)/, /^effect(\/|$)/] },
 	plugins: [
 		// Sentry (docs/environment.md): instruments load functions and, on Vercel
 		// builds only, uploads source maps with SENTRY_AUTH_TOKEN. Before SvelteKit.

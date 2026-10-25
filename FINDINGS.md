@@ -7,6 +7,19 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Effect 4 in practice: the names that differ from v3, and the traps (2026-10-25)
+
+From the pilot in `src/lib/server/mix.ts` and `src/lib/server/effect/` (docs/effect-adoption.md; `effect@4.0.6`, deep imports from `effect/Effect`, `effect/Layer`, …). Model knowledge of Effect leans v3; the installed `node_modules/effect/dist/*.d.ts` is the reference.
+
+- **Names.** `Context.Service` declares a service (not `Context.Tag`); `Effect.catch` (not `catchAll`) and `Effect.void` are exported as `catch_`/`void_` aliases, so `grep "export declare const catch"` finds nothing; `Effect.callback((resume, signal?) => …)` is the callback constructor (no `Effect.async`), and the register function's returned Effect is the interrupt cleanup; the abort `signal` is only passed when the function's `.length >= 2`, which a wrapper breaks. `Effect.retry(self, { schedule, times, while })` is one options object; `Schedule.jittered(Schedule.exponential(base))` exists, `Schedule.both`/`intersect` do not. `Either` is `Result`. `Cause` has `.reasons` (not v3's tree), `Exit.Success` has `.value`.
+- **The timeout error** is `Cause.TimeoutError`, an interface with `_tag: "TimeoutError"`, not a class: match it with `Cause.isTimeoutError` or on `_tag`.
+- **`Data.TaggedError` and `message`.** A `get message()` accessor clashes with `Error`'s own property (TS2611). What works: a constructor that calls `super(args)` and then assigns `this.message`. The base passes only `args.message` to `Error`.
+- **`Effect.tryPromise({ try: (signal) => … })`** aborts the signal on interrupt: pass it to `pipeline(…, { signal })` and a sibling's failure stops the stream.
+- **`runPromise` rejects with `Cause.squash(cause)`**: a tagged error arrives as the same instance (`_tag`, `message`), a defect as the defect. So an edge function needs no `catchCause` to hand a throw to Sentry.
+- **Interruption counts as `Exit.isFailure`** in an `acquireRelease` release, so a release guarded on failure also runs on a timeout. Wanted here (the claim is released), worth knowing elsewhere.
+- **Cost measured.** Bundled into the jobs function (`ssr.noExternal`), the mix chunk is 298 kB before minifying (Effect ships its JSDoc), 70 kB minified, 24 kB minified+gzip including mix.ts, against the 7 kB minimal / 18 kB typical figures from a Rollup measurement. Vercel's tracer still copies a 16 kB `node_modules/effect` (package.json and `ai-docs/`, no dist) into every function. `node_modules/effect` is 58 MB on disk.
+- **A retry's `while` predicate decides what "transient" means.** The first draft retried every thrown read, including the blob module's own refusal of a URL outside our stores; a status of 5xx, a `TypeError` (undici's "fetch failed") or a system error with a string `code` is the rule now.
+
 ## Fallow's `$effect` findings in Svelte files land on the wrong line (2026-10-25)
 
 From turning the `svelte-effect-last-resort` rule pack rule into a gate (fallow 3.34.1, `bunx fallow audit`):

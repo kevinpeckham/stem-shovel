@@ -212,6 +212,37 @@ functions and routes never see Effect.
   a remote function grows an orchestration (several external calls with
   compensation) that the pipeline's helpers would serve.
 
+## Pilot results (filled in as they come)
+
+Phase 0 landed on 2026-10-25 (commit 4794540): failures in background work
+and in one id of a job reach Sentry tagged with the job kind, every job
+loop continues past a bad id, every ffmpeg run has a 240 s bound.
+
+The pilot landed the same day: `src/lib/server/effect/` (errors, services,
+runtime, `runJob`; 221 lines plus a 61-line service test) and `mix.ts`
+inside Effect behind its unchanged exports. The v4 names and traps met on
+the way are in FINDINGS.md ("Effect 4 in practice").
+
+| Measure | Before | After |
+|---|---|---|
+| `mix.ts` lines | 249 | 351 (plus the 221-line foundation, shared from here on) |
+| `mix.test.ts` lines | 148 (pure parsers only) | 297 (plus six behavior cases: happy path, 404 without retry, 503 then 200, hanging ffmpeg killed, failing `setSongMix`, refused claim) |
+| `vi.mock` calls in `mix.test.ts` | 4 | 2 (the data and blob modules, so loading the live layers never reaches `db/index.js` in CI) |
+| Mix chunk, bundled | ‑ | 70 kB minified, 24 kB min+gzip including mix.ts (the server bundle; nothing reaches the client) |
+| Jobs function cold start, untouched preview, `POST /api/jobs` → the app's own 401 | 4.46 s (warm 0.13–0.18 s) | see below |
+
+Behavior exercised by tests rather than on dev: a stem that 404s fails
+with `BlobError` 404 after no retry, the claim released and the temp dir
+gone; an ffmpeg that never ends is killed at the timeout (a real ffmpeg in
+the service test, checked with `pgrep`); a failing `setSongMix` is a
+`DbError` with the claim released.
+
+Still to do for the evaluation: Kevin reads the new `mix.ts` cold (the
+decisive criterion); two weeks on dev and staging; the three failure modes
+provoked on dev and seen in Sentry with their tags.
+
 ## Decision record
 
-- 2026-10-25: proposed. Awaiting Kevin's call on Phase 0 and the pilot.
+- 2026-10-25: proposed; Kevin: "go ahead with Phase 0 and start the
+  pilot". Both landed the same day. Go/no-go on Phase 2 after the
+  evaluation.
