@@ -8,9 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.167.0] - 2026-10-25
+
 ### Changed
 
 - **Built with** lists what it left out: Swamp, Bun, WebCodecs, mediabunny and LAME, the Origin Private File System, Cache Storage, the Screen Wake Lock, client-zip, the DAW project formats, Vercel's firewall, and the CI tools by name.
+
+### Fixed
+
+- **One failed file no longer holds up its batch.** When a stem, demo, mix or recording fails to render, the others in the same batch still get their playback renditions, mixes and notes.
 
 ### Technical
 
