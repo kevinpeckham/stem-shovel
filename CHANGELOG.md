@@ -14,6 +14,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **A Links page** (Kevin): **Links** under your settings lists every short link you have made, where it goes, how often and when last it was opened, with **Copy** and **Revoke** on each.
 - **Custom addresses for short links** (Kevin): a word of your choosing in place of the random code (`shvl.me/our-set-list`), three to thirty-two lowercase letters, digits and hyphens, first come first served, for a link you will say aloud; the old code stops working once a link has one.
 
+### Fixed
+
+- **Page titles on the settings, admin, docs, blog, invite and password pages** were plain body text: their heading carried a class the stylesheet never defined; they now use the page heading every other page has (`app-page-heading`).
+
 ### Technical
 
 - `copyShortLink` (utils) over `shortenShareLink`, whose kind is now `ShortLinkKind` with a new `studio` kind; `/settings/links`, `listShortLinksOf`, `revokeShortLink`, `setShortLinkSlug`, `ShortLinkSlugSchema` and `SHORT_LINK_RESERVED_SLUGS`; the resolver, the short-domain route and `resolveShortLink` take a code or a slug (a slug lowercased after an exact miss). No migration: a slug lives in the `code` column.

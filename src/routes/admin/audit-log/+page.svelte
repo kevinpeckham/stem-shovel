@@ -10,7 +10,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Audit log</h1>
+	<h1 class="app-page-heading">Audit log</h1>
 	<p class="mt-1 text-sm opacity-90">
 		Every request a super admin made inside an account they do not belong to (latest 50). Super
 		admins are made with <code>bun run db:super-admin</code>.

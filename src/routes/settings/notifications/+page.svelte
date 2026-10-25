@@ -20,7 +20,7 @@
 
 <main class="page">
 	<header class="max-w-article">
-		<h1 class="display">Notifications</h1>
+		<h1 class="app-page-heading">Notifications</h1>
 		<p class="opacity-90 text-balance">
 			Everything lands in your <a class="link-dim" href="/inbox">inbox</a>. Choose what also reaches
 			your email, and whether at once or in a summary.

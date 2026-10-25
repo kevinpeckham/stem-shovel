@@ -37,7 +37,7 @@
 
 <main class="page min-h-screen">
 	<header class="max-w-article">
-		<h1 class="display">Choose a new password</h1>
+		<h1 class="app-page-heading">Choose a new password</h1>
 	</header>
 	{#if expired || !token}
 		<section class="max-w-sm surface px-5 py-4">

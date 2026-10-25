@@ -21,7 +21,7 @@
 		<a class="block mb-3 text-sm link-dim" href="/blog">← Blog</a>
 		<header class="mb-4 flex flex-wrap items-baseline justify-between gap-4">
 			<div>
-				<h1 class="display">{data.post.title}</h1>
+				<h1 class="app-page-heading">{data.post.title}</h1>
 				<p class="mt-1 text-13px text-dim">
 					{#if data.post.publishedAt}
 						<time datetime={data.post.publishedAt.toISOString()}

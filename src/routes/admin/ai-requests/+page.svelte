@@ -10,7 +10,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">AI requests</h1>
+	<h1 class="app-page-heading">AI requests</h1>
 	<p class="mt-1 text-sm opacity-90">
 		The last 50 calls to the model (the text sent, the reply, whether it parsed, time and tokens).
 		The audio itself is not kept.

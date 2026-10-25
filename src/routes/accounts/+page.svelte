@@ -21,7 +21,7 @@
 <main class="page">
 	<header class="flex flex-wrap items-baseline justify-between gap-4 max-w-article">
 		<div>
-			<h1 class="display">Your accounts</h1>
+			<h1 class="app-page-heading">Your accounts</h1>
 			<p class="opacity-90">Every workspace you belong to, and your role in each.</p>
 		</div>
 		{#if data.accounts.length > 0}

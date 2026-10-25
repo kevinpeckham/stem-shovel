@@ -12,7 +12,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Users</h1>
+	<h1 class="app-page-heading">Users</h1>
 	<ul class="surface divide-y divide-white/10 text-15px">
 		{#each data.users as u (u.id)}
 			{@const act = manageUser.for(u.id)}

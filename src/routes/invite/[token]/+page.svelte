@@ -12,7 +12,7 @@
 
 <main class="page min-h-screen">
 	<header class="max-w-article">
-		<h1 class="display">
+		<h1 class="app-page-heading">
 			{data.status === "open"
 				? data.project
 					? `Listen to ${data.project.name}`

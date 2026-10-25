@@ -13,7 +13,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Playback</h1>
+	<h1 class="app-page-heading">Playback</h1>
 	<p class="mt-1 text-sm opacity-90">
 		How the stem player holds a song. Buffered keeps every stem decoded in memory, which is instant
 		but weighs about 60 MB per four-minute stereo stem. Streamed decodes a window around the

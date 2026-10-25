@@ -77,7 +77,7 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
 - **Styling is UnoCSS only**: utilities and the shortcuts inline in
   `uno.config.ts` (no stylesheets, no `<style>`, no abstraction of the config
   into modules). Follow lj-website for page structure (`page` wrapper,
-  `display` title, `heading-2` sections) and replicator's `article-body`
+  `app-page-heading` title, `heading-2` sections) and replicator's `article-body`
   idiom for rendered-markdown typography (`chart-body`). Icons are Phosphor
   via `presetIcons` (`i-ph-…`). Classes used in `src/app.html` must be
   safelisted.

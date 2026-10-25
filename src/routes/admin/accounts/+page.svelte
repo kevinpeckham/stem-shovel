@@ -15,7 +15,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Accounts</h1>
+	<h1 class="app-page-heading">Accounts</h1>
 	<ul class="surface divide-y divide-white/10 text-15px">
 		{#each data.accounts as a (a.id)}
 			{@const act = manageAccount.for(a.id)}

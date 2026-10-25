@@ -10,7 +10,7 @@
 	<title>{pageTitle("Drum kits")}</title>
 </svelte:head>
 
-<h1 class="display">Drum kits</h1>
+<h1 class="app-page-heading">Drum kits</h1>
 <p class="mt-2 max-w-prose opacity-90">
 	The site's kits: what every visitor finds in the drum machine's Kit menu. Acoustic and Room are
 	the built-in kits: replace any of their drums with a one-shot of your own and the built-in file

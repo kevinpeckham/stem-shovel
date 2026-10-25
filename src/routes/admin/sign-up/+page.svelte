@@ -13,7 +13,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Sign-up</h1>
+	<h1 class="app-page-heading">Sign-up</h1>
 	<p class="mt-1 text-sm opacity-90">
 		Open: anyone creates a free account from Sign up, and the site says so (no waitlist anywhere).
 		Invitation-only: a newcomer needs an invitation or an invite code, and the front page, the

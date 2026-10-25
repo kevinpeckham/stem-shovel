@@ -19,7 +19,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Waitlist</h1>
+	<h1 class="app-page-heading">Waitlist</h1>
 	<p class="mt-1 text-sm opacity-90">
 		{counts.confirmed} confirmed · {counts.pending} waiting for confirmation · {counts.invited} invited
 		· {counts.updates} said yes to project updates. "Invite" makes a single-use new-account code (30 days)

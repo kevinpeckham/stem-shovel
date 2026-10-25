@@ -62,7 +62,7 @@
 <section class="grid gap-6">
 	<div>
 		<a class="link-dim text-13px" href="/admin/users">← Users</a>
-		<h1 class="display mt-1 mb-0">{u.name}</h1>
+		<h1 class="app-page-heading mt-1 mb-0">{u.name}</h1>
 		<p class="text-dim">
 			{u.email} ·
 			<span class="uppercase tracking-wider text-13px">

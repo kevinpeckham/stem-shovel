@@ -10,7 +10,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Bug reports</h1>
+	<h1 class="app-page-heading">Bug reports</h1>
 	<p class="mt-1 mb-4 text-sm opacity-90">
 		What signed-in users sent from the footer's Report a bug, newest first, open ones before closed.
 	</p>

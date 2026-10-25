@@ -18,7 +18,7 @@
 
 <main class="page">
 	<header class="max-w-article">
-		<h1 class="display">Links</h1>
+		<h1 class="app-page-heading">Links</h1>
 		<p class="opacity-90 text-balance">
 			A short link is a brief address that stands for a long one, so a share link with all its
 			settings fits in a message. Each one you make while signed in is kept here and never expires;

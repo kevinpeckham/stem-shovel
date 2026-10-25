@@ -36,7 +36,7 @@
 
 	<article class="min-w-0 max-w-article">
 		<header class="mb-4 flex flex-wrap items-baseline justify-between gap-4">
-			<h1 class="display">{data.doc.title}</h1>
+			<h1 class="app-page-heading">{data.doc.title}</h1>
 			{#if data.canEdit}
 				<div class="flex items-center gap-2">
 					<a class="button button-sm" href="/docs/{data.doc.slug}/edit">

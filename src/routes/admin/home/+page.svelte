@@ -47,7 +47,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Home page</h1>
+	<h1 class="app-page-heading">Home page</h1>
 	<p class="mt-1 text-sm opacity-90">
 		The front page demos one song: its player with the downloads, and its chart, lyrics, notes and
 		comments. Any public song with stems can be featured; when none is chosen, or the chosen one

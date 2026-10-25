@@ -12,7 +12,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">Support requests</h1>
+	<h1 class="app-page-heading">Support requests</h1>
 	<p class="mt-1 mb-4 text-sm opacity-90">
 		What people sent from /support, newest first, open ones before closed. "challenge" means a
 		visitor proved the email by picking their account out of the line-up; "signed-in" means a

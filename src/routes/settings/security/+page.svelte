@@ -162,7 +162,7 @@
 
 <main class="page">
 	<header class="max-w-article">
-		<h1 class="display">Security</h1>
+		<h1 class="app-page-heading">Security</h1>
 		<p class="opacity-90">Your own sign-in, across every account you belong to.</p>
 	</header>
 

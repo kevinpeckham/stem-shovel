@@ -53,7 +53,7 @@
 
 <main class="page">
 	<header class="max-w-article">
-		<h1 class="display">Settings</h1>
+		<h1 class="app-page-heading">Settings</h1>
 		<p class="flex flex-wrap items-center gap-3 opacity-90">
 			The account everything here belongs to.
 			<PlanBadge

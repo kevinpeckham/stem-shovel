@@ -30,7 +30,7 @@
 
 <main class="page min-h-screen">
 	<header class="max-w-article">
-		<h1 class="display">Forgot password</h1>
+		<h1 class="app-page-heading">Forgot password</h1>
 		<p class="opacity-90">We will email you a link to choose a new one.</p>
 	</header>
 	{#if sent}

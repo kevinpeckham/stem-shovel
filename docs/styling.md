@@ -4,7 +4,7 @@ The look is lightningjar.com's. `uno.config.ts` mirrors
 lightning-jar/lj-website's config: wind4 with its reset, Atkinson Hyperlegible
 and Bungee Shade from bunny, the same palette and shortcuts (`button`,
 `button-accent`, `page-x-padding`, `main-y-padding`, `max-w-article`,
-`display`, `heading-2`), Phosphor icons via `presetIcons` (`i-ph-…`,
+`app-page-heading`, `heading-2`), Phosphor icons via `presetIcons` (`i-ph-…`,
 `@iconify-json/ph`), and `@unocss/extractor-svelte`.
 
 Rules:
@@ -18,7 +18,7 @@ Rules:
   direct-child selectors (`[&>h2]:(…)`) plus sibling rules for rhythm
   (`[&>p_+p]:mt-3`). Comments inside a shortcut go between the array's
   strings, which are `.join(" ")`ed.
-- **Page structure follows lj-website**: a `page` wrapper, a `display` title,
+- **Page structure follows lj-website**: a `page` wrapper, an `app-page-heading` title,
   `heading-2` sections, `max-w-article` for prose.
 - **Semantic tokens** (`bg-panel`, `bg-row`, `text-dim`, `border-line`,
   `bg-playhead`, `bg-solo`, `text-wave`, `text-waveDim`) are defined with the

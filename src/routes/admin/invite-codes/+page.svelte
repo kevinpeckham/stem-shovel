@@ -26,7 +26,7 @@
 </svelte:head>
 
 <section>
-	<h1 class="display">New-account invite codes</h1>
+	<h1 class="app-page-heading">New-account invite codes</h1>
 	<p class="mt-1 text-sm opacity-90">
 		{#if data.signUpOpen}
 			Sign-up is open, so a newcomer needs no code to create an account; a code from here still
