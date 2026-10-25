@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.165.1] - 2026-10-25
+
 ### Fixed
 
 - **The Dawn features page is crawlable**: it was in the sitemap but still carried the app's noindex header and was disallowed by robots.txt; both lists now allow it (docs/security.md names the four lists a public page joins).
