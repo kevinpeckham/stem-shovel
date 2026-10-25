@@ -202,12 +202,15 @@ default for `-create` is already self), and SvelteKit's CSP with a per-request s
 (docs/environment.md). Search engines get the front page, the user docs
 (`/docs`, each page, not the editors), the blog (`/blog`, each published
 post; a draft carries noindex and is a 404 to everyone but a system admin),
-the Releases page, the tuner, the pricing page and the built-with page (`src/lib/utils/isIndexablePath.ts`): every other path carries
+the Releases page, the instrument and tool pages (tuner, metronome, drum machine, piano, chord player, looper), the Dawn features page, the pricing page and the built-with page (`src/lib/utils/isIndexablePath.ts`): every other path carries
 `X-Robots-Tag: noindex, nofollow, noarchive` (the hook, and vercel.json's
 rule for static files) and a matching robots meta from the root layout;
 `robots.txt` allows those paths alone and points at `sitemap.xml`, which
 lists them with each doc page's last change. Doc pages carry a meta
-description from their first paragraph.
+description from their first paragraph. A new public page joins four
+lists, or it stays hidden: `isIndexablePath`, the `robots.txt` route,
+vercel.json's `X-Robots-Tag` rule and `sitemap.xml` (the Dawn features
+page shipped in v0.165.0 with only the first and last of them).
 
 ## Error reports
 
