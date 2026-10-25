@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.168.0] - 2026-10-25
+
+### Fixed
+
+- **Text-to-Beat and Text-to-Progression no longer hang.** A request to the model that gets no answer gives up after a minute and says so, and a momentary gateway failure is retried once.
+- **A notification email is never sent twice.** The digest and the single notification emails record the send before it goes, so a hiccup after sending cannot repeat it.
+- **A converter or export that stalls now fails cleanly** with a message instead of running until the server stops it.
+
 ### Technical
 
 - **Phase 2 of the Effect plan, steps 2, 3 and 5** (docs/effect-adoption.md; Phase 2 complete): `notes.ts`, `notationPdf.ts` and `dawprojectExport.ts` run inside Effect behind their unchanged exports (the notes lock released on failure or interruption, the tonalness decodes two at a time, the TensorFlow child killed on timeout, the PDF status set to failed with the error still reaching Sentry, the export's user-facing failure text covering a timeout; each with a behavior test); the jobs route's `switch` is a table (`runners.ts`, `satisfies Record<JobKind, …>` plus a test that every kind has a runner) and the dispatch to `/api/jobs` runs under a 10 s timeout with one retry on a 5xx, a network error or a timeout (`effect/dispatch.ts`); the digest and the per-notification email mark first and undo on failure (`effect/mail.ts`: `markedUntilFailure`, a 20 s send timeout, never a retry), and the digest stops starting people after 240 s with the remainder logged for the next run, each person under 30 s, a failure reported and skipped.
