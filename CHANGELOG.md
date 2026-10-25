@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.164.0] - 2026-10-25
+
 ### Added
 
 - **Short links for songs, projects and Studio songs** (Kevin): a link button in a song page's and a project page's header, and **Copy link to this song** in the Studio's song menu, copy a short link (shvl.me in production) to the page, as the instruments' Copy link already did; a song's or project's link is the page without its query, so a viewing code never travels along.
