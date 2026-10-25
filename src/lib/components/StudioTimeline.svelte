@@ -710,8 +710,8 @@
 		// Keep the second under the pointer where it is.
 		scroller.scrollLeft = t * next - (e.clientX - rect.left - HEADER_W);
 	}
-	// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/svelte-effect-last-resort -- scrolls the container as the engine's clock moves, which no handler sees
 	// Keep the playhead in view while the transport runs.
+	// why $effect: scrolls the container as the engine's clock moves, which no handler sees
 	$effect(() => {
 		const x = playheadX;
 		if (!scroller || !engine.running) return;
@@ -851,6 +851,7 @@
 			if (sc) ro.observe(sc);
 			if (canvas.parentElement) ro.observe(canvas.parentElement);
 			// A source that decodes after the clip mounted redraws it; so does a change of the track's tint (the canvas's color).
+			// why $effect: redraws the clip's canvas when its source decodes, a warp lands or its track's tint changes: a canvas is drawn, not derived
 			$effect(() => {
 				void (clip.sourceId && engine.sources[clip.sourceId]?.status);
 				void engine.decoding;
@@ -911,6 +912,7 @@
 			draw();
 			const ro = new ResizeObserver(draw);
 			ro.observe(canvas);
+			// why $effect: redraws the MIDI clip's roll on a zoom, a note change or a tint change (canvas)
 			$effect(() => {
 				void clip.notes?.length;
 				void pxPerSecond;
@@ -945,6 +947,7 @@
 					getComputedStyle(canvas).color,
 				);
 			};
+			// why $effect: redraws the live MIDI take as notes land (canvas, the engine's ticks)
 			$effect(() => {
 				void engine.liveTick;
 				void pxPerSecond;
@@ -983,6 +986,7 @@
 					g.fillRect(x, mid - amp, 1, Math.max(1, amp * 2));
 				}
 			};
+			// why $effect: redraws the live take's peaks as chunks land (canvas, the engine's ticks)
 			$effect(() => {
 				void engine.liveTick;
 				void pxPerSecond;

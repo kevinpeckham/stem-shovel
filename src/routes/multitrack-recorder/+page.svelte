@@ -380,8 +380,8 @@
 			void amp.setOn(false);
 		};
 	});
-	// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/svelte-effect-last-resort -- the zoom is bound into the timeline, which changes it from the wheel; this remembers it
 	// The zoom is remembered per browser.
+	// why $effect: the zoom is bound into the timeline, which changes it from the wheel; this remembers it
 	$effect(() => {
 		try {
 			localStorage.setItem("stemshovel.studio.zoom", String(Math.round(pxPerSecond)));
@@ -494,6 +494,7 @@
 		},
 		notify: (message, opts) => notify(message, opts),
 	});
+	// why $effect: schedules the debounced autosave when the engine turns dirty: the engine is state outside the component, dirtied from many places
 	$effect(() => {
 		if (!studio.dirty) return;
 		// Debounced: a burst of edits saves once, a second and a half after the last.
@@ -1514,6 +1515,7 @@
 				kind: "error",
 			});
 	}
+	// why $effect: keeps the engine's tempo on the session tempo the metronome panel sets: two engines, both outside the component
 	$effect(() => {
 		// The session tempo follows the song's (the metronome panel shows and sets it).
 		const bpm = metronome.bpm;

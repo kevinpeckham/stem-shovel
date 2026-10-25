@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Built with** lists what it left out: Swamp, Bun, WebCodecs, mediabunny and LAME, the Origin Private File System, Cache Storage, the Screen Wake Lock, client-zip, the DAW project formats, Vercel's firewall, and the CI tools by name.
+
+### Technical
+
+- **The $effect audit** (Kevin: are our effects defensible?): the 31 `$effect` calls were reviewed; 26 are real side effects (canvas redraws, the audio engines and woof-editor, timers, the popover API, localStorage, teardowns) and now each carries a `// why $effect: <which>` comment on the line before it; 5 were derived state in an effect and are gone: SongDocPanel's `savedVersion` is a writable `$derived(version)`, its unused `dirty` prop and its `saving` prop went (the song page derives `docSaving` from the shared remote form), the accounts page opens its panel from an attachment, the projects page clears its form in `onMount`. The Fallow rule covers `$effect.root` and carries the ladder in its message, but stays a warning: Fallow 3.34 reports a Svelte file's `$effect` calls on the wrong line (one per file), so its suppressions cannot carry the rationale; `src/lib/utils/effectCallSites.ts` with a test that fails `bun run test` on a call without one; `bun run audit:effects` lists every site; the Swamp type `@kevin/repo-audit` (behavior `repo`, workflow `code-audit`) runs it and keeps the count (docs/testing.md "The $effect audit").
+
 ## [0.166.0] - 2026-10-25
 
 ### Fixed

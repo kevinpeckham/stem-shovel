@@ -5,7 +5,6 @@
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
 	import { refreshAll } from "$app/navigation";
 	import type { Snippet } from "svelte";
-	import { untrack } from "svelte";
 
 	/**
 	 * One song document (chart, lyrics or notes) in the documents panel:
@@ -28,14 +27,10 @@
 		version: number;
 		canEdit: boolean;
 		editing?: boolean;
-		/** Unsaved edits in the editor; the page asks before switching documents. */
-		dirty?: boolean;
 		/** Rendered above the document, e.g. an AI draft. */
 		above?: Snippet;
 		/** The editor pane to show while editing; the page's panel menu sets it. */
 		view?: "rendered" | "markdown";
-		/** A save is in flight (the page shows it on its check button). */
-		saving?: boolean;
 		/** Monospace in every view (chord grids line up); the page's panel menu toggles it. */
 		mono?: boolean;
 		/** Keep the text on the page instead of saving it (the front page's demo): called with the markdown on every save. */
@@ -52,29 +47,19 @@
 		version,
 		canEdit,
 		editing = $bindable(false),
-		dirty = $bindable(false),
 		above,
 		view = "rendered",
-		saving = $bindable(false),
 		mono = false,
 		onlocalsave,
 	}: Props = $props();
 
 	const fields = saveDoc.fields;
 	let editor = $state<MarkdownEditorState | null>(null);
-	let savedVersion = $state(untrack(() => version));
+	/** The version the editor works from: the prop's, until a save here moves it on (a writable derived: a new prop value wins again). */
+	let savedVersion = $derived(version);
 	let confirmEmpty = $state(false);
 	let saveError = $state<string | null>(null);
 	let formEl = $state<HTMLFormElement | null>(null);
-	$effect(() => {
-		dirty = !!editor?.hasEdits;
-	});
-	$effect(() => {
-		saving = !!saveDoc.pending;
-	});
-	$effect(() => {
-		savedVersion = version;
-	});
 
 	// close() waits for the save it starts; the resolver is kept until that
 	// save reports back.

@@ -58,6 +58,43 @@ address bypasses the firewall's bot challenge (docs/security.md).
 runs this and the indexability audit together and keeps both results
 (docs/security.md "Through Swamp").
 
+## The $effect audit
+
+Svelte's `$effect` is an escape hatch, and the reflex to write one
+whenever state changes (React's `useEffect`, and the training data it
+left behind) costs an extra update pass per write, loses `$derived`'s
+laziness, and invites ordering races and loops (Kevin's
+[The $effect trap](https://www.lightningjar.com/blog/the-effect-trap-why-svelte-s-escape-hatch-gets-overused)).
+So every `$effect`, `$effect.pre` and `$effect.root` in a component must
+be a real side effect and say which, in a comment alone on the line
+directly before it:
+
+    // why $effect: redraws the canvas when the peaks or the size change
+    $effect(() => { … });
+
+The ladder, top first: `$derived` (writable since Svelte 5.25, so a value
+a save moves on until the prop changes again is `let v = $derived(prop)`)
+for anything computable from other state; a function binding for linked
+inputs; `{@attach}` for element-scoped DOM work (and an effect inside an
+attachment for a canvas redraw); `<svelte:window>` and `<svelte:document>`
+for global listeners; prop-seeded state plus `{#key}` for drafts a server
+value resets; `onMount` for one imperative thing at mount. What remains
+is a side effect: a canvas, an engine or a library outside the component,
+a timer, the popover API, a localStorage write, a teardown.
+
+Three things check it. The test beside `src/lib/utils/effectCallSites.ts`
+is the gate: `bun run test` fails on a call without a rationale. `bun run
+audit:effects` lists every site with its reason, so the whole set can be
+read again (the 2026-10-25 review: 31 sites, 26 real side effects, 5
+converted); `--json <file>` writes it, and the Swamp behavior `repo` runs
+it as `swamp workflow run code-audit` (docs/security.md "Through Swamp"
+for the setup). The Fallow rule `svelte-effect-last-resort`
+(fallow-rules.json) is a reminder at `warn`, with the ladder in its
+message: Fallow 3.34 reports a Svelte file's `$effect` calls on the wrong
+line and one per file, so its `fallow-ignore-next-line` suppressions never
+match them (FINDINGS.md), which is why the rationale is our own comment
+and the gate is the test.
+
 Vitest, bundled with Vite+ (`vp test`), in two projects configured in
 `vite.config.ts` — replicator's split, with Vitest for both halves:
 

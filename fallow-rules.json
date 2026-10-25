@@ -36,8 +36,8 @@
 			"kind": "banned-call",
 			"severity": "warn",
 			"files": ["src/**/*.svelte", "src/**/*.svelte.ts"],
-			"callees": ["$effect", "$effect.pre"],
-			"message": "$effect is a last resort: $derived for computed values, event handlers for reactions to input, {@attach} for DOM work (svelte core best practices)."
+			"callees": ["$effect", "$effect.pre", "$effect.root"],
+			"message": "$effect is a last resort: $derived (writable since 5.25) for anything computable from other state, function bindings for linked inputs, {@attach} for element-scoped DOM work, <svelte:window>/<svelte:document> for global listeners, prop-seeded state plus {#key} for drafts a server value resets. A real side effect (canvas, an external engine or library, a timer, the popover API) keeps its $effect with a `// why $effect: <which>` comment on the line before it; the test beside src/lib/utils/effectCallSites.ts gates on it and `bun run audit:effects` lists every site (docs/testing.md \"The $effect audit\"). This Fallow finding is a reminder: Fallow 3.34 misplaces a Svelte file's $effect lines, so its own suppressions do not apply here."
 		},
 		{
 			"id": "no-raw-global-listeners",

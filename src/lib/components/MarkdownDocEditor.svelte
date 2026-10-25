@@ -80,6 +80,7 @@
 	// Post-save `update()` re-runs load with the same document, so re-seeding
 	// on every `data` change would stomp live editor state (replicator learned
 	// this the hard way). markAsSaved() is the post-save sync.
+	// why $effect: re-seeds the woof-editor instance when a different document arrives: an external library, and a post-save refresh must not stomp live edits
 	$effect(() => {
 		const key = docKey;
 		const md = markdown;
@@ -99,6 +100,7 @@
 	// plain writes to markdownCurrent, so debounce them into the same history
 	// (skipping writes that came from the WYSIWYG or from undo/redo).
 	let historyTimer: ReturnType<typeof setTimeout> | null = null;
+	// why $effect: folds textarea edits into the WYSIWYG's undo history on a debounce (a timer)
 	$effect(() => {
 		if (!editor) return;
 		const md = editor.markdownCurrent;
@@ -120,6 +122,7 @@
 	const AUTOSAVE_MS = 1500;
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 	let empty = $derived(!editor?.markdownCurrent.trim());
+	// why $effect: the autosave timer: a save AUTOSAVE_MS after the last edit
 	$effect(() => {
 		if (!embedded || !editor) return;
 		void editor.markdownCurrent;

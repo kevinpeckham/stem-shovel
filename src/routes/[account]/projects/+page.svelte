@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { onMount } from "svelte";
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { createProject } from "#lib/remote/projects.remote.js";
@@ -21,7 +22,7 @@
 
 	// The form keeps the last name across navigations (it redirects to the
 	// new project); start each visit empty.
-	$effect(() => clearForm(createProject));
+	onMount(() => clearForm(createProject));
 </script>
 
 <svelte:head>

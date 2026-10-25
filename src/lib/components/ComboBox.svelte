@@ -90,6 +90,7 @@
 	}
 
 	// Parent -> popover: bind:openState opens or closes it; a matching state does nothing.
+	// why $effect: drives the popover API from bind:openState; showing goes through the invoker's click so the anchor holds (a DOM boundary)
 	$effect(() => {
 		if (!popoverEl) return;
 		if (openState === "open" && !actuallyOpen) open();
@@ -97,6 +98,7 @@
 	});
 
 	// Remove fallback listeners if the component unmounts while open
+	// why $effect: removes the placement fallback's listeners on unmount
 	$effect(() => () => stopFallback?.());
 
 	/// Before opening: start the highlight on the current selection.

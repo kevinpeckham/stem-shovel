@@ -1,0 +1,9 @@
+type: "@kevin/repo-audit"
+typeVersion: 2026.10.25.1
+id: 1bdd5021-b875-4d57-a724-4c316bac0dcb
+name: repo
+version: 1
+tags: {}
+globalArguments:
+  label: stem-shovel
+methods: {}

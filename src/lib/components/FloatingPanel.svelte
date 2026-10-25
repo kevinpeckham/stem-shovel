@@ -99,7 +99,7 @@
 		x = Math.max(8, Math.min(window.innerWidth - 120, x));
 		y = Math.max(8, Math.min(window.innerHeight - 48, y));
 	}
-	// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/svelte-effect-last-resort -- the place is read from storage and clamped to the viewport the moment the panel opens, which the `open` prop drives from the page
+	// why $effect: the place is read from storage and clamped to the viewport the moment the panel opens, which the `open` prop drives from the page
 	$effect(() => {
 		if (open && !placed) {
 			placed = true;

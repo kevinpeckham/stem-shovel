@@ -43,6 +43,7 @@
 	const roll: Attachment<HTMLCanvasElement> = (canvas) => {
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
+		// why $effect: the redraw inside the canvas attachment: tracks the notes, the range and the size, then draws (canvas)
 		$effect(() => {
 			if (width === 0 || height === 0) return;
 			draw(canvas, ctx, notes, lowest, highest, songDuration, dimmed, width, height);

@@ -167,6 +167,7 @@
 	// Tempo synced both ways (Kevin): the session tempo (the metronome's, which the drums and the chord player follow and
 	// set from their own controls) becomes the loop's while the loop has no layers; with layers the loop's tempo is fixed
 	// and the session is held to it. An effect because the engines are state outside this component.
+	// why $effect: keeps the loop's and the session's tempo in step both ways: two engines outside the component
 	$effect(() => {
 		const theirs = metronome.bpm;
 		if (theirs === looper.bpm) return;

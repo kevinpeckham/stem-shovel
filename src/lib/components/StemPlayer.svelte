@@ -173,6 +173,7 @@
 	// untrack() — otherwise they would become dependencies and re-run the
 	// effect mid-decode. The teardown releases the context on navigation away.
 	let loadedKeys = new Map<string, string>(); // id → url of what the engine holds
+	// why $effect: loads, relabels or removes the engine's stems as the manifest changes: the engine is an external system, and a same-stems refresh must not re-decode
 	$effect(() => {
 		const stems = manifest.stems;
 		untrack(() => {
@@ -200,6 +201,7 @@
 	});
 	// Persist the listener's mix as it changes (nothing stored when it equals the default).
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
+	// why $effect: persists the listener's mix to localStorage, debounced, as the engine's faders move
 	$effect(() => {
 		if (!songId) return;
 		const id = songId;
@@ -210,6 +212,7 @@
 			saveTimer = setTimeout(() => saveLocalMix(id, snapshot), 300);
 		});
 	});
+	// why $effect: disposes the audio engine and the click when the player leaves the page
 	$effect(() => () => {
 		click.dispose();
 		engine.dispose();

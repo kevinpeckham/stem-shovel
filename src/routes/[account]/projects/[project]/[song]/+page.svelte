@@ -113,27 +113,28 @@
 		uploadStemFile,
 	} from "#lib/upload.js";
 	import {
+		addSongCredit,
+		askAiAboutSong,
 		deleteDemo,
-		removeDemoById,
 		deleteSong,
 		deleteStem,
-		removeStemMidi,
-		renameStem,
-		setStemTint,
-		reorderStems,
-		askAiAboutSong,
 		detectSections,
 		draftChart,
-		songNotes,
-		saveChartDraft,
+		removeDemoById,
+		removeSongCredit,
+		removeStemMidi,
+		renameStem,
+		reorderStems,
 		saveChanges,
+		saveChartDraft,
+		saveDefaultMix,
+		saveDoc,
 		saveSections,
 		setSongVersion,
+		setStemTint,
 		shareSong,
+		songNotes,
 		updateSong,
-		saveDefaultMix,
-		addSongCredit,
-		removeSongCredit,
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
@@ -875,7 +876,8 @@
 	let downloadsMenuEl = $state<HTMLDetailsElement | null>(null);
 	/** The editor pane while editing in the panel, chosen in that menu. */
 	let docView = $state<"rendered" | "markdown">("rendered");
-	let docSaving = $state(false);
+	/** A document save in flight (the panel saves through the shared remote form). */
+	const docSaving = $derived(!!saveDoc.pending);
 	const DOC_VIEWS = [
 		{ id: "rendered", name: "Rich Text" },
 		{ id: "markdown", name: "Markdown" },
@@ -3556,7 +3558,6 @@
 						version={myNote.version}
 						canEdit={true}
 						bind:editing={docEditing}
-						bind:saving={docSaving}
 						view={docView}
 						mono={docMono.notes}
 					/>
@@ -3574,7 +3575,6 @@
 						version={DOC_VERSION[doc]}
 						canEdit={data.canEdit}
 						bind:editing={docEditing}
-						bind:saving={docSaving}
 						view={docView}
 						mono={docMono[doc]}
 						above={panel === "chart" ? draftInPanel : undefined}

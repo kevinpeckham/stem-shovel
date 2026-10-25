@@ -1,0 +1,34 @@
+id: 02067b8b-3d51-406c-a49e-dec70cc71e4e
+name: code-audit
+description: >-
+  Audit the checkout: the $effect audit (bun run audit:effects) on the repo
+  behavior, then assert every call carries a rationale. `swamp workflow run
+  code-audit`; the results stay queryable as data (docs/testing.md "The
+  $effect audit").
+tags:
+  area: code-audit
+jobs:
+  - name: audit
+    description: Run the repo-level audits
+    steps:
+      - name: effects
+        description: Every $effect in the components, with its rationale
+        task:
+          type: behavior
+          behavior: repo
+          methodName: effects
+  - name: verify
+    description: Fail the run when an audit found something
+    dependsOn:
+      - job: audit
+        condition:
+          type: succeeded
+    steps:
+      - name: effects-explained
+        description: No $effect without a rationale on the line before it
+        task:
+          type: assert
+          expr: data.latest("repo", "effects").attributes.ok
+          message: '${{ "Effects: " + data.latest("repo", "effects").attributes.summary }}'
+          severity: high
+version: 1

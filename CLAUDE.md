@@ -77,6 +77,8 @@ bun run stems        # generate the static test WAVs (gitignored)
 bun run smoke:blob   # create a smoke project + song and upload through the real flow
 bun run smoke:urls   # every route answers as expected, signed out and as the bot; SMOKE_BASE=https://www.stemshovel.com for production
 bun run audit:seo    # every route's indexability: sitemap, robots.txt, X-Robots-Tag (hook + vercel.json rule), robots meta, title/description/h1 against isIndexablePath; SEO_BASE=https://www.stemshovel.com for production; exits 1 on a finding (docs/security.md "Indexability audit")
+bun run audit:effects # every $effect in the components with the rationale on the line before it; exits 1 on one without (docs/testing.md "The $effect audit")
+bunx varlock run -- swamp workflow run code-audit   # Swamp: the repo-level audits (audit:effects), asserted and kept as data
 bunx varlock run -- swamp workflow run site-audit --input stage=production   # Swamp: audit:seo and smoke:urls against one stage (dev|staging|production), asserted, the results kept as data (docs/security.md "Through Swamp"); every swamp command runs through varlock, which supplies its swamp-club.com credential
 bun run check:swing  # renders drum patterns through the machine's own code and measures the onsets: swing must move the odd sixteenths (dev server only)
 bun run shot <path>  # full-page PNG of a dev-server page into .screenshots/ — then Read it
@@ -173,6 +175,15 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   `bunx varlock run -- swamp …`. The swamp skill (`~/.claude/skills/swamp`)
   has the CLI's own guidance; the section swamp manages at the top of this
   file is its, not ours.
+- **`$effect` is a last resort, and every one says why.** Reach for
+  `$derived` (writable), function bindings, `{@attach}`, `<svelte:window>`,
+  prop-seeded state with `{#key}` or `onMount` first; an effect that
+  remains (a canvas, an external engine or library, a timer, the popover
+  API, a teardown) carries a `// why $effect: <which side effect>` comment
+  alone on the line directly before it. The test beside
+  `src/lib/utils/effectCallSites.ts` gates on it, `bun run audit:effects`
+  lists every site, and the Fallow rule reminds (docs/testing.md "The
+  $effect audit").
 - **Tests go beside what they test** (`x.test.ts`, `X.svelte.test.ts`),
   import the runner from `vite-plus/test`, and mock the database, Blob and
   ffmpeg in server tests (docs/testing.md). Run `bun run test` before a

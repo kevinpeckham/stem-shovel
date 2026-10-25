@@ -49,6 +49,7 @@
 	const waveform: Attachment<HTMLCanvasElement> = (canvas) => {
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
+		// why $effect: the redraw inside the canvas attachment: tracks the peaks, the span, the dim state and the size, then draws (canvas)
 		$effect(() => {
 			if (width === 0 || height === 0) return;
 			void color; // the canvas's color is a style; a change redraws

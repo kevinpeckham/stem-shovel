@@ -8,10 +8,10 @@
 
 	let { data } = $props();
 	let newPanel = $state<HTMLDivElement | null>(null);
-	// The account menu's "New account" lands here with ?new=1.
-	$effect(() => {
-		if (page.url.searchParams.get("new") === "1") newPanel?.showPopover();
-	});
+	/** The account menu's "New account" lands here with ?new=1: the panel opens on arrival (an attachment, re-run when the URL changes). */
+	const openWhenAsked = (el: HTMLElement) => {
+		if (page.url.searchParams.get("new") === "1") el.showPopover();
+	};
 </script>
 
 <svelte:head>
@@ -89,6 +89,7 @@
 			id="new-account"
 			popover="auto"
 			bind:this={newPanel}
+			{@attach openWhenAsked}
 			onbeforetoggle={(e) => {
 				if (e.newState === "open") clearForm(createAccount);
 			}}

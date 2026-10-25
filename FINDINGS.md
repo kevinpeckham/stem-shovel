@@ -7,6 +7,14 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Fallow's `$effect` findings in Svelte files land on the wrong line (2026-10-25)
+
+From turning the `svelte-effect-last-resort` rule pack rule into a gate (fallow 3.34.1, `bunx fallow audit`):
+
+- **A `banned-call` finding for `$effect` in a `.svelte` file is reported one line above the call** (ComboBox.svelte:93 for a call on 94, and so on across ten files), 28 lines above in one file (DemoRecorder.svelte:224 for a call on 252), and **only the first call in each file is reported** (12 findings for 26 calls in 13 files). Not a UTF-8 offset: a file with no non-ASCII text is off by one too. So `// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/svelte-effect-last-resort` directly above a call never matches ("stale suppression: no issue found on the next line"), while one placed a line too high, above a prose comment, did match by accident; three of the repo's suppressions had been placed that way.
+- **The consequence:** the rule cannot carry a per-site rationale and cannot gate. The rationale is our own `// why $effect: <which side effect>` comment, read by `src/lib/utils/effectCallSites.ts` (its test gates `bun run test`; `bun run audit:effects` lists the sites), and the Fallow rule stays at `warn` as a reminder. Worth a report to fallow-rs/fallow with the ComboBox and DemoRecorder cases; revisit when a release fixes it.
+- **Also seen:** `fallow audit` counts a new suppression comment as an `added-suppression [warn]` finding, and a file-level `fallow-ignore-file` form exists beside `-next-line`.
+
 ## Swamp, the Swamp Club automation CLI, in a bun project (2026-10-25)
 
 From putting the indexability audit and the smoke test behind `swamp workflow run site-audit` (extensions/behaviors/site_audit.ts, docs/security.md "Through Swamp"):

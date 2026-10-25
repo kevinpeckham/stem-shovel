@@ -40,6 +40,7 @@
 	const wave: Attachment<HTMLCanvasElement> = (canvas) => {
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
+		// why $effect: the redraw inside the canvas attachment: tracks the peaks, the recording and the size, then draws (canvas)
 		$effect(() => {
 			if (width === 0 || height === 0) return;
 			// Tracked: peaks, history's length, recording, width, height.

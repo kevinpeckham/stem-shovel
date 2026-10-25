@@ -177,6 +177,11 @@
 					what: "Zip the stems and the MP3s for a download and open DAWproject and MusicXML archives, in the browser.",
 				},
 				{
+					name: "Origin Private File System",
+					url: "https://developer.mozilla.org/docs/Web/API/File_System_API/Origin_private_file_system",
+					what: "Keeps Dawn's decoded recordings on disk in your browser, through a worker, so a long session streams from there instead of filling memory.",
+				},
+				{
 					name: "Cache Storage",
 					url: "https://developer.mozilla.org/docs/Web/API/Cache",
 					what: "Keeps the piano's samples in your browser after the first load, so the next visit plays at once.",

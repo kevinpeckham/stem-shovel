@@ -88,6 +88,7 @@
 	// Parent -> popover: bind:openState opens or closes it; a matching state does nothing. Opening goes
 	// through the trigger's click so the button is the popover's invoker: that is what gives
 	// `position-area` its anchor (showPopover() alone would put the menu at the viewport's corner).
+	// why $effect: drives the popover API from bind:openState; showing goes through the invoker's click so the anchor holds (a DOM boundary)
 	$effect(() => {
 		if (!popoverEl) return;
 		if (openState === "open" && !actuallyOpen) {
@@ -96,6 +97,7 @@
 		}
 		if (openState === "closed" && actuallyOpen) popoverEl.hidePopover();
 	});
+	// why $effect: removes the placement fallback's listeners on unmount
 	$effect(() => () => stopFallback?.());
 
 	function onToggle(e: ToggleEvent) {

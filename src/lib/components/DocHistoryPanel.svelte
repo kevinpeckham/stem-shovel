@@ -88,6 +88,7 @@
 			loading = false;
 		}
 	}
+	// why $effect: loads the history (an async request) when the target changes; several states are set from the result
 	$effect(() => {
 		if (target) void load(target);
 	});

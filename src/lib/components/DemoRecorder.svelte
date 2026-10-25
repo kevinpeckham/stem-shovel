@@ -248,7 +248,7 @@
 		instFrame = requestAnimationFrame(instMeter);
 	}
 	// The instruments' meters follow the page's switches (a button here, or a panel header's), not only this component's own clicks.
-	// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/svelte-effect-last-resort -- the tap must follow state set by the page as well as by this component
+	// why $effect: the tap must follow state set by the page as well as by this component
 	$effect(() => {
 		if (!sourcesOn) return;
 		tapInstrument("piano", sourcesOn.piano);
@@ -657,6 +657,7 @@
 	let wavePeaks = $state<Float32Array | null>(null);
 	let waveFor: string | null = null;
 	/** Decode the take for its waveform: the browser's own blob for a take just made, else the file at its URL (the rendition, which every browser decodes, when there is one). */
+	// why $effect: decodes the take for its waveform (an async fetch and decode) when the take changes; the result is stored, not derived
 	$effect(() => {
 		const url = takeUrl;
 		if (!url || !hasTake) {
