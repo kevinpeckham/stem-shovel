@@ -12,11 +12,26 @@
 		run: ChatRun<ChatMessageRow>;
 		me: { id: string } | null;
 		isAdmin: boolean;
+		/** Whether the reader may react (they may write in the chat). */
+		canReact?: boolean;
+		/** The chat's song or session, for an edit's `@` picker. */
+		songId?: string;
+		sessionId?: string;
 		onseek?: (seconds: number) => void;
 		onchange: (message: ChatMessageRow) => void;
 		onremove: (id: string) => void;
 	}
-	let { run, me, isAdmin, onseek, onchange, onremove }: Props = $props();
+	let {
+		run,
+		me,
+		isAdmin,
+		canReact = false,
+		songId = "",
+		sessionId = "",
+		onseek,
+		onchange,
+		onremove,
+	}: Props = $props();
 	let mine = $derived(!!me && run.userId === me.id);
 	const clock = (ms: number) =>
 		new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -31,8 +46,12 @@
 		{#each run.messages as m (m.id)}
 			<ChatMessage
 				message={m}
+				meId={me?.id ?? null}
 				canEdit={mine}
 				canDelete={mine || isAdmin}
+				{canReact}
+				{songId}
+				{sessionId}
 				{onseek}
 				{onchange}
 				{onremove}

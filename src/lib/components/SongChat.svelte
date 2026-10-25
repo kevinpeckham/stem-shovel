@@ -185,6 +185,9 @@
 							run={line.run}
 							{me}
 							{isAdmin}
+							canReact={canWrite && !!me}
+							{songId}
+							{sessionId}
 							{onseek}
 							onchange={(changed) => merge([changed])}
 							onremove={(id) => (messages = messages.filter((x) => x.id !== id))}

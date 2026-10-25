@@ -11,6 +11,7 @@ import { authAccount } from "./authAccount";
 import { bugReport } from "./bugReport";
 import { bugReportVote } from "./bugReportVote";
 import { chatMessage } from "./chatMessage";
+import { chatReaction } from "./chatReaction";
 import { chatRead } from "./chatRead";
 import { comment } from "./comment";
 import { commentVersion } from "./commentVersion";
@@ -193,9 +194,10 @@ export const songCreditRelations = relations(songCredit, ({ one }) => ({
 	artist: one(artist, { fields: [songCredit.artistId], references: [artist.id] }),
 }));
 
-export const chatMessageRelations = relations(chatMessage, ({ one }) => ({
+export const chatMessageRelations = relations(chatMessage, ({ one, many }) => ({
 	song: one(song, { fields: [chatMessage.songId], references: [song.id] }),
 	author: one(user, { fields: [chatMessage.userId], references: [user.id] }),
+	reactions: many(chatReaction),
 }));
 
 export const chatReadRelations = relations(chatRead, ({ one }) => ({
@@ -287,7 +289,8 @@ export const sessionCommentRelations = relations(sessionComment, ({ one }) => ({
 	author: one(user, { fields: [sessionComment.userId], references: [user.id] }),
 }));
 
-export const sessionChatMessageRelations = relations(sessionChatMessage, ({ one }) => ({
+export const sessionChatMessageRelations = relations(sessionChatMessage, ({ one, many }) => ({
+	reactions: many(chatReaction),
 	session: one(recordingSession, {
 		fields: [sessionChatMessage.sessionId],
 		references: [recordingSession.id],
@@ -415,4 +418,14 @@ export const pianoPresetRelations = relations(pianoPreset, ({ one }) => ({
 export const ampPresetRelations = relations(ampPreset, ({ one }) => ({
 	account: one(account, { fields: [ampPreset.accountId], references: [account.id] }),
 	creator: one(user, { fields: [ampPreset.createdBy], references: [user.id] }),
+}));
+
+export const chatReactionRelations = relations(chatReaction, ({ one }) => ({
+	// One relation per holder; a row's `scope` says which one is live (docs/chat.md, "Reactions").
+	message: one(chatMessage, { fields: [chatReaction.messageId], references: [chatMessage.id] }),
+	sessionMessage: one(sessionChatMessage, {
+		fields: [chatReaction.messageId],
+		references: [sessionChatMessage.id],
+	}),
+	user: one(user, { fields: [chatReaction.userId], references: [user.id] }),
 }));

@@ -2,6 +2,7 @@ import {
 	accountLimitsOf,
 	accountStorageBytes,
 	memberHeadroom,
+	projectAudienceOf,
 	studioCommentAudience,
 } from "#lib/server/data.js";
 import { permalink } from "#lib/utils/permalink.js";
@@ -18,6 +19,7 @@ import {
 	type NotificationPrefs,
 } from "#lib/utils/notificationPolicy.js";
 import type { NotificationKind } from "#lib/val/NotificationSchema.js";
+import type { ChatScopeKind } from "#lib/val/ChatSchema.js";
 import { and, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 
 /**
@@ -31,8 +33,6 @@ const {
 	notification,
 	notificationPreference,
 	accountMember,
-	projectMember,
-	project,
 	song,
 	demo,
 	sessionRecording,
@@ -88,30 +88,6 @@ async function accountAdmins(accountId: string): Promise<string[]> {
 		columns: { userId: true },
 	});
 	return rows.map((r) => r.userId);
-}
-
-/** Everyone who may open the project: the account's members (respecting restriction) and the project's own people. */
-async function projectAudience(accountId: string, projectId: string): Promise<string[]> {
-	const [p, members, people] = await Promise.all([
-		db.query.project.findFirst({
-			where: eq(project.id, projectId),
-			columns: { isRestricted: true },
-		}),
-		db.query.accountMember.findMany({
-			where: eq(accountMember.accountId, accountId),
-			columns: { userId: true, role: true },
-		}),
-		db.query.projectMember.findMany({
-			where: eq(projectMember.projectId, projectId),
-			columns: { userId: true, role: true },
-		}),
-	]);
-	const ids = new Set<string>();
-	for (const m of members) {
-		if (m.role === "owner" || m.role === "admin" || !p?.isRestricted) ids.add(m.userId);
-	}
-	for (const m of people) ids.add(m.userId);
-	return [...ids];
 }
 
 // ---- the core --------------------------------------------------------------
@@ -229,11 +205,19 @@ async function nameOf(userId: string) {
 
 /** A comment on a song: everyone on the project but the author. */
 /** A message in a song's chat (docs/chat.md): everyone on the project but its author; a burst on one song folds into one item. */
-export async function notifyChat(accountId: string, songId: string, authorId: string) {
+export async function notifyChat(
+	accountId: string,
+	songId: string,
+	authorId: string,
+	mentioned: string[] = [],
+) {
 	const s = await songContext(accountId, songId);
 	if (!s) return;
 	const who = await nameOf(authorId);
-	const audience = (await projectAudience(accountId, s.projectId)).filter((id) => id !== authorId);
+	// The people the message mentions hear of it as a mention instead (notifyMention), never twice.
+	const audience = (await projectAudienceOf(accountId, s.projectId)).filter(
+		(id) => id !== authorId && !mentioned.includes(id),
+	);
 	await notifyUsers(audience, {
 		kind: "chat",
 		accountId,
@@ -260,7 +244,9 @@ export async function notifyComment(
 	const s = await songContext(accountId, songId);
 	if (!s) return;
 	const who = await nameOf(authorId);
-	const audience = (await projectAudience(accountId, s.projectId)).filter((id) => id !== authorId);
+	const audience = (await projectAudienceOf(accountId, s.projectId)).filter(
+		(id) => id !== authorId,
+	);
 	const on = mix
 		? `mix v${mix.version} of ${s.title}`
 		: demo
@@ -295,7 +281,7 @@ export async function notifyMix(accountId: string, mixId: string, uploaderId: st
 	const s = await songContext(accountId, m.songId);
 	if (!s) return;
 	const who = await nameOf(uploaderId);
-	const audience = (await projectAudience(accountId, s.projectId)).filter(
+	const audience = (await projectAudienceOf(accountId, s.projectId)).filter(
 		(id) => id !== uploaderId,
 	);
 	await notifyUsers(audience, {
@@ -315,7 +301,7 @@ export async function notifyStems(accountId: string, songId: string, uploaderId:
 	const s = await songContext(accountId, songId);
 	if (!s) return;
 	const who = await nameOf(uploaderId);
-	const audience = (await projectAudience(accountId, s.projectId)).filter(
+	const audience = (await projectAudienceOf(accountId, s.projectId)).filter(
 		(id) => id !== uploaderId,
 	);
 	await notifyUsers(audience, {
@@ -339,7 +325,7 @@ export async function notifyDemo(accountId: string, demoId: string, uploaderId: 
 	const s = await songContext(accountId, d.songId);
 	if (!s) return;
 	const who = await nameOf(uploaderId);
-	const audience = (await projectAudience(accountId, s.projectId)).filter(
+	const audience = (await projectAudienceOf(accountId, s.projectId)).filter(
 		(id) => id !== uploaderId,
 	);
 	await notifyUsers(audience, {
@@ -429,16 +415,20 @@ export async function notifySessionComment(
 }
 
 /** A message in a session's chat (docs/chat.md, "Sessions"): every member of the account but the author; the item opens the chat. */
-export async function notifySessionChat(accountId: string, sessionId: string, authorId: string) {
-	const s = await db.query.recordingSession.findFirst({
-		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
-		columns: { name: true, place: true, kind: true, startsOn: true },
-		with: { account: { columns: { slug: true } } },
-	});
-	if (!s) return;
-	const name = sessionDisplayName(s);
+export async function notifySessionChat(
+	accountId: string,
+	sessionId: string,
+	authorId: string,
+	mentioned: string[] = [],
+) {
+	const place = await sessionPlace(accountId, sessionId);
+	if (!place) return;
+	const { name } = place;
 	const who = await nameOf(authorId);
-	await notifyUsers(await accountAudienceBut(accountId, authorId), {
+	const audience = (await accountAudienceBut(accountId, authorId)).filter(
+		(id) => !mentioned.includes(id),
+	);
+	await notifyUsers(audience, {
 		kind: "chat",
 		accountId,
 		title: `New message in the chat on ${name}`,
@@ -446,10 +436,60 @@ export async function notifySessionChat(accountId: string, sessionId: string, au
 			n === 1
 				? `${who} wrote in the chat on ${name}.`
 				: `${n} new messages, the latest from ${who}, on ${name}.`,
-		href: `/${s.account.slug}/sessions?session=${sessionId}&open=chat`,
+		href: place.href,
 		subjectId: `session:${sessionId}`,
 		coalesce: true,
 	});
+}
+
+/**
+ * A mention in a chat (docs/chat.md, "Mentions"): one item for each person
+ * named, never folded, landing on the chat like a chat item does. The
+ * author is never told of their own mention; the caller passes only the
+ * people the message newly names (on an edit, those it did not before).
+ */
+export async function notifyMention(
+	accountId: string,
+	scope: ChatScopeKind,
+	id: string,
+	authorId: string,
+	mentionedIds: string[],
+) {
+	const to = mentionedIds.filter((u) => u !== authorId);
+	if (to.length === 0) return;
+	const place =
+		scope === "session" ? await sessionPlace(accountId, id) : await songPlace(accountId, id);
+	if (!place) return;
+	const who = await nameOf(authorId);
+	await notifyUsers(to, {
+		kind: "mention",
+		accountId,
+		title: `${who} mentioned you in the chat on ${place.name}`,
+		body: `${who} mentioned you in the chat on ${place.name}.`,
+		href: place.href,
+		subjectId: scope === "session" ? `session:${id}` : id,
+	});
+}
+
+/** A song's chat as a mention names it and links to it. */
+async function songPlace(accountId: string, songId: string) {
+	const s = await songContext(accountId, songId);
+	return s ? { name: s.title, href: `${s.href}?open=chat` } : null;
+}
+
+/** A session's chat as a mention names it and links to it. */
+async function sessionPlace(accountId: string, sessionId: string) {
+	const s = await db.query.recordingSession.findFirst({
+		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
+		columns: { name: true, place: true, kind: true, startsOn: true },
+		with: { account: { columns: { slug: true } } },
+	});
+	return s
+		? {
+				name: sessionDisplayName(s),
+				href: `/${s.account.slug}/sessions?session=${sessionId}&open=chat`,
+			}
+		: null;
 }
 
 /** A song created in a project. */
@@ -457,7 +497,9 @@ export async function notifySong(accountId: string, songId: string, creatorId: s
 	const s = await songContext(accountId, songId);
 	if (!s) return;
 	const who = await nameOf(creatorId);
-	const audience = (await projectAudience(accountId, s.projectId)).filter((id) => id !== creatorId);
+	const audience = (await projectAudienceOf(accountId, s.projectId)).filter(
+		(id) => id !== creatorId,
+	);
 	await notifyUsers(audience, {
 		kind: "song",
 		accountId,

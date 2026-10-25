@@ -1,6 +1,6 @@
 import { db, schema } from "#lib/server/db/index.js";
 import { deleteAliasesOf } from "#lib/server/slugAlias.js";
-import { eq, inArray, type SQL } from "drizzle-orm";
+import { eq, inArray, type SQL, type SQLWrapper } from "drizzle-orm";
 
 /**
  * The deletes the database does not do for us. The schema declares
@@ -25,6 +25,7 @@ const {
 	bugReport,
 	bugReportVote,
 	chatMessage,
+	chatReaction,
 	chatRead,
 	comment,
 	commentVersion,
@@ -93,6 +94,12 @@ export async function deleteSessionReviewRows(
 	if (recordingIds.length > 0)
 		await db.delete(sessionComment).where(inArray(sessionComment.recordingId, recordingIds));
 	if (sessionIds.length === 0) return;
+	await deleteChatReactionsOf(
+		db
+			.select({ id: sessionChatMessage.id })
+			.from(sessionChatMessage)
+			.where(inArray(sessionChatMessage.sessionId, sessionIds)),
+	);
 	await db.delete(sessionChatMessage).where(inArray(sessionChatMessage.sessionId, sessionIds));
 	await db.delete(sessionChatRead).where(inArray(sessionChatRead.sessionId, sessionIds));
 }
@@ -104,6 +111,9 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(songDocVersion).where(inArray(songDocVersion.songId, songIds));
 	await db.delete(songUserNote).where(inArray(songUserNote.songId, songIds));
 	await deleteCommentRows(inArray(comment.songId, songIds));
+	await deleteChatReactionsOf(
+		db.select({ id: chatMessage.id }).from(chatMessage).where(inArray(chatMessage.songId, songIds)),
+	);
 	await db.delete(chatMessage).where(inArray(chatMessage.songId, songIds));
 	await db.delete(chatRead).where(inArray(chatRead.songId, songIds));
 	await db.delete(songMix).where(inArray(songMix.songId, songIds));
@@ -212,6 +222,9 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));
 	await db.delete(ampPreset).where(eq(ampPreset.accountId, accountId));
 	await deleteCommentRows(eq(comment.accountId, accountId));
+	await deleteChatReactionsOf(
+		db.select({ id: chatMessage.id }).from(chatMessage).where(eq(chatMessage.accountId, accountId)),
+	);
 	await db.delete(chatMessage).where(eq(chatMessage.accountId, accountId));
 	await db.delete(songMix).where(eq(songMix.accountId, accountId));
 	await db.delete(songFile).where(eq(songFile.accountId, accountId));
@@ -225,6 +238,12 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	).map((r) => r.id);
 	if (sessionIds.length > 0)
 		await db.delete(sessionChatRead).where(inArray(sessionChatRead.sessionId, sessionIds));
+	await deleteChatReactionsOf(
+		db
+			.select({ id: sessionChatMessage.id })
+			.from(sessionChatMessage)
+			.where(eq(sessionChatMessage.accountId, accountId)),
+	);
 	await db.delete(sessionChatMessage).where(eq(sessionChatMessage.accountId, accountId));
 	await db.delete(sessionComment).where(eq(sessionComment.accountId, accountId));
 	await db.delete(sessionRecording).where(eq(sessionRecording.accountId, accountId));
@@ -261,9 +280,19 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(auditLog).set({ userId: null }).where(eq(auditLog.userId, userId));
 	await db.update(bugReport).set({ userId: null }).where(eq(bugReport.userId, userId));
 	await deleteCommentRows(eq(comment.userId, userId));
+	await db.delete(chatReaction).where(eq(chatReaction.userId, userId));
+	await deleteChatReactionsOf(
+		db.select({ id: chatMessage.id }).from(chatMessage).where(eq(chatMessage.userId, userId)),
+	);
 	await db.delete(chatMessage).where(eq(chatMessage.userId, userId));
 	await db.delete(chatRead).where(eq(chatRead.userId, userId));
 	await db.delete(sessionComment).where(eq(sessionComment.userId, userId));
+	await deleteChatReactionsOf(
+		db
+			.select({ id: sessionChatMessage.id })
+			.from(sessionChatMessage)
+			.where(eq(sessionChatMessage.userId, userId)),
+	);
 	await db.delete(sessionChatMessage).where(eq(sessionChatMessage.userId, userId));
 	await db.delete(sessionChatRead).where(eq(sessionChatRead.userId, userId));
 	await db
@@ -321,4 +350,9 @@ export async function deleteUserRows(userId: string): Promise<void> {
 		.set({ createdBy: null })
 		.where(eq(userDocVersion.createdBy, userId));
 	await db.delete(user).where(eq(user.id, userId));
+}
+
+/** The reactions on the messages a subquery selects (docs/chat.md, "Reactions"): they go before their messages do. */
+async function deleteChatReactionsOf(messageIds: SQLWrapper): Promise<void> {
+	await db.delete(chatReaction).where(inArray(chatReaction.messageId, messageIds));
 }

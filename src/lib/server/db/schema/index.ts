@@ -11,6 +11,7 @@ export * from "./authAccount";
 export * from "./bugReport";
 export * from "./bugReportVote";
 export * from "./chatMessage";
+export * from "./chatReaction";
 export * from "./chatRead";
 export * from "./comment";
 export * from "./commentVersion";

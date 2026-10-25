@@ -30,6 +30,7 @@ export const KIND_PRIORITY: Record<NotificationKind, NotificationPriority> = {
 	"invitation-accepted": "normal",
 	comment: "normal",
 	chat: "normal",
+	mention: "normal",
 	stems: "normal",
 	song: "normal",
 	demo: "normal",
@@ -41,6 +42,7 @@ export const KIND_PRIORITY: Record<NotificationKind, NotificationPriority> = {
 const OPT_IN: Partial<Record<NotificationKind, keyof NotificationPrefs>> = {
 	comment: "emailComments",
 	chat: "emailComments",
+	mention: "emailComments",
 	stems: "emailStems",
 	song: "emailSongs",
 	demo: "emailDemos",

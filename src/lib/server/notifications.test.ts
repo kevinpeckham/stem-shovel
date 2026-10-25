@@ -26,8 +26,11 @@ const {
 	listInbox,
 	markAllRead,
 	markRead,
+	notifyChat,
 	notifyComment,
 	notifyDemo,
+	notifyMention,
+	notifySessionChat,
 	notifyInvitationAccepted,
 	notifySessionRecording,
 	notifySong,
@@ -355,6 +358,60 @@ describe("notifyComment", () => {
 	test('an author nobody knows is "Someone"', async () => {
 		await notifyComment("a1", "s1", "u9");
 		expect(inboxOf("u2")[0].body).toBe("Someone commented in Album.");
+	});
+});
+
+describe('mentions in a chat (docs/chat.md, "Mentions")', () => {
+	const sess = {
+		id: "ses1",
+		accountId: "a1",
+		kind: "show",
+		name: "",
+		startsOn: "2026-10-17",
+		place: "The Elbow Room",
+		notes: "",
+	};
+	test("each person named gets an item of their own, never folded, landing on the chat; the author never", async () => {
+		await notifyMention("a1", "song", "s1", "u1", ["u2", "u1"]);
+		await notifyMention("a1", "song", "s1", "u1", ["u2"]);
+		expect(inboxOf("u1")).toEqual([]);
+		expect(inboxOf("u2")).toEqual([
+			expect.objectContaining({
+				kind: "mention",
+				title: "Ann mentioned you in the chat on Intro",
+				href: "/go/song/s1?open=chat",
+				count: 1,
+			}),
+			expect.objectContaining({ kind: "mention", count: 1 }),
+		]);
+		expect(inboxOf("u3")).toEqual([]);
+	});
+	test("a session's mention names the session and opens its chat", async () => {
+		reset(base({ recordingSession: [sess] }));
+		await notifyMention("a1", "session", "ses1", "u1", ["u3"]);
+		expect(inboxOf("u3")).toEqual([
+			expect.objectContaining({
+				kind: "mention",
+				title: "Ann mentioned you in the chat on The Elbow Room · Oct 17, 2026",
+				href: "/lj/sessions?session=ses1&open=chat",
+			}),
+		]);
+	});
+	test("the chat's own item skips the people the message mentions, so nobody hears twice", async () => {
+		reset(base({ recordingSession: [sess] }));
+		await notifyChat("a1", "s1", "u1", ["u2"]);
+		expect(inboxOf("u2")).toEqual([]);
+		expect(inboxOf("u3")).toEqual([expect.objectContaining({ kind: "chat" })]);
+		await notifySessionChat("a1", "ses1", "u1", ["u3"]);
+		expect(inboxOf("u3")).toHaveLength(1);
+		expect(inboxOf("u2")).toEqual([
+			expect.objectContaining({ kind: "chat", href: "/lj/sessions?session=ses1&open=chat" }),
+		]);
+	});
+	test("a mention's email follows the comments opt-in", async () => {
+		reset(base({ notificationPreference: [prefRow("u2", { emailComments: true })] }));
+		await notifyMention("a1", "song", "s1", "u1", ["u2", "u3"]);
+		expect(emailsTo()).toEqual(["bob@example.com"]);
 	});
 });
 

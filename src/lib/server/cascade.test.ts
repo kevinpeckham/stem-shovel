@@ -160,6 +160,7 @@ describe("deleteSongRows", () => {
 			"song_user_note",
 			"comment_version",
 			"comment",
+			"chat_reaction",
 			"chat_message",
 			"chat_read",
 			"song_mix",

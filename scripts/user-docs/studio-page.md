@@ -1,6 +1,6 @@
 # Dawn Multitrack Recorder
 
-Record tracks over what you have, from the microphone, a line in or the computer; arrange the takes on a timeline; keep revisions; send the mix to a song as a demo or the tracks as stems.
+Record tracks over what you have, from the microphone, a line in or the computer; arrange the takes on a timeline; keep revisions; send the mix to a song as a demo or the tracks as stems. [What Dawn has](/multitrack-recorder/features), feature by feature beside the DAWproject format, Reaper and Sandyne.
 
 ## How to use Dawn
 

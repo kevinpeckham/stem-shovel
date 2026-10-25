@@ -19,6 +19,7 @@
 		"invitation-accepted": "i-ph-hand-waving",
 		comment: "i-ph-hands-clapping-bold",
 		chat: "i-ph-chat-circle-dots",
+		mention: "i-ph-at",
 		stems: "i-ph-waveform",
 		song: "i-ph-music-notes-plus",
 		demo: "i-ph-microphone",

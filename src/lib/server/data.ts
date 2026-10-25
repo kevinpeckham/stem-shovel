@@ -159,6 +159,8 @@ import { accountLimits, storageFits } from "#lib/utils/accountLimits.js";
 import type { BlobAccess } from "#lib/utils/blobAccess.js";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
+import type { ChatReactionEmoji, ChatScopeKind } from "#lib/val/ChatSchema.js";
+import { chatReactionSummary, type ChatReactionSummary } from "#lib/utils/chatReactionSummary.js";
 
 /**
  * Every function takes the caller's accountId first and scopes by it, so a
@@ -185,6 +187,7 @@ const {
 	invitation,
 	inviteCode,
 	chatMessage,
+	chatReaction,
 	chatRead,
 	comment,
 	commentVersion,
@@ -1669,7 +1672,7 @@ export async function deleteComment(id: string) {
 
 // ---- the song chat (docs/chat.md) ----
 
-/** A chat message as the page and the poll see it: times as milliseconds, the author's name beside their id. */
+/** A chat message as the page and the poll see it: times as milliseconds, the author's name beside their id, the people it mentions and its reactions (docs/chat.md). */
 export interface ChatMessageRow {
 	id: string;
 	userId: string;
@@ -1678,36 +1681,93 @@ export interface ChatMessageRow {
 	createdAt: number;
 	updatedAt: number;
 	editedAt: number | null;
+	/** The people the message mentions, by the names their `@Name` is written with ("Mentions"). */
+	mentions: { id: string; name: string }[];
+	/** Per emoji with a count, in the fixed set's order ("Reactions"). */
+	reactions: ChatReactionSummary[];
 }
-const chatRow = (m: {
+
+/** What a chat row is read with, whichever table holds it. */
+const CHAT_WITH = {
+	author: { columns: { id: true, name: true } },
+	reactions: {
+		columns: { emoji: true, userId: true },
+		with: { user: { columns: { name: true } } },
+	},
+} as const;
+
+interface ChatRaw {
 	id: string;
 	userId: string;
 	author: { name: string };
 	body: string;
+	mentions: string[] | null;
 	createdAt: Date;
 	updatedAt: Date;
 	editedAt: Date | null;
-}): ChatMessageRow => ({
-	id: m.id,
-	userId: m.userId,
-	authorName: m.author.name,
-	body: m.body,
-	createdAt: m.createdAt.getTime(),
-	updatedAt: m.updatedAt.getTime(),
-	editedAt: m.editedAt?.getTime() ?? null,
-});
+	reactions: { emoji: ChatReactionEmoji; userId: string; user: { name: string } | null }[];
+}
 
-/** A song's messages oldest first; with `after` (ms), only those made or changed since, for the poll. */
-export async function listChatMessages(songId: string, after = 0): Promise<ChatMessageRow[]> {
+/** Messages as the page sees them: the mentioned people's names read in one query; `mine` on a reaction needs `viewerId`. */
+async function chatRows(rows: ChatRaw[], viewerId?: string | null): Promise<ChatMessageRow[]> {
+	const ids = [...new Set(rows.flatMap((m) => m.mentions ?? []))];
+	const people =
+		ids.length > 0
+			? await db.query.user.findMany({
+					where: inArray(user.id, ids),
+					columns: { id: true, name: true },
+				})
+			: [];
+	const nameOf = new Map(people.map((p) => [p.id, p.name]));
+	return rows.map((m) => ({
+		id: m.id,
+		userId: m.userId,
+		authorName: m.author.name,
+		body: m.body,
+		createdAt: m.createdAt.getTime(),
+		updatedAt: m.updatedAt.getTime(),
+		editedAt: m.editedAt?.getTime() ?? null,
+		mentions: (m.mentions ?? []).flatMap((id) => {
+			const name = nameOf.get(id);
+			return name ? [{ id, name }] : [];
+		}),
+		reactions: chatReactionSummary(m.reactions, viewerId),
+	}));
+}
+
+/** One message as the page sees it, from whichever chat holds it; null when there is none. */
+async function chatRowOf(
+	scope: ChatScopeKind,
+	id: string,
+	viewerId?: string | null,
+): Promise<ChatMessageRow | null> {
+	const row =
+		scope === "session"
+			? await db.query.sessionChatMessage.findFirst({
+					where: eq(sessionChatMessage.id, id),
+					with: CHAT_WITH,
+				})
+			: await db.query.chatMessage.findFirst({ where: eq(chatMessage.id, id), with: CHAT_WITH });
+	if (!row) return null;
+	const [out] = await chatRows([row], viewerId);
+	return out;
+}
+
+/** A song's messages oldest first; with `after` (ms), only those made or changed since, for the poll. `viewerId` lights the viewer's own reactions. */
+export async function listChatMessages(
+	songId: string,
+	after = 0,
+	viewerId?: string | null,
+): Promise<ChatMessageRow[]> {
 	const rows = await db.query.chatMessage.findMany({
 		where:
 			after > 0
 				? and(eq(chatMessage.songId, songId), gt(chatMessage.updatedAt, new Date(after)))
 				: eq(chatMessage.songId, songId),
 		orderBy: [asc(chatMessage.createdAt), asc(chatMessage.id)],
-		with: { author: { columns: { id: true, name: true } } },
+		with: CHAT_WITH,
 	});
-	return rows.map(chatRow);
+	return chatRows(rows, viewerId);
 }
 
 /** Sends a message; null when the song is not the account's. The row comes back whole so the page can show it at once. */
@@ -1716,6 +1776,7 @@ export async function createChatMessage(
 	songId: string,
 	userId: string,
 	body: string,
+	mentions: string[] = [],
 ): Promise<ChatMessageRow | null> {
 	const s = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
@@ -1724,42 +1785,139 @@ export async function createChatMessage(
 	if (!s) return null;
 	const [row] = await db
 		.insert(chatMessage)
-		.values({ accountId, songId, userId, body })
+		.values({ accountId, songId, userId, body, mentions: mentions.length > 0 ? mentions : null })
 		.returning({ id: chatMessage.id });
-	const made = await db.query.chatMessage.findFirst({
-		where: eq(chatMessage.id, row.id),
-		with: { author: { columns: { id: true, name: true } } },
-	});
-	return made ? chatRow(made) : null;
+	return chatRowOf("song", row.id, userId);
 }
 
 export async function chatMessageOwnership(id: string) {
 	return db.query.chatMessage.findFirst({
 		where: eq(chatMessage.id, id),
-		columns: { id: true, accountId: true, userId: true, songId: true },
+		columns: { id: true, accountId: true, userId: true, songId: true, mentions: true },
 	});
 }
 
-/** New text for a message: marked edited; the poll picks it up through updated_at. */
-export async function updateChatMessage(id: string, body: string): Promise<ChatMessageRow | null> {
+/** New text for a message, and who it now mentions: marked edited; the poll picks it up through updated_at. */
+export async function updateChatMessage(
+	id: string,
+	body: string,
+	mentions: string[] = [],
+): Promise<ChatMessageRow | null> {
 	const now = new Date();
 	await db
 		.update(chatMessage)
-		.set({ body, editedAt: now, updatedAt: now })
+		.set({ body, mentions: mentions.length > 0 ? mentions : null, editedAt: now, updatedAt: now })
 		.where(eq(chatMessage.id, id));
-	const row = await db.query.chatMessage.findFirst({
+	const own = await db.query.chatMessage.findFirst({
 		where: eq(chatMessage.id, id),
-		with: { author: { columns: { id: true, name: true } } },
+		columns: { userId: true },
 	});
-	return row ? chatRow(row) : null;
+	return own ? chatRowOf("song", id, own.userId) : null;
 }
 
+/** A message and its reactions (docs/chat.md, "Reactions"). */
 export async function deleteChatMessage(id: string) {
+	await db.delete(chatReaction).where(eq(chatReaction.messageId, id));
 	const [row] = await db
 		.delete(chatMessage)
 		.where(eq(chatMessage.id, id))
 		.returning({ id: chatMessage.id });
 	return !!row;
+}
+
+/**
+ * One person's tap on a reaction (docs/chat.md, "Reactions"): on when
+ * they had not chosen that emoji for the message, off when they had. The
+ * message's `updated_at` moves so the poll (`chatSince`) carries the
+ * change to other open pages. The message comes back as the person sees
+ * it; null when there is no such message in that chat.
+ */
+export async function toggleChatReaction(
+	scope: ChatScopeKind,
+	messageId: string,
+	userId: string,
+	emoji: ChatReactionEmoji,
+): Promise<ChatMessageRow | null> {
+	const holder = scope === "session" ? sessionChatMessage : chatMessage;
+	const [message] = await db.select({ id: holder.id }).from(holder).where(eq(holder.id, messageId));
+	if (!message) return null;
+	const mine = and(
+		eq(chatReaction.messageId, messageId),
+		eq(chatReaction.userId, userId),
+		eq(chatReaction.emoji, emoji),
+	);
+	const had = await db.query.chatReaction.findFirst({ where: mine, columns: { id: true } });
+	if (had) await db.delete(chatReaction).where(eq(chatReaction.id, had.id));
+	else
+		await db.insert(chatReaction).values({ scope, messageId, userId, emoji }).onConflictDoNothing();
+	await db.update(holder).set({ updatedAt: new Date() }).where(eq(holder.id, messageId));
+	return chatRowOf(scope, messageId, userId);
+}
+
+/**
+ * The people a chat's `@` picker offers and a mention may name (docs/chat.md,
+ * "Mentions"): for a song, everyone who may open its project (the account's
+ * members, respecting a restricted project, and the project's own people);
+ * for a session, the account's members. By name; empty for a song or a
+ * session that is not the account's.
+ */
+export async function chatAudience(
+	accountId: string,
+	scope: { songId?: string; sessionId?: string },
+): Promise<{ id: string; name: string }[]> {
+	let ids: string[];
+	if (scope.sessionId) {
+		const s = await db.query.recordingSession.findFirst({
+			where: and(
+				eq(recordingSession.accountId, accountId),
+				eq(recordingSession.id, scope.sessionId),
+			),
+			columns: { id: true },
+		});
+		if (!s) return [];
+		const members = await db.query.accountMember.findMany({
+			where: eq(accountMember.accountId, accountId),
+			columns: { userId: true },
+		});
+		ids = members.map((m) => m.userId);
+	} else {
+		const s = await db.query.song.findFirst({
+			where: and(eq(song.accountId, accountId), eq(song.id, scope.songId ?? "")),
+			columns: { projectId: true },
+		});
+		if (!s) return [];
+		ids = await projectAudienceOf(accountId, s.projectId);
+	}
+	if (ids.length === 0) return [];
+	const people = await db.query.user.findMany({
+		where: inArray(user.id, ids),
+		columns: { id: true, name: true },
+	});
+	return people.toSorted((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Everyone who may open the project (docs/auth.md): the account's members (only owners and admins when it is restricted) and the project's own people. */
+export async function projectAudienceOf(accountId: string, projectId: string): Promise<string[]> {
+	const [p, members, people] = await Promise.all([
+		db.query.project.findFirst({
+			where: eq(project.id, projectId),
+			columns: { isRestricted: true },
+		}),
+		db.query.accountMember.findMany({
+			where: eq(accountMember.accountId, accountId),
+			columns: { userId: true, role: true },
+		}),
+		db.query.projectMember.findMany({
+			where: eq(projectMember.projectId, projectId),
+			columns: { userId: true, role: true },
+		}),
+	]);
+	const ids = new Set<string>();
+	for (const m of members) {
+		if (m.role === "owner" || m.role === "admin" || !p?.isRestricted) ids.add(m.userId);
+	}
+	for (const m of people) ids.add(m.userId);
+	return [...ids];
 }
 
 /** When a person last marked a song's chat read (ms), or null if never. */
@@ -1775,7 +1933,7 @@ async function chatReadAt(songId: string, userId: string): Promise<number | null
 export async function songChat(songId: string, userId: string | null) {
 	if (!userId) return null;
 	const [messages, readAt] = await Promise.all([
-		listChatMessages(songId),
+		listChatMessages(songId, 0, userId),
 		chatReadAt(songId, userId),
 	]);
 	return { messages, readAt };
@@ -4239,10 +4397,11 @@ export async function deleteSessionComment(id: string) {
 	await db.delete(sessionComment).where(eq(sessionComment.id, id));
 }
 
-/** A session's chat (docs/chat.md, "Sessions"): the messages, oldest first, or those changed since `after` (ms). */
+/** A session's chat (docs/chat.md, "Sessions"): the messages, oldest first, or those changed since `after` (ms); `viewerId` lights the viewer's own reactions. */
 export async function listSessionChatMessages(
 	sessionId: string,
 	after = 0,
+	viewerId?: string | null,
 ): Promise<ChatMessageRow[]> {
 	const rows = await db.query.sessionChatMessage.findMany({
 		where:
@@ -4253,9 +4412,9 @@ export async function listSessionChatMessages(
 					)
 				: eq(sessionChatMessage.sessionId, sessionId),
 		orderBy: [asc(sessionChatMessage.createdAt), asc(sessionChatMessage.id)],
-		with: { author: { columns: { id: true, name: true } } },
+		with: CHAT_WITH,
 	});
-	return rows.map(chatRow);
+	return chatRows(rows, viewerId);
 }
 
 /** Sends a message to a session's chat; null when the session is not the account's. */
@@ -4264,6 +4423,7 @@ export async function createSessionChatMessage(
 	sessionId: string,
 	userId: string,
 	body: string,
+	mentions: string[] = [],
 ): Promise<ChatMessageRow | null> {
 	const s = await db.query.recordingSession.findFirst({
 		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
@@ -4272,39 +4432,38 @@ export async function createSessionChatMessage(
 	if (!s) return null;
 	const [row] = await db
 		.insert(sessionChatMessage)
-		.values({ accountId, sessionId, userId, body })
+		.values({ accountId, sessionId, userId, body, mentions: mentions.length > 0 ? mentions : null })
 		.returning({ id: sessionChatMessage.id });
-	const made = await db.query.sessionChatMessage.findFirst({
-		where: eq(sessionChatMessage.id, row.id),
-		with: { author: { columns: { id: true, name: true } } },
-	});
-	return made ? chatRow(made) : null;
+	return chatRowOf("session", row.id, userId);
 }
 
 export async function sessionChatMessageOwnership(id: string) {
 	return db.query.sessionChatMessage.findFirst({
 		where: eq(sessionChatMessage.id, id),
-		columns: { id: true, accountId: true, userId: true, sessionId: true },
+		columns: { id: true, accountId: true, userId: true, sessionId: true, mentions: true },
 	});
 }
 
 export async function updateSessionChatMessage(
 	id: string,
 	body: string,
+	mentions: string[] = [],
 ): Promise<ChatMessageRow | null> {
 	const now = new Date();
 	await db
 		.update(sessionChatMessage)
-		.set({ body, editedAt: now, updatedAt: now })
+		.set({ body, mentions: mentions.length > 0 ? mentions : null, editedAt: now, updatedAt: now })
 		.where(eq(sessionChatMessage.id, id));
-	const row = await db.query.sessionChatMessage.findFirst({
+	const own = await db.query.sessionChatMessage.findFirst({
 		where: eq(sessionChatMessage.id, id),
-		with: { author: { columns: { id: true, name: true } } },
+		columns: { userId: true },
 	});
-	return row ? chatRow(row) : null;
+	return own ? chatRowOf("session", id, own.userId) : null;
 }
 
+/** A session's message and its reactions. */
 export async function deleteSessionChatMessage(id: string) {
+	await db.delete(chatReaction).where(eq(chatReaction.messageId, id));
 	await db.delete(sessionChatMessage).where(eq(sessionChatMessage.id, id));
 }
 

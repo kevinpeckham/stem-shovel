@@ -13,6 +13,7 @@ export const NOTIFICATION_KINDS = [
 	"invitation-accepted",
 	"comment",
 	"chat",
+	"mention",
 	"stems",
 	"song",
 	"demo",

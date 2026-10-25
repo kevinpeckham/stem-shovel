@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Mentions in the chat** (Kevin): type **@** and a name in a song's or a session's chat to mention one of the people on it; they are told in their inbox (and by email under the comments-and-chat setting) even when the rest of the conversation is folded for them, and the name is highlighted in the message.
+- **Reactions in the chat** (Kevin): six emoji (👍 ❤️ 😂 🔥 🎸 👀) on any message, one tap each, with a count and who reacted; nobody is notified of a reaction.
+- **A chat feed on the project page** (Kevin): a **Chat** button in the project's header opens every song's recent messages in one time-ordered feed, each with its song's name linking to that song's chat, where replies happen; the button carries a dot while any song has unread messages.
+- **Dawn's features, listed** (Kevin): `/multitrack-recorder/features` is a grid of what the Studio has, feature by feature, beside the DAWproject format, Reaper and Sandyne, with room for more DAWs; linked from the Studio page's help.
+
+### Technical
+
+- Migration 0098: `chat_reaction` (scope, message, user, emoji; unique per message, user and emoji) and `mentions` (json ids) on `chat_message` and `session_chat_message`; `toggleChatReaction` bumps the message's `updated_at` so `chatSince` carries it; `notifyMention` (kind `mention`, not folded; the chat's folded item skips the mentioned); `chatPeople` query and `mentionsIn`; `projectChat.ts`/`projectChat.remote.ts`/`ProjectChatFeed.svelte` (docs/chat.md); `dawnFeatures.ts` data-driven columns.
+
 ## [0.164.0] - 2026-10-25
 
 ### Added

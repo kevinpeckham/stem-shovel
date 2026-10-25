@@ -829,6 +829,13 @@ From a probe (a project with `TEMPO 120 6 8` and a tempo point carrying `(8 << 1
 - **`TimeMap2_GetDividedBpmAtTime` is 240 there**: the tempo in beats of the bottom number, which is what Reaper's transport displays ("240" for that 6/8). `TimeMap_GetTimeSigAtTime` returns 120, the stored tempo, with 6/8.
 - So a DAW-style tempo (Live, Bitwig, a MIDI file and Dawn all count quarter notes) goes into an `.rpp` unscaled whatever the signature, and the `(denominator << 16) | numerator` on a point carries the bottom number.
 
+## Drizzle `with` objects, and a chat panel that reopens itself (2026-10-25)
+
+From the chat's mentions and reactions (docs/chat.md).
+
+- **A Drizzle relational `with` object shared `as const` must not carry `orderBy`:** the readonly tuple does not fit drizzle's mutable array type, so the shared relation set leaves ordering to the caller (the reactions are folded in set order anyway).
+- **The song page reopens the chat panel on its own after a reload** when the address carried `?open=chat` or the panel was open before, so a Playwright step that clicks "Chat" to open it closes it instead; check the dialog's visibility first.
+
 ## Remote forms in Playwright, and Fallow's view of a prop passed straight through (2026-10-25)
 
 From the short links page (/settings/links, docs/security.md "Short links").

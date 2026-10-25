@@ -13,9 +13,17 @@ Type in the box at the bottom and press **Enter** to send; **Shift+Enter** start
 - A web address becomes a link.
 - A position written as time, like **1:23** or **0:45.5**, becomes a button that jumps the player there.
 
+## Mentions
+
+Type **@** and start a name: a list of the people on the project appears; pick one and their name goes into the message. The person is told you mentioned them, in their inbox and, if they have email for comments and chat turned on, by email, even when the rest of the conversation is folded into one notification for them. A mentioned name is highlighted in the message; your own, when someone mentions you, more so.
+
+## Reactions
+
+Hover a message (or tap it on a phone) and the smiley opens a row of six: 👍 ❤️ 😂 🔥 🎸 👀. One tap adds yours, a second tap takes it back, and the message shows each emoji with a count; hover a count to see who. Reactions are quieter than a reply: nobody is notified of one.
+
 ## On the project page
 
-Each song's tile counts its messages, and a badge beside the tile shows how many you have not read; click it and the song opens with its chat up.
+Each song's tile counts its messages, and a badge beside the tile shows how many you have not read; click it and the song opens with its chat up. The **Chat** button in the project's header opens one feed of every song's recent messages in time order, each with its song's name; the name opens that song's chat, which is where you reply, since a conversation lives on its song.
 
 ## Reading
 

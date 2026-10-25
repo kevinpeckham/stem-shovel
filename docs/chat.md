@@ -25,7 +25,8 @@ pinned to a spot in the song, visible to anyone who can view it.
   text is shown as typed, with two kinds of thing made live by
   `utils/chatTokens.ts`: a URL becomes a link (new tab, `rel="noopener"`),
   and a position written as time (`1:23`, `0:45.5`) becomes a button that
-  seeks the player there. Nothing is rendered as HTML, so nothing needs
+  seeks the player there; an `@Name` of someone the message mentions
+  stands out ("Mentions"). Nothing is rendered as HTML, so nothing needs
   sanitising.
 - Enter sends; Shift+Enter starts a new line. The composer clears on a
   successful send and keeps the text on an error (the page notifies).
@@ -82,11 +83,13 @@ address (Kevin: a notification lands with the chat open).
 
 - `src/lib/val/ChatSchema.ts`: send, edit, delete, read and since
   boundaries.
-- `src/lib/server/data.ts`: `listChatMessages(songId, after?)`,
+- `src/lib/server/data.ts`: `listChatMessages(songId, after?, viewerId?)`,
   `createChatMessage`, `chatMessageOwnership`, `updateChatMessage`,
-  `deleteChatMessage`, `chatReadAt`, `markChatRead`.
+  `deleteChatMessage`, `chatReadAt`, `markChatRead`, `toggleChatReaction`,
+  `chatAudience` ("Mentions", "Reactions").
 - `src/lib/remote/chat.remote.ts`: `sendMessage`, `editMessage`,
-  `deleteMessage` (forms), `markChatRead` (command), `chatSince` (query),
+  `deleteMessage` (forms), `markChatRead` and `reactToMessage` (commands),
+  `chatSince` and `chatPeople` (queries),
   guarded like `comments.remote.ts` (`memberOf` with viewers).
 - `src/lib/components/SongChat.svelte`: the list, the composer, polling,
   the read mark; `onseek` for positions.
@@ -103,16 +106,25 @@ badge links to the song with `?open=chat`, so the chat panel is up on
 arrival. `chatSummaryOf(songIds, userId)` gathers both in two queries
 for someone who may write in the chats; a visitor sees neither.
 
-### A project-level stream, considered and parked (2026-10-09)
+### The project's chat feed (2026-10-25)
 
-Kevin asked whether a project-level chat could show the talk across
-songs. The recommendation, agreed: not a chat of its own (a second kind
-of thread competing with the songs' is where people lose track of where
-a message went), but, if wanted later, a read-only Chat panel on the
-project page listing every song's recent messages in one time-ordered
-feed, each prefixed with its song's name and linking to that song's
-chat, with no composer, so a conversation lives in one place. Not built;
-the tile badges above are the first step and may be enough.
+Kevin asked on 2026-10-09 whether a project-level chat could show the
+talk across songs; the answer then was not a chat of its own (a second
+kind of thread competing with the songs' is where people lose track of
+where a message went) but, if wanted, a read-only feed. Built at his
+request: the project page carries a **Chat** button in its header (for
+whoever may read the songs' chats, project viewers included, with a dot
+while any song has unread messages) opening a read-only panel
+(`ProjectChatFeed`): every song's messages in one stream, oldest at the
+top, by day, each under its song's title, which links to that song's
+chat (`?open=chat`). It has no composer, so a conversation still lives in
+one place, on its song. `projectChatFeed(accountId, projectId, { before,
+limit })` (src/lib/server/projectChat.ts, `projectChat.remote.ts`)
+answers a page newest first, 50 at a time, and whether there is more;
+"Load earlier messages" pages back from the oldest held. While the page
+is visible the panel fetches the newest page every 15 seconds and folds
+it in (`mergeFeed`), so new, edited and deleted messages show. The tile
+badges above still count the unread per song.
 
 ## Sessions (2026-10-19)
 
@@ -133,8 +145,68 @@ take `sessionId` in place of `songId`; the session page keeps what it
 fetched per session and shows one panel at a time. `notifySessionChat`
 reaches the account's members with `?session=<id>&open=chat`.
 
+## Mentions (2026-10-25)
+
+Typing `@` in the composer, or in a message being edited, opens a list of
+the chat's people (`ChatMentionPicker`) narrowed by what follows the `@`
+(the start of the name or of any word in it); ArrowUp/ArrowDown move,
+Enter or Tab picks, Escape closes, a click picks too. Picking writes
+`@Name ` into the text. On send or save the people picked whose `@Name`
+is still in the text (`utils/mentionsIn.ts`, read the way the message
+will show it) go with the message as `mentions`; the server keeps only
+the ids of people in the chat's audience, each once, at most 20
+(`ChatSendSchema`/`ChatEditSchema`).
+
+- **Who may be named**: `chatAudience(accountId, { songId | sessionId })`
+  in data.ts, by name: for a song, everyone who may open its project
+  (`projectAudienceOf`, the same rule the notifications use); for a
+  session, the account's members. The composer fetches it once, on the
+  first `@`, through the `chatPeople` query.
+- **Rendering**: `ChatMessageRow.mentions` is `{ id, name }[]` (names
+  read in one query per list); `chatTokens(body, mentions)` makes a
+  `mention` token of `@Name` for each, the longest name first and never
+  run on into a longer word or inside a link; ChatText shows it in the
+  accent, the reader's own on a tint. Any other `@text` stays plain.
+- **Notifications**: `notifyMention(accountId, scope, id, authorId,
+  mentionedIds)` raises a `mention` item for each person named, never
+  folded: "<who> mentioned you in the chat on <song or session>", with the
+  chat's `?open=chat` link; email follows the comments opt-in.
+  `notifyChat`/`notifySessionChat` leave those people out of the folded
+  chat item, so nobody hears twice. An edit tells only the people it newly
+  names (`chatMessageOwnership` returns the stored `mentions`).
+- **Data**: `chat_message.mentions` and `session_chat_message.mentions`
+  (json `string[]`, null for none or for messages from before; migration
+  0098).
+
+## Reactions (2026-10-25)
+
+A message carries reactions from a fixed set (`CHAT_REACTION_EMOJI`:
+👍 ❤️ 😂 🔥 🎸 👀), once per person per emoji. Under the text a chip per
+emoji with a count (`ChatReactions`), lit when the reader is among them,
+its title the names; a tap toggles the reader's own. On hover, beside Edit
+and Delete, a smiley (`ContextMenu`, a native popover, keyboard-reachable)
+offers the six. Anyone who may write in the chat reacts; someone who may
+not sees the chips without tapping.
+
+- **Data**: `chat_reaction` (`scope` "song" | "session", `message_id`,
+  `user_id`, `emoji`; unique per message, user and emoji), one table for
+  both chats; deleted with the message (`deleteChatMessage`,
+  `deleteSessionChatMessage`), the song, session, account and user
+  (cascade.ts). Migration 0098.
+- **Code**: `toggleChatReaction(scope, messageId, userId, emoji)` inserts
+  or deletes the row and moves the message's `updated_at`, so the poll
+  (`chatSince`) carries the change to other open pages, and returns the
+  message as the person sees it. The `reactToMessage` command
+  (`{ id, emoji }`) finds the message in whichever table holds it and
+  allows whoever may read that chat. `ChatMessageRow.reactions` is
+  `{ emoji, count, mine, names }[]` in the set's order
+  (`utils/chatReactionSummary.ts`); `mine` needs the viewer, so
+  `listChatMessages(songId, after, viewerId)` and
+  `listSessionChatMessages(sessionId, after, viewerId)` take one
+  (`songChat` and `chatSince` pass it).
+
 ## Not built
 
-Mentions, reactions, attachments in messages, a project-wide chat, and
+Attachments in messages, a project-wide chat, and
 push delivery (the poll is enough for a band page). A deletion by someone
 else reaches other open pages on their next load.

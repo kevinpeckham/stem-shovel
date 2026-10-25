@@ -8,6 +8,8 @@
 	import ProjectPlayer from "#lib/components/ProjectPlayer.svelte";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import ProjectPeople from "#lib/components/ProjectPeople.svelte";
+	import ProjectChatFeed from "#lib/components/ProjectChatFeed.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { songStage } from "#lib/utils/songStage.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
@@ -84,6 +86,9 @@
 	// The songs in the order the page shows: the project's, or the one a member is dragging into shape until it is saved.
 	let songOrder = $state<string[] | null>(null);
 	let songs = $derived(songOrder ? reorderById(data.project.songs, songOrder) : data.project.songs);
+	// The project's chat feed (docs/chat.md, "The project page"): every song's recent messages, read-only, in a panel the header's button opens; its badge sums the songs' unread counts.
+	let chatOpen = $state(false);
+	let chatUnread = $derived(songs.reduce((n, s) => n + (s.chat?.unread ?? 0), 0));
 	// Filed by stage (docs/mixes.md, "Phase 2"): finished, then mixing, arranging and writing (the song ideas); an empty stage shows no section.
 	let finished = $derived(songs.filter((s) => stageOf(s) === "finished"));
 	let mixing = $derived(songs.filter((s) => stageOf(s) === "mixing"));
@@ -298,6 +303,27 @@
 					<span class="hidden sm-inline">Project Settings</span>
 				</button>
 			{/if}
+			{#if data.canComment && data.user}
+				<button
+					class="button sm-button-sm relative"
+					type="button"
+					title={chatUnread
+						? `Chat: ${chatUnread} new across the songs`
+						: "The songs' chats in one feed"}
+					aria-label="Chat{chatUnread ? ` (${chatUnread} new)` : ''}"
+					aria-pressed={chatOpen}
+					onclick={() => (chatOpen = !chatOpen)}
+				>
+					<span class="block i-ph-chat-circle-dots" aria-hidden="true"></span>
+					<span class="hidden sm-inline">Chat</span>
+					{#if chatUnread}
+						<span
+							class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"
+							aria-hidden="true"
+						></span>
+					{/if}
+				</button>
+			{/if}
 			<!-- The project's own address made short (docs/security.md "Short links"), for members and visitors alike. -->
 			<button
 				class="button sm-button-sm"
@@ -311,6 +337,26 @@
 			</button>
 		</div>
 	</header>
+	{#if data.canComment && data.user && chatOpen}
+		<!-- The feed (docs/chat.md): read-only, every song's recent messages in time order, each linking to its song's chat; mounted only while open. -->
+		<div class="max-w-full lg:contents">
+			<FloatingPanel
+				open={chatOpen}
+				title="Chat across the songs"
+				storageKey="stemshovel.project.chat-panel"
+				width={480}
+				height={600}
+				onminimise={() => (chatOpen = false)}
+			>
+				<ProjectChatFeed
+					projectId={data.project.id}
+					account={data.account.slug}
+					project={data.project.slug}
+					me={{ id: data.user.id }}
+				/>
+			</FloatingPanel>
+		</div>
+	{/if}
 
 	{#if data.canEdit}
 		<!-- Same native popover as the song settings: top layer, Esc / click-outside close. -->

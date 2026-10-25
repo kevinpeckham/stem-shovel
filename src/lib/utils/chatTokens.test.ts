@@ -51,4 +51,24 @@ describe("chatTokens", () => {
 			{ kind: "position", text: "1:23", seconds: 83 },
 		]);
 	});
+	it("@Name of a mentioned person is a mention, the longest name first; other @text and names run on into a word stay plain", () => {
+		const people = [
+			{ id: "sam", name: "Sam" },
+			{ id: "sl", name: "Sam Lee" },
+		];
+		expect(chatTokens("@Sam Lee and @Sam at 1:23, @Samuel, @nobody", people)).toEqual([
+			{ kind: "mention", text: "@Sam Lee", id: "sl" },
+			{ kind: "text", text: " and " },
+			{ kind: "mention", text: "@Sam", id: "sam" },
+			{ kind: "text", text: " at " },
+			{ kind: "position", text: "1:23", seconds: 83 },
+			{ kind: "text", text: ", @Samuel, @nobody" },
+		]);
+	});
+	it("a name inside a link is part of the link, and no mentions means no mention tokens", () => {
+		expect(chatTokens("https://x.io/@Sam", [{ id: "sam", name: "Sam" }])).toEqual([
+			{ kind: "url", text: "https://x.io/@Sam", href: "https://x.io/@Sam" },
+		]);
+		expect(chatTokens("@Sam")).toEqual([{ kind: "text", text: "@Sam" }]);
+	});
 });

@@ -15,6 +15,7 @@ describe("isIndexablePath", () => {
 			"/piano",
 			"/chord-player",
 			"/looper",
+			"/multitrack-recorder/features",
 			"/pricing",
 			"/built-with",
 			"/blog",

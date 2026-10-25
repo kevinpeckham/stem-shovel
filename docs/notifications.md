@@ -17,12 +17,13 @@ tests), `src/lib/val/NotificationSchema.ts` (kinds, settings),
 | `invitation-accepted` | whoever sent the invitation                               | normal   |
 | `comment`             | everyone on the song's project but the author             | normal   |
 | `chat`                | everyone on the song's project but the message's author   | normal   |
+| `mention`             | each person a chat message names (docs/chat.md)           | normal   |
 | `stems`               | everyone on the project but the uploader                  | normal   |
 | `song`                | everyone on the project but the creator                   | normal   |
 | `demo`                | everyone on the project but the uploader                  | normal   |
 | `mix`                 | everyone on the project but the uploader (docs/mixes.md)  | normal   |
 
-"Everyone on the project" is `projectAudience`: the account's owners and
+"Everyone on the project" is `projectAudienceOf` (data.ts): the account's owners and
 admins, its members (unless the project is restricted and they were not
 added), and the project's own people, viewers included (docs/auth.md). The
 events fire after the response (`background`) from `createComment`, `sendMessage` (the chat, docs/chat.md), the
@@ -32,7 +33,8 @@ after every upload reservation (`checkStorage`) and every join
 (`checkSeats`). A warning for a threshold is not repeated within a week
 (`warnedRecently`). Stems, demos, comments and chat messages on one song within
 half an hour fold into one unread item with a `count` (`coalesce`); the chat
-follows the comments opt-in for email.
+and a mention follow the comments opt-in for email. A mention is never
+folded, and the chat's item skips the people its message mentions.
 
 ## Email
 

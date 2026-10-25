@@ -29,6 +29,8 @@ export const sessionChatMessage = table(
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),
 		body: t.text("body").notNull(),
+		/** The ids of the people the message mentions by name (docs/chat.md, "Mentions"); null before mentions existed. */
+		mentions: t.text("mentions", { mode: "json" }).$type<string[]>(),
 		editedAt: t.integer("edited_at", { mode: "timestamp_ms" }),
 		...timestamps,
 	},

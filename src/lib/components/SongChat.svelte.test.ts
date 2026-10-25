@@ -6,19 +6,29 @@ import { fakeRemoteForm } from "../../../tests/helpers/fakeRemoteForm";
  * The chat panel (docs/chat.md): the list grouped by day and author with
  * the "New" line, links and positions in a message, who gets Edit and
  * Delete, the composer (Enter sends, Shift+Enter does not), and the read
- * mark on opening. The remote functions are doubles; polling is off.
+ * mark on opening, reactions (chips that toggle) and mentions (the `@`
+ * picker, and a mention picked out in the text). The remote functions are
+ * doubles; polling is off.
  */
 const sendMessage = fakeRemoteForm();
 const editMessage = fakeRemoteForm();
 const deleteMessage = fakeRemoteForm();
 const chatSince = vi.fn(async () => []);
 const markChatRead = vi.fn(async () => ({ readAt: 9_000 }));
+const reactToMessage = vi.fn();
+const chatPeople = vi.fn(async () => [
+	{ id: "sam", name: "Sam" },
+	{ id: "sal", name: "Sally Ride" },
+	{ id: "me", name: "Pat" },
+]);
 vi.mock("#lib/remote/chat.remote.js", () => ({
 	sendMessage,
 	editMessage,
 	deleteMessage,
 	chatSince,
 	markChatRead,
+	reactToMessage,
+	chatPeople,
 }));
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify: vi.fn() }));
 
@@ -42,6 +52,8 @@ const msg = (id: string, userId: string, body: string, offset: number) => ({
 	createdAt: T0 + offset,
 	updatedAt: T0 + offset,
 	editedAt: null as number | null,
+	mentions: [] as { id: string; name: string }[],
+	reactions: [] as { emoji: "👍" | "🔥"; count: number; mine: boolean; names: string[] }[],
 });
 const base = (over: Record<string, unknown> = {}) => ({
 	songId: "V1StGXR8_Z5jdHi6B-myT",
@@ -119,5 +131,70 @@ describe("SongChat", () => {
 		render(SongChat, { props: base({ messages: [] }) });
 		expect(screen.getByText("Nothing yet. Say something about this song.")).toBeInTheDocument();
 		expect(markChatRead).not.toHaveBeenCalled();
+	});
+	test("a reaction is a chip lit when it is the reader's; a tap toggles it and the row that comes back replaces the message", async () => {
+		const a = msg("a", "sam", "louder?", 0);
+		a.reactions = [{ emoji: "👍", count: 2, mine: true, names: ["Pat", "Sam"] }];
+		reactToMessage.mockResolvedValueOnce({
+			message: { ...a, reactions: [{ emoji: "👍", count: 1, mine: false, names: ["Sam"] }] },
+		});
+		render(SongChat, { props: base({ messages: [a] }) });
+		const chip = screen.getByRole("button", { name: "👍 2: Pat, Sam" });
+		expect(chip).toHaveAttribute("aria-pressed", "true");
+		expect(chip).toHaveAttribute("title", "Pat, Sam");
+		await fireEvent.click(chip);
+		expect(reactToMessage).toHaveBeenCalledWith({ id: "a", emoji: "👍" });
+		const after = await screen.findByRole("button", { name: "👍 1: Sam" });
+		expect(after).toHaveAttribute("aria-pressed", "false");
+	});
+	test("the smiley offers the six emoji; someone who may not write sees chips but cannot tap them", async () => {
+		const a = msg("a", "sam", "louder?", 0);
+		a.reactions = [{ emoji: "🔥", count: 1, mine: false, names: ["Sam"] }];
+		reactToMessage.mockResolvedValueOnce({ message: a });
+		const { unmount } = render(SongChat, { props: base({ messages: [a] }) });
+		expect(screen.getByRole("button", { name: "Add reaction" })).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole("button", { name: "React with 🎸", hidden: true }));
+		expect(reactToMessage).toHaveBeenCalledWith({ id: "a", emoji: "🎸" });
+		unmount();
+		render(SongChat, { props: base({ messages: [a], canWrite: false, me: null }) });
+		expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
+		expect(screen.getByRole("button", { name: "🔥 1: Sam" })).toBeDisabled();
+	});
+	test("a mention of someone the message names stands out, the reader's own the more; other @text stays plain", () => {
+		const a = msg("a", "sam", "@Pat and @Sally Ride, not @nobody", 0);
+		a.mentions = [
+			{ id: "me", name: "Pat" },
+			{ id: "sal", name: "Sally Ride" },
+		];
+		render(SongChat, { props: base({ messages: [a] }) });
+		const marks = document.querySelectorAll("[data-chat-mention]");
+		expect([...marks].map((m) => m.textContent)).toEqual(["@Pat", "@Sally Ride"]);
+		expect(marks[0]).toHaveAttribute("data-chat-mention", "me");
+		expect(marks[1]).toHaveAttribute("data-chat-mention", "");
+		expect(screen.getByText(/not @nobody/)).toBeInTheDocument();
+	});
+	test("@ opens the people picker, narrowed by what follows; arrows and Enter pick, writing @Name into the box", async () => {
+		render(SongChat, { props: base() });
+		const box = screen.getByRole("textbox", { name: "Message" }) as HTMLTextAreaElement;
+		box.value = "hey @sa";
+		box.setSelectionRange(7, 7);
+		await fireEvent.input(box);
+		const list = await screen.findByRole("listbox", { name: "People to mention" });
+		expect(chatPeople).toHaveBeenCalledWith({ songId: base().songId, sessionId: "" });
+		expect(
+			within(list)
+				.getAllByRole("option")
+				.map((o) => o.textContent?.trim()),
+		).toEqual(["Sam", "Sally Ride"]);
+		await fireEvent.keyDown(box, { key: "ArrowDown" });
+		expect(within(list).getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
+		await fireEvent.keyDown(box, { key: "Enter" });
+		// Enter picked rather than sent.
+		expect(sendMessage.submit).not.toHaveBeenCalled();
+		await vi.waitFor(() => expect(box.value).toBe("hey @Sally Ride "));
+		expect(screen.queryByRole("listbox")).toBeNull();
+		// The picked person goes with the message as a mention.
+		const hidden = document.querySelector('input[name="mentions[0]"]');
+		expect(hidden).toHaveAttribute("value", "sal");
 	});
 });
