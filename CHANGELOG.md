@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.168.1] - 2026-10-26
+
 ### Fixed
 
 - **A session recorded on a phone plays on both sides.** A phone's microphone is one channel, and on iPhones the session recorder (and the Idea Recorder's Sources mode) wrote it to the left channel of the file only. The recorders now fill both channels from a mono input, and a recording already made that way is mended when its MP3 is rendered: the one channel with sound becomes a mono MP3 that plays on both sides (the file as uploaded is kept).
