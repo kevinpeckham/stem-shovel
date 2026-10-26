@@ -499,8 +499,13 @@ set over `LEVEL_MAX_SECONDS` (45 min), or of unknown length, skips the
 two passes and takes `alimiter` at −1 dBFS alone (`peakLimiterFilter`),
 which costs nothing. The source stays as uploaded; the download of the
 original is untouched, the MP3 and the zip are the leveled renditions.
-Recordings rendered before this keep their MP3s; `bun run db:left-only`'s
-re-render path is the way to redo one.
+Recordings rendered before this keep their MP3s; `bun run
+db:rerender-sessions` (`scripts/rerender-sessions.ts`) lists a stage's
+session recordings and with `--apply <id…>` or `--apply --all` clears
+their rendition, which the account's Sessions page renders again on its
+next load. It prints the database host first: on a machine without a
+stage's secrets, varlock resolves another stage's (FINDINGS.md
+2026-10-26).
 
 **A recording's own page and its viewing links.** Each recording has a
 page, `/<account>/sessions/r/<id>` (`sessionRecordingPage`): the title,

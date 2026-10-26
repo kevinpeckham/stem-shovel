@@ -7,6 +7,20 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## varlock falls back to the default environment's values when the chosen one has none (2026-10-26)
+
+`.env.schema` keys the 1Password environment on `APP_ENV`
+(`@currentEnv=$APP_ENV`). On a machine whose vault holds no values for an
+environment, `APP_ENV=production bunx varlock run -- …` resolves every
+secret from the environment it does have, silently: on the exe.dev VM,
+`TURSO_DATABASE_URL` under `APP_ENV=production` is the **dev** database's
+host, so `bun run db:status`, a row count or a column check "against
+production" there describes dev. Print the host first
+(`new URL(process.env.TURSO_DATABASE_URL.replace(/^libsql:/, "https:")).hostname`)
+before believing any stage-specific run, and treat production checks as
+Kevin's machine's alone. Lesson from v0.171.0, shipped on a migration
+check that had read dev.
+
 ## ffmpeg `loudnorm` is two passes, prints its measurement as JSON on stderr, and decodes at ~30× (2026-10-26)
 
 EBU R128 leveling with `loudnorm` needs a first pass over the whole file

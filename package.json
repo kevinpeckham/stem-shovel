@@ -49,6 +49,7 @@
 		"db:update-docs": "varlock run -- bun scripts/update-user-docs.ts",
 		"db:sweep-orphans": "varlock run -- bun scripts/sweep-orphans.ts",
 		"db:left-only": "varlock run -- bun scripts/left-only-renditions.ts",
+		"db:rerender-sessions": "varlock run -- bun scripts/rerender-sessions.ts",
 		"db:reset-stage": "varlock run -- bun scripts/reset-stage.ts",
 		"db:snapshot-accounts": "varlock run -- bun scripts/snapshot-accounts.ts",
 		"db:restore-accounts": "varlock run -- bun scripts/restore-accounts.ts",
