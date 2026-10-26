@@ -64,7 +64,7 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	await expect(eqPanel.getByTestId("eq-low-value")).toHaveText("+4 dB");
 	await eqPanel.getByRole("checkbox", { name: /High-pass/ }).check();
 	await expect(eqButton).toHaveAttribute("data-active", "true");
-	await eqPanel.getByRole("button", { name: "Close" }).click();
+	await eqPanel.getByRole("button", { name: "Close", exact: true }).click();
 	// Still playing through the graph: the clock moves on after the change.
 	await page.getByRole("button", { name: "Play", exact: true }).click();
 	const t0 = await page
@@ -79,8 +79,16 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	expect(
 		await page.evaluate(() => JSON.parse(localStorage.getItem("stem-shovel:session-eq") ?? "null")),
 	).toEqual({ highPass: true, low: 4, mid: 0, high: 0 });
-	// A reload keeps it; Reset lets it go.
-	await page.reload();
+	// A reload keeps it; Reset lets it go. After the reload nothing plays and the player's panel is
+	// hidden until a row is played, so the first recording is started to bring it back.
+	// (networkidle: a click before the dev server's modules have hydrated the page is lost.)
+	await page.reload({ waitUntil: "networkidle" });
+	await page
+		.locator("[data-recording]")
+		.first()
+		.getByRole("button", { name: /^Play / })
+		.click();
+	await expect(player).toBeVisible();
 	await expect(player.getByRole("button", { name: "EQ", exact: true })).toHaveAttribute(
 		"data-active",
 		"true",
@@ -91,7 +99,24 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 		"data-active",
 		"false",
 	);
-	await page.getByRole("button", { name: "Close" }).click();
+	await page.getByRole("button", { name: "Close", exact: true }).click();
+
+	// The player floats: closing its panel keeps the recording playing and lights the toolbar's Player
+	// button, which brings the panel back.
+	await page.getByRole("button", { name: "Close Player" }).click();
+	await expect(player).toBeHidden();
+	const playerButton = page.getByRole("button", { name: "Player", exact: true });
+	await expect(playerButton).toHaveAttribute("data-active", "true");
+	const c0 = await page
+		.locator("audio[crossorigin]")
+		.evaluate((a) => (a as HTMLAudioElement).currentTime);
+	await page.waitForTimeout(1200);
+	expect(
+		await page.locator("audio[crossorigin]").evaluate((a) => (a as HTMLAudioElement).currentTime),
+	).toBeGreaterThan(c0);
+	await playerButton.click();
+	await expect(player).toBeVisible();
+	await page.getByRole("button", { name: "Pause", exact: true }).click();
 
 	// A name of its own.
 	await sessions

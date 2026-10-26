@@ -360,7 +360,9 @@ lifts the quiet parts.
 Kevin's ask: on a desktop, the full drum machine in a floating panel
 over the recorder page, dragged by its header, resized by the browser's
 corner handle, its place and size remembered per browser
-(`FloatingPanel.svelte`, `stemshovel.recorder.drum-panel`). From lg the
+(`FloatingPanel.svelte`, `stemshovel.recorder.drum-panel`). The handle's
+minimum is 480 × 320, or 480 × `minHeight` for a short panel (the
+Sessions page's player, 2026-10-26). From lg the
 toolbar's drum button opens and closes it (lit while the beat plays with
 the panel closed); below lg the compact control (play, stop, tempo)
 stays as on a phone (Kevin: one button on a desktop, the old experience

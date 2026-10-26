@@ -25,9 +25,10 @@
 		open: boolean;
 		title: string;
 		storageKey: string;
-		/** The starting size; the minimum the handle allows is 480 × 320. */
+		/** The starting size; the minimum the handle allows is 480 × `minHeight` (320 unless a short panel says less, like the sessions player's). */
 		width?: number;
 		height?: number;
+		minHeight?: number;
 		/** Extra controls in the header, before the close button. */
 		controls?: Snippet;
 		children: Snippet;
@@ -47,6 +48,7 @@
 		storageKey,
 		width = 760,
 		height = 600,
+		minHeight = 320,
 		controls,
 		children,
 		onminimise,
@@ -87,7 +89,7 @@
 		}
 		if (saved && [saved.x, saved.y, saved.w, saved.h].every(Number.isFinite)) {
 			w = Math.max(480, Math.min(window.innerWidth - 16, saved.w));
-			h = Math.max(320, Math.min(window.innerHeight - 16, saved.h));
+			h = Math.max(minHeight, Math.min(window.innerHeight - 16, saved.h));
 			x = saved.x;
 			y = saved.y;
 		} else {
@@ -136,7 +138,7 @@
 		const ro = new ResizeObserver(() => {
 			// The outer size (the border counts, as the style does); a reading under the minimum is the panel on its way out; docked, the size is the page's.
 			if (!node.isConnected || getComputedStyle(node).position !== "fixed") return;
-			if (node.offsetWidth < 480 || node.offsetHeight < 320) return;
+			if (node.offsetWidth < 480 || node.offsetHeight < minHeight) return;
 			w = node.offsetWidth;
 			h = node.offsetHeight;
 			if (sizeTimer) clearTimeout(sizeTimer);
@@ -164,12 +166,13 @@
 		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden {extraClass} {open
 			? ''
 			: '!hidden'} {floating
-			? 'lg-fixed lg-z-[var(--fp-z)] lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-320px lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]'
+			? 'lg-fixed lg-z-[var(--fp-z)] lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-[var(--fp-min-h)] lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]'
 			: ''}"
 		style:--fp-x="{x}px"
 		style:--fp-y="{y}px"
 		style:--fp-w="{w}px"
 		style:--fp-h="{h}px"
+		style:--fp-min-h="{minHeight}px"
 		style:--fp-z={z}
 		{@attach sized}
 		{@attach undocked}

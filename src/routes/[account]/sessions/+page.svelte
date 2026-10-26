@@ -82,14 +82,22 @@
 	let playerDuration = $state(0);
 	let playerLoop = $state<{ start: number; end: number } | null>(null);
 	let playerLooping = $state(false);
+	/** The player lives in a floating panel (docked in the flow below lg), hidden until a track starts; its close button collapses it to the toolbar's Player button. */
+	let playerOpen = $state(false);
+	const currentTitle = $derived(queue.find((t) => t.id === current)?.title ?? "");
+	/** Every start goes through here, so the panel shows the moment something plays. */
+	async function startTrack(id: string) {
+		playerOpen = true;
+		await player?.play(id);
+	}
 	async function playRecording(s: Session, r: Recording) {
 		if (!queue.some((t) => t.id === r.id)) queue = tracksOf(s);
-		await player?.play(r.id);
+		await startTrack(r.id);
 	}
 	function playSession(s: Session) {
 		if (s.recordings.length === 0) return;
 		queue = tracksOf(s);
-		void player?.play(s.recordings[0]!.id);
+		void startTrack(s.recordings[0]!.id);
 	}
 	/** After an edit or a delete, the queue follows the list (a renamed track, a gone one). */
 	function refreshQueue() {
@@ -98,6 +106,7 @@
 		if (current && !all.has(current)) {
 			current = null;
 			paused = true;
+			playerOpen = false;
 		}
 	}
 
@@ -530,19 +539,8 @@
 		<PageCopyHeader copy={data.copy} class="mb-6" />
 	</div>
 
+	{@render toolbar()}
 	{#if data.canEdit}
-		<div class="mb-6 flex flex-wrap items-center gap-3" role="group" aria-label="Sessions toolbar">
-			<button class="button-accent button-sm" type="button" popovertarget="add-recording">
-				<span class="i-ph-upload-simple" aria-hidden="true"></span> Add a recording
-			</button>
-			<a
-				class="button button-sm"
-				href="/{data.account.slug}/sessions/record"
-				title="Record the room from this device, straight into the sessions"
-			>
-				<span class="i-ph-record-fill text-red-400" aria-hidden="true"></span> Record a session
-			</a>
-		</div>
 		{#if jobs.length > 0}
 			<ul class="max-w-article mb-6 grid gap-1 text-13px" aria-label="Uploads">
 				{#each jobs as job (job.name)}
@@ -560,7 +558,19 @@
 		{/if}
 	{/if}
 
-	<div class="max-w-article mb-6">
+	<!-- Kept mounted while closed: the <audio> and its EQ graph live in the player, so playback survives a minimize. -->
+	<FloatingPanel
+		open={playerOpen}
+		title="Player"
+		storageKey="stemshovel.sessions.player-panel"
+		width={620}
+		height={200}
+		minHeight={180}
+		keep={true}
+		closable={true}
+		extraClass="mb-6"
+		onminimise={() => (playerOpen = false)}
+	>
 		<SessionPlayer
 			bind:this={player}
 			{queue}
@@ -571,25 +581,17 @@
 			bind:loop={playerLoop}
 			bind:looping={playerLooping}
 		/>
-	</div>
+	</FloatingPanel>
 
 	{#if data.sessions.length === 0}
 		<p class="opacity-80">No sessions yet.</p>
 	{:else}
-		<div class="mb-3 flex items-center gap-1 text-13px" role="group" aria-label="Show">
-			{#each [["all", "All"], ["practice", "Practice"], ["show", "Show"]] as [k, label] (k)}
-				<button
-					type="button"
-					class="rounded px-2.5 py-1 {filter === k
-						? 'bg-white/15 text-neutral-100'
-						: 'opacity-70 hover-opacity-100'}"
-					aria-pressed={filter === k}
-					onclick={() => (filter = k as typeof filter)}>{label}</button
-				>
-			{/each}
-			<span class="ml-2 text-dim">{shown.length} {shown.length === 1 ? "session" : "sessions"}</span
-			>
-			<label class="relative ml-auto min-w-0 flex-1 sm-max-w-72">
+		<div
+			class="mb-3 flex flex-wrap items-center justify-start gap-1 text-13px"
+			role="group"
+			aria-label="Show"
+		>
+			<label class="relative w-full sm-mr-2 sm-w-72">
 				<span class="sr-only">Search sessions</span>
 				<span
 					class="i-ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-dim"
@@ -603,6 +605,18 @@
 					bind:value={searchText}
 				/>
 			</label>
+			{#each [["all", "All"], ["practice", "Practice"], ["show", "Show"]] as [k, label] (k)}
+				<button
+					type="button"
+					class="rounded px-2.5 py-1 {filter === k
+						? 'bg-white/15 text-neutral-100'
+						: 'opacity-70 hover-opacity-100'}"
+					aria-pressed={filter === k}
+					onclick={() => (filter = k as typeof filter)}>{label}</button
+				>
+			{/each}
+			<span class="ml-2 text-dim">{shown.length} {shown.length === 1 ? "session" : "sessions"}</span
+			>
 		</div>
 		{#if query && shown.length === 0}
 			<p class="opacity-80">Nothing matches "{searchText.trim()}".</p>
@@ -1068,6 +1082,39 @@
 </main>
 
 <svelte:window onpointerdown={closeMenu} />
+
+<!-- The toolbar: the uploads for a member, and the Player button once a track has been chosen (its own snippet, so the template stays scoreable). -->
+{#snippet toolbar()}
+	{#if data.canEdit || current !== null}
+		<div class="mb-6 flex flex-wrap items-center gap-3" role="group" aria-label="Sessions toolbar">
+			{#if data.canEdit}
+				<button class="button-accent button-sm" type="button" popovertarget="add-recording">
+					<span class="i-ph-upload-simple" aria-hidden="true"></span> Add a recording
+				</button>
+				<a
+					class="button button-sm"
+					href="/{data.account.slug}/sessions/record"
+					title="Record the room from this device, straight into the sessions"
+				>
+					<span class="i-ph-record-fill text-red-400" aria-hidden="true"></span> Record a session
+				</a>
+			{/if}
+			{#if current !== null}
+				<!-- The player's panel collapses to this button and comes back with it; lit while something plays. -->
+				<button
+					class="button button-sm data-[active=true]:border-accent data-[active=true]:bg-accent/20 data-[active=true]:text-accent"
+					type="button"
+					data-active={!paused}
+					aria-pressed={playerOpen}
+					title={currentTitle}
+					onclick={() => (playerOpen = !playerOpen)}
+				>
+					<span class={paused ? "i-ph-play-circle" : "i-ph-pause-circle"} aria-hidden="true"></span> Player
+				</button>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
 
 {#snippet commentCard(id: string)}
 	{@const c = data.comments.find((x) => x.id === id)}

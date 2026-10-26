@@ -368,7 +368,12 @@ recordings in the order they were made (day, then upload). One
 `SessionPlayer` (the project page's shape) holds a queue: a row's play
 button or a session's Play all fills it with the session's recordings
 (the MP3 once rendered, else the file as uploaded) and plays through
-them. A **loop**, as the stem player's (Kevin, 2026-10-20): a drag across
+them. The player lives in a `FloatingPanel` (Kevin, 2026-10-26:
+`stemshovel.sessions.player-panel`, `keep` so the `<audio>` element and
+its EQ graph survive a minimize), hidden until a track starts, closed
+to a "Player" button in the toolbar (lit while playing) and docked in
+the flow below lg; the filter row runs search, kinds, count from the
+left. A **loop**, as the stem player's (Kevin, 2026-10-20): a drag across
 the playing recording's waveform (the review row's, or the recording's
 page's) selects a stretch (`setLoop`, bound `loop`), the transport's Loop
 button (L) plays it round (`timeupdate` seeks back at its end; with

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The Sessions page's player floats.** Nothing shows until a recording plays; the player then opens in a draggable panel (its place and size remembered on the device). Close it and it tucks into a Player button in the toolbar, lit while playing, which brings it back; on a phone the same panel docks at the top of the page while something plays. The filter row now starts with the search box, with the Practice/Show filters beside it, nothing pushed to the right (Kevin, 2026-10-26).
+
 ## [0.169.0] - 2026-10-26
 
 ### Added
