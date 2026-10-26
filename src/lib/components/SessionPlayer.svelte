@@ -80,7 +80,8 @@
 	let track = $derived(queue.find((t) => t.id === current) ?? null);
 	let index = $derived(track ? queue.indexOf(track) : -1);
 	let audio = $state<HTMLAudioElement | null>(null);
-	let volume = $state(1);
+	// 70% to start: a leveled recording at full scale is loud on a laptop's speakers.
+	let volume = $state(0.7);
 
 	// The playback EQ, per session. Flat until mount (the server has no device storage); then the
 	// current track's session's, applied again whenever a track of another session starts (`play`).

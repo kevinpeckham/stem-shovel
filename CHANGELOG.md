@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The Sessions player starts at 70% volume** instead of full.
+
 ### Technical
 
 - `bun run db:rerender-sessions` lists a stage's session recordings and, with `--apply <id…>` or `--apply --all`, clears their MP3 so the Sessions page renders them again on the current code (leveled); it prints the database host first, since varlock resolves another stage's secrets when the named stage's are absent (FINDINGS.md).

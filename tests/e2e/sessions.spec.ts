@@ -51,6 +51,10 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	await sessions.first().getByRole("button", { name: "Play all" }).click();
 	const player = page.locator("[data-session-player]");
 	await expect(player).toContainText("1 of 2");
+	// The volume starts at 70%, not full.
+	expect(
+		await page.locator("audio[crossorigin]").evaluate((a) => (a as HTMLAudioElement).volume),
+	).toBeCloseTo(0.7);
 	await page.getByRole("button", { name: "Next recording" }).click();
 	await expect(player).toContainText("2 of 2");
 	await page.getByRole("button", { name: "Pause", exact: true }).click();
