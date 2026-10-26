@@ -59,6 +59,14 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	await expect(player).toContainText("2 of 2");
 	await page.getByRole("button", { name: "Pause", exact: true }).click();
 
+	// The output meter reads after the EQ (the element runs through Web Audio): it moves while playing.
+	await page.getByRole("button", { name: "Play", exact: true }).click();
+	const meter = player.getByRole("meter", { name: "Output level" });
+	await expect(meter).toBeVisible();
+	await expect
+		.poll(async () => Number(await meter.getAttribute("aria-valuenow")), { timeout: 5000 })
+		.toBeGreaterThan(0);
+	await page.getByRole("button", { name: "Pause", exact: true }).click();
 	// The playback EQ: the element runs through Web Audio, so a change is heard and remembered on the device.
 	const eqButton = player.getByRole("button", { name: "EQ", exact: true });
 	await expect(eqButton).toHaveAttribute("data-active", "false");

@@ -485,19 +485,25 @@ mix's) is made in three ffmpeg passes: the `astats` pass already run for
 the fold also reports each channel's peak and the file's length
 (`channelStats`, `utils/silentRightChannel.ts` `peakLevels`,
 `utils/ffmpegDuration.ts`); a channel at or above −0.1 dBFS
-(`CLIPPED_PEAK_DB`) means the capture hit full scale and `adeclip`
-(ffmpeg's clip repair) joins the chain after the fold; then `loudnorm`
-measures the file through that same chain (`measureLoudness`,
-`print_format=json`, parsed by `utils/loudnorm.ts`) and the encode
-applies the numbers (`loudnormApplyFilter`: EBU R128 to
-`SESSION_LOUDNESS`, −14 LUFS, −1 dBTP, LRA 11, `linear=true` so one gain
-across the set keeps its dynamics, loudnorm's own dynamic mode only when
-the peak forbids). A measurement that prints nothing usable (a silent
-file) leaves the level alone. Every pass decodes the whole file at about
-30× real time on one core and the jobs function has 300 s in all, so a
-set over `LEVEL_MAX_SECONDS` (45 min), or of unknown length, skips the
-two passes and takes `alimiter` at −1 dBFS alone (`peakLimiterFilter`),
-which costs nothing. The source stays as uploaded; the download of the
+(`CLIPPED_PEAK_DB`) means the capture hit full scale and the declipper
+(`DECLIP_FILTER`, ffmpeg's `adeclip` with a short window, half overlap
+and a low order, which repairs as well as its defaults at a thirtieth of
+the cost, FINDINGS.md 2026-10-26) joins the chain after the fold; then
+`ebur128` measures the integrated loudness and true peak of the folded
+file (`measureLoudness`, parsed by `utils/ebur128Summary.ts`) and the
+encode applies one gain across the set (`utils/levelingGain.ts`: up to
+`SESSION_LOUDNESS`, −14 LUFS, but no further than would put the true
+peak more than `LEVEL_MAX_LIMIT_DB`, 3 dB, over the −1 dBTP ceiling, so a
+peaky set stays quieter rather than squashed) followed by `alimiter` at
+−1 dBFS with a fast attack (`peakLimiterFilter`), which catches the
+peaks the gain or the declipper's rebuilt waveform put over. The first
+chain used `loudnorm`'s two passes with the declipper in both; it ran a
+clipped show past the jobs function's 300 s (FINDINGS.md 2026-10-26). A
+measurement that prints nothing usable (a silent file) leaves the gain
+out and keeps the limiter. The measurement and the encode together cost
+under a second per minute of audio on one core, so a set over
+`LEVEL_MAX_SECONDS` (90 min), or of unknown length, takes the limiter
+alone. The source stays as uploaded; the download of the
 original is untouched, the MP3 and the zip are the leveled renditions.
 Recordings rendered before this keep their MP3s; `bun run
 db:rerender-sessions` (`scripts/rerender-sessions.ts`) lists a stage's
@@ -540,7 +546,14 @@ first play (a gesture, which iOS needs) the player makes an
 `AudioContext` and routes its `<audio>` element through the graph
 (`lib/audio/playbackEq.ts`: a `MediaElementAudioSourceNode`, the
 high-pass crossfaded in and out by two gains so "off" is untouched,
-`setTargetAtTime` glides gains and centers); the element carries
+`setTargetAtTime` glides gains and centers, and a trim after the bands
+takes off the largest boost, `utils/eqHeadroomDb.ts`, since a leveled
+recording sits 1 dB under full scale and a boost on top of it clipped at
+the output, Kevin, 2026-10-26; the download's filter graph ends with the
+same `volume=-N dB`; an `AnalyserNode` after the trim feeds an output
+`LevelMeter` beside the volume slider on animation frames while the
+element plays, `utils/meterLevel.ts`, Kevin, 2026-10-26: a clip should
+show); the element carries
 `crossorigin="anonymous"`, which both Blob stores allow (every response
 has `access-control-allow-origin: *`, presigned private URLs too). Each
 element gets one source, ever, so the `{@attach}` builds the graph per

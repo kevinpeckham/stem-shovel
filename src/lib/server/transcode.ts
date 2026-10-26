@@ -29,14 +29,14 @@ import { createPcm16Peaks } from "#lib/utils/pcm16Peaks.js";
 import { studioSourceWantsFlac } from "#lib/utils/studioSourceWantsFlac.js";
 import { silenceBounds, type SilenceBounds } from "#lib/utils/silenceBounds.js";
 import { peakLevels, silentRightChannel } from "#lib/utils/silentRightChannel.js";
+import { peakLimiterFilter } from "#lib/utils/peakLimiterFilter.js";
+import { parseEbur128Summary } from "#lib/utils/ebur128Summary.js";
+import { levelingGainDb } from "#lib/utils/levelingGain.js";
 import {
-	loudnormApplyFilter,
-	loudnormMeasureFilter,
-	parseLoudnorm,
-	peakLimiterFilter,
-	type LoudnormMeasurement,
-} from "#lib/utils/loudnorm.js";
-import { CLIPPED_PEAK_DB, LEVEL_MAX_SECONDS } from "#lib/constants/sessionLoudness.js";
+	CLIPPED_PEAK_DB,
+	DECLIP_FILTER,
+	LEVEL_MAX_SECONDS,
+} from "#lib/constants/sessionLoudness.js";
 import { ffmpegDuration } from "#lib/utils/ffmpegDuration.js";
 import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
 import type { JobKind } from "#lib/val/JobSchema.js";
@@ -427,7 +427,7 @@ interface Mp3Target {
 	measure?: boolean;
 	/** A browser's recording (the Idea Recorder, the session recorder): a stereo file with sound on the left only is folded to mono (`leftOnly`). */
 	fromRecorder?: boolean;
-	/** Session recordings: declipped when the capture hit full scale, then leveled to `SESSION_LOUDNESS` (docs/uploads-and-blob.md, "Leveling"). */
+	/** Session recordings: declipped when the capture hit full scale, then leveled toward `SESSION_LOUDNESS` with a gain and a limiter (docs/uploads-and-blob.md, "Leveling"). */
 	level?: boolean;
 	/** Set on takes: a raw PCM source (Chrome's lossless recording) is kept as FLAC instead, and a trim replaces the source too. */
 	replaceSource?: (
@@ -537,33 +537,49 @@ function channelStats(file: string): Effect.Effect<string, never, Services> {
 }
 
 /**
- * The leveling's first pass (src/lib/utils/loudnorm.ts): `loudnorm`
- * measures the file after the same shaping filters the encode will apply
- * (the fold, the declipper), and prints the numbers the second pass
- * needs. Null when the pass fails or prints nothing usable (a silent or
- * very short file): the encode then runs without leveling.
+ * The leveling's measurement: `ebur128` reads the integrated loudness and
+ * the true peak after the fold (`shape`, without the declipper: the
+ * limiter catches what the declipper reconstructs), parsed from its
+ * summary (src/lib/utils/ebur128Summary.ts). Null when the pass fails or
+ * prints nothing usable (a silent or very short file): the encode then
+ * gets the limiter alone.
  */
 function measureLoudness(
 	file: string,
-	shaping: string,
-): Effect.Effect<LoudnormMeasurement | null, never, Services> {
+	shape: string,
+): Effect.Effect<{ integrated: number; truePeak: number } | null, never, Services> {
 	return runFfmpeg(
-		[
-			"-hide_banner",
-			"-i",
-			file,
-			"-vn",
-			"-af",
-			`${shaping},${loudnormMeasureFilter()}`,
-			"-f",
-			"null",
-			"-",
-		],
+		["-hide_banner", "-i", file, "-vn", "-af", `${shape},ebur128=peak=true`, "-f", "null", "-"],
 		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.measureLoudness" },
 	).pipe(
-		Effect.map(({ stderr }) => parseLoudnorm(stderr)),
+		Effect.map(({ stderr }) => parseEbur128Summary(stderr)),
 		Effect.orElseSucceed(() => null),
 	);
+}
+
+/**
+ * The encode's filters for a session recording (`level`), after the fold
+ * (`shape`). A capture that hit full scale is declipped (DECLIP_FILTER); an ebur128 pass measures the set, one linear gain brings it
+ * toward SESSION_LOUDNESS (held back so at most LEVEL_MAX_LIMIT_DB goes
+ * into the limiter), and the limiter keeps the true-peak headroom. A set
+ * too long to measure (or of unknown length), or a failed measurement,
+ * gets the limiter alone.
+ */
+function levelingFilters(
+	input: string,
+	stats: string,
+	shape: string,
+): Effect.Effect<string, never, Services> {
+	return Effect.gen(function* () {
+		const seconds = ffmpegDuration(stats);
+		const clipped = peakLevels(stats).some((p) => p >= CLIPPED_PEAK_DB);
+		const shaping = clipped ? `${shape},${DECLIP_FILTER}` : shape;
+		const measurable = seconds !== null && seconds <= LEVEL_MAX_SECONDS;
+		const loudness = measurable ? yield* measureLoudness(input, shape) : null;
+		return loudness
+			? `${shaping},volume=${levelingGainDb(loudness).toFixed(1)}dB,${peakLimiterFilter()}`
+			: `${shaping},${peakLimiterFilter()}`;
+	});
 }
 
 /** `-ss`/`-to` after the input, so a re-encode cuts to the sample and a stream copy to the packet. */
@@ -746,19 +762,7 @@ function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
 		const stats = target.fromRecorder ? yield* channelStats(input) : "";
 		const fold = silentRightChannel(stats);
 		const shape = fold ? "pan=mono|c0=c0" : "aformat=channel_layouts=mono|stereo";
-		// Leveling (sessions): a capture that hit full scale is declipped first, then two-pass loudnorm
-		// brings the set to SESSION_LOUDNESS with true-peak headroom. A set too long for the two passes
-		// (or of unknown length) gets the limiter alone; a failed measurement leaves the level alone.
-		const clipped = target.level === true && peakLevels(stats).some((p) => p >= CLIPPED_PEAK_DB);
-		const shaping = clipped ? `${shape},adeclip` : shape;
-		const seconds = ffmpegDuration(stats);
-		const twoPass = target.level === true && seconds !== null && seconds <= LEVEL_MAX_SECONDS;
-		const leveled = twoPass ? yield* measureLoudness(input, shaping) : null;
-		const filters = leveled
-			? `${shaping},${loudnormApplyFilter(leveled)}`
-			: target.level && !twoPass
-				? `${shaping},${peakLimiterFilter()}`
-				: shaping;
+		const filters = target.level ? yield* levelingFilters(input, stats, shape) : shape;
 		yield* runFfmpeg(
 			[
 				"-hide_banner",

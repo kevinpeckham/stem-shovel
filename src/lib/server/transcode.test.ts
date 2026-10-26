@@ -455,7 +455,9 @@ describe("renderDemos", () => {
 
 describe("renderSessions", () => {
 	const ASTATS = "astats=measure_overall=none:measure_perchannel=Peak_level";
-	const MEASURE = "loudnorm=I=-14:TP=-1:LRA=11:print_format=json";
+	const MEASURE = "ebur128=peak=true";
+	const DECLIP = "adeclip=window=30:overlap=50:arorder=4";
+	const LIMIT = "alimiter=limit=0.891:level=false:attack=5:release=50";
 	/** The stats pass's stderr: ffmpeg's report of the input, then astats' per-channel peaks. */
 	const stats = (duration: string, peak: string, right = peak) =>
 		[
@@ -465,8 +467,33 @@ describe("renderSessions", () => {
 			"[Parsed_astats_0 @ 0x7f] Channel: 2",
 			`[Parsed_astats_0 @ 0x7f] Peak level dB: ${right}`,
 		].join("\n");
-	const measured = `[Parsed_loudnorm_1 @ 0x7f]\n{\n\t"input_i" : "-19.50",\n\t"input_tp" : "-3.10",\n\t"input_lra" : "7.20",\n\t"input_thresh" : "-29.60",\n\t"target_offset" : "0.30"\n}`;
+	/** The measurement's stderr: ebur128's summary (-19.5 LUFS, -6.0 dBFS true peak: the full gain of +5.5 dB). */
+	const measured = (integrated = "-19.5", peak = "-6.0") =>
+		[
+			"[Parsed_ebur128_1 @ 0x7f] t: 599.9  TARGET:-23 LUFS    M: -20.1 S: -19.8     I: -19.5 LUFS",
+			"[Parsed_ebur128_1 @ 0x7f] Summary:",
+			"",
+			"  Integrated loudness:",
+			`    I:         ${integrated} LUFS`,
+			"    Threshold: -29.6 LUFS",
+			"",
+			"  Loudness range:",
+			"    LRA:         7.2 LU",
+			"    Threshold: -39.6 LUFS",
+			"    LRA low:   -24.0 LUFS",
+			"    LRA high:  -16.8 LUFS",
+			"",
+			"  True peak:",
+			`    Peak:       ${peak} dBFS`,
+		].join("\n");
 	const afOf = (args: string[]) => args[args.indexOf("-af") + 1];
+	/** The stats pass answers `astatsStderr`, the measurement `measurement` (nothing when absent). */
+	const answers = (astatsStderr: string, measurement = "") =>
+		h.answer.mockImplementation((args) => {
+			if (args.includes(ASTATS)) return { stderr: astatsStderr };
+			if (afOf(args)?.includes(MEASURE)) return { stderr: measurement };
+			return { stderr: "" };
+		});
 	beforeEach(() => {
 		h.data.claimSessionPlayback.mockResolvedValue({
 			url: `${PRIVATE}/accounts/a/sessions/s/r1.m4a`,
@@ -474,63 +501,66 @@ describe("renderSessions", () => {
 			playbackUrl: null,
 		});
 	});
-	it("levels a set: the stats pass, a loudnorm measurement after the same shaping, then the encode with the numbers", async () => {
-		h.answer.mockImplementation((args) => {
-			if (args.includes(ASTATS)) return { stderr: stats("00:38:12.00", "-6.2") };
-			if (afOf(args)?.includes(MEASURE)) return { stderr: measured };
-			return { stderr: "" };
-		});
+	it("levels a set: the stats pass, an ebur128 measurement after the same shape, then the encode with a gain and the limiter", async () => {
+		answers(stats("00:38:12.00", "-6.2"), measured());
 		await renderSessions(["r1"]);
 		const measure = h.runs.find((r) => afOf(r)?.includes(MEASURE))!;
 		expect(afOf(measure)).toBe(`aformat=channel_layouts=mono|stereo,${MEASURE}`);
 		expect(measure.slice(-3)).toEqual(["-f", "null", "-"]);
-		const mp3 = runFor(/\/demo\.mp3$/)!;
-		expect(afOf(mp3)).toBe(
-			"aformat=channel_layouts=mono|stereo,loudnorm=I=-14:TP=-1:LRA=11:measured_I=-19.5:measured_TP=-3.1:measured_LRA=7.2:measured_thresh=-29.6:offset=0.3:linear=true",
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(
+			`aformat=channel_layouts=mono|stereo,volume=5.5dB,${LIMIT}`,
 		);
 		expect(h.data.finishSessionPlayback).toHaveBeenCalled();
 	});
-	it("declips a capture that hit full scale before measuring and leveling it", async () => {
-		h.answer.mockImplementation((args) => {
-			if (args.includes(ASTATS)) return { stderr: stats("00:10:00.00", "-0.0") };
-			if (afOf(args)?.includes(MEASURE)) return { stderr: measured };
-			return { stderr: "" };
-		});
+	it("a peaky set's gain is held back to 3 dB into the limiter, and a hot set comes down", async () => {
+		answers(stats("00:38:12.00", "-1.5"), measured("-24.0", "-2.0"));
+		await renderSessions(["r1"]);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(
+			`aformat=channel_layouts=mono|stereo,volume=4.0dB,${LIMIT}`,
+		);
+		h.runs.length = 0;
+		answers(stats("00:38:12.00", "-1.5"), measured("-11.7", "-0.5"));
+		await renderSessions(["r1"]);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(
+			`aformat=channel_layouts=mono|stereo,volume=-2.3dB,${LIMIT}`,
+		);
+	});
+	it("declips a capture that hit full scale, measured before the declipper", async () => {
+		answers(stats("00:10:00.00", "-0.0"), measured());
 		await renderSessions(["r1"]);
 		const measure = h.runs.find((r) => afOf(r)?.includes(MEASURE))!;
-		expect(afOf(measure)).toBe(`aformat=channel_layouts=mono|stereo,adeclip,${MEASURE}`);
-		expect(afOf(runFor(/\/demo\.mp3$/)!)).toMatch(
-			/^aformat=channel_layouts=mono\|stereo,adeclip,loudnorm=I=-14:TP=-1:LRA=11:measured_I=-19\.5/,
+		expect(afOf(measure)).toBe(`aformat=channel_layouts=mono|stereo,${MEASURE}`);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(
+			`aformat=channel_layouts=mono|stereo,${DECLIP},volume=5.5dB,${LIMIT}`,
 		);
 	});
-	it("a left-only phone capture is folded, then leveled as mono", async () => {
-		h.answer.mockImplementation((args) => {
-			if (args.includes(ASTATS)) return { stderr: stats("00:10:00.00", "-12.5", "-inf") };
-			if (afOf(args)?.includes(MEASURE)) return { stderr: measured };
-			return { stderr: "" };
-		});
-		await renderSessions(["r1"]);
-		expect(afOf(runFor(/\/demo\.mp3$/)!)).toMatch(/^pan=mono\|c0=c0,loudnorm=/);
-	});
-	it("a measurement that prints nothing usable leaves the level alone", async () => {
-		h.answer.mockImplementation((args) => {
-			if (args.includes(ASTATS)) return { stderr: stats("00:10:00.00", "-6.2") };
-			return { stderr: "" };
-		});
-		await renderSessions(["r1"]);
-		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe("aformat=channel_layouts=mono|stereo");
-		expect(h.data.finishSessionPlayback).toHaveBeenCalled();
-	});
-	it("a set over 45 minutes skips the two passes and takes the limiter alone", async () => {
-		h.answer.mockImplementation((args) => {
-			if (args.includes(ASTATS)) return { stderr: stats("01:12:00.00", "-6.2") };
-			return { stderr: "" };
-		});
+	it("a long clipped set is declipped too, and over 90 minutes takes the limiter without a measurement", async () => {
+		answers(stats("01:30:01.00", "-0.0"), measured());
 		await renderSessions(["r1"]);
 		expect(h.runs.some((r) => afOf(r)?.includes(MEASURE))).toBe(false);
 		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(
-			"aformat=channel_layouts=mono|stereo,alimiter=limit=0.891:level=false",
+			`aformat=channel_layouts=mono|stereo,${DECLIP},${LIMIT}`,
 		);
+	});
+	it("a left-only phone capture is folded, then measured and leveled as mono", async () => {
+		answers(stats("00:10:00.00", "-12.5", "-inf"), measured());
+		await renderSessions(["r1"]);
+		const measure = h.runs.find((r) => afOf(r)?.includes(MEASURE))!;
+		expect(afOf(measure)).toBe(`pan=mono|c0=c0,${MEASURE}`);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(`pan=mono|c0=c0,volume=5.5dB,${LIMIT}`);
+	});
+	it("a measurement that prints nothing usable gets the limiter alone", async () => {
+		answers(stats("00:10:00.00", "-6.2"), measured("-70.0", "-inf"));
+		await renderSessions(["r1"]);
+		expect(h.runs.some((r) => afOf(r)?.includes(MEASURE))).toBe(true);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(`aformat=channel_layouts=mono|stereo,${LIMIT}`);
+		expect(h.data.finishSessionPlayback).toHaveBeenCalled();
+	});
+	it("a set over 90 minutes is not measured and takes the limiter alone", async () => {
+		answers(stats("01:30:01.00", "-6.2"), measured());
+		await renderSessions(["r1"]);
+		expect(h.runs.some((r) => afOf(r)?.includes(MEASURE))).toBe(false);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(`aformat=channel_layouts=mono|stereo,${LIMIT}`);
 	});
 	it("demos are never leveled", async () => {
 		h.data.claimDemoPlayback.mockResolvedValue({
@@ -538,11 +568,9 @@ describe("renderSessions", () => {
 			pathname: "accounts/a/songs/s/demos/d1.m4a",
 			playbackUrl: null,
 		});
-		h.answer.mockImplementation((args) =>
-			args.includes(ASTATS) ? { stderr: stats("00:03:00.00", "-0.0") } : { stderr: "" },
-		);
+		answers(stats("00:03:00.00", "-0.0"), measured());
 		await renderDemos(["demo-1"]);
-		expect(h.runs.some((r) => afOf(r)?.includes("loudnorm"))).toBe(false);
+		expect(h.runs.some((r) => afOf(r)?.includes(MEASURE))).toBe(false);
 		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe("aformat=channel_layouts=mono|stereo");
 	});
 });

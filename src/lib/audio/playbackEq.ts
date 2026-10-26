@@ -5,6 +5,7 @@ import {
 	EQ_PEAK_Q,
 	type EqBand,
 } from "#lib/constants/playbackEq.js";
+import { eqHeadroomDb } from "#lib/utils/eqHeadroomDb.js";
 import { isFlatEq } from "#lib/utils/normalizePlaybackEq.js";
 import { DEFAULT_PLAYBACK_EQ, type PlaybackEqSettings } from "#lib/val/PlaybackEqSchema.js";
 
@@ -14,7 +15,9 @@ import { DEFAULT_PLAYBACK_EQ, type PlaybackEqSettings } from "#lib/val/PlaybackE
  * (a low shelf, three peaks, a high shelf), each with a gain and a center
  * the user moves. The high-pass is switched by crossfading two gains
  * (through the filter, or round it), so turning it off leaves the signal
- * untouched rather than filtered at a lower frequency. Changes glide with
+ * untouched rather than filtered at a lower frequency. A trim after the
+ * bands takes off the largest boost (`utils/eqHeadroomDb.ts`), so boosting
+ * never pushes a leveled recording over full scale. Changes glide with
  * `setTargetAtTime`.
  */
 export type { PlaybackEqSettings } from "#lib/val/PlaybackEqSchema.js";
@@ -54,6 +57,8 @@ export function createPlaybackEq(
 	input.connect(around).connect(bands.low);
 	let last: AudioNode = bands.low;
 	for (const name of EQ_BANDS.slice(1)) last = last.connect(bands[name]);
+	const trim = ctx.createGain();
+	last.connect(trim);
 
 	// The starting values are set outright: nothing is playing yet to glide from.
 	through.gain.value = settings.highPass ? 1 : 0;
@@ -62,10 +67,11 @@ export function createPlaybackEq(
 		bands[name].gain.value = settings[name].gain;
 		bands[name].frequency.value = settings[name].freq;
 	}
+	trim.gain.value = trimGain(settings);
 
 	return {
 		input,
-		output: last,
+		output: trim,
 		update(s) {
 			const t = ctx.currentTime;
 			through.gain.setTargetAtTime(s.highPass ? 1 : 0, t, TAU);
@@ -74,6 +80,12 @@ export function createPlaybackEq(
 				bands[name].gain.setTargetAtTime(s[name].gain, t, TAU);
 				bands[name].frequency.setTargetAtTime(s[name].freq, t, TAU);
 			}
+			trim.gain.setTargetAtTime(trimGain(s), t, TAU);
 		},
 	};
+}
+
+/** The trim as a linear gain: the largest boost taken off, 1 when nothing is boosted. */
+function trimGain(s: PlaybackEqSettings): number {
+	return 10 ** (-eqHeadroomDb(s) / 20);
 }

@@ -83,7 +83,9 @@ describe("createPlaybackEq", () => {
 			200, 400, 1000, 2500, 4000,
 		]);
 		expect(f.mid.Q?.value).toBe(1);
-		expect(eq.output).toBe(f.high);
+		const trim = nodes.filter((n) => n.kind === "gain").at(-1)!;
+		expect(eq.output).toBe(trim);
+		expect(reaches(f.high, trim)).toBe(true);
 		const input = eq.input as unknown as FakeNode;
 		expect(reaches(input, f.highpass)).toBe(true);
 		expect(reaches(input, f.high)).toBe(true);
@@ -97,8 +99,9 @@ describe("createPlaybackEq", () => {
 		createPlaybackEq(ctx);
 		const f = filters(nodes);
 		const gains = nodes.filter((n) => n.kind === "gain");
-		// input, through, around: the through gain is 0 and the around gain 1 with the high-pass off.
-		expect(gains.map((g) => g.gain?.value)).toEqual([1, 0, 1]);
+		// input, through, around, trim: the through gain is 0 and the around gain 1 with the high-pass
+		// off; nothing boosted, so the trim is unity.
+		expect(gains.map((g) => g.gain?.value)).toEqual([1, 0, 1, 1]);
 		expect([f.low, f.lowMid, f.mid, f.highMid, f.high].map((n) => n.gain?.value)).toEqual([
 			0, 0, 0, 0, 0,
 		]);
@@ -128,6 +131,21 @@ describe("createPlaybackEq", () => {
 		expect(through.gain?.value).toBe(0);
 		expect(around.gain?.value).toBe(1);
 		expect(f.mid.frequency?.value).toBe(1000);
+	});
+
+	it("trims the output by the largest boost, so boosting never raises the peak", () => {
+		const { ctx, nodes } = fakeContext();
+		const eq = createPlaybackEq(ctx, { ...DEFAULT_PLAYBACK_EQ, low: { gain: 6, freq: 200 } });
+		const trim = nodes.filter((n) => n.kind === "gain").at(-1)!;
+		expect(trim.gain?.value).toBeCloseTo(10 ** (-6 / 20));
+		eq.update({ ...DEFAULT_PLAYBACK_EQ, mid: { gain: -4, freq: 1000 } });
+		expect(trim.gain?.targets).toEqual([1]);
+		eq.update({
+			...DEFAULT_PLAYBACK_EQ,
+			low: { gain: 2, freq: 200 },
+			high: { gain: 3, freq: 4000 },
+		});
+		expect(trim.gain?.value).toBeCloseTo(10 ** (-3 / 20));
 	});
 });
 

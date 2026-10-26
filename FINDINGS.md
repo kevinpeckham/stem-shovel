@@ -21,6 +21,25 @@ before believing any stage-specific run, and treat production checks as
 Kevin's machine's alone. Lesson from v0.171.0, shipped on a migration
 check that had read dev.
 
+## ffmpeg's `loudnorm` and `adeclip` are too slow for a long set in a 300 s function (2026-10-26)
+
+Timed on a 45-minute stereo file on one core of the VM (ffmpeg's audio
+filters run single-threaded): `loudnorm` measurement 72 s, `loudnorm`
+apply with the MP3 encode 82 s, `adeclip` at its defaults ~110 s on top of
+the encode, a plain 192 kbps MP3 encode 24 s, `ebur128=peak=true` 12 s,
+`astats` under a second. The first leveling chain (declip in both
+loudnorm passes) ran a clipped show past Vercel's 300 s and the page
+retried it every fifteen minutes with the same result. `loudnorm`
+resamples to 192 kHz internally for its true-peak work, which is where
+its cost goes; `ebur128` measures the same integrated loudness and true
+peak for a sixth of it, and a linear `volume` plus `alimiter` apply pass
+costs nothing over the encode. `adeclip=window=30:overlap=50:arorder=4`
+costs ~4 s and repairs a clipped file as well as the defaults (no flat
+samples left, peaks rebuilt within 0.2 dB): the cost is in the
+autoregressive model per window, so a shorter window, less overlap and a
+lower order are the levers. `adeclip=overlap=25` is rejected outright
+(the minimum is 50). Lesson from the first leveled shows.
+
 ## ffmpeg `loudnorm` is two passes, prints its measurement as JSON on stderr, and decodes at ~30× (2026-10-26)
 
 EBU R128 leveling with `loudnorm` needs a first pass over the whole file

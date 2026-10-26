@@ -44,6 +44,14 @@ function fakeAudioContext() {
 		createBiquadFilter() {
 			return { ...node(), type: "", frequency: param(), gain: param(), Q: param() };
 		}
+		/** The meter's tap: silence. */
+		createAnalyser() {
+			return {
+				...node(),
+				fftSize: 1024,
+				getFloatTimeDomainData: (buf: Float32Array) => buf.fill(0),
+			};
+		}
 	}
 	return { FakeContext, sources, resumed, disconnected, glides };
 }

@@ -14,8 +14,10 @@
 	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
 	import { eqSearchParams } from "#lib/utils/eqSearchParams.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js";
 	import { clearPlaybackEq, loadPlaybackEq, savePlaybackEq } from "#lib/utils/playbackEqStorage.js";
 	import { onDestroy, onMount, tick, untrack } from "svelte";
+	import LevelMeter from "./LevelMeter.svelte";
 	import SessionEqPanel from "./SessionEqPanel.svelte";
 
 	/** One recording as the player plays it: the MP3 when it has rendered, else the file as uploaded. */
@@ -122,7 +124,11 @@
 	let ctx: AudioContext | null = null;
 	/** The element on the page now, and its graph once wired (a media element gets one source, ever). */
 	let element: HTMLAudioElement | null = null;
-	let graph: { source: MediaElementAudioSourceNode; eq: PlaybackEq } | null = null;
+	let graph: {
+		source: MediaElementAudioSourceNode;
+		eq: PlaybackEq;
+		tap: AnalyserNode;
+	} | null = null;
 
 	/** Route the current element through the EQ, once per element; on failure it plays as it is. */
 	function wire() {
@@ -131,8 +137,11 @@
 			const source = ctx.createMediaElementSource(element);
 			const chain = createPlaybackEq(ctx, eq);
 			source.connect(chain.input);
-			chain.output.connect(ctx.destination);
-			graph = { source, eq: chain };
+			// The meter reads after the EQ and its trim: what reaches the output.
+			const tap = ctx.createAnalyser();
+			tap.fftSize = 1024;
+			chain.output.connect(tap).connect(ctx.destination);
+			graph = { source, eq: chain, tap };
 		} catch {
 			// No MediaElementAudioSourceNode here: the element keeps its own output.
 		}
@@ -178,12 +187,54 @@
 			if (graph) {
 				graph.source.disconnect();
 				graph.eq.output.disconnect();
+				graph.tap.disconnect();
 				graph = null;
 			}
 			if (element === el) element = null;
+			stopMeter();
 		};
 	}
+	/**
+	 * The output level (Kevin, 2026-10-26: a leveled recording with a boost
+	 * on it clipped without a sign): the peak of each frame's samples at
+	 * the tap, as a meter state with a hold mark and a clip light that
+	 * sticks until clicked (`utils/meterLevel.ts`). Read on animation
+	 * frames while the element plays; `METER_ZERO` at rest or when nothing is wired.
+	 */
+	let meter = $state.raw<MeterState>(METER_ZERO);
+	let meterFrame = 0;
+	let meterAt = 0;
+	let meterBuf: Float32Array<ArrayBuffer> | null = null;
+	function readMeter(now: number) {
+		meterFrame = 0;
+		if (!graph || !ctx) return;
+		const buf = (meterBuf ??= new Float32Array(graph.tap.fftSize));
+		graph.tap.getFloatTimeDomainData(buf);
+		let peak = 0;
+		let sum = 0;
+		for (const x of buf) {
+			const a = Math.abs(x);
+			if (a > peak) peak = a;
+			sum += x * x;
+		}
+		const t = now / 1000;
+		const dt = meterAt ? Math.min(0.1, t - meterAt) : 0;
+		meterAt = t;
+		meter = nextMeter(meter, peak, t, dt, Math.sqrt(sum / buf.length));
+		if (!paused || meter.level > 0) meterFrame = requestAnimationFrame(readMeter);
+	}
+	function startMeter() {
+		if (!meterFrame && graph && typeof requestAnimationFrame === "function")
+			meterFrame = requestAnimationFrame(readMeter);
+	}
+	function stopMeter() {
+		if (meterFrame) cancelAnimationFrame(meterFrame);
+		meterFrame = 0;
+		meterAt = 0;
+		meter = METER_ZERO;
+	}
 	onDestroy(() => {
+		stopMeter();
 		void ctx?.close().catch(() => {});
 		ctx = null;
 	});
@@ -347,7 +398,10 @@
 		bind:volume
 		{onended}
 		{ontimeupdate}
-		onplay={wakeAudio}
+		onplay={() => {
+			wakeAudio();
+			startMeter();
+		}}
 		preload="auto"
 	></audio>
 {/if}
@@ -432,6 +486,13 @@
 			<p class="text-dim">Play a recording, or a whole session, from the list below.</p>
 		{/if}
 	</div>
+	<!-- The output meter: at rest (and where Web Audio is missing, so nothing is tapped) it reads zero. -->
+	<LevelMeter
+		state={meter}
+		label="Output"
+		class="w-full sm:w-40"
+		onreset={() => (meter = { ...meter, clipped: false })}
+	/>
 	<label class="flex items-center gap-2 text-sm text-dim w-full sm:w-auto">
 		<span class="i-ph-speaker-high" aria-hidden="true"></span>
 		<span class="sr-only">Volume</span>

@@ -8,9 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.172.0] - 2026-10-26
+
 ### Changed
 
 - **The Sessions player starts at 70% volume** instead of full.
+- **The Sessions player has an output meter** beside the volume: the level after the EQ, with a peak-hold mark and a clip light that sticks until clicked.
+- **The playback EQ keeps its headroom.** Boosting a band turns the overall level down by the largest boost, in the player and in Download with EQ, so a boost on a leveled recording no longer clips.
+
+### Fixed
+
+- **Long session recordings render again.** A show's leveling ran past the five minutes a render gets, so its MP3 never appeared; the leveling now measures with `ebur128` and applies one gain with a fast limiter, and a clipped capture is repaired with a declipper setting thirty times cheaper, so a 90-minute set fits with room to spare. A peaky set is held back rather than squashed: at most 3 dB of its loudest peaks go into the limiter.
 
 ### Technical
 
