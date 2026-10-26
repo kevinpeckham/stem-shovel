@@ -122,6 +122,7 @@ export const ROUTES = [
 	["api/demos (server)", "/api/demos", [405], [405]],
 	["api/sessions (server)", "/api/sessions", [405], [405]],
 	["api/sessions/[id]/ready (server)", "/api/sessions/x/ready", [405], [405]],
+	["api/sessions/[id]/eq.mp3 (server)", "/api/sessions/x/eq.mp3", [401], [404]],
 	[
 		"api/recording-sessions/[id]/mp3.zip (server)",
 		"/api/recording-sessions/x/mp3.zip",

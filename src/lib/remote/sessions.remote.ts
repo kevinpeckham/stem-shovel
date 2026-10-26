@@ -10,15 +10,18 @@ import {
 	deleteRecordingSession,
 	deleteSessionRecording as removeRecording,
 	updateRecordingSession,
+	updateRecordingSessionEq,
 	updateSessionRecording as saveRecording,
 } from "#lib/server/data.js";
 import {
 	RecordingSessionCreateSchema,
 	RecordingSessionDeleteSchema,
+	RecordingSessionEqSchema,
 	RecordingSessionUpdateSchema,
 	SessionRecordingDeleteSchema,
 	SessionRecordingUpdateSchema,
 } from "#lib/val/SessionRecordingSchema.js";
+import { normalizePlaybackEq } from "#lib/utils/normalizePlaybackEq.js";
 import { error } from "@sveltejs/kit";
 
 /** A new session (docs/uploads-and-blob.md, "Sessions"), named before any recording is put in it; an editor of the account. */
@@ -46,6 +49,15 @@ export const updateSession = command(
 		};
 	},
 );
+
+/** The session's playback EQ for everyone in the account (null clears it); a member, the stored settings back. */
+export const saveSessionEq = command(RecordingSessionEqSchema, async ({ id, eq }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfRecordingSession, id);
+	const saved = await updateRecordingSessionEq(accountId, id, eq && normalizePlaybackEq(eq));
+	if (!saved) error(404, "Session not found");
+	return { eq: saved.eq };
+});
 
 /** The session and every recording in it, files included. */
 export const deleteSession = command(RecordingSessionDeleteSchema, async ({ id }) => {

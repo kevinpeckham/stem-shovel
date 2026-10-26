@@ -27,8 +27,12 @@ const applied = new Set<number>();
 try {
 	const rows = await client.execute("select created_at from __drizzle_migrations");
 	for (const r of rows.rows) applied.add(Number(r.created_at));
-} catch {
-	console.log("no __drizzle_migrations table: nothing applied yet");
+} catch (e) {
+	// Only a missing table means a fresh database; a connection failure (Turso's us-east-1 timeouts,
+	// 2026-10-26) must not read as "nothing applied".
+	if (/no such table/i.test(String(e)))
+		console.log("no __drizzle_migrations table: nothing applied yet");
+	else console.log(`could not read __drizzle_migrations: ${String(e).split("\n")[0]}`);
 	process.exit(1);
 }
 const entries = [...journal.entries].sort((a, b) => a.idx - b.idx);

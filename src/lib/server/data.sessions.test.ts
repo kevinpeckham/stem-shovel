@@ -1,4 +1,5 @@
 import { MAX_SESSIONS_PER_ACCOUNT } from "#lib/constants/sessionRecordings.js";
+import { DEFAULT_PLAYBACK_EQ } from "#lib/val/PlaybackEqSchema.js";
 import { beforeEach, describe, expect, test } from "vite-plus/test";
 import { blob, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
@@ -13,11 +14,15 @@ const {
 	finishSessionPlayback,
 	listRecordingSessions,
 	markSessionReady,
+	parseSessionEq,
 	recordSessionUrl,
 	reservedPathname,
 	sessionMp3s,
+	sessionRecordingFile,
+	sessionRecordingPage,
 	sessionsNearDay,
 	updateRecordingSession,
+	updateRecordingSessionEq,
 	updateSessionRecording,
 } = await import("./data");
 
@@ -36,6 +41,7 @@ const session = (id: string, accountId: string, over: Record<string, unknown> = 
 	startsOn: "2026-10-17",
 	place: "The Room",
 	notes: "",
+	eq: null,
 	createdBy: U,
 	createdAt: at("2026-10-17T00:00:00Z"),
 	updatedAt: at("2026-10-17T00:00:00Z"),
@@ -367,6 +373,44 @@ describe("the MP3s", () => {
 			playbackStatus: "ready",
 			playbackUrl: "https://blob/r1.mp3",
 			playbackBytes: 9,
+		});
+	});
+});
+
+describe("the saved EQ", () => {
+	const EQ = {
+		...structuredClone(DEFAULT_PLAYBACK_EQ),
+		highPass: true,
+		mid: { gain: 3, freq: 1500 },
+	};
+	test("parseSessionEq reads a stored EQ, normalized; null for none or junk", () => {
+		expect(parseSessionEq(null)).toBeNull();
+		expect(parseSessionEq("")).toBeNull();
+		expect(parseSessionEq("{not json")).toBeNull();
+		expect(parseSessionEq(JSON.stringify({ highPass: "yes" }))).toBeNull();
+		expect(parseSessionEq(JSON.stringify(EQ))).toEqual(EQ);
+		const off = { ...EQ, low: { gain: 1.2, freq: 30 } };
+		expect(parseSessionEq(JSON.stringify(off))?.low).toEqual({ gain: 1, freq: 60 });
+	});
+	test("updateRecordingSessionEq saves and clears it on the account's session only", async () => {
+		expect(await updateRecordingSessionEq(B, "p1", EQ)).toBeNull();
+		expect(await updateRecordingSessionEq(A, "p1", EQ)).toEqual({ eq: EQ });
+		expect(JSON.parse(sessions().find((s) => s.id === "p1")!.eq as string)).toEqual(EQ);
+		const list = await listRecordingSessions(A);
+		expect(list.find((s) => s.id === "p1")!.eq).toEqual(EQ);
+		expect(list.find((s) => s.id === "p0")!.eq).toBeNull();
+		expect((await sessionRecordingPage(A, "r1"))?.session).toMatchObject({ id: "p1", eq: EQ });
+		expect(await updateRecordingSessionEq(A, "p1", null)).toEqual({ eq: null });
+		expect(sessions().find((s) => s.id === "p1")!.eq).toBeNull();
+	});
+	test("sessionRecordingFile is a ready recording of the account", async () => {
+		expect(await sessionRecordingFile(B, "r3")).toBeNull();
+		expect(await sessionRecordingFile(A, "r4")).toBeNull();
+		expect(await sessionRecordingFile(A, "r3")).toMatchObject({
+			title: "r3",
+			filename: "r3.m4a",
+			url: "https://blob/r3.m4a",
+			playbackUrl: "https://blob/r3.mp3",
 		});
 	});
 });

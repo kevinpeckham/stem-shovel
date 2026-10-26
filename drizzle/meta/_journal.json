@@ -701,6 +701,13 @@
       "when": 1793024435088,
       "tag": "0099_closed_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "6",
+      "when": 1793033786671,
+      "tag": "0100_secret_gertrude_yorkes",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@
 	import SessionPlayer, { type SessionTrack } from "#lib/components/SessionPlayer.svelte";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import Waveform from "#lib/components/Waveform.svelte";
+	import { saveSessionEq } from "#lib/remote/sessions.remote.js";
 	import { saveAs } from "#lib/upload.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
@@ -24,7 +25,14 @@
 	/** The input device's label and the input's name, as one line; "" when neither is set. */
 	const inputText = $derived(recordingInputText(r.device, r.source));
 	const queue = $derived<SessionTrack[]>([
-		{ id: r.id, title: r.title, url: r.playbackUrl ?? r.url, session: r.session?.name ?? "" },
+		{
+			id: r.id,
+			title: r.title,
+			url: r.playbackUrl ?? r.url,
+			session: r.session?.name ?? "",
+			sessionId: r.session?.id ?? r.id,
+			sessionEq: r.session?.eq ?? null,
+		},
 	]);
 	let player = $state<SessionPlayer | null>(null);
 	let current = $state<string | null>(null);
@@ -95,6 +103,8 @@
 			bind:duration
 			bind:loop
 			bind:looping
+			canEdit={data.member}
+			onsaveshared={async (id, eq) => (await saveSessionEq({ id, eq })).eq}
 		/>
 		<div class="flex flex-wrap gap-2">
 			{#if r.playbackStatus === "ready" && r.playbackUrl}

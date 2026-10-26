@@ -7,6 +7,20 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A libsql connect timeout looks like a missing table to a bare `catch` (2026-10-26)
+
+During Turso's us-east-1 "Elevated timeouts" incident, `bun run db:status`
+printed "no __drizzle_migrations table: nothing applied yet" for databases
+with a hundred migrations applied: its `try { select … } catch { … }`
+treated every failure as the table's absence, and the failure was
+`ConnectTimeoutError` (undici, 10 s) from the libsql client. The same
+incident put a 500 on the production Sessions page and the Idea Recorder's
+data load at the 300 s function limit. Lesson: a catch around a probe
+query must read the error (`/no such table/`) before declaring an empty
+database, and a release check that runs on it must not be trusted while
+the provider's status page shows the region degraded
+(https://status.turso.tech).
+
 ## adapter-vercel bundles routes by `config`, and a cron warms one function only (2026-10-26)
 
 `@sveltejs/adapter-vercel` groups routes into functions by their exported

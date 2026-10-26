@@ -500,23 +500,50 @@ the storage sum, the account's deletion (rows and blobs) and the user's
 
 **The playback EQ** (Kevin, 2026-10-26). The session player's EQ button
 opens a panel (`SessionEqPanel.svelte`): an 80 Hz high-pass for rumble and
-a low shelf (200 Hz), a mid peak (1 kHz) and a high shelf (4 kHz), each
-−12..+12 dB, with Reset. On the first play (a gesture, which iOS needs)
-the player makes an `AudioContext` and routes its `<audio>` element
-through the graph (`lib/audio/playbackEq.ts`: a
-`MediaElementAudioSourceNode`, the high-pass crossfaded in and out by two
-gains so "off" is untouched, `setTargetAtTime` glides); the element
-carries `crossorigin="anonymous"`, which both Blob stores allow (every
-response has `access-control-allow-origin: *`, presigned private URLs
-too). Each element gets one source, ever, so the `{@attach}` builds the
-graph per element and tears it down with it; where
-`createMediaElementSource` is missing or throws, the element plays as it
-is. Through Web Audio the sound falls under iOS's ring/silent switch, so
-`ensureAudio` asks `playThroughSilentSwitch()` on the same gesture as the
-stem engine does (docs/audio-engine.md). The settings are remembered on
-the device in `localStorage` (`utils/playbackEqStorage.ts`, clamped and
-snapped to 0.5 dB on load), flat by default, and never touch the files:
-the download and the zip are the renditions as rendered.
+five bands (`constants/playbackEq.ts`: a low shelf at 200 Hz, low-mid,
+mid and high-mid peaks of Q 1 at 400 Hz, 1 kHz and 2.5 kHz, a high shelf
+at 4 kHz), each −12..+12 dB with its center movable within its range on a
+log-scale slider (Kevin, later the same day: a live show in the open air
+wants the extra mids, and the trouble is never exactly at 1 kHz). On the
+first play (a gesture, which iOS needs) the player makes an
+`AudioContext` and routes its `<audio>` element through the graph
+(`lib/audio/playbackEq.ts`: a `MediaElementAudioSourceNode`, the
+high-pass crossfaded in and out by two gains so "off" is untouched,
+`setTargetAtTime` glides gains and centers); the element carries
+`crossorigin="anonymous"`, which both Blob stores allow (every response
+has `access-control-allow-origin: *`, presigned private URLs too). Each
+element gets one source, ever, so the `{@attach}` builds the graph per
+element and tears it down with it; where `createMediaElementSource` is
+missing or throws, the element plays as it is. Through Web Audio the
+sound falls under iOS's ring/silent switch, so `ensureAudio` asks
+`playThroughSilentSwitch()` on the same gesture as the stem engine does
+(docs/audio-engine.md).
+
+The settings are **per session**: `PlaybackEqSchema` (`val/PlaybackEqSchema.ts`,
+normalized by `utils/normalizePlaybackEq.ts`: gains on the half-dB grid,
+centers clamped to the band, the first EQ's bare gains read as gains at
+the default centers) is kept on the device in `localStorage` under
+`stem-shovel:session-eq:<sessionId>` (`utils/playbackEqStorage.ts`) and,
+when a member presses **Save for everyone**, on the session row
+(`recording_session.eq`, JSON, migration 0100; `saveSessionEq` in
+`sessions.remote.ts`, `updateRecordingSessionEq`), which
+`listRecordingSessions` and `sessionRecordingPage` return parsed
+(`parseSessionEq`) and every `SessionTrack` carries as `sessionEq`. The
+player applies the track's session's EQ whenever a track of another
+session starts (`applySessionEq` in `play()`): the device's own for that
+session, else the shared one, else flat; so an EQ set on one session
+never reaches another. **Reset** forgets the device's own and falls back
+to the shared one; **Remove shared EQ** (a member) clears the row. The
+panel's status line says which is in force. **Download with EQ** asks
+`GET /api/sessions/[id]/eq.mp3?hp=1&low=4&midf=1200…`
+(`utils/eqSearchParams.ts`): the endpoint, a member of the account, reads
+the MP3 rendition (the original when there is none) to a temp file and
+streams ffmpeg's output as it encodes (`server/eqRender.ts`, 192k MP3),
+the EQ as an `-af` graph with the same corners as the Web Audio one
+(`utils/eqFilterGraph.ts`: `highpass`, `lowshelf`, `equalizer` with Q 1,
+`highshelf`); a flat query is a 400, since the plain MP3 is that
+download. The filename is the recording's download name with " (EQ)"
+before the extension. The stored files are never touched.
 
 ### Sessions review: waveforms, comments and a chat (2026-10-19)
 

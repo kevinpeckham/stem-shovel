@@ -83,6 +83,10 @@ What protects what, and where each rule lives. The first security pass ran on
   back to the project (`attachFile`) needs an editor of the account and, on
   a restricted project, one added to it, and only ever moves a file
   between a project and its own songs.
+- **Session downloads** (`GET /api/recording-sessions/[id]/mp3.zip`,
+  `GET /api/sessions/[id]/eq.mp3`; docs/uploads-and-blob.md, "Sessions")
+  are for a member of the account (`memberOf`), as the Sessions page is;
+  the EQ endpoint's query carries only gains and centers, clamped.
 - **Downloads** (`GET /api/songs/[id]/documentation.pdf`,
   `GET /api/projects/[id]/documentation.zip`, `GET /api/projects/[id]/charts.zip`;
   docs/uploads-and-blob.md, "Documentation downloads") are open to whoever

@@ -30,6 +30,8 @@ export const recordingSession = table(
 		/** The rehearsal room, the venue. */
 		place: t.text("place").notNull().default(""),
 		notes: t.text("notes").notNull().default(""),
+		/** The playback EQ a member saved for everyone in the account, as JSON (`PlaybackEqSchema`); null for none. */
+		eq: t.text("eq"),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},

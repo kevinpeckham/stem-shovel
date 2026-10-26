@@ -9,7 +9,12 @@
 		type PlaybackEqSettings,
 	} from "#lib/audio/playbackEq.js";
 	import { playThroughSilentSwitch } from "#lib/audio/playThroughSilentSwitch.js";
-	import { loadPlaybackEq, savePlaybackEq } from "#lib/utils/playbackEqStorage.js";
+	import { EQ_BANDS } from "#lib/constants/playbackEq.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
+	import { eqSearchParams } from "#lib/utils/eqSearchParams.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { clearPlaybackEq, loadPlaybackEq, savePlaybackEq } from "#lib/utils/playbackEqStorage.js";
 	import { onDestroy, onMount, tick, untrack } from "svelte";
 	import SessionEqPanel from "./SessionEqPanel.svelte";
 
@@ -20,6 +25,10 @@
 		url: string;
 		/** The session's name, under the title. */
 		session: string;
+		/** The session's id: the EQ is remembered per session. */
+		sessionId: string;
+		/** The session's shared EQ (saved for everyone in the account), or null. */
+		sessionEq: PlaybackEqSettings | null;
 	}
 
 	/**
@@ -33,7 +42,10 @@
 	 * played round while Loop is on (L); Escape clears the selection. A
 	 * playback EQ (EQ button): the element runs through Web Audio
 	 * (`playbackEq.ts`) once the first play gives the context its gesture;
-	 * the settings are remembered on the device (`playbackEqStorage.ts`).
+	 * the settings are remembered per session on the device
+	 * (`playbackEqStorage.ts`) and follow the track: a session plays with
+	 * the device's own EQ for it, else the session's shared one (a member's
+	 * Save for everyone), else flat.
 	 */
 	interface Props {
 		queue: SessionTrack[];
@@ -45,6 +57,13 @@
 		/** The selected stretch of the current track, in seconds, and whether it plays round. */
 		loop?: { start: number; end: number } | null;
 		looping?: boolean;
+		/** A member: may save the EQ for everyone in the account. */
+		canEdit?: boolean;
+		/** Persist a session's shared EQ (null removes it); resolves to what is shared now. */
+		onsaveshared?: (
+			sessionId: string,
+			eq: PlaybackEqSettings | null,
+		) => Promise<PlaybackEqSettings | null>;
 	}
 	let {
 		queue,
@@ -54,6 +73,8 @@
 		duration = $bindable(0),
 		loop = $bindable(null),
 		looping = $bindable(false),
+		canEdit = false,
+		onsaveshared,
 	}: Props = $props();
 
 	let track = $derived(queue.find((t) => t.id === current) ?? null);
@@ -61,14 +82,41 @@
 	let audio = $state<HTMLAudioElement | null>(null);
 	let volume = $state(1);
 
-	// The playback EQ. Flat until the device's settings load after mount (the server has no storage).
+	// The playback EQ, per session. Flat until mount (the server has no device storage); then the
+	// current track's session's, applied again whenever a track of another session starts (`play`).
 	const uid = $props.id();
 	const eqPanelId = `session-eq-${uid}`;
 	let eq = $state<PlaybackEqSettings>({ ...DEFAULT_PLAYBACK_EQ });
 	let eqActive = $derived(!isFlat(eq));
-	onMount(() => {
-		eq = loadPlaybackEq();
-	});
+	/** Whether the device has its own EQ saved for the current track's session. */
+	let ownEq = $state(false);
+	/** The session whose EQ `eq` is; a track of the same session keeps it. */
+	let eqSession: string | null = null;
+	/** Shared EQs saved or removed here, ahead of the page's data. */
+	let sharedOverrides = $state<Record<string, PlaybackEqSettings | null>>({});
+	const sharedOf = (t: SessionTrack) =>
+		t.sessionId in sharedOverrides ? sharedOverrides[t.sessionId] : t.sessionEq;
+	let shared = $derived(track ? sharedOf(track) : null);
+	let sharedMatches = $derived(!!shared && sameEq(eq, shared));
+	let eqStatus = $derived(
+		ownEq ? "Your EQ for this session" : shared ? "The session's shared EQ" : "Flat",
+	);
+	function sameEq(a: PlaybackEqSettings, b: PlaybackEqSettings) {
+		return (
+			a.highPass === b.highPass &&
+			EQ_BANDS.every((k) => a[k].gain === b[k].gain && a[k].freq === b[k].freq)
+		);
+	}
+	/** Switch to the track's session's EQ: the device's own, else the shared one, else flat. */
+	function applySessionEq(t: SessionTrack | null) {
+		if (!t || t.sessionId === eqSession) return;
+		eqSession = t.sessionId;
+		const own = loadPlaybackEq(t.sessionId);
+		ownEq = own !== null;
+		eq = own ?? $state.snapshot(sharedOf(t) ?? DEFAULT_PLAYBACK_EQ);
+		graph?.eq.update(eq);
+	}
+	onMount(() => applySessionEq(track));
 	/** The context, made on the first play (a gesture, which iOS needs); null where Web Audio is missing. */
 	let ctx: AudioContext | null = null;
 	/** The element on the page now, and its graph once wired (a media element gets one source, ever). */
@@ -140,8 +188,47 @@
 	});
 	function setEq(next: PlaybackEqSettings) {
 		eq = next;
-		savePlaybackEq(next);
 		graph?.eq.update(next);
+		if (!track) return; // nothing playing: a trial for the next session's first track to replace
+		savePlaybackEq(track.sessionId, next);
+		ownEq = true;
+	}
+	/** Forget the device's EQ for the session: back to the shared one, or flat. */
+	function resetEq() {
+		if (track) clearPlaybackEq(track.sessionId);
+		ownEq = false;
+		eq = $state.snapshot((track && sharedOf(track)) ?? DEFAULT_PLAYBACK_EQ);
+		graph?.eq.update(eq);
+	}
+	/** Save (or, with null, remove) the session's shared EQ; the device then follows the shared one. */
+	async function saveShared(next: PlaybackEqSettings | null) {
+		const t = track;
+		if (!t || !onsaveshared) return;
+		try {
+			const saved = await onsaveshared(t.sessionId, next);
+			sharedOverrides[t.sessionId] = saved;
+			if (next) {
+				clearPlaybackEq(t.sessionId);
+				if (track?.sessionId === t.sessionId) ownEq = false;
+				notify("EQ saved for everyone in the account");
+			} else {
+				if (track?.sessionId === t.sessionId && !ownEq) {
+					eq = { ...DEFAULT_PLAYBACK_EQ };
+					graph?.eq.update(eq);
+				}
+				notify("Shared EQ removed");
+			}
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		}
+	}
+	function downloadWithEq() {
+		if (!track || isFlat(eq)) return;
+		void downloadBuilt(
+			`/api/sessions/${track.id}/eq.mp3?${eqSearchParams(eq)}`,
+			"MP3 with EQ",
+			`${track.title} (EQ).mp3`,
+		);
 	}
 	export async function play(id: string) {
 		ensureAudio();
@@ -153,6 +240,7 @@
 		// the new load and reject), then started once it has the new track; `paused` follows the element.
 		audio?.pause();
 		current = id;
+		applySessionEq(queue.find((t) => t.id === id) ?? null);
 		loop = null; // the selection was the old track's
 		await tick();
 		await audio?.play().catch(() => {});
@@ -370,4 +458,18 @@
 	/>
 </div>
 
-<SessionEqPanel id={eqPanelId} settings={eq} onchange={setEq} />
+<SessionEqPanel
+	id={eqPanelId}
+	settings={eq}
+	onchange={setEq}
+	status={track ? eqStatus : ""}
+	canReset={ownEq || eqActive}
+	canEdit={canEdit && !!onsaveshared}
+	sharedMatches={!track || sharedMatches}
+	hasShared={!!shared}
+	downloadDisabled={!track || !eqActive}
+	onreset={resetEq}
+	onsaveshared={() => saveShared($state.snapshot(eq))}
+	onremoveshared={() => saveShared(null)}
+	ondownload={downloadWithEq}
+/>

@@ -28,6 +28,7 @@
 		createSession,
 		deleteRecording,
 		deleteSession,
+		saveSessionEq,
 		updateRecording,
 		updateSession,
 	} from "#lib/remote/sessions.remote.js";
@@ -66,7 +67,14 @@
 	/** What plays: the MP3 once rendered, else the file as uploaded (which not every browser can play). */
 	const urlOf = (r: Recording) => r.playbackUrl ?? r.url;
 	const tracksOf = (s: Session): SessionTrack[] =>
-		s.recordings.map((r) => ({ id: r.id, title: titleOf(r), url: urlOf(r), session: nameOf(s) }));
+		s.recordings.map((r) => ({
+			id: r.id,
+			title: titleOf(r),
+			url: urlOf(r),
+			session: nameOf(s),
+			sessionId: s.id,
+			sessionEq: s.eq,
+		}));
 	/** A session that runs into the next day: any recording of the day after. */
 	const nextDayOf = (s: Session) =>
 		s.recordings.map((r) => r.recordedOn).find((d) => d !== s.startsOn) ?? null;
@@ -581,6 +589,8 @@
 			bind:duration={playerDuration}
 			bind:loop={playerLoop}
 			bind:looping={playerLooping}
+			canEdit={data.canEdit}
+			onsaveshared={async (id, eq) => (await saveSessionEq({ id, eq })).eq}
 		/>
 	</FloatingPanel>
 

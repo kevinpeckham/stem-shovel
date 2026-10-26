@@ -1,32 +1,27 @@
+import {
+	EQ_BAND_SPECS,
+	EQ_BANDS,
+	EQ_HIGH_PASS_HZ,
+	EQ_PEAK_Q,
+	type EqBand,
+} from "#lib/constants/playbackEq.js";
+import { isFlatEq } from "#lib/utils/normalizePlaybackEq.js";
+import { DEFAULT_PLAYBACK_EQ, type PlaybackEqSettings } from "#lib/val/PlaybackEqSchema.js";
+
 /**
- * The session player's playback EQ: an optional 80 Hz high-pass for rumble,
- * then a low shelf, a mid peak and a high shelf, each −12..+12 dB. The
- * high-pass is switched by crossfading two gains (through the filter, or
- * round it), so turning it off leaves the signal untouched rather than
- * filtered at a lower frequency. Changes glide with `setTargetAtTime`.
+ * The session player's playback EQ as a Web Audio graph: an optional
+ * high-pass for rumble, then the five bands of `constants/playbackEq.ts`
+ * (a low shelf, three peaks, a high shelf), each with a gain and a center
+ * the user moves. The high-pass is switched by crossfading two gains
+ * (through the filter, or round it), so turning it off leaves the signal
+ * untouched rather than filtered at a lower frequency. Changes glide with
+ * `setTargetAtTime`.
  */
-export interface PlaybackEqSettings {
-	highPass: boolean;
-	/** Gains in dB, −12..+12. */
-	low: number;
-	mid: number;
-	high: number;
-}
+export type { PlaybackEqSettings } from "#lib/val/PlaybackEqSchema.js";
+export { DEFAULT_PLAYBACK_EQ } from "#lib/val/PlaybackEqSchema.js";
 
-export const DEFAULT_PLAYBACK_EQ: Readonly<PlaybackEqSettings> = Object.freeze({
-	highPass: false,
-	low: 0,
-	mid: 0,
-	high: 0,
-});
-
-export const PLAYBACK_EQ_MIN_DB = -12;
-export const PLAYBACK_EQ_MAX_DB = 12;
-
-/** Whether the settings leave the sound as it is (the defaults). */
-export function isFlat(s: PlaybackEqSettings): boolean {
-	return !s.highPass && s.low === 0 && s.mid === 0 && s.high === 0;
-}
+/** Whether the settings leave the sound as it is. */
+export const isFlat = isFlatEq;
 
 const TAU = 0.02;
 
@@ -43,42 +38,42 @@ export function createPlaybackEq(
 	const input = ctx.createGain();
 	const highPass = ctx.createBiquadFilter();
 	highPass.type = "highpass";
-	highPass.frequency.value = 80;
+	highPass.frequency.value = EQ_HIGH_PASS_HZ;
 	highPass.Q.value = 0.707;
 	const through = ctx.createGain();
 	const around = ctx.createGain();
-	const low = ctx.createBiquadFilter();
-	low.type = "lowshelf";
-	low.frequency.value = 200;
-	const mid = ctx.createBiquadFilter();
-	mid.type = "peaking";
-	mid.frequency.value = 1000;
-	mid.Q.value = 1;
-	const high = ctx.createBiquadFilter();
-	high.type = "highshelf";
-	high.frequency.value = 4000;
+	const bands = {} as Record<EqBand, BiquadFilterNode>;
+	for (const name of EQ_BANDS) {
+		const f = ctx.createBiquadFilter();
+		f.type = EQ_BAND_SPECS[name].kind;
+		if (f.type === "peaking") f.Q.value = EQ_PEAK_Q;
+		bands[name] = f;
+	}
 
-	input.connect(highPass).connect(through).connect(low);
-	input.connect(around).connect(low);
-	low.connect(mid).connect(high);
+	input.connect(highPass).connect(through).connect(bands.low);
+	input.connect(around).connect(bands.low);
+	let last: AudioNode = bands.low;
+	for (const name of EQ_BANDS.slice(1)) last = last.connect(bands[name]);
 
 	// The starting values are set outright: nothing is playing yet to glide from.
 	through.gain.value = settings.highPass ? 1 : 0;
 	around.gain.value = settings.highPass ? 0 : 1;
-	low.gain.value = settings.low;
-	mid.gain.value = settings.mid;
-	high.gain.value = settings.high;
+	for (const name of EQ_BANDS) {
+		bands[name].gain.value = settings[name].gain;
+		bands[name].frequency.value = settings[name].freq;
+	}
 
 	return {
 		input,
-		output: high,
+		output: last,
 		update(s) {
 			const t = ctx.currentTime;
 			through.gain.setTargetAtTime(s.highPass ? 1 : 0, t, TAU);
 			around.gain.setTargetAtTime(s.highPass ? 0 : 1, t, TAU);
-			low.gain.setTargetAtTime(s.low, t, TAU);
-			mid.gain.setTargetAtTime(s.mid, t, TAU);
-			high.gain.setTargetAtTime(s.high, t, TAU);
+			for (const name of EQ_BANDS) {
+				bands[name].gain.setTargetAtTime(s[name].gain, t, TAU);
+				bands[name].frequency.setTargetAtTime(s[name].freq, t, TAU);
+			}
 		},
 	};
 }

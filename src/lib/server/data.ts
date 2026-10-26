@@ -96,6 +96,8 @@ import {
 import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { MAX_SESSIONS_PER_ACCOUNT, type SessionKind } from "#lib/constants/sessionRecordings.js";
 import type { SessionDevice } from "#lib/val/SessionRecordingSchema.js";
+import { PlaybackEqSchema, type PlaybackEqSettings } from "#lib/val/PlaybackEqSchema.js";
+import { normalizePlaybackEq } from "#lib/utils/normalizePlaybackEq.js";
 import { dayFitsSession, shiftDay } from "#lib/utils/isoDay.js";
 import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
 import { slugify } from "#lib/utils/slugify.js";
@@ -4072,8 +4074,41 @@ export async function listRecordingSessions(accountId: string) {
 	]);
 	return sessions.map((s) => ({
 		...s,
+		eq: parseSessionEq(s.eq),
 		recordings: recordings.filter((r) => r.sessionId === s.id),
 	}));
+}
+
+/**
+ * A session's saved EQ (`recording_session.eq`) as settings, normalized to
+ * the bands' ranges; null for none, or for JSON that no longer parses.
+ */
+export function parseSessionEq(json: string | null): PlaybackEqSettings | null {
+	if (!json) return null;
+	try {
+		const r = v.safeParse(PlaybackEqSchema, JSON.parse(json));
+		return r.success ? normalizePlaybackEq(r.output) : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The playback EQ saved on the account's session for everyone in it, or
+ * cleared with null; the stored value back, or null when the session is
+ * not the account's.
+ */
+export async function updateRecordingSessionEq(
+	accountId: string,
+	sessionId: string,
+	settings: PlaybackEqSettings | null,
+): Promise<{ eq: PlaybackEqSettings | null } | null> {
+	const [row] = await db
+		.update(recordingSession)
+		.set({ eq: settings ? JSON.stringify(settings) : null })
+		.where(and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)))
+		.returning({ eq: recordingSession.eq });
+	return row ? { eq: parseSessionEq(row.eq) } : null;
 }
 
 /**
@@ -4170,7 +4205,9 @@ export async function sessionRecordingPage(accountId: string, recordingId: strin
 			eq(sessionRecording.status, "ready"),
 		),
 		with: {
-			session: { columns: { id: true, name: true, place: true, kind: true, startsOn: true } },
+			session: {
+				columns: { id: true, name: true, place: true, kind: true, startsOn: true, eq: true },
+			},
 			uploader: { columns: { name: true } },
 		},
 	});
@@ -4189,9 +4226,39 @@ export async function sessionRecordingPage(accountId: string, recordingId: strin
 		playbackUrl: r.playbackUrl,
 		playbackStatus: r.playbackStatus,
 		sizeBytes: r.sizeBytes,
-		session: r.session ? { id: r.session.id, name: sessionDisplayName(r.session) } : null,
+		session: r.session
+			? {
+					id: r.session.id,
+					name: sessionDisplayName(r.session),
+					eq: parseSessionEq(r.session.eq),
+				}
+			: null,
 		uploader: r.uploader?.name ?? null,
 	};
+}
+
+/**
+ * One ready recording of the account, for the download with the EQ applied
+ * (api/sessions/[id]/eq.mp3): what names the file and where it is read
+ * from. Null when it is not the account's or not ready.
+ */
+export async function sessionRecordingFile(accountId: string, recordingId: string) {
+	const r = await db.query.sessionRecording.findFirst({
+		where: and(
+			eq(sessionRecording.accountId, accountId),
+			eq(sessionRecording.id, recordingId),
+			eq(sessionRecording.status, "ready"),
+		),
+		columns: {
+			title: true,
+			filename: true,
+			source: true,
+			device: true,
+			url: true,
+			playbackUrl: true,
+		},
+	});
+	return r ?? null;
 }
 
 /** The account's songs for the recording's song picker: title and address, by project. */

@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { SESSION_KINDS } from "../constants/sessionRecordings";
 import { NanoIdSchema } from "./NanoIdSchema";
+import { PlaybackEqSchema } from "./PlaybackEqSchema";
 
 export const SessionKindSchema = v.picklist(SESSION_KINDS);
 
@@ -46,6 +47,13 @@ export const RecordingSessionUpdateSchema = v.object({
 	notes: NotesSchema,
 });
 export type RecordingSessionUpdate = v.InferOutput<typeof RecordingSessionUpdateSchema>;
+
+/** The playback EQ saved on a session for everyone in the account; null clears it. */
+export const RecordingSessionEqSchema = v.object({
+	id: NanoIdSchema,
+	eq: v.nullable(PlaybackEqSchema),
+});
+export type RecordingSessionEq = v.InferOutput<typeof RecordingSessionEqSchema>;
 
 export const RecordingSessionDeleteSchema = v.object({ id: NanoIdSchema });
 

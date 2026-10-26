@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { expect, open, test } from "./fixtures";
 
 /**
@@ -60,10 +61,21 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	await eqButton.click();
 	const eqPanel = page.getByRole("heading", { name: "Playback EQ" }).locator("..").locator("..");
 	await expect(eqPanel).toBeVisible();
-	await eqPanel.getByLabel(/^Low/).fill("4");
+	await eqPanel.getByRole("slider", { name: "Low gain", exact: true }).fill("4");
 	await expect(eqPanel.getByTestId("eq-low-value")).toHaveText("+4 dB");
+	// A band's center moves on a log scale: the top of Mid's travel is its 3 kHz ceiling.
+	await eqPanel.getByRole("slider", { name: "Mid center", exact: true }).fill("200");
+	await expect(eqPanel.getByTestId("eq-mid-freq")).toHaveText("3.0 kHz");
 	await eqPanel.getByRole("checkbox", { name: /High-pass/ }).check();
 	await expect(eqButton).toHaveAttribute("data-active", "true");
+	await expect(eqPanel.getByTestId("eq-status")).toHaveText("Your EQ for this session");
+	// Download with EQ: the server encodes the recording through ffmpeg with the same settings.
+	const downloading = page.waitForEvent("download");
+	await eqPanel.getByRole("button", { name: "Download with EQ" }).click();
+	const download = await downloading;
+	expect(download.suggestedFilename()).toMatch(/ \(EQ\)\.mp3$/);
+	const eqFile = await download.path();
+	expect((await fs.stat(eqFile)).size).toBeGreaterThan(10_000);
 	await eqPanel.getByRole("button", { name: "Close", exact: true }).click();
 	// Still playing through the graph: the clock moves on after the change.
 	await page.getByRole("button", { name: "Play", exact: true }).click();
@@ -76,9 +88,17 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 		.evaluate((a) => (a as HTMLAudioElement).currentTime);
 	expect(t1).toBeGreaterThan(t0);
 	await page.getByRole("button", { name: "Pause", exact: true }).click();
-	expect(
-		await page.evaluate(() => JSON.parse(localStorage.getItem("stem-shovel:session-eq") ?? "null")),
-	).toEqual({ highPass: true, low: 4, mid: 0, high: 0 });
+	// Remembered per session on the device, under the session's own key.
+	const sessionId = await sessions.first().getAttribute("data-session");
+	const stored = await page.evaluate(
+		(key) => JSON.parse(localStorage.getItem(key) ?? "null"),
+		`stem-shovel:session-eq:${sessionId}`,
+	);
+	expect(stored).toMatchObject({
+		highPass: true,
+		low: { gain: 4, freq: 200 },
+		mid: { gain: 0, freq: 3000 },
+	});
 	// A reload keeps it; Reset lets it go. After the reload nothing plays and the player's panel is
 	// hidden until a row is played, so the first recording is started to bring it back.
 	// (networkidle: a click before the dev server's modules have hydrated the page is lost.)
@@ -94,7 +114,19 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 		"true",
 	);
 	await player.getByRole("button", { name: "EQ", exact: true }).click();
+	// Save for everyone: the session row keeps it, so Reset falls back to the shared EQ rather than flat,
+	// and Remove shared EQ lets it go.
+	await page.getByRole("button", { name: "Save for everyone" }).click();
+	await expect(page.getByText("EQ saved for everyone in the account")).toBeVisible();
+	await expect(eqPanel.getByTestId("eq-status")).toHaveText("The session's shared EQ");
 	await page.getByRole("button", { name: "Reset" }).click();
+	await expect(player.getByRole("button", { name: "EQ", exact: true })).toHaveAttribute(
+		"data-active",
+		"true",
+	);
+	await page.getByRole("button", { name: "Remove shared EQ" }).click();
+	await expect(page.getByText("Shared EQ removed")).toBeVisible();
+	await expect(eqPanel.getByTestId("eq-status")).toHaveText("Flat");
 	await expect(player.getByRole("button", { name: "EQ", exact: true })).toHaveAttribute(
 		"data-active",
 		"false",

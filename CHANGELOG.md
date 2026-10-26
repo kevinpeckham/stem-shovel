@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The playback EQ belongs to the session.** The Sessions player remembers the EQ per session on the device and brings it back when that session plays again; another session plays with its own EQ or none. A member can **Save for everyone**, which stores the EQ with the session for the whole band (the device's own setting still wins when there is one), **Reset** falls back to the band's EQ or flat, and **Remove shared EQ** clears the band's.
+- **Five EQ bands with movable centers.** Low, low mid, mid, high mid and high, each −12..+12 dB with its center on a log-scale slider within the band's range, for open-air show recordings whose trouble is not at a fixed frequency.
+- **Download with EQ.** The EQ panel saves the current recording as an MP3 with the EQ applied, encoded by the server; the stored files are untouched.
+
 ### Fixed
 
 - **The Idea Recorder opens faster.** Its function was never kept warm (it is bundled apart from the other pages by its 300 s limit, and the warm cron reached only the default function), so every visit after an idle spell paid a cold start of several seconds; a second cron now warms it, which the project and song pages share. Its page load also runs its thirteen independent reads together instead of one after another.
@@ -18,6 +24,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- `recording_session.eq` (migration 0100, JSON of `PlaybackEqSchema`); `saveSessionEq`; `GET /api/sessions/[id]/eq.mp3` (ffmpeg through `server/eqRender.ts`, `maxDuration: 300`); the EQ's contract layer in `constants/playbackEq.ts`, `val/PlaybackEqSchema.ts`, `utils/normalizePlaybackEq.ts`, `utils/playbackEqStorage.ts` (per-session keys), `utils/eqSearchParams.ts`, `utils/eqFilterGraph.ts`; `scripts/migration-status.ts` tells a connection failure from a missing table.
 - `GET /api/warm/long` (`maxDuration: 300`, so the adapter bundles it with the Idea Recorder) and its `vercel.json` cron every five minutes; the route table and the indexability audit know the path (docs/environment.md "Cold starts", FINDINGS.md).
 
 ## [0.170.0] - 2026-10-26

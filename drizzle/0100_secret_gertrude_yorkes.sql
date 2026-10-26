@@ -1,0 +1,1 @@
+ALTER TABLE `recording_session` ADD `eq` text;
