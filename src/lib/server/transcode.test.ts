@@ -111,7 +111,7 @@ vi.mock("#lib/server/mix.js", () => h.mix);
 vi.mock("#lib/server/notes.js", () => h.notes);
 vi.mock("#lib/server/reportError.js", () => ({ reportError: h.reportError }));
 
-const { renderStems, renderDemos, renderRecordings, flacStudioSources } =
+const { renderStems, renderDemos, renderRecordings, renderSessions, flacStudioSources } =
 	await import("./transcode");
 
 const PUBLIC = "https://store.public.blob.vercel-storage.com";
@@ -450,6 +450,100 @@ describe("renderDemos", () => {
 		await renderDemos(["demo-1"]);
 		expectReported("demo-playback", "demo-1", "boom");
 		expect(h.data.failDemoPlayback).toHaveBeenCalledWith("demo-1");
+	});
+});
+
+describe("renderSessions", () => {
+	const ASTATS = "astats=measure_overall=none:measure_perchannel=Peak_level";
+	const MEASURE = "loudnorm=I=-14:TP=-1:LRA=11:print_format=json";
+	/** The stats pass's stderr: ffmpeg's report of the input, then astats' per-channel peaks. */
+	const stats = (duration: string, peak: string, right = peak) =>
+		[
+			`  Duration: ${duration}, start: 0.000000, bitrate: 1411 kb/s`,
+			"[Parsed_astats_0 @ 0x7f] Channel: 1",
+			`[Parsed_astats_0 @ 0x7f] Peak level dB: ${peak}`,
+			"[Parsed_astats_0 @ 0x7f] Channel: 2",
+			`[Parsed_astats_0 @ 0x7f] Peak level dB: ${right}`,
+		].join("\n");
+	const measured = `[Parsed_loudnorm_1 @ 0x7f]\n{\n\t"input_i" : "-19.50",\n\t"input_tp" : "-3.10",\n\t"input_lra" : "7.20",\n\t"input_thresh" : "-29.60",\n\t"target_offset" : "0.30"\n}`;
+	const afOf = (args: string[]) => args[args.indexOf("-af") + 1];
+	beforeEach(() => {
+		h.data.claimSessionPlayback.mockResolvedValue({
+			url: `${PRIVATE}/accounts/a/sessions/s/r1.m4a`,
+			pathname: "accounts/a/sessions/s/r1.m4a",
+			playbackUrl: null,
+		});
+	});
+	it("levels a set: the stats pass, a loudnorm measurement after the same shaping, then the encode with the numbers", async () => {
+		h.answer.mockImplementation((args) => {
+			if (args.includes(ASTATS)) return { stderr: stats("00:38:12.00", "-6.2") };
+			if (afOf(args)?.includes(MEASURE)) return { stderr: measured };
+			return { stderr: "" };
+		});
+		await renderSessions(["r1"]);
+		const measure = h.runs.find((r) => afOf(r)?.includes(MEASURE))!;
+		expect(afOf(measure)).toBe(`aformat=channel_layouts=mono|stereo,${MEASURE}`);
+		expect(measure.slice(-3)).toEqual(["-f", "null", "-"]);
+		const mp3 = runFor(/\/demo\.mp3$/)!;
+		expect(afOf(mp3)).toBe(
+			"aformat=channel_layouts=mono|stereo,loudnorm=I=-14:TP=-1:LRA=11:measured_I=-19.5:measured_TP=-3.1:measured_LRA=7.2:measured_thresh=-29.6:offset=0.3:linear=true",
+		);
+		expect(h.data.finishSessionPlayback).toHaveBeenCalled();
+	});
+	it("declips a capture that hit full scale before measuring and leveling it", async () => {
+		h.answer.mockImplementation((args) => {
+			if (args.includes(ASTATS)) return { stderr: stats("00:10:00.00", "-0.0") };
+			if (afOf(args)?.includes(MEASURE)) return { stderr: measured };
+			return { stderr: "" };
+		});
+		await renderSessions(["r1"]);
+		const measure = h.runs.find((r) => afOf(r)?.includes(MEASURE))!;
+		expect(afOf(measure)).toBe(`aformat=channel_layouts=mono|stereo,adeclip,${MEASURE}`);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toMatch(
+			/^aformat=channel_layouts=mono\|stereo,adeclip,loudnorm=I=-14:TP=-1:LRA=11:measured_I=-19\.5/,
+		);
+	});
+	it("a left-only phone capture is folded, then leveled as mono", async () => {
+		h.answer.mockImplementation((args) => {
+			if (args.includes(ASTATS)) return { stderr: stats("00:10:00.00", "-12.5", "-inf") };
+			if (afOf(args)?.includes(MEASURE)) return { stderr: measured };
+			return { stderr: "" };
+		});
+		await renderSessions(["r1"]);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toMatch(/^pan=mono\|c0=c0,loudnorm=/);
+	});
+	it("a measurement that prints nothing usable leaves the level alone", async () => {
+		h.answer.mockImplementation((args) => {
+			if (args.includes(ASTATS)) return { stderr: stats("00:10:00.00", "-6.2") };
+			return { stderr: "" };
+		});
+		await renderSessions(["r1"]);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe("aformat=channel_layouts=mono|stereo");
+		expect(h.data.finishSessionPlayback).toHaveBeenCalled();
+	});
+	it("a set over 45 minutes skips the two passes and takes the limiter alone", async () => {
+		h.answer.mockImplementation((args) => {
+			if (args.includes(ASTATS)) return { stderr: stats("01:12:00.00", "-6.2") };
+			return { stderr: "" };
+		});
+		await renderSessions(["r1"]);
+		expect(h.runs.some((r) => afOf(r)?.includes(MEASURE))).toBe(false);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(
+			"aformat=channel_layouts=mono|stereo,alimiter=limit=0.891:level=false",
+		);
+	});
+	it("demos are never leveled", async () => {
+		h.data.claimDemoPlayback.mockResolvedValue({
+			url: `${PUBLIC}/accounts/a/songs/s/demos/d1.m4a`,
+			pathname: "accounts/a/songs/s/demos/d1.m4a",
+			playbackUrl: null,
+		});
+		h.answer.mockImplementation((args) =>
+			args.includes(ASTATS) ? { stderr: stats("00:03:00.00", "-0.0") } : { stderr: "" },
+		);
+		await renderDemos(["demo-1"]);
+		expect(h.runs.some((r) => afOf(r)?.includes("loudnorm"))).toBe(false);
+		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe("aformat=channel_layouts=mono|stereo");
 	});
 });
 

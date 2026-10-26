@@ -13,6 +13,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **The playback EQ belongs to the session.** The Sessions player remembers the EQ per session on the device and brings it back when that session plays again; another session plays with its own EQ or none. A member can **Save for everyone**, which stores the EQ with the session for the whole band (the device's own setting still wins when there is one), **Reset** falls back to the band's EQ or flat, and **Remove shared EQ** clears the band's.
 - **Five EQ bands with movable centers.** Low, low mid, mid, high mid and high, each −12..+12 dB with its center on a log-scale slider within the band's range, for open-air show recordings whose trouble is not at a fixed frequency.
 - **Download with EQ.** The EQ panel saves the current recording as an MP3 with the EQ applied, encoded by the server; the stored files are untouched.
+- **Session recordings are leveled.** A recording's MP3 is normalized to EBU R128 (−14 LUFS, a −1 dBTP true-peak ceiling, one gain across the set) as it is made, so a show and a practice play at a comparable loudness with headroom left for a phone's mono speaker; a capture that hit full scale is declipped first. Sets over 45 minutes get the peak limiter alone. The original file stays as uploaded.
 
 ### Fixed
 
@@ -24,6 +25,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- Session renditions: `channelStats` (one `astats` pass for the fold, the peaks and the length), `adeclip` at ≥ −0.1 dBFS, two-pass `loudnorm` (`utils/loudnorm.ts`, `constants/sessionLoudness.ts`), `alimiter` for sets over `LEVEL_MAX_SECONDS`; `utils/ffmpegDuration.ts`.
 - `recording_session.eq` (migration 0100, JSON of `PlaybackEqSchema`); `saveSessionEq`; `GET /api/sessions/[id]/eq.mp3` (ffmpeg through `server/eqRender.ts`, `maxDuration: 300`); the EQ's contract layer in `constants/playbackEq.ts`, `val/PlaybackEqSchema.ts`, `utils/normalizePlaybackEq.ts`, `utils/playbackEqStorage.ts` (per-session keys), `utils/eqSearchParams.ts`, `utils/eqFilterGraph.ts`; `scripts/migration-status.ts` tells a connection failure from a missing table.
 - `GET /api/warm/long` (`maxDuration: 300`, so the adapter bundles it with the Idea Recorder) and its `vercel.json` cron every five minutes; the route table and the indexability audit know the path (docs/environment.md "Cold starts", FINDINGS.md).
 

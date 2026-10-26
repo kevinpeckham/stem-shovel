@@ -7,6 +7,23 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## ffmpeg `loudnorm` is two passes, prints its measurement as JSON on stderr, and decodes at ~30× (2026-10-26)
+
+EBU R128 leveling with `loudnorm` needs a first pass over the whole file
+(`loudnorm=I=…:TP=…:LRA=…:print_format=json -f null -`), whose numbers
+(`input_i`, `input_tp`, `input_lra`, `input_thresh`, `target_offset`)
+arrive as strings in a JSON block on stderr after the progress line, and
+a second pass that passes them back as `measured_*` and `offset` with
+`linear=true` for one gain across the file (it falls back to its dynamic
+mode by itself when the true peak forbids). A silent or very short input
+prints `-inf`, which the parser must refuse. Each pass runs at about
+56× real time alone and the encode with `adeclip` and `loudnorm` at
+about 32× on one core of the VM (ffmpeg-static 7.x), so an hour-long set
+needs more than a 300 s function allows: the session render levels only
+sets up to 45 minutes and limits the rest. `adeclip` reports
+"Detected clips in N of M samples" on stderr, handy when checking that
+it did anything. Lesson from leveling the session recordings.
+
 ## A libsql connect timeout looks like a missing table to a bare `catch` (2026-10-26)
 
 During Turso's us-east-1 "Elevated timeouts" incident, `bun run db:status`

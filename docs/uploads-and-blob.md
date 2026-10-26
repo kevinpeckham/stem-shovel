@@ -476,6 +476,32 @@ load schedules the render of a recording owed its MP3
 (`sessionsWantingPlayback`, as a song's page does for demos and the Idea
 Recorder for takes), so opening the page starts it.
 
+**Leveling** (Kevin, 2026-10-26: the fold put a phone's hot mono capture
+on both sides, and a mono downmix of two identical channels is +6 dB, so
+clipping that had been on one side became plain; and shows and practices
+land at every level). A session recording's MP3 (`SESSION_TARGET.level`;
+demos, takes and stems are never leveled, a stem's balance being the
+mix's) is made in three ffmpeg passes: the `astats` pass already run for
+the fold also reports each channel's peak and the file's length
+(`channelStats`, `utils/silentRightChannel.ts` `peakLevels`,
+`utils/ffmpegDuration.ts`); a channel at or above −0.1 dBFS
+(`CLIPPED_PEAK_DB`) means the capture hit full scale and `adeclip`
+(ffmpeg's clip repair) joins the chain after the fold; then `loudnorm`
+measures the file through that same chain (`measureLoudness`,
+`print_format=json`, parsed by `utils/loudnorm.ts`) and the encode
+applies the numbers (`loudnormApplyFilter`: EBU R128 to
+`SESSION_LOUDNESS`, −14 LUFS, −1 dBTP, LRA 11, `linear=true` so one gain
+across the set keeps its dynamics, loudnorm's own dynamic mode only when
+the peak forbids). A measurement that prints nothing usable (a silent
+file) leaves the level alone. Every pass decodes the whole file at about
+30× real time on one core and the jobs function has 300 s in all, so a
+set over `LEVEL_MAX_SECONDS` (45 min), or of unknown length, skips the
+two passes and takes `alimiter` at −1 dBFS alone (`peakLimiterFilter`),
+which costs nothing. The source stays as uploaded; the download of the
+original is untouched, the MP3 and the zip are the leveled renditions.
+Recordings rendered before this keep their MP3s; `bun run db:left-only`'s
+re-render path is the way to redo one.
+
 **A recording's own page and its viewing links.** Each recording has a
 page, `/<account>/sessions/r/<id>` (`sessionRecordingPage`): the title,
 session, day, source, the waveform, a one-track `SessionPlayer` and the

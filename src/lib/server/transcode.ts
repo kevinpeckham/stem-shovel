@@ -28,7 +28,16 @@ import { accessOfUrl } from "#lib/utils/blobAccess.js";
 import { createPcm16Peaks } from "#lib/utils/pcm16Peaks.js";
 import { studioSourceWantsFlac } from "#lib/utils/studioSourceWantsFlac.js";
 import { silenceBounds, type SilenceBounds } from "#lib/utils/silenceBounds.js";
-import { silentRightChannel } from "#lib/utils/silentRightChannel.js";
+import { peakLevels, silentRightChannel } from "#lib/utils/silentRightChannel.js";
+import {
+	loudnormApplyFilter,
+	loudnormMeasureFilter,
+	parseLoudnorm,
+	peakLimiterFilter,
+	type LoudnormMeasurement,
+} from "#lib/utils/loudnorm.js";
+import { CLIPPED_PEAK_DB, LEVEL_MAX_SECONDS } from "#lib/constants/sessionLoudness.js";
+import { ffmpegDuration } from "#lib/utils/ffmpegDuration.js";
 import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
 import type { JobKind } from "#lib/val/JobSchema.js";
 import { playbackPathname } from "#lib/server/blob.js";
@@ -418,6 +427,8 @@ interface Mp3Target {
 	measure?: boolean;
 	/** A browser's recording (the Idea Recorder, the session recorder): a stereo file with sound on the left only is folded to mono (`leftOnly`). */
 	fromRecorder?: boolean;
+	/** Session recordings: declipped when the capture hit full scale, then leveled to `SESSION_LOUDNESS` (docs/uploads-and-blob.md, "Leveling"). */
+	level?: boolean;
 	/** Set on takes: a raw PCM source (Chrome's lossless recording) is kept as FLAC instead, and a trim replaces the source too. */
 	replaceSource?: (
 		id: string,
@@ -449,6 +460,7 @@ const MIX_TARGET: Mp3Target = {
 const SESSION_TARGET: Mp3Target = {
 	kind: "session-playback",
 	fromRecorder: true,
+	level: true,
 	claim: claimSessionPlayback,
 	finish: finishSessionPlayback,
 	fail: failSessionPlayback,
@@ -495,13 +507,16 @@ function findSilence(file: string): Effect.Effect<SilenceBounds | null, never, S
 }
 
 /**
- * Whether a recording has sound on the left channel only (src/lib/utils/silentRightChannel.ts):
- * a phone's mono microphone written to a stereo file with the right channel
- * silent, as iOS did through a `MediaStreamAudioDestinationNode` before the
- * recorder's stereo fill (static/worklets/stereo-fill.js; Kevin, 2026-10-26).
- * One pass over the file with `astats`; an unreadable file reads as not.
+ * One `astats` pass over the file, its report (stderr) for two readings:
+ * whether the recording has sound on the left channel only
+ * (src/lib/utils/silentRightChannel.ts: a phone's mono microphone written
+ * to a stereo file with the right channel silent, as iOS did through a
+ * `MediaStreamAudioDestinationNode` before the recorder's stereo fill,
+ * static/worklets/stereo-fill.js; Kevin, 2026-10-26), and whether a
+ * channel hit full scale (`peakLevels`, for the declipper). An unreadable
+ * file reads as neither.
  */
-function leftOnly(file: string): Effect.Effect<boolean, never, Services> {
+function channelStats(file: string): Effect.Effect<string, never, Services> {
 	return runFfmpeg(
 		[
 			"-hide_banner",
@@ -514,10 +529,40 @@ function leftOnly(file: string): Effect.Effect<boolean, never, Services> {
 			"null",
 			"-",
 		],
-		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.leftOnly" },
+		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.channelStats" },
 	).pipe(
-		Effect.map(({ stderr }) => silentRightChannel(stderr)),
-		Effect.orElseSucceed(() => false),
+		Effect.map(({ stderr }) => stderr),
+		Effect.orElseSucceed(() => ""),
+	);
+}
+
+/**
+ * The leveling's first pass (src/lib/utils/loudnorm.ts): `loudnorm`
+ * measures the file after the same shaping filters the encode will apply
+ * (the fold, the declipper), and prints the numbers the second pass
+ * needs. Null when the pass fails or prints nothing usable (a silent or
+ * very short file): the encode then runs without leveling.
+ */
+function measureLoudness(
+	file: string,
+	shaping: string,
+): Effect.Effect<LoudnormMeasurement | null, never, Services> {
+	return runFfmpeg(
+		[
+			"-hide_banner",
+			"-i",
+			file,
+			"-vn",
+			"-af",
+			`${shaping},${loudnormMeasureFilter()}`,
+			"-f",
+			"null",
+			"-",
+		],
+		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.measureLoudness" },
+	).pipe(
+		Effect.map(({ stderr }) => parseLoudnorm(stderr)),
+		Effect.orElseSucceed(() => null),
 	);
 }
 
@@ -698,7 +743,22 @@ function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
 			return;
 		}
 		// A left-only recording becomes a mono MP3: the one channel with sound, which plays on both sides.
-		const fold = target.fromRecorder ? yield* leftOnly(input) : false;
+		const stats = target.fromRecorder ? yield* channelStats(input) : "";
+		const fold = silentRightChannel(stats);
+		const shape = fold ? "pan=mono|c0=c0" : "aformat=channel_layouts=mono|stereo";
+		// Leveling (sessions): a capture that hit full scale is declipped first, then two-pass loudnorm
+		// brings the set to SESSION_LOUDNESS with true-peak headroom. A set too long for the two passes
+		// (or of unknown length) gets the limiter alone; a failed measurement leaves the level alone.
+		const clipped = target.level === true && peakLevels(stats).some((p) => p >= CLIPPED_PEAK_DB);
+		const shaping = clipped ? `${shape},adeclip` : shape;
+		const seconds = ffmpegDuration(stats);
+		const twoPass = target.level === true && seconds !== null && seconds <= LEVEL_MAX_SECONDS;
+		const leveled = twoPass ? yield* measureLoudness(input, shaping) : null;
+		const filters = leveled
+			? `${shaping},${loudnormApplyFilter(leveled)}`
+			: target.level && !twoPass
+				? `${shaping},${peakLimiterFilter()}`
+				: shaping;
 		yield* runFfmpeg(
 			[
 				"-hide_banner",
@@ -711,7 +771,7 @@ function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
 				"-map_metadata",
 				"-1",
 				"-af",
-				fold ? "pan=mono|c0=c0" : "aformat=channel_layouts=mono|stereo",
+				filters,
 				"-ar",
 				"44100",
 				"-c:a",
