@@ -119,16 +119,24 @@ down now:
   without tracing (see "Sentry" below). The SvelteKit server entry
   re-exports the Vite plugin, which dragged Vite, esbuild and Babel into
   every cold start, and the loader hook slowed every import after it.
-- **A cron keeps the page function warm**: `vercel.json` calls
-  `GET /api/warm` every five minutes on production (crons run on
-  production only), which does one `select 1` and answers ok.
+- **Crons keep both page functions warm**: `vercel.json` calls
+  `GET /api/warm` and `GET /api/warm/long` every five minutes on production
+  (crons run on production only); each does one `select 1` and answers ok.
+  Two, because the adapter bundles routes by their `config`: the Idea
+  Recorder, the project and song pages and the ready/mix endpoints declare
+  `maxDuration: 300` and share a function of their own, which the first
+  cron never reached, so the recorder paid a 3 s cold start after every
+  idle spell (2026-10-26). `/api/warm/long` declares the same config and
+  lands in that function; its test asserts the configs match. After a
+  build, `readlink -f .vercel/output/functions/idea-recorder.func` and the
+  warm routes show which function each is in.
 
 The emulated cold start (importing the built function with `node`, on the
 VM) went from 1.8 s to 1.2 s before the first request; Lambda multiplies
 that. Measure a real one by hitting an idle deployment's own URL twice.
 Page loads also run their independent queries together (`songView`, the
-song, project and account loaders), which trims a warm request by tens of
-milliseconds.
+song, project and account loaders, the Idea Recorder's thirteen reads),
+which trims a warm request by tens of milliseconds.
 
 ## AI Gateway
 

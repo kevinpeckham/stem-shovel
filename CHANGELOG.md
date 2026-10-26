@@ -8,9 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Idea Recorder opens faster.** Its function was never kept warm (it is bundled apart from the other pages by its 300 s limit, and the warm cron reached only the default function), so every visit after an idle spell paid a cold start of several seconds; a second cron now warms it, which the project and song pages share. Its page load also runs its thirteen independent reads together instead of one after another.
+
 ### Changed
 
 - **The Sessions page's toolbar sits in the title row** at desktop widths, at the right of the page's words, as the Idea Recorder's does; **Add a recording** is styled as the recorder's New Idea button (a plus, filled from sm).
+
+### Technical
+
+- `GET /api/warm/long` (`maxDuration: 300`, so the adapter bundles it with the Idea Recorder) and its `vercel.json` cron every five minutes; the route table and the indexability audit know the path (docs/environment.md "Cold starts", FINDINGS.md).
 
 ## [0.170.0] - 2026-10-26
 

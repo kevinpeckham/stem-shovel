@@ -7,6 +7,20 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## adapter-vercel bundles routes by `config`, and a cron warms one function only (2026-10-26)
+
+`@sveltejs/adapter-vercel` groups routes into functions by their exported
+`config` (JSON-equal configs share one). Every route with
+`maxDuration: 300` (the Idea Recorder, the project and song pages, the
+ready/mix endpoints) was therefore a second function beside the default
+one, and the `/api/warm` cron warmed only the default: a signed-out request
+to `/idea-recorder` (a redirect, nothing else) took 3.4 s cold and 0.1 s
+warm. `readlink -f .vercel/output/functions/<route>.func` shows the group
+(`![-]/0.func`, `![-]/1.func`, …). The fix is a warm route per function:
+`/api/warm/long` declares the same config and so lands in the second one,
+and a test asserts the configs stay equal. Lesson from the Idea Recorder's
+slow opens in production.
+
 ## A script cannot post to the jobs function: the firewall's bot protection answers 429 from outside the site (2026-10-26)
 
 - **What happened.** `bun run db:left-only -- --apply --origin https://www.stemshovel.com`, run from Kevin's Mac, cleared the left-only renditions' status and then posted `{kind, ids}` to `/api/jobs` with the jobs bearer token, as `scheduleJob` does from inside the app. Production answered 429: Vercel's managed bot protection (challenge mode) challenges a request from a non-browser client (Bun's `fetch`), and a client that cannot run the challenge gets the 429, before the route ever sees the token. The app's own dispatch from the page function reaches the jobs function; the static-file fetch from inside the function noted in docs/environment.md does not, so what the firewall lets through is not simply "from Vercel". The script threw on the first table and left the others unmeasured until a second run.

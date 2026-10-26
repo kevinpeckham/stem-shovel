@@ -144,6 +144,7 @@ export const ROUTES = [
 	["robots.txt (server)", "/robots.txt", [200], [200]],
 	["sitemap.xml (server)", "/sitemap.xml", [200], [200]],
 	["api/warm (server)", "/api/warm", [200], [200]],
+	["api/warm/long (server)", "/api/warm/long", [200], [200]],
 	["api/jobs (server)", "/api/jobs", [405], [405]],
 	["api/recordings/[id]/ready (server)", "/api/recordings/x/ready", [405], [405]],
 	["api/recordings/[id]/stems (server)", "/api/recordings/x/stems", [405], [405]],

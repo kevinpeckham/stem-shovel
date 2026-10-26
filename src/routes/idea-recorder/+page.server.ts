@@ -50,13 +50,54 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 	if (!member) redirect(303, "/accounts");
 	const songParam = url.searchParams.get("song");
 	const songId = v.safeParse(NanoIdSchema, songParam ?? "");
-	// Ideas that never got a take or notes are not worth listing; sweep the old ones.
-	await deleteEmptyIdeas(user.id, EMPTY_IDEA_GRACE_MS);
-	const ideas = await listUserIdeas(user.id);
+	// Ideas that never got a take or notes are not worth listing; sweep the old ones, then list.
+	const ideasListed = deleteEmptyIdeas(user.id, EMPTY_IDEA_GRACE_MS).then(() =>
+		listUserIdeas(user.id),
+	);
+	// `?song=`: the song's link when the user edits its account; otherwise nothing.
+	const fromSongLinked = songId.success
+		? accountOfSong(songId.output).then((accountId) =>
+				accountId && editing.some((m) => m.accountId === accountId)
+					? songLink(accountId, songId.output)
+					: null,
+			)
+		: Promise.resolve(null);
+	// Every read is independent of the others, so they run together: one round trip's wait, not fifteen (docs/environment.md "Cold starts").
+	const [
+		ideas,
+		projects,
+		fromSong,
+		beats,
+		kits,
+		sitePresets,
+		ampGuitar,
+		ampBass,
+		ampPresets,
+		chordPresets,
+		pianoPresets,
+		chordStyles,
+		copy,
+	] = await Promise.all([
+		ideasListed,
+		// Song targets across every account the user edits; the account's name labels the project when there is more than one.
+		songTargets(editing),
+		fromSongLinked,
+		// The drum machine's panel (docs/demo-recording.md): the current account's saved beats.
+		listBeats(member.accountId),
+		listDrumKitManifests(member.accountId),
+		// The piano's panel: the site's demo presets and the current account's own, as the piano page has them.
+		sitePianoPresets(),
+		// The Practice Amp's presets (docs/practice-amp.md, "Presets"), for its panel.
+		siteAmpPresets("guitar"),
+		siteAmpPresets("bass"),
+		listAmpPresets(member.accountId),
+		sitePianoPresets("chords"),
+		listPianoPresets(member.accountId),
+		listChordStyles(member.accountId),
+		// The page's words (title, intro, the tips under the recorder) from its copy doc, edited in the app (docs/page-copy.md).
+		pageCopy("idea-recorder-page", copyFallback, locals),
+	]);
 	scheduleRecordingPlayback(recordingsWantingPlayback(ideas.flatMap((i) => i.takes)));
-	// Song targets across every account the user edits; the account's name labels the project when there is more than one.
-	const projects = await songTargets(editing);
-	const fromSongAccount = songId.success ? await accountOfSong(songId.output) : null;
 	return {
 		account: { id: member.accountId, name: member.name, slug: member.slug, canEdit: true },
 		// The piano under the recorder: where this stage keeps the Grand Piano's fuller sample tiers.
@@ -84,24 +125,18 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 			})),
 		})),
 		projects,
-		// The drum machine's panel (docs/demo-recording.md): the current account's saved beats and whether Text-to-Beat is on.
-		beats: await listBeats(member.accountId),
-		kits: await listDrumKitManifests(member.accountId),
+		beats,
+		kits,
+		// Whether Text-to-Beat is on.
 		textToBeat: aiAvailable(),
-		// The piano's panel: the site's demo presets and the current account's own, as the piano page has them.
-		sitePresets: await sitePianoPresets(),
-		// The Practice Amp's presets (docs/practice-amp.md, "Presets"), for its panel.
-		ampSitePresets: { guitar: await siteAmpPresets("guitar"), bass: await siteAmpPresets("bass") },
-		ampPresets: await listAmpPresets(member.accountId),
-		chordPresets: await sitePianoPresets("chords"),
-		pianoPresets: await listPianoPresets(member.accountId),
-		chordStyles: await listChordStyles(member.accountId),
+		sitePresets,
+		ampSitePresets: { guitar: ampGuitar, bass: ampBass },
+		ampPresets,
+		chordPresets,
+		pianoPresets,
+		chordStyles,
 		presetAdmin: locals.user?.isSystemAdmin === true,
-		// The page's words (title, intro, the tips under the recorder) from its copy doc, edited in the app (docs/page-copy.md).
-		copy: await pageCopy("idea-recorder-page", copyFallback, locals),
-		fromSong:
-			songId.success && fromSongAccount && editing.some((m) => m.accountId === fromSongAccount)
-				? await songLink(fromSongAccount, songId.output)
-				: null,
+		copy,
+		fromSong,
 	};
 };

@@ -3,6 +3,7 @@
 	"installCommand": "npx --yes bun@1.4.2 install --frozen-lockfile",
 	"crons": [
 		{ "path": "/api/warm", "schedule": "*/5 * * * *" },
+		{ "path": "/api/warm/long", "schedule": "*/5 * * * *" },
 		{ "path": "/api/notifications/digest", "schedule": "0 13 * * *" }
 	],
 	"redirects": [
