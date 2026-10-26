@@ -358,8 +358,10 @@ demo opt-in for email). The completion webhook's backstop is
 `recordSessionUrl`.
 
 **The page** (`/[account]/sessions`, members only,
-`listRecordingSessions`): a toolbar under the page copy (Kevin,
-2026-10-26) with "Add a recording", which opens the upload form in a
+`listRecordingSessions`): a toolbar in the title row, at the right of
+the page copy from sm as the Idea Recorder's (`PageCopyHeader`'s
+`controls`; Kevin, 2026-10-26), with "Add a recording" (styled as the
+recorder's New Idea button), which opens the upload form in a
 `popover="auto"` panel (the session combo box, kind, place, input device
 and name, the files; the panel hides as the upload starts so the rows
 and their progress show), and "Record a session", the link to the

@@ -535,11 +535,12 @@
 
 <main class="page">
 	<!-- The title and the words under it are the page's copy doc, edited in the app by a system admin (docs/page-copy.md). -->
-	<div class="max-w-article">
-		<PageCopyHeader copy={data.copy} class="mb-6" />
-	</div>
-
-	{@render toolbar()}
+	<!-- The page's words from its copy doc, with the toolbar at the right on a desktop, as the Idea Recorder's (Kevin, 2026-10-26). -->
+	<PageCopyHeader copy={data.copy} class="mb-6">
+		{#snippet controls()}
+			{@render toolbar()}
+		{/snippet}
+	</PageCopyHeader>
 	{#if data.canEdit}
 		{#if jobs.length > 0}
 			<ul class="max-w-article mb-6 grid gap-1 text-13px" aria-label="Uploads">
@@ -1086,10 +1087,15 @@
 <!-- The toolbar: the uploads for a member, and the Player button once a track has been chosen (its own snippet, so the template stays scoreable). -->
 {#snippet toolbar()}
 	{#if data.canEdit || current !== null}
-		<div class="mb-6 flex flex-wrap items-center gap-3" role="group" aria-label="Sessions toolbar">
+		<div class="flex flex-wrap items-center gap-3" role="group" aria-label="Sessions toolbar">
 			{#if data.canEdit}
-				<button class="button-accent button-sm" type="button" popovertarget="add-recording">
-					<span class="i-ph-upload-simple" aria-hidden="true"></span> Add a recording
+				<!-- Styled as the Idea Recorder's New Idea button. -->
+				<button
+					class="button button-sm sm-bg-accent sm-text-oxford shrink-0"
+					type="button"
+					popovertarget="add-recording"
+				>
+					<span class="i-ph-plus" aria-hidden="true"></span> Add a recording
 				</button>
 				<a
 					class="button button-sm"

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The Sessions page's toolbar sits in the title row** at desktop widths, at the right of the page's words, as the Idea Recorder's does; **Add a recording** is styled as the recorder's New Idea button (a plus, filled from sm).
+
 ## [0.170.0] - 2026-10-26
 
 ### Changed
