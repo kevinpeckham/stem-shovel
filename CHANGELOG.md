@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.171.0] - 2026-10-26
+
 ### Added
 
 - **The playback EQ belongs to the session.** The Sessions player remembers the EQ per session on the device and brings it back when that session plays again; another session plays with its own EQ or none. A member can **Save for everyone**, which stores the EQ with the session for the whole band (the device's own setting still wins when there is one), **Reset** falls back to the band's EQ or flat, and **Remove shared EQ** clears the band's.
