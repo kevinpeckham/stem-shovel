@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.168.2] - 2026-10-26
+
 ### Added
 
 - **A Live Session Recordings link on the Projects page.** The account's Projects page links to its sessions in the upper right, for members (Kevin, 2026-10-26).
