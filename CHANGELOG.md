@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.169.0] - 2026-10-26
+
 ### Added
 
 - **A playback EQ on the session player.** The EQ button on the Sessions page's player (and a recording's own page) opens a high-pass for rumble and low, mid and high bands, −12 to +12 dB, with Reset; lit while it changes the sound. Playback only, remembered on the device; the files and downloads are untouched (Kevin, 2026-10-26).
