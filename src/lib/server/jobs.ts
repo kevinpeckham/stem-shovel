@@ -77,6 +77,9 @@ export const scheduleSessionPlayback = (recordingIds: string[]) =>
 export const scheduleDemoPeaks = (demoIds: string[]) => scheduleJob("demo-peaks", demoIds);
 export const scheduleSessionPeaks = (recordingIds: string[]) =>
 	scheduleJob("session-peaks", recordingIds);
+/** Measures the octave-band spectrum of session recordings with an MP3, for the player's Auto EQ (docs/uploads-and-blob.md, "Auto EQ"). */
+export const scheduleSessionSpectrum = (recordingIds: string[]) =>
+	scheduleJob("session-spectrum", recordingIds);
 /** Measures stems that have no stored length, peaks or channels (docs/uploads-and-blob.md, "Stems measured after the fact"). */
 export const scheduleStemMetadata = (stemIds: string[]) => scheduleJob("stem-metadata", stemIds);
 /** A ready notation file is engraved to a PDF (src/lib/server/notationPdf.ts). */

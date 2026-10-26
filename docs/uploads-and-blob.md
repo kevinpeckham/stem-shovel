@@ -476,6 +476,35 @@ load schedules the render of a recording owed its MP3
 (`sessionsWantingPlayback`, as a song's page does for demos and the Idea
 Recorder for takes), so opening the page starts it.
 
+**Auto EQ** (Kevin, 2026-10-26: a starting point that matches a typical
+live recording's curve, pressed by the user, never applied on its own,
+and every slider free afterward). When a session recording's MP3 is
+there, the jobs function measures its long-term level in ten octave
+bands (`session-spectrum` job, `measureSpectrum` in transcode.ts: one
+ffmpeg pass, the file folded to mono and `asplit` into a `bandpass` of
+one octave per band of `constants/autoEq.ts` `SPECTRUM_BANDS`, each into
+`volumedetect`, whose `mean_volume` is the band's RMS, about 7 s for a
+45-minute set where `astats` took 34 to 70 s, FINDINGS.md 2026-10-26;
+parsed by `utils/octaveBandLevels.ts`, which sorts the lines by their
+filter index since ffmpeg prints them last to first; claimed and finished like the
+waveform peaks, `sessionsWantingSpectrum` scheduled by the Sessions
+page's load, so recordings from before the feature are measured on the
+page's next visit without touching their MP3s) and stores the ten
+numbers on the row (`session_recording.spectrum`, JSON, migration 0102,
+with `spectrum_started_at` as the lock). The EQ panel's **Auto** button
+(disabled, "Not measured yet", until the row has them) runs
+`utils/autoEqFit.ts`: the measured curve and `LIVE_TARGET_DB` (flat
+through the low mids, falling about 3 dB an octave above 1 kHz, the
+lowest octave down) are aligned over the 125 Hz to 4 kHz bands so only
+the shape counts, and the five bands then close the gap, each taking
+the octave in its range where the gap is widest (a shelf the weighted
+mean on its side of the corner), in two passes, no band past
+`AUTO_EQ_MAX_DB` (8 dB); a lowest octave `AUTO_EQ_RUMBLE_DB` over the
+target turns the high-pass on instead of pulling the low shelf. The
+result goes through `setEq`, so it is the device's EQ for the session
+from then on and any slider moved afterward overrides it; Save for
+everyone stores it like any other.
+
 **Leveling** (Kevin, 2026-10-26: the fold put a phone's hot mono capture
 on both sides, and a mono downmix of two identical channels is +6 dB, so
 clipping that had been on one side became plain; and shows and practices

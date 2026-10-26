@@ -12,7 +12,7 @@
 	/**
 	 * The session player's playback EQ panel (SessionPlayer's EQ button opens
 	 * it): a high-pass for rumble and five bands, each a gain and a center
-	 * on a log scale, with the session's actions (Reset, Download with EQ,
+	 * on a log scale, with the session's actions (Auto, Reset, Download with EQ,
 	 * Save for everyone or Remove shared EQ). It holds no state: every change
 	 * hands the player a new settings object, and the actions are the
 	 * player's.
@@ -33,7 +33,11 @@
 		/** The session has a shared EQ, which a member may remove. */
 		hasShared?: boolean;
 		downloadDisabled?: boolean;
+		/** The current recording's spectrum is measured, so Auto can fit the EQ to it. */
+		canAuto?: boolean;
 		onreset?: () => void;
+		/** Auto EQ: the player fits the bands to the recording's measured sound. */
+		onauto?: () => void;
 		onsaveshared?: () => void;
 		onremoveshared?: () => void;
 		ondownload?: () => void;
@@ -48,7 +52,9 @@
 		sharedMatches = true,
 		hasShared = false,
 		downloadDisabled = true,
+		canAuto = false,
 		onreset,
+		onauto,
 		onsaveshared,
 		onremoveshared,
 		ondownload,
@@ -158,6 +164,18 @@
 		</div>
 	{/each}
 	<div class="mt-4 flex flex-wrap justify-end gap-2">
+		<button
+			class="button button-xs"
+			type="button"
+			disabled={!canAuto}
+			onclick={onauto}
+			title={canAuto
+				? "Set the EQ from this recording's measured sound against a live-mix curve; adjust from there"
+				: "Not measured yet"}
+		>
+			<span class="i-ph-magic-wand" aria-hidden="true"></span>
+			Auto
+		</button>
 		<button class="button button-xs" type="button" disabled={!canReset} onclick={onreset}>
 			Reset
 		</button>

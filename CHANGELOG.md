@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.174.0] - 2026-10-26
+
+### Added
+
+- **Auto EQ in the Sessions player.** The EQ panel's Auto button sets the five bands from the recording's measured sound against the curve of a typical well-mixed live recording, as a starting point you adjust from; it runs only when pressed. A recording is measured a little after its MP3 appears, older ones on the page's next visit.
+
+### Technical
+
+- `session_recording.spectrum` and `spectrum_started_at` (migration 0102): ten octave-band RMS levels measured by the new `session-spectrum` job (`measureSpectrum`, `utils/octaveBandLevels.ts`); `utils/autoEqFit.ts` with `constants/autoEq.ts` (target curve, limits).
+
 ## [0.173.0] - 2026-10-26
 
 ### Added

@@ -27,6 +27,7 @@ const h = vi.hoisted(() => ({
 	renderSessions: vi.fn(),
 	measureDemos: vi.fn(),
 	measureSessions: vi.fn(),
+	measureSessionSpectra: vi.fn(),
 	measureStemMetadata: vi.fn(),
 	flacStudioSources: vi.fn(),
 }));
@@ -56,6 +57,7 @@ vi.mock("#lib/server/transcode.js", () => ({
 	renderSessions: h.renderSessions,
 	measureDemos: h.measureDemos,
 	measureSessions: h.measureSessions,
+	measureSessionSpectra: h.measureSessionSpectra,
 	measureStemMetadata: h.measureStemMetadata,
 	flacStudioSources: h.flacStudioSources,
 }));
@@ -157,12 +159,14 @@ describe("POST /api/jobs", () => {
 		await post({ kind: "session-playback", ids: [A] });
 		await post({ kind: "demo-peaks", ids: [A] });
 		await post({ kind: "session-peaks", ids: [B] });
+		await post({ kind: "session-spectrum", ids: [A, B] });
 		await post({ kind: "stem-metadata", ids: [A, B] });
 		await settled();
 		expect(h.renderMixes).toHaveBeenCalledWith([A]);
 		expect(h.renderSessions).toHaveBeenCalledWith([A]);
 		expect(h.measureDemos).toHaveBeenCalledWith([A]);
 		expect(h.measureSessions).toHaveBeenCalledWith([B]);
+		expect(h.measureSessionSpectra).toHaveBeenCalledWith([A, B]);
 		expect(h.measureStemMetadata).toHaveBeenCalledWith([A, B]);
 	});
 });

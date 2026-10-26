@@ -715,6 +715,13 @@
       "when": 1793044296736,
       "tag": "0101_lean_microchip",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "6",
+      "when": 1793045703670,
+      "tag": "0102_even_smiling_tiger",
+      "breakpoints": true
     }
   ]
 }

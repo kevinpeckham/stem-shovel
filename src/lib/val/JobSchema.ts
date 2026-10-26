@@ -12,6 +12,7 @@ export const JOB_KINDS = [
 	"session-playback",
 	"demo-peaks",
 	"session-peaks",
+	"session-spectrum",
 	"stem-metadata",
 	"notation-pdf",
 	"dawproject-export",

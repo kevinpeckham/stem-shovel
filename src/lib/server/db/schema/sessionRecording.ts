@@ -56,6 +56,9 @@ export const sessionRecording = table(
 		durationSeconds: t.real("duration_seconds"),
 		peaks: t.text("peaks", { mode: "json" }).$type<number[]>(),
 		peaksStartedAt: t.integer("peaks_started_at", { mode: "timestamp_ms" }),
+		/** The MP3's long-term level per octave band, dB RMS (constants/autoEq.ts SPECTRUM_BANDS), for the player's Auto EQ (docs/uploads-and-blob.md, "Auto EQ"); null until measured. */
+		spectrum: t.text("spectrum", { mode: "json" }).$type<number[]>(),
+		spectrumStartedAt: t.integer("spectrum_started_at", { mode: "timestamp_ms" }),
 		uploadedBy: t.text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},

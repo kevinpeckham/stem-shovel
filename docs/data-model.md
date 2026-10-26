@@ -449,6 +449,8 @@ table's rows into sessions (one per account, kind, day and place) and
 | source                 | text not null default ''              | the input source ("Room mic"), 0093                           |
 | song_id                | text FK → song (set null) null        | the song it records, when one; indexed (0094)                 |
 | is_public              | integer bool not null default false   | anyone with the page's address may listen and download (0101) |
+| spectrum               | text JSON number[] null               | level per octave band of the MP3, for the Auto EQ (0102)      |
+| spectrum_started_at    | integer ms null                       | the measurement's lock, as peaks_started_at (0102)            |
 | status                 | text                                  | uploading / ready (a failed upload's row is removed)          |
 | url, pathname          | text                                  | `accounts/<a>/sessions/<id>.<ext>`                            |
 | filename, content_type | text                                  | the demo formats (`demoContentType`)                          |

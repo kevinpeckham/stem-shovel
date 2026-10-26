@@ -7,8 +7,13 @@ import {
 	sessionChatSummaryOf,
 	sessionsWantingPeaks,
 	sessionsWantingPlayback,
+	sessionsWantingSpectrum,
 } from "#lib/server/data.js";
-import { scheduleSessionPeaks, scheduleSessionPlayback } from "#lib/server/jobs.js";
+import {
+	scheduleSessionPeaks,
+	scheduleSessionPlayback,
+	scheduleSessionSpectrum,
+} from "#lib/server/jobs.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import copyFallback from "../../../../scripts/user-docs/sessions-page.md?raw";
 import type { PageServerLoad } from "./$types";
@@ -32,6 +37,8 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	const recordings = sessions.flatMap((s) => s.recordings);
 	scheduleSessionPlayback(sessionsWantingPlayback(recordings));
 	scheduleSessionPeaks(sessionsWantingPeaks(recordings));
+	// The octave-band spectrum behind the player's Auto EQ (docs/uploads-and-blob.md, "Auto EQ").
+	scheduleSessionSpectrum(sessionsWantingSpectrum(recordings));
 	const [comments, chat, songs, shareLinks] = await Promise.all([
 		listSessionComments(account.id),
 		sessionChatSummaryOf(

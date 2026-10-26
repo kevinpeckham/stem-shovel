@@ -74,6 +74,7 @@
 			session: nameOf(s),
 			sessionId: s.id,
 			sessionEq: s.eq,
+			spectrum: r.spectrum,
 		}));
 	/** A session that runs into the next day: any recording of the day after. */
 	const nextDayOf = (s: Session) =>

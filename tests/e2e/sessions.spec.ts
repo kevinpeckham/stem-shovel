@@ -247,6 +247,37 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	expect(body[0]).toBe(0x50);
 	expect(body[1]).toBe(0x4b);
 
+	// Auto EQ: the page's load schedules the measurement once the MP3 is there; a reload or two later
+	// the panel's Auto button is live, and pressing it moves the sliders off flat.
+	await expect
+		.poll(
+			async () => {
+				await page.reload({ waitUntil: "networkidle" });
+				await page
+					.locator("[data-recording]")
+					.first()
+					.getByRole("button", { name: /^Play / })
+					.click();
+				await expect(player).toBeVisible();
+				await player.getByRole("button", { name: "EQ", exact: true }).click();
+				const auto = page.getByRole("button", { name: "Auto", exact: true });
+				await expect(auto).toBeVisible();
+				const live = await auto.isEnabled();
+				if (!live) await page.getByRole("button", { name: "Close", exact: true }).click();
+				return live;
+			},
+			{ timeout: 120_000, intervals: [8000] },
+		)
+		.toBe(true);
+	await page.getByRole("button", { name: "Auto", exact: true }).click();
+	await expect(page.getByText("EQ set from the recording")).toBeVisible();
+	await expect(player.getByRole("button", { name: "EQ", exact: true })).toHaveAttribute(
+		"data-active",
+		"true",
+	);
+	await page.getByRole("button", { name: "Close", exact: true }).click();
+	await page.getByRole("button", { name: "Pause", exact: true }).click();
+
 	await deleteEverySession(page);
 	await expect(sessions).toHaveCount(0);
 	expect(errors).toEqual([]);

@@ -14,6 +14,7 @@
 	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
 	import { eqSearchParams } from "#lib/utils/eqSearchParams.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { autoEqFit } from "#lib/utils/autoEqFit.js";
 	import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js";
 	import { clearPlaybackEq, loadPlaybackEq, savePlaybackEq } from "#lib/utils/playbackEqStorage.js";
 	import { onDestroy, onMount, tick, untrack } from "svelte";
@@ -31,6 +32,8 @@
 		sessionId: string;
 		/** The session's shared EQ (saved for everyone in the account), or null. */
 		sessionEq: PlaybackEqSettings | null;
+		/** The recording's octave-band levels (constants/autoEq.ts), measured in the jobs function; null until then. Auto EQ fits to it. */
+		spectrum: number[] | null;
 	}
 
 	/**
@@ -244,6 +247,19 @@
 		if (!track) return; // nothing playing: a trial for the next session's first track to replace
 		savePlaybackEq(track.sessionId, next);
 		ownEq = true;
+	}
+	/**
+	 * Auto EQ (docs/uploads-and-blob.md, "Auto EQ"): the bands fitted to the
+	 * recording's measured spectrum against a live-mix curve, saved as the
+	 * device's own EQ for the session like any slider move, so every slider
+	 * stays free to move from there.
+	 */
+	/** The current recording is measured, so Auto has a spectrum to fit. */
+	let canAuto = $derived(!!track?.spectrum);
+	function autoEq() {
+		if (!track?.spectrum) return;
+		setEq(autoEqFit(track.spectrum));
+		notify("EQ set from the recording; adjust from here");
 	}
 	/** Forget the device's EQ for the session: back to the shared one, or flat. */
 	function resetEq() {
@@ -531,6 +547,8 @@
 	hasShared={!!shared}
 	downloadDisabled={!track || !eqActive}
 	onreset={resetEq}
+	{canAuto}
+	onauto={autoEq}
 	onsaveshared={() => saveShared($state.snapshot(eq))}
 	onremoveshared={() => saveShared(null)}
 	ondownload={downloadWithEq}

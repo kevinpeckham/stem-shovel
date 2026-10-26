@@ -35,6 +35,8 @@ const h = vi.hoisted(() => ({
 		replaceRecordingSource: vi.fn(),
 		studioSourceForTranscode: vi.fn(),
 		replaceStudioSourceFile: vi.fn(),
+		claimSessionSpectrum: vi.fn(),
+		finishSessionSpectrum: vi.fn(),
 	},
 	blob: {
 		readBlob: vi.fn(),
@@ -572,6 +574,42 @@ describe("renderSessions", () => {
 		await renderDemos(["demo-1"]);
 		expect(h.runs.some((r) => afOf(r)?.includes(MEASURE))).toBe(false);
 		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe("aformat=channel_layouts=mono|stereo");
+	});
+});
+
+describe("measureSessionSpectra", () => {
+	const BANDS = ["31.5", "63", "125", "250", "500", "1000", "2000", "4000", "8000", "16000"];
+	const LEVELS = [-30, -22, -20, -19, -21, -24, -27, -31, -36, -91];
+	/** volumedetect's stderr, bands printed last to first as ffmpeg does. */
+	const stderr = LEVELS.map(
+		(v, i) => `[Parsed_volumedetect_${3 + 3 * i} @ 0x7f] mean_volume: ${v.toFixed(1)} dB`,
+	)
+		.reverse()
+		.join("\n");
+	const claim = { id: "r1", url: `${PRIVATE}/accounts/a/sessions/r1.play-x.mp3` };
+
+	it("measures the MP3 in one pass through ten octave bandpasses and stores the levels lowest band first", async () => {
+		const { measureSessionSpectra } = await import("./transcode");
+		h.data.claimSessionSpectrum.mockResolvedValue(claim);
+		h.answer.mockReturnValue({ stderr });
+		await measureSessionSpectra(["r1"]);
+		expect(h.blob.readBlob).toHaveBeenCalledWith(claim.url);
+		const args = h.runs.find((r) => r.includes("-filter_complex"));
+		const graph = args?.[args.indexOf("-filter_complex") + 1] ?? "";
+		const stages = [...graph.matchAll(/bandpass=f=([\d.]+):width_type=o:w=1,volumedetect/g)];
+		expect(stages.map((m) => m[1])).toEqual(BANDS);
+		expect(graph).toMatch(/^aformat=channel_layouts=mono,asplit=11/);
+		expect(args?.slice(-5)).toEqual(["-map", "[out]", "-f", "null", "-"]);
+		expect(h.data.finishSessionSpectrum).toHaveBeenCalledWith("r1", LEVELS);
+		expect(h.fs.removed).toEqual([expect.stringMatching(/spectrum-abc$/)]);
+	});
+	it("leaves the row unmeasured when the pass prints too few bands, and skips a row already claimed", async () => {
+		const { measureSessionSpectra } = await import("./transcode");
+		h.data.claimSessionSpectrum.mockResolvedValueOnce(claim).mockResolvedValueOnce(null);
+		h.answer.mockReturnValue({ stderr: stderr.split("\n").slice(0, 4).join("\n") });
+		await measureSessionSpectra(["r1", "r2"]);
+		expect(h.runs).toHaveLength(1);
+		expect(h.data.finishSessionSpectrum).not.toHaveBeenCalled();
 	});
 });
 

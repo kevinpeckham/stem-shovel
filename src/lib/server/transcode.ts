@@ -6,6 +6,7 @@ import {
 	claimRecordingPlayback,
 	claimSessionPeaks,
 	claimSessionPlayback,
+	claimSessionSpectrum,
 	failDemoPlayback,
 	failSessionPlayback,
 	failMixPlayback,
@@ -18,6 +19,7 @@ import {
 	finishRecordingPlayback,
 	finishSessionPeaks,
 	finishSessionPlayback,
+	finishSessionSpectrum,
 	finishStemMetadata,
 	stemForMetadata,
 	replaceRecordingSource,
@@ -31,6 +33,8 @@ import { silenceBounds, type SilenceBounds } from "#lib/utils/silenceBounds.js";
 import { peakLevels, silentRightChannel } from "#lib/utils/silentRightChannel.js";
 import { peakLimiterFilter } from "#lib/utils/peakLimiterFilter.js";
 import { parseEbur128Summary } from "#lib/utils/ebur128Summary.js";
+import { parseOctaveBandLevels } from "#lib/utils/octaveBandLevels.js";
+import { SPECTRUM_BANDS } from "#lib/constants/autoEq.js";
 import { levelingGainDb } from "#lib/utils/levelingGain.js";
 import {
 	CLIPPED_PEAK_DB,
@@ -275,6 +279,69 @@ function measureRendition(
 		const measured = yield* measurePeaks(file);
 		yield* db.call(`${kind}:finish`, () => finish(id, measured));
 	}).pipe(Effect.scoped, Effect.withSpan("transcode.measureRendition", { attributes: { id } }));
+}
+
+/**
+ * The octave-band spectrum of session recordings with an MP3, for the
+ * player's Auto EQ (docs/uploads-and-blob.md, "Auto EQ"): fetched and
+ * measured one at a time. A pass that prints nothing usable leaves the
+ * row unmeasured; the claim lapses and a later visit tries again.
+ */
+export async function measureSessionSpectra(recordingIds: string[]): Promise<void> {
+	await eachRun("session-spectrum", recordingIds, (id) =>
+		Effect.gen(function* () {
+			const db = yield* Db;
+			const claimed = yield* db.call("session-spectrum:claim", () => claimSessionSpectrum(id));
+			if (!claimed) return;
+			const file = join(yield* tempDir("spectrum-"), "rendition.mp3");
+			yield* downloadToFile(claimed.url, file);
+			const spectrum = yield* measureSpectrum(file);
+			if (!spectrum) return;
+			yield* db.call("session-spectrum:finish", () => finishSessionSpectrum(id, spectrum));
+		}).pipe(
+			Effect.scoped,
+			Effect.withSpan("transcode.measureSessionSpectrum", { attributes: { id } }),
+		),
+	);
+}
+
+/**
+ * The spectrum pass's filter graph: the file folded to mono, split once per
+ * octave band (SPECTRUM_BANDS) and once for the output; each band an
+ * octave-wide bandpass into `volumedetect`, whose `mean_volume` is the
+ * band's RMS level, then a sink. `volumedetect` rather than `astats`: on a
+ * 45-minute MP3 the astats graph took 34 s to 70 s, this one 7 s.
+ */
+function spectrumFilterGraph(bands: readonly number[] = SPECTRUM_BANDS): string {
+	const labels = bands.map((_, i) => `[b${i}]`).join("");
+	return [
+		`aformat=channel_layouts=mono,asplit=${bands.length + 1}${labels}[out]`,
+		...bands.map((f, i) => `[b${i}]bandpass=f=${f}:width_type=o:w=1,volumedetect,anullsink`),
+	].join(";");
+}
+
+/** A file's long-term level per octave band, dB RMS, lowest band first (src/lib/utils/octaveBandLevels.ts); null when the pass fails or prints too few bands. */
+function measureSpectrum(file: string): Effect.Effect<number[] | null, never, Services> {
+	return runFfmpeg(
+		[
+			"-hide_banner",
+			"-nostats",
+			"-i",
+			file,
+			"-vn",
+			"-filter_complex",
+			spectrumFilterGraph(),
+			"-map",
+			"[out]",
+			"-f",
+			"null",
+			"-",
+		],
+		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.measureSpectrum" },
+	).pipe(
+		Effect.map(({ stderr }) => parseOctaveBandLevels(stderr)),
+		Effect.orElseSucceed(() => null),
+	);
 }
 
 /** The waveform's rate: coarse frames of a tenth of a second, reduced to the bins at the end. */

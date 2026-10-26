@@ -21,6 +21,21 @@ before believing any stage-specific run, and treat production checks as
 Kevin's machine's alone. Lesson from v0.171.0, shipped on a migration
 check that had read dev.
 
+## ffmpeg: ten `astats` outputs cost 70 s on a 45-minute file, ten `volumedetect` sinks 7 s (2026-10-26)
+
+Measuring a recording's level per octave band (the Auto EQ, `asplit` into
+ten `bandpass` branches) with `astats` on each branch mapped to `-f null`
+took 70 s on a 45-minute MP3, 42 s folded to mono, 34 s with each branch
+ending in `anullsink` instead of a mapped output. The same graph with
+`volumedetect` on each branch takes 7 s, of which 3 s is the decode.
+`volumedetect`'s `mean_volume` is the branch's RMS in dBFS like the
+`RMS level dB` of `astats`, rounded to 0.1 dB and about 3 dB offset, the same for
+every band, which a fit that aligns curves does not notice. ffmpeg prints
+the `Parsed_volumedetect_N` summaries last to first and a first set of
+empty instances (`n_samples: 0`) before the real ones, so the parser
+sorts by N and lets a later line replace an earlier one. From the
+spectrum job.
+
 ## ffmpeg's `loudnorm` and `adeclip` are too slow for a long set in a 300 s function (2026-10-26)
 
 Timed on a 45-minute stereo file on one core of the VM (ffmpeg's audio

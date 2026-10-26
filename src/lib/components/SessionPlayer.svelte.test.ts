@@ -74,6 +74,7 @@ const queue = [
 		session: "Monday",
 		sessionId: "s1",
 		sessionEq: null,
+		spectrum: null as number[] | null,
 	},
 ];
 const stored = (sessionId = "s1") =>
@@ -106,6 +107,35 @@ describe("SessionPlayer EQ", () => {
 		expect(stored()).toBeNull();
 		expect(button).toHaveAttribute("data-active", "false");
 		expect(screen.getByTestId("eq-status")).toHaveTextContent("Flat");
+	});
+
+	test("Auto sets the EQ from the recording's spectrum, saved as the device's own and free to move", async () => {
+		const user = userEvent.setup();
+		// +10 dB at 250 and 500 Hz against the live curve: a boomy low mid.
+		const spectrum = [-6, -1, 0, 10, 9, -2.5, -5, -8, -12, -18];
+		render(SessionPlayer, { props: { queue: [{ ...queue[0], spectrum }], current: "r1" } });
+		const button = screen.getByRole("button", { name: "EQ" });
+		expect(button).toHaveAttribute("data-active", "false");
+		await user.click(button);
+		await user.click(screen.getByRole("button", { name: "Auto" }));
+		const gains = ["Low", "Low mid", "Mid", "High mid", "High"].map((label) =>
+			Number(screen.getByRole<HTMLInputElement>("slider", { name: `${label} gain` }).value),
+		);
+		expect(gains.some((g) => g !== 0)).toBe(true);
+		expect(button).toHaveAttribute("data-active", "true");
+		expect(stored()).not.toBeNull();
+		// A slider still moves from there.
+		await fireEvent.input(screen.getByRole("slider", { name: "High gain" }), {
+			target: { value: "3" },
+		});
+		expect(stored().high.gain).toBe(3);
+	});
+
+	test("Auto is off until the recording is measured", async () => {
+		const user = userEvent.setup();
+		render(SessionPlayer, { props: { queue, current: "r1" } });
+		await user.click(screen.getByRole("button", { name: "EQ" }));
+		expect(screen.getByRole("button", { name: "Auto" })).toBeDisabled();
 	});
 
 	test("loads the device's settings after mount", async () => {

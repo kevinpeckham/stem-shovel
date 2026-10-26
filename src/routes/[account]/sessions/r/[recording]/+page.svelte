@@ -32,6 +32,7 @@
 			session: r.session?.name ?? "",
 			sessionId: r.session?.id ?? r.id,
 			sessionEq: r.session?.eq ?? null,
+			spectrum: r.spectrum,
 		},
 	]);
 	let player = $state<SessionPlayer | null>(null);

@@ -244,6 +244,35 @@ describe("ready, failed and the backstop", () => {
 			),
 		).toEqual(["cleared", "retry", "stuck"]);
 	});
+	test("sessionsWantingSpectrum: ready recordings with an MP3 and no spectrum, unless one is being measured", async () => {
+		const { sessionsWantingSpectrum } = await import("./data");
+		const now = Date.UTC(2026, 9, 26, 12, 0, 0);
+		const r = (id: string, over: Record<string, unknown> = {}) => ({
+			id,
+			status: "ready",
+			playbackStatus: "ready" as "ready" | "pending" | "failed" | null,
+			playbackUrl: "https://b/x.mp3" as string | null,
+			spectrum: null as number[] | null,
+			spectrumStartedAt: null as Date | null,
+			...over,
+		});
+		const ago = (minutes: number) => new Date(now - minutes * 60_000);
+		expect(
+			sessionsWantingSpectrum(
+				[
+					r("wanted"),
+					r("measured", { spectrum: [-20, -18, -17, -18, -20, -22, -25, -28, -32, -40] }),
+					r("busy", { spectrumStartedAt: ago(5) }),
+					r("stale", { spectrumStartedAt: ago(61) }),
+					r("no-mp3", { playbackStatus: null, playbackUrl: null }),
+					r("rendering", { playbackStatus: "pending" }),
+					r("no-url", { playbackUrl: null }),
+					r("uploading", { status: "uploading" }),
+				],
+				now,
+			),
+		).toEqual(["wanted", "stale"]);
+	});
 	test("markSessionReady sets the URL for this account's row only and names the session", async () => {
 		expect(await markSessionReady(B, "r4", "https://blob/x")).toBeNull();
 		expect(await markSessionReady(A, "r4", "https://blob/r4")).toEqual({

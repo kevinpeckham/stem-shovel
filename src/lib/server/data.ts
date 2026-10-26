@@ -4225,6 +4225,7 @@ export async function sessionRecordingPage(accountId: string, recordingId: strin
 		notes: r.notes,
 		durationSeconds: r.durationSeconds,
 		peaks: r.peaks,
+		spectrum: r.spectrum,
 		url: r.url,
 		playbackUrl: r.playbackUrl,
 		playbackStatus: r.playbackStatus,
@@ -4413,6 +4414,55 @@ export async function finishSessionPeaks(
 		.update(sessionRecording)
 		.set({ peaks: r.peaks, durationSeconds: r.durationSeconds })
 		.where(eq(sessionRecording.id, recordingId));
+}
+
+/**
+ * Which ready recordings with an MP3 still want their octave-band spectrum
+ * measured for the player's Auto EQ (docs/uploads-and-blob.md, "Auto EQ"):
+ * none yet and no measuring under way (or one that stalled, as the peaks).
+ */
+export function sessionsWantingSpectrum(
+	recordings: {
+		id: string;
+		status: string;
+		playbackStatus: PlaybackStatus | null;
+		playbackUrl: string | null;
+		spectrum: number[] | null;
+		spectrumStartedAt: Date | null;
+	}[],
+	now = Date.now(),
+) {
+	return recordings
+		.filter(
+			(r) =>
+				r.status === "ready" &&
+				r.playbackStatus === "ready" &&
+				!!r.playbackUrl &&
+				r.spectrum === null,
+		)
+		.filter((r) => now - (r.spectrumStartedAt?.getTime() ?? 0) > PLAYBACK_STALE_MS)
+		.map((r) => r.id);
+}
+/** The lock on measuring a recording's spectrum: the row with its MP3, once, unless an earlier claim stalled. */
+export async function claimSessionSpectrum(recordingId: string) {
+	const now = new Date();
+	const [row] = await db
+		.update(sessionRecording)
+		.set({ spectrumStartedAt: now })
+		.where(
+			and(
+				eq(sessionRecording.id, recordingId),
+				eq(sessionRecording.status, "ready"),
+				eq(sessionRecording.playbackStatus, "ready"),
+				isNull(sessionRecording.spectrum),
+				sql`(${sessionRecording.spectrumStartedAt} is null or ${sessionRecording.spectrumStartedAt} < ${now.getTime() - PLAYBACK_STALE_MS})`,
+			),
+		)
+		.returning({ id: sessionRecording.id, playbackUrl: sessionRecording.playbackUrl });
+	return row?.playbackUrl ? { id: row.id, url: row.playbackUrl } : null;
+}
+export async function finishSessionSpectrum(recordingId: string, spectrum: number[]) {
+	await db.update(sessionRecording).set({ spectrum }).where(eq(sessionRecording.id, recordingId));
 }
 
 // ---- Sessions review (docs/uploads-and-blob.md, "Sessions"): comments on recordings, a chat per session ----

@@ -84,6 +84,25 @@ describe("SessionEqPanel", () => {
 		expect(ondownload).toHaveBeenCalledOnce();
 	});
 
+	test("Auto waits for a measured recording, then calls its handler", async () => {
+		const user = userEvent.setup();
+		const onauto = vi.fn();
+		const props = { id: "eq", settings: flat(), onchange() {}, onauto };
+		const { rerender } = render(SessionEqPanel, { props });
+		open();
+		const auto = screen.getByRole("button", { name: "Auto" });
+		expect(auto).toBeDisabled();
+		expect(auto).toHaveAttribute("title", "Not measured yet");
+		await rerender({ ...props, canAuto: true });
+		expect(auto).toBeEnabled();
+		expect(auto).toHaveAttribute(
+			"title",
+			"Set the EQ from this recording's measured sound against a live-mix curve; adjust from there",
+		);
+		await user.click(auto);
+		expect(onauto).toHaveBeenCalledOnce();
+	});
+
 	test("a member sees Save for everyone, and Remove shared EQ when there is one", async () => {
 		const props = { id: "eq", settings: flat(), onchange() {} };
 		const { rerender } = render(SessionEqPanel, { props });
