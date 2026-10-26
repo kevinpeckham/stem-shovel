@@ -4128,6 +4128,8 @@ export async function updateSessionRecording(
 		device?: SessionDevice;
 		/** The song it records; "" or absent for none. */
 		songId?: string | null;
+		/** Anyone with its page's address may listen and download. */
+		isPublic?: boolean;
 	},
 ) {
 	const session = await db.query.recordingSession.findFirst({
@@ -4194,7 +4196,8 @@ export async function sessionMp3s(accountId: string, sessionId: string) {
 
 /**
  * One session recording for its own page (docs/uploads-and-blob.md,
- * "Sessions"): a member's, or a visitor's through a share link; null when
+ * "Sessions"): a member's, a visitor's through a share link, or anyone's
+ * when it is public; null when
  * it is not the account's or not ready.
  */
 export async function sessionRecordingPage(accountId: string, recordingId: string) {
@@ -4226,6 +4229,7 @@ export async function sessionRecordingPage(accountId: string, recordingId: strin
 		playbackUrl: r.playbackUrl,
 		playbackStatus: r.playbackStatus,
 		sizeBytes: r.sizeBytes,
+		isPublic: r.isPublic,
 		session: r.session
 			? {
 					id: r.session.id,

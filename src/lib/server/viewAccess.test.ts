@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vite-plus/test";
 import {
 	canCommentProject,
 	canEditProject,
+	canViewRecording,
 	canViewProject,
 	canViewSong,
 	NOBODY,
@@ -108,5 +109,22 @@ describe("canEditProject / canCommentProject", () => {
 		expect(canCommentProject(restricted, member)).toBe(false);
 		expect(canCommentProject(restricted, viewerOnP1)).toBe(true);
 		expect(canCommentProject(open, NOBODY)).toBe(false);
+	});
+});
+
+describe("canViewRecording", () => {
+	const tape = { id: "r1", isPublic: false };
+	const grantR1 = [{ code: "z", projectId: null, songId: null, recordingId: "r1" }];
+	const stranger: Viewer = { accountRole: null, projectRoles: {} };
+	test("a public recording is open to everyone", () => {
+		expect(canViewRecording({ ...tape, isPublic: true }, NOBODY, [])).toBe(true);
+		expect(canViewRecording({ ...tape, isPublic: true }, stranger, grantP1)).toBe(true);
+	});
+	test("a private recording: the account's members, or its link", () => {
+		expect(canViewRecording(tape, NOBODY, [])).toBe(false);
+		expect(canViewRecording(tape, stranger, grantP1)).toBe(false);
+		expect(canViewRecording(tape, member, [])).toBe(true);
+		expect(canViewRecording(tape, NOBODY, grantR1)).toBe(true);
+		expect(canViewRecording({ ...tape, id: "r2" }, NOBODY, grantR1)).toBe(false);
 	});
 });

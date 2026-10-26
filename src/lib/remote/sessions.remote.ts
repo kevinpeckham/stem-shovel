@@ -70,7 +70,7 @@ export const deleteSession = command(RecordingSessionDeleteSchema, async ({ id }
 /** A recording's title, day and notes, and the session it belongs to (of its day or the day before); an editor of the account. */
 export const updateRecording = command(
 	SessionRecordingUpdateSchema,
-	async ({ id, sessionId, title, recordedOn, notes, source, device, songId }) => {
+	async ({ id, sessionId, title, recordedOn, notes, source, device, songId, isPublic }) => {
 		const { locals } = getRequestEvent();
 		const { accountId } = await memberOf(locals, accountOfSessionRecording, id);
 		const row = await saveRecording(accountId, id, {
@@ -81,6 +81,7 @@ export const updateRecording = command(
 			source,
 			device,
 			songId,
+			isPublic,
 		});
 		if (row === "day")
 			error(409, "A recording belongs to a session of its own day or the day before.");
@@ -93,6 +94,7 @@ export const updateRecording = command(
 			source: row.source,
 			device: row.device,
 			songId: row.songId,
+			isPublic: row.isPublic,
 		};
 	},
 );

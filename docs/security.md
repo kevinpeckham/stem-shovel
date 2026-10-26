@@ -87,6 +87,14 @@ What protects what, and where each rule lives. The first security pass ran on
   `GET /api/sessions/[id]/eq.mp3`; docs/uploads-and-blob.md, "Sessions")
   are for a member of the account (`memberOf`), as the Sessions page is;
   the EQ endpoint's query carries only gains and centers, clamped.
+- **Session recordings are private by default** (docs/uploads-and-blob.md,
+  "Sessions"): the Sessions page is members-only, a recording's own page
+  opens for a member, a holder of its viewing link, or anyone when a
+  member marked that one recording public (`session_recording.is_public`,
+  `canViewRecording` in viewAccess.ts; 404 otherwise). Public is per
+  recording, never per session or account, and it opens only the
+  recording's page: the files reach the visitor through the presigned
+  URLs the page presents, as for a link holder.
 - **Downloads** (`GET /api/songs/[id]/documentation.pdf`,
   `GET /api/projects/[id]/documentation.zip`, `GET /api/projects/[id]/charts.zip`;
   docs/uploads-and-blob.md, "Documentation downloads") are open to whoever

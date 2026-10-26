@@ -57,7 +57,13 @@
 				<a class="link-dim" href="/{data.account.slug}/sessions?recording={r.id}">← Sessions</a>
 			</p>
 		{/if}
-		<h1 class="heading-2 mb-1" data-recording-title>{r.title}</h1>
+		<h1 class="heading-2 mb-1" data-recording-title>
+			{r.title}{#if data.member && r.isPublic}
+				<span
+					class="ml-2 rounded-full bg-blue-100/10 px-2 py-0.5 text-xs font-400 text-dim align-middle"
+					title="Anyone with this page's address can listen and download">Public</span
+				>{/if}
+		</h1>
 		<p class="text-14px text-dim">
 			{#if r.session}{r.session.name} ·
 			{/if}{dayText(r.recordedOn)}{#if inputText}
@@ -166,6 +172,6 @@
 				Close
 			</button>
 		</div>
-		<ShareLinks target={{ recordingId: r.id }} links={data.shareLinks} isPrivate={true} />
+		<ShareLinks target={{ recordingId: r.id }} links={data.shareLinks} isPrivate={!r.isPublic} />
 	</div>
 {/if}

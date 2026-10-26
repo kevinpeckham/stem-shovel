@@ -708,6 +708,13 @@
       "when": 1793033786671,
       "tag": "0100_secret_gertrude_yorkes",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "6",
+      "when": 1793044296736,
+      "tag": "0101_lean_microchip",
+      "breakpoints": true
     }
   ]
 }

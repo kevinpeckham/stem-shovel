@@ -38,6 +38,8 @@ export const sessionRecording = table(
 		device: t.text("device").$type<SessionDevice>().notNull().default(""),
 		/** The song it is a recording of, when the band says so (one of the account's); a practice's tape may cover a set, so most have none. */
 		songId: t.text("song_id").references(() => song.id, { onDelete: "set null" }),
+		/** Anyone with its page's address may listen and download (docs/uploads-and-blob.md, "Sessions": public recordings). Off by default: the tapes are the band's. */
+		isPublic: t.integer("is_public", { mode: "boolean" }).notNull().default(false),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
 		pathname: t.text("pathname").notNull().unique(),

@@ -87,6 +87,8 @@ export const SessionRecordingUpdateSchema = v.object({
 	device: SessionDeviceSchema,
 	/** The song it records, one of the account's; "" for none. */
 	songId: v.optional(v.union([NanoIdSchema, v.literal("")]), ""),
+	/** Anyone with its page's address may listen and download; private by default. */
+	isPublic: v.optional(v.boolean(), false),
 });
 export type SessionRecordingUpdate = v.InferOutput<typeof SessionRecordingUpdateSchema>;
 

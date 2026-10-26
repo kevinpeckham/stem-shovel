@@ -70,6 +70,7 @@ const recording = (
 	playbackPathname: null,
 	playbackBytes: null,
 	playbackStartedAt: null,
+	isPublic: false,
 	uploadedBy: U,
 	createdAt: at("2026-10-17T20:00:00Z"),
 	updatedAt: at("2026-10-17T20:00:00Z"),
@@ -277,6 +278,14 @@ describe("listRecordingSessions", () => {
 		expect(list[1]!.recordings.map((r) => r.id)).toEqual(["r2", "r1"]);
 		expect(list[1]!.recordings[0]!.uploader).toEqual({ id: U, name: "Kevin" });
 	});
+	test("each recording says whether it is public", async () => {
+		recordings().find((r) => r.id === "r1")!.isPublic = true;
+		const list = await listRecordingSessions(A);
+		expect(list[1]!.recordings.map((r) => [r.id, r.isPublic])).toEqual([
+			["r2", false],
+			["r1", true],
+		]);
+	});
 });
 
 describe("sessions: create, update, delete", () => {
@@ -345,6 +354,16 @@ describe("recordings: update and delete", () => {
 			}),
 		).toMatchObject({ source: "Kevin's phone", device: "phone" });
 		expect(recordings().find((r) => r.id === "r3")).toMatchObject({ device: "phone" });
+	});
+	test("makes it public and private again; the page says which", async () => {
+		expect(
+			await updateSessionRecording(A, "r3", { ...words, sessionId: "sh1", isPublic: true }),
+		).toMatchObject({ isPublic: true });
+		expect(recordings().find((r) => r.id === "r3")).toMatchObject({ isPublic: true });
+		expect(await sessionRecordingPage(A, "r3")).toMatchObject({ isPublic: true });
+		await updateSessionRecording(A, "r3", { ...words, sessionId: "sh1", isPublic: false });
+		expect(recordings().find((r) => r.id === "r3")).toMatchObject({ isPublic: false });
+		expect(await sessionRecordingPage(A, "r3")).toMatchObject({ isPublic: false });
 	});
 	test("a delete removes the row, the file and the MP3", async () => {
 		expect(await deleteSessionRecording(B, "r3")).toBe(false);

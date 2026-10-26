@@ -1,0 +1,1 @@
+ALTER TABLE `session_recording` ADD `is_public` integer DEFAULT false NOT NULL;

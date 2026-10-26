@@ -189,8 +189,43 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 		.getByRole("option", { name: /eat all the clocks/i })
 		.first()
 		.click();
+	// Private by default; Public opens the recording's own page to anyone with its address.
+	const publicBox = second.getByLabel("Public");
+	await expect(publicBox).not.toBeChecked();
+	await publicBox.check();
 	await second.getByRole("button", { name: "Save", exact: true }).click();
 	await expect(sessions).toHaveCount(2);
+	const secondId = await page.locator("[data-recording]").first().getAttribute("data-recording");
+	await expect(
+		page.locator("[data-recording]").first().getByText("Public", { exact: true }),
+	).toBeVisible();
+	const baseURL = test.info().project.use.baseURL ?? "";
+	const stranger = await page.context().browser()!.newContext({ ignoreHTTPSErrors: true });
+	const strangerPage = await stranger.newPage();
+	const opened = await strangerPage.goto(`${baseURL}${PAGE}/r/${secondId}`);
+	expect(opened?.status()).toBe(200);
+	await expect(strangerPage.locator("[data-recording-title]")).toHaveText("Hats only");
+	// Unticked, the page is gone again for the stranger.
+	await page
+		.locator("[data-recording]")
+		.first()
+		.getByRole("button", { name: /actions$/ })
+		.click();
+	await page.getByRole("button", { name: "Edit recording" }).click();
+	await page.locator("[data-recording]").first().getByLabel("Public").uncheck();
+	await page
+		.locator("[data-recording]")
+		.first()
+		.getByRole("button", { name: "Save", exact: true })
+		.click();
+	// The form closes once the save has landed; only then has the row's data come back.
+	await expect(page.locator("[data-recording]").first().getByLabel("Public")).toHaveCount(0);
+	await expect(
+		page.locator("[data-recording]").first().getByText("Public", { exact: true }),
+	).toHaveCount(0);
+	const closed = await strangerPage.goto(`${baseURL}${PAGE}/r/${secondId}`);
+	expect(closed?.status()).toBe(404);
+	await stranger.close();
 	// The input source shows by the title, the song as a link to its page.
 	const first = page.locator("[data-recording]").first();
 	await expect(first).toContainText("Room mic");

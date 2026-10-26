@@ -39,6 +39,7 @@ const RECORDING_WORDS = {
 	source: "",
 	device: "phone" as const,
 	songId: "",
+	isPublic: true,
 };
 
 beforeEach(() => {

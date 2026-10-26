@@ -86,10 +86,19 @@ export function canViewSong(
 	return who.accountRole !== null || onProject || granted;
 }
 
-/** A session recording (docs/uploads-and-blob.md, "Sessions"): the account's members, or a visitor holding its link; the tapes are never public. */
-export function canViewRecording(recordingId: string, who: Viewer, grants: ShareGrant[]): boolean {
+/**
+ * A session recording (docs/uploads-and-blob.md, "Sessions"): anyone when a
+ * member marked it public; otherwise the account's members, or a visitor
+ * holding its link.
+ */
+export function canViewRecording(
+	recording: { id: string; isPublic: boolean },
+	who: Viewer,
+	grants: ShareGrant[],
+): boolean {
+	if (recording.isPublic) return true;
 	if (who.accountRole !== null) return true;
-	return grants.some((g) => g.recordingId === recordingId);
+	return grants.some((g) => g.recordingId === recording.id);
 }
 
 /** Who may change a project and what is in it. */

@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.173.0] - 2026-10-26
+
+### Added
+
+- **A session recording can be public.** Tick Public in Edit recording and anyone with its page's address can listen and download it, no viewing link needed; the row and the page show a Public tag. Recordings stay private by default.
+
+### Technical
+
+- `session_recording.is_public` (migration 0101); `canViewRecording` takes the recording and lets anyone in when it is public; `SessionRecordingUpdateSchema.isPublic`.
+
 ## [0.172.0] - 2026-10-26
 
 ### Changed

@@ -456,6 +456,7 @@
 		source: "",
 		device: "" as SessionDevice,
 		songId: "",
+		isPublic: false,
 		newName: "",
 	});
 	/** The song picker: none, then the account's songs with their projects. */
@@ -476,6 +477,7 @@
 			source: r.source,
 			device: r.device,
 			songId: r.songId ?? "",
+			isPublic: r.isPublic,
 			newName: "",
 		};
 	}
@@ -513,6 +515,7 @@
 				source: recordingDraft.source,
 				device: recordingDraft.device,
 				songId: recordingDraft.songId,
+				isPublic: recordingDraft.isPublic,
 			});
 			editingRecording = null;
 			await invalidateAll();
@@ -857,6 +860,19 @@
 													buttonClasses="min-w-48"
 												/>
 											</label>
+											<label class="flex max-w-60 items-start gap-2 text-12px">
+												<input
+													type="checkbox"
+													class="mt-0.5 accent-maximumYellow"
+													bind:checked={recordingDraft.isPublic}
+												/>
+												<span class="grid gap-0.5">
+													Public
+													<span class="text-dim"
+														>Anyone with its page's address can listen and download.</span
+													>
+												</span>
+											</label>
 											<label class="grid gap-1 text-12px text-dim">
 												Session
 												<ComboBox
@@ -927,6 +943,11 @@
 														class="ml-1.5 text-12px font-400 link-dim"
 														href={songHref(r)}
 														title="The song this records">♪ {r.song.title}</a
+													>{/if}{#if r.isPublic}
+													<span
+														class="ml-1.5 rounded-full bg-blue-100/10 px-2 py-0.5 text-xs font-400 text-dim align-middle"
+														title="Anyone with its page's address can listen and download"
+														>Public</span
 													>{/if}</span
 											>
 											<span class="block text-12px text-dim">
@@ -1362,7 +1383,7 @@
 				<ShareLinks
 					target={{ recordingId: sharingRecording.id }}
 					links={linksOf(sharingRecording.id)}
-					isPrivate={true}
+					isPrivate={!sharingRecording.isPublic}
 				/>
 			{/key}
 		{/if}

@@ -520,10 +520,17 @@ downloads. The page is where a share link lands: `share_link.recording_id`
 (migration 0095; `ShareLinkCreateSchema` takes exactly one of a song, a
 project or a recording; `createShareLink` checks membership through
 `accountOfSessionRecording`; `/s/<code>` resolves to the page), and
-`canViewRecording` lets in a member of the account or a visitor holding
-the recording's code, nobody else (the tapes are never public, so the
-page is 404 without one). A visitor sees that one recording and nothing
-else of the account's sessions. The Sessions page's row menu has "Open
+`canViewRecording` lets in a member of the account, a visitor holding
+the recording's code, or anyone at all when the recording is **public**
+(`session_recording.is_public`, migration 0101; Kevin, 2026-10-26:
+private by default, optionally public), and nobody else (the page is 404
+otherwise, never 403). A recording goes public by the "Public" checkbox
+in its Edit recording form (`SessionRecordingUpdateSchema.isPublic`,
+`updateRecording`), off by default: the tapes are the band's until a
+member says otherwise. A public recording's row and page carry a
+"Public" pill, and its share panel says the page's address works without
+a link. A visitor, with a link or on a public recording, sees that one
+recording and nothing else of the account's sessions. The Sessions page's row menu has "Open
 its page" and "Share…" (editors: one popover with `ShareLinks` for the
 recording, the links loaded for the page by `listRecordingShareLinks`);
 the recording's page has Share too.
