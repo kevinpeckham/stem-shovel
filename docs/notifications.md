@@ -10,18 +10,19 @@ tests), `src/lib/val/NotificationSchema.ts` (kinds, settings),
 
 ## What is sent, and to whom
 
-| kind                  | who hears                                                 | priority |
-| --------------------- | --------------------------------------------------------- | -------- |
-| `storage-limit`       | the account's owners and admins, at 80 %, 95 % and 100 %  | high     |
-| `seats-full`          | the account's owners and admins, when the last seat fills | high     |
-| `invitation-accepted` | whoever sent the invitation                               | normal   |
-| `comment`             | everyone on the song's project but the author             | normal   |
-| `chat`                | everyone on the song's project but the message's author   | normal   |
-| `mention`             | each person a chat message names (docs/chat.md)           | normal   |
-| `stems`               | everyone on the project but the uploader                  | normal   |
-| `song`                | everyone on the project but the creator                   | normal   |
-| `demo`                | everyone on the project but the uploader                  | normal   |
-| `mix`                 | everyone on the project but the uploader (docs/mixes.md)  | normal   |
+| kind                  | who hears                                                                                                                                       | priority |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `storage-limit`       | the account's owners and admins, at 80 %, 95 % and 100 %                                                                                        | high     |
+| `seats-full`          | the account's owners and admins, when the last seat fills                                                                                       | high     |
+| `invitation-accepted` | whoever sent the invitation                                                                                                                     | normal   |
+| `comment`             | everyone on the song's project but the author                                                                                                   | normal   |
+| `chat`                | everyone on the song's project but the message's author                                                                                         | normal   |
+| `mention`             | each person a chat message names (docs/chat.md)                                                                                                 | normal   |
+| `stems`               | everyone on the project but the uploader                                                                                                        | normal   |
+| `song`                | everyone on the project but the creator                                                                                                         | normal   |
+| `demo`                | everyone on the project but the uploader                                                                                                        | normal   |
+| `mix`                 | everyone on the project but the uploader (docs/mixes.md)                                                                                        | normal   |
+| `session`             | everyone in the account but the uploader of a practice or show recording (docs/uploads-and-blob.md, "Sessions"); emailed under the Demos opt-in | normal   |
 
 "Everyone on the project" is `projectAudienceOf` (data.ts): the account's owners and
 admins, its members (unless the project is restricted and they were not

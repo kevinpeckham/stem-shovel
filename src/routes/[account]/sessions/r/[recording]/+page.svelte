@@ -6,7 +6,9 @@
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { SESSION_DEVICE_LABELS } from "#lib/constants/sessionRecordings.js";
 	import { recordingDownloadName } from "#lib/utils/recordingDownloadName.js";
+	import { recordingInputText } from "#lib/utils/recordingInputText.js";
 	import { dayText } from "#lib/utils/sessionName.js";
 
 	/**
@@ -17,6 +19,10 @@
 	 */
 	let { data } = $props();
 	const r = $derived(data.recording);
+	/** The input device's label, for the download names (in place of the input's name when it has none). */
+	const deviceLabel = $derived(SESSION_DEVICE_LABELS[r.device]);
+	/** The input device's label and the input's name, as one line; "" when neither is set. */
+	const inputText = $derived(recordingInputText(r.device, r.source));
 	const queue = $derived<SessionTrack[]>([
 		{ id: r.id, title: r.title, url: r.playbackUrl ?? r.url, session: r.session?.name ?? "" },
 	]);
@@ -46,8 +52,8 @@
 		<h1 class="heading-2 mb-1" data-recording-title>{r.title}</h1>
 		<p class="text-14px text-dim">
 			{#if r.session}{r.session.name} ·
-			{/if}{dayText(r.recordedOn)}{#if r.source}
-				· {r.source}{/if}{#if r.uploader}
+			{/if}{dayText(r.recordedOn)}{#if inputText}
+				· {inputText}{/if}{#if r.uploader}
 				· {r.uploader}{/if} · {formatBytes(r.sizeBytes)}{#if length}
 				· {formatTime(length)}{/if}
 			{#if !data.member}
@@ -96,7 +102,10 @@
 					class="button button-sm"
 					type="button"
 					onclick={() =>
-						saveAs(r.playbackUrl!, recordingDownloadName(r.title, r.filename, "mp3", r.source))}
+						saveAs(
+							r.playbackUrl!,
+							recordingDownloadName(r.title, r.filename, "mp3", r.source, deviceLabel),
+						)}
 				>
 					<span class="i-ph-download-simple" aria-hidden="true"></span> Download MP3
 				</button>
@@ -106,7 +115,10 @@
 				type="button"
 				title={r.filename}
 				onclick={() =>
-					saveAs(r.url, recordingDownloadName(r.title, r.filename, undefined, r.source))}
+					saveAs(
+						r.url,
+						recordingDownloadName(r.title, r.filename, undefined, r.source, deviceLabel),
+					)}
 			>
 				<span class="i-ph-file-audio" aria-hidden="true"></span> Download {r.playbackUrl
 					? "original"

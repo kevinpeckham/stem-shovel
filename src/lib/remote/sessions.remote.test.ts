@@ -31,6 +31,7 @@ const RECORDING_WORDS = {
 	recordedOn: "2026-10-18",
 	notes: "",
 	source: "",
+	device: "phone" as const,
 	songId: "",
 };
 

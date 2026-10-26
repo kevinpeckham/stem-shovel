@@ -358,7 +358,12 @@ demo opt-in for email). The completion webhook's backstop is
 `recordSessionUrl`.
 
 **The page** (`/[account]/sessions`, members only,
-`listRecordingSessions`): sessions newest first, each with its ready
+`listRecordingSessions`): a toolbar under the page copy (Kevin,
+2026-10-26) with "Add a recording", which opens the upload form in a
+`popover="auto"` panel (the session combo box, kind, place, input device
+and name, the files; the panel hides as the upload starts so the rows
+and their progress show), and "Record a session", the link to the
+recorder; then sessions newest first, each with its ready
 recordings in the order they were made (day, then upload). One
 `SessionPlayer` (the project page's shape) holds a queue: a row's play
 button or a session's Play all fills it with the session's recordings
@@ -376,11 +381,18 @@ is named after the recording's title, slugified (`recordingDownloadName`:
 the filename's stem without a title, `recording` without either), the
 zip's entries `01-<slug>.mp3` and the row's menu `<slug>.mp3` and
 `<slug>.<ext>` for the original (Kevin, 2026-10-19). A recording's
-`source` (migration 0093; "Kevin's phone", "Room mic") tells apart
-recordings of one performance from several devices: typed for the batch
-on the upload form (`POST /api/sessions` takes it) or on the recording's
-edit, shown by the title, searched, and slugified after the title in the
-download's name (`set-2-room-mic.mp3`). A recording may be of one of the
+`source` (migration 0093; "Kevin's phone", "Room mic"; "Input name" in
+the UI since 2026-10-26) and its `device` (migration 0099; one of
+`SESSION_DEVICE_VALUES` in `val/SessionRecordingSchema.ts`: soundboard,
+field-rig, phone, handheld, other, or "" for unset, labeled by
+`constants/sessionRecordings.ts`) tell apart recordings of one
+performance from several devices: chosen for the batch on the upload form
+(`POST /api/sessions` takes both; `utils/sessionDeviceOf.ts` admits only
+the known keys), on the Session Recorder's save, or on the recording's
+edit; shown by the title as "Phone · Kevin's phone"
+(`utils/recordingInputText.ts`), searched, and slugified after the title
+in the download's name (`set-2-room-mic.mp3`; the device's label stands
+in when the name is empty). A recording may be of one of the
 account's songs (`song_id`, migration 0094, set null when the song goes):
 chosen on its edit from `listAccountSongs`, checked against the account
 in `updateSessionRecording`, linked from the row, and listed on the
@@ -478,6 +490,26 @@ which must start on the recording's day or the day before:
 `dayFitsSession`, utils/isoDay.ts) and `deleteRecording`. The rows join
 the storage sum, the account's deletion (rows and blobs) and the user's
 (the uploader and creator unset).
+
+**The playback EQ** (Kevin, 2026-10-26). The session player's EQ button
+opens a panel (`SessionEqPanel.svelte`): an 80 Hz high-pass for rumble and
+a low shelf (200 Hz), a mid peak (1 kHz) and a high shelf (4 kHz), each
+−12..+12 dB, with Reset. On the first play (a gesture, which iOS needs)
+the player makes an `AudioContext` and routes its `<audio>` element
+through the graph (`lib/audio/playbackEq.ts`: a
+`MediaElementAudioSourceNode`, the high-pass crossfaded in and out by two
+gains so "off" is untouched, `setTargetAtTime` glides); the element
+carries `crossorigin="anonymous"`, which both Blob stores allow (every
+response has `access-control-allow-origin: *`, presigned private URLs
+too). Each element gets one source, ever, so the `{@attach}` builds the
+graph per element and tears it down with it; where
+`createMediaElementSource` is missing or throws, the element plays as it
+is. Through Web Audio the sound falls under iOS's ring/silent switch, so
+`ensureAudio` asks `playThroughSilentSwitch()` on the same gesture as the
+stem engine does (docs/audio-engine.md). The settings are remembered on
+the device in `localStorage` (`utils/playbackEqStorage.ts`, clamped and
+snapped to 0.5 dB on load), flat by default, and never touch the files:
+the download and the zip are the renditions as rendered.
 
 ### Sessions review: waveforms, comments and a chat (2026-10-19)
 

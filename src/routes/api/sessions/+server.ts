@@ -10,6 +10,7 @@ import {
 	SESSION_MAX_BYTES,
 	type SessionKind,
 } from "#lib/constants/sessionRecordings.js";
+import { sessionDeviceOf } from "#lib/utils/sessionDeviceOf.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
@@ -34,6 +35,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		place?: string;
 		/** Where the files were captured ("Room mic"), the same for the batch. */
 		source?: string;
+		/** The kind of device that captured them (SESSION_DEVICE_VALUES), the same for the batch; anything else is unset. */
+		device?: string;
 		/** A title typed before the upload (the session recorder); the filename's stem otherwise. */
 		title?: string;
 		filename?: string;
@@ -56,6 +59,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const recordedOn = /^\d{4}-\d{2}-\d{2}$/.test(body.recordedOn ?? "") ? body.recordedOn! : null;
 	const place = typeof body.place === "string" ? body.place.trim().slice(0, 120) : "";
 	const source = typeof body.source === "string" ? body.source.trim().slice(0, 120) : "";
+	const device = sessionDeviceOf(body.device);
 	const title = typeof body.title === "string" ? body.title.trim().slice(0, 120) : "";
 
 	await memberOf(locals, async () => accountId, accountId);
@@ -73,6 +77,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		recordedOn,
 		place,
 		source,
+		device,
 		title: title || undefined,
 		filename,
 		contentType,

@@ -1,0 +1,1 @@
+ALTER TABLE `session_recording` ADD `device` text DEFAULT '' NOT NULL;

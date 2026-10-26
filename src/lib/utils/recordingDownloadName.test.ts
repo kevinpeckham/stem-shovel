@@ -23,4 +23,11 @@ describe("recordingDownloadName", () => {
 		);
 		expect(recordingDownloadName("Set 2", "a.wav", "mp3", "  ")).toBe("set-2.mp3");
 	});
+	test("the input device's label stands in when there is no input name", () => {
+		expect(recordingDownloadName("Set 2", "a.wav", "mp3", "", "Phone")).toBe("set-2-phone.mp3");
+		expect(recordingDownloadName("Set 2", "a.wav", "mp3", "Room Mic", "Soundboard")).toBe(
+			"set-2-room-mic.mp3",
+		);
+		expect(recordingDownloadName("Set 2", "a.wav", "mp3", "", "")).toBe("set-2.mp3");
+	});
 });

@@ -50,11 +50,24 @@ export type RecordingSessionUpdate = v.InferOutput<typeof RecordingSessionUpdate
 export const RecordingSessionDeleteSchema = v.object({ id: NanoIdSchema });
 
 /** A recording's own words and the session it belongs to (its day must be the session's or the day after). */
-/** Where a recording was captured ("Kevin's phone", "Room mic"); empty for unknown. */
+/** The input's name, where a recording was captured ("Kevin's phone", "Room mic"); empty for unknown. */
 export const SourceSchema = v.optional(
-	v.pipe(v.string(), v.trim(), v.maxLength(120, "Keep the input source under 120 characters.")),
+	v.pipe(v.string(), v.trim(), v.maxLength(120, "Keep the input name under 120 characters.")),
 	"",
 );
+
+/** The kinds of device a recording is captured on, in the order the selects list them; labels in constants/sessionRecordings.ts. */
+export const SESSION_DEVICE_VALUES = [
+	"soundboard",
+	"field-rig",
+	"phone",
+	"handheld",
+	"other",
+] as const;
+
+/** What kind of device captured a recording (constants/sessionRecordings.ts SESSION_DEVICE_LABELS); "" for unset. */
+export const SessionDeviceSchema = v.optional(v.picklist([...SESSION_DEVICE_VALUES, ""]), "");
+export type SessionDevice = v.InferOutput<typeof SessionDeviceSchema>;
 
 export const SessionRecordingUpdateSchema = v.object({
 	id: NanoIdSchema,
@@ -63,6 +76,7 @@ export const SessionRecordingUpdateSchema = v.object({
 	recordedOn: IsoDaySchema,
 	notes: NotesSchema,
 	source: SourceSchema,
+	device: SessionDeviceSchema,
 	/** The song it records, one of the account's; "" for none. */
 	songId: v.optional(v.union([NanoIdSchema, v.literal("")]), ""),
 });

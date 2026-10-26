@@ -1,7 +1,17 @@
 <script lang="ts">
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
-	import { tick } from "svelte";
+	import {
+		createPlaybackEq,
+		DEFAULT_PLAYBACK_EQ,
+		isFlat,
+		type PlaybackEq,
+		type PlaybackEqSettings,
+	} from "#lib/audio/playbackEq.js";
+	import { playThroughSilentSwitch } from "#lib/audio/playThroughSilentSwitch.js";
+	import { loadPlaybackEq, savePlaybackEq } from "#lib/utils/playbackEqStorage.js";
+	import { onDestroy, onMount, tick, untrack } from "svelte";
+	import SessionEqPanel from "./SessionEqPanel.svelte";
 
 	/** One recording as the player plays it: the MP3 when it has rendered, else the file as uploaded. */
 	export interface SessionTrack {
@@ -20,7 +30,10 @@
 	 * and starts a track; the same track toggles. A loop, as the stem
 	 * player's (docs/stem-engine.md, "Loop"): a stretch selected by a drag
 	 * across the recording's waveform (`setLoop`), or the whole recording,
-	 * played round while Loop is on (L); Escape clears the selection.
+	 * played round while Loop is on (L); Escape clears the selection. A
+	 * playback EQ (EQ button): the element runs through Web Audio
+	 * (`playbackEq.ts`) once the first play gives the context its gesture;
+	 * the settings are remembered on the device (`playbackEqStorage.ts`).
 	 */
 	interface Props {
 		queue: SessionTrack[];
@@ -48,7 +61,90 @@
 	let audio = $state<HTMLAudioElement | null>(null);
 	let volume = $state(1);
 
+	// The playback EQ. Flat until the device's settings load after mount (the server has no storage).
+	const uid = $props.id();
+	const eqPanelId = `session-eq-${uid}`;
+	let eq = $state<PlaybackEqSettings>({ ...DEFAULT_PLAYBACK_EQ });
+	let eqActive = $derived(!isFlat(eq));
+	onMount(() => {
+		eq = loadPlaybackEq();
+	});
+	/** The context, made on the first play (a gesture, which iOS needs); null where Web Audio is missing. */
+	let ctx: AudioContext | null = null;
+	/** The element on the page now, and its graph once wired (a media element gets one source, ever). */
+	let element: HTMLAudioElement | null = null;
+	let graph: { source: MediaElementAudioSourceNode; eq: PlaybackEq } | null = null;
+
+	/** Route the current element through the EQ, once per element; on failure it plays as it is. */
+	function wire() {
+		if (!ctx || !element || graph) return;
+		try {
+			const source = ctx.createMediaElementSource(element);
+			const chain = createPlaybackEq(ctx, eq);
+			source.connect(chain.input);
+			chain.output.connect(ctx.destination);
+			graph = { source, eq: chain };
+		} catch {
+			// No MediaElementAudioSourceNode here: the element keeps its own output.
+		}
+	}
+	/**
+	 * Called inside the gesture that starts playback: make or wake the context,
+	 * then wire the element. Through Web Audio the sound falls under iOS's
+	 * ring/silent switch, which a plain media element does not, so the
+	 * media rules are asked for on the same gesture (docs/audio-engine.md
+	 * "iOS and the ring/silent switch"), as the stem engine does.
+	 */
+	function ensureAudio() {
+		if (!ctx) {
+			const Ctor = globalThis.AudioContext;
+			if (typeof Ctor !== "function") return;
+			try {
+				ctx = new Ctor();
+			} catch {
+				return;
+			}
+		}
+		playThroughSilentSwitch();
+		wakeAudio();
+		wire();
+	}
+	/** Resume the context; iOS can also leave it "interrupted" (a call, another app's audio), so the element's play wakes it too. */
+	function wakeAudio() {
+		if (ctx && ctx.state !== "running") void ctx.resume().catch(() => {});
+	}
+	/**
+	 * The `<audio>` element's attachment: a new element (the queue emptied
+	 * and refilled) gets its own graph. Untracked: an attachment re-runs
+	 * when state it read changes, and `wire` reads the EQ settings; a
+	 * re-run would tear down the element's one allowed source node and
+	 * fail to make another, leaving the element routed to nothing (Kevin,
+	 * 2026-10-26: moving a slider while playing silenced the session for
+	 * good). Changes reach the graph through `setEq` instead.
+	 */
+	function eqAttachment(el: HTMLAudioElement) {
+		element = el;
+		untrack(wire);
+		return () => {
+			if (graph) {
+				graph.source.disconnect();
+				graph.eq.output.disconnect();
+				graph = null;
+			}
+			if (element === el) element = null;
+		};
+	}
+	onDestroy(() => {
+		void ctx?.close().catch(() => {});
+		ctx = null;
+	});
+	function setEq(next: PlaybackEqSettings) {
+		eq = next;
+		savePlaybackEq(next);
+		graph?.eq.update(next);
+	}
 	export async function play(id: string) {
+		ensureAudio();
 		if (current === id) {
 			toggle();
 			return;
@@ -92,6 +188,7 @@
 	}
 	function toggle() {
 		if (!audio) return;
+		ensureAudio();
 		if (audio.paused) void audio.play().catch(() => {});
 		else audio.pause();
 	}
@@ -152,6 +249,8 @@
 	<!-- svelte-ignore a11y_media_has_caption -->
 	<audio
 		bind:this={audio}
+		{@attach eqAttachment}
+		crossorigin="anonymous"
 		src={track.url}
 		bind:paused
 		bind:currentTime
@@ -159,6 +258,7 @@
 		bind:volume
 		{onended}
 		{ontimeupdate}
+		onplay={wakeAudio}
 		preload="auto"
 	></audio>
 {/if}
@@ -215,6 +315,17 @@
 		>
 			<span class="i-ph-repeat text-20px" aria-hidden="true"></span>
 		</button>
+		<!-- The playback EQ: lit while it changes the sound. -->
+		<button
+			type="button"
+			class="grid h-10 min-w-10 place-items-center rounded-lg border border-white/15 bg-white/5 px-2 text-sm font-600 transition-all hover-bg-white/10 hover-text-accent active:scale-95 data-[active=true]:border-accent data-[active=true]:bg-accent/20 data-[active=true]:text-accent"
+			aria-label="EQ"
+			title="Playback EQ: lit while it changes the sound"
+			popovertarget={eqPanelId}
+			data-active={eqActive}
+		>
+			EQ
+		</button>
 	</div>
 	<div class="min-w-0 grow">
 		{#if track}
@@ -258,3 +369,5 @@
 		aria-valuetext="{formatTime(currentTime)} of {formatTime(duration)}"
 	/>
 </div>
+
+<SessionEqPanel id={eqPanelId} settings={eq} onchange={setEq} />

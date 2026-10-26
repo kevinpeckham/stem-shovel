@@ -6,11 +6,13 @@
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
 	import RecordingReview from "#lib/components/RecordingReview.svelte";
+	import SessionDeviceSelect from "#lib/components/SessionDeviceSelect.svelte";
 	import SessionPlayer, { type SessionTrack } from "#lib/components/SessionPlayer.svelte";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
 	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
 	import {
+		SESSION_DEVICE_LABELS,
 		SESSION_KIND_LABELS,
 		SESSION_KINDS,
 		SESSION_MAX_BYTES,
@@ -41,6 +43,8 @@
 	import { dayFitsSession, localDay } from "#lib/utils/isoDay.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { recordingDownloadName } from "#lib/utils/recordingDownloadName.js";
+	import { recordingInputText } from "#lib/utils/recordingInputText.js";
+	import type { SessionDevice } from "#lib/val/SessionRecordingSchema.js";
 	import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 	import { onMount, tick } from "svelte";
 
@@ -102,6 +106,8 @@
 	let place = $state("");
 	/** Where the batch was captured ("Room mic"), the same for every file picked (Kevin: one performance from several devices). */
 	let source = $state("");
+	/** The kind of device the batch was captured on, the same for every file picked; "" for unset. */
+	let device = $state<SessionDevice>("");
 	/** "auto": each file's own day picks (or makes) the session; else a session's id. */
 	let intoSession = $state("auto");
 	const sessionOptions = $derived([
@@ -118,10 +124,20 @@
 	]);
 	let jobs = $state<{ name: string; percent: number; error?: string }[]>([]);
 	let busy = $state(false);
+	/** The "Add a recording" popover, closed once files are picked so the rows and the progress show on the page. */
+	let addPanel = $state<HTMLElement | null>(null);
+	function closeAddPanel() {
+		try {
+			addPanel?.hidePopover();
+		} catch {
+			// Already closed.
+		}
+	}
 	async function uploadPicked(input: HTMLInputElement) {
 		const picked = [...(input.files ?? [])];
 		input.value = "";
 		if (picked.length === 0) return;
+		closeAddPanel();
 		busy = true;
 		jobs = picked.map((f) => ({ name: f.name, percent: 0 }));
 		for (const [i, file] of picked.entries()) {
@@ -137,6 +153,7 @@
 							accountId: data.account.id,
 							sessionId: intoSession === "auto" ? undefined : intoSession,
 							source,
+							device,
 							kind,
 							// The file's own day (the recorder's clock), not the upload's.
 							recordedOn: localDay(new Date(file.lastModified || Date.now())),
@@ -189,7 +206,7 @@
 		has(r.title) ||
 		has(r.filename) ||
 		has(r.notes) ||
-		has(r.source) ||
+		has(recordingInputText(r.device, r.source)) ||
 		has(r.song?.title) ||
 		has(r.uploader?.name) ||
 		has(dayText(r.recordedOn)) ||
@@ -420,6 +437,7 @@
 		recordedOn: "",
 		notes: "",
 		source: "",
+		device: "" as SessionDevice,
 		songId: "",
 		newName: "",
 	});
@@ -439,6 +457,7 @@
 			recordedOn: r.recordedOn,
 			notes: r.notes,
 			source: r.source,
+			device: r.device,
 			songId: r.songId ?? "",
 			newName: "",
 		};
@@ -475,6 +494,7 @@
 				recordedOn: recordingDraft.recordedOn,
 				notes: recordingDraft.notes,
 				source: recordingDraft.source,
+				device: recordingDraft.device,
 				songId: recordingDraft.songId,
 			});
 			editingRecording = null;
@@ -511,103 +531,33 @@
 	</div>
 
 	{#if data.canEdit}
-		<section class="max-w-article surface mb-6 px-5 py-4" aria-label="Upload recordings">
-			<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-				<h2 class="font-600">Add recordings</h2>
-				<a
-					class="button button-sm"
-					href="/{data.account.slug}/sessions/record"
-					title="Record the room from this device, straight into the sessions"
-				>
-					<span class="i-ph-record-fill text-red-400" aria-hidden="true"></span> Record a session
-				</a>
-			</div>
-			<div class="flex flex-wrap items-end gap-x-4 gap-y-3">
-				<label class="grid gap-1 text-13px text-dim">
-					Session
-					<ComboBox
-						ariaLabel="Session"
-						options={sessionOptions}
-						value={intoSession}
-						onchange={(v) => (intoSession = v)}
-						buttonClasses="min-w-56"
-					/>
-				</label>
-				{#if intoSession === "auto"}
-					<fieldset class="grid gap-1 text-13px text-dim">
-						<legend class="mb-1">Kind of a new session</legend>
-						<span class="flex items-center">
-							{#each SESSION_KINDS as k (k)}
-								<button
-									type="button"
-									class="rounded border px-3 py-1 text-14px {kind === k
-										? 'border-blue-300 bg-blue-300 text-dark'
-										: 'border-current/40 opacity-80 hover-opacity-100'} {k === 'practice'
-										? 'rounded-r-none'
-										: 'rounded-l-none border-l-0'}"
-									aria-pressed={kind === k}
-									onclick={() => (kind = k)}>{SESSION_KIND_LABELS[k]}</button
-								>
-							{/each}
-						</span>
-					</fieldset>
-					<label class="grid gap-1 text-13px text-dim">
-						Place
-						<input
-							class="field"
-							type="text"
-							placeholder="The rehearsal room, the venue"
-							maxlength="120"
-							bind:value={place}
-						/>
-					</label>
-				{/if}
-				<label class="grid gap-1 text-13px text-dim">
-					Input source
-					<input
-						class="field"
-						type="text"
-						placeholder="Kevin's phone, Room mic"
-						title="Where these files were captured, to tell apart recordings of one performance from several devices (optional)"
-						maxlength="120"
-						bind:value={source}
-					/>
-				</label>
-				<label class="button-accent cursor-pointer {busy ? 'opacity-60 pointer-events-none' : ''}">
-					<span class="i-ph-upload-simple" aria-hidden="true"></span>
-					{busy ? "Uploading…" : "Choose files"}
-					<input
-						class="sr-only"
-						type="file"
-						accept={DEMO_ACCEPT}
-						multiple
-						disabled={busy}
-						onchange={(e) => uploadPicked(e.currentTarget)}
-					/>
-				</label>
-			</div>
-			<p class="mt-2 text-12px text-dim">
-				Audio in any format a demo takes, up to {formatBytes(SESSION_MAX_BYTES)} a file. Each file is
-				dated by its own clock: by default it joins that day's session (or the day before's, for a show
-				past midnight), or a new one named after the place and the day. An MP3 of each renders for playing
-				and the session's download.
-			</p>
-			{#if jobs.length > 0}
-				<ul class="mt-3 grid gap-1 text-13px" aria-label="Uploads">
-					{#each jobs as job (job.name)}
-						<li class="flex flex-wrap items-center gap-3">
-							<span class="min-w-0 truncate">{job.name}</span>
-							{#if job.error}
-								<span class="text-red-400">{job.error}</span>
-							{:else}
-								<progress class="h-2 w-32" max="100" value={job.percent}></progress>
-								<span class="tabular-nums text-dim">{Math.round(job.percent)}%</span>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</section>
+		<div class="mb-6 flex flex-wrap items-center gap-3" role="group" aria-label="Sessions toolbar">
+			<button class="button-accent button-sm" type="button" popovertarget="add-recording">
+				<span class="i-ph-upload-simple" aria-hidden="true"></span> Add a recording
+			</button>
+			<a
+				class="button button-sm"
+				href="/{data.account.slug}/sessions/record"
+				title="Record the room from this device, straight into the sessions"
+			>
+				<span class="i-ph-record-fill text-red-400" aria-hidden="true"></span> Record a session
+			</a>
+		</div>
+		{#if jobs.length > 0}
+			<ul class="max-w-article mb-6 grid gap-1 text-13px" aria-label="Uploads">
+				{#each jobs as job (job.name)}
+					<li class="flex flex-wrap items-center gap-3">
+						<span class="min-w-0 truncate">{job.name}</span>
+						{#if job.error}
+							<span class="text-red-400">{job.error}</span>
+						{:else}
+							<progress class="h-2 w-32" max="100" value={job.percent}></progress>
+							<span class="tabular-nums text-dim">{Math.round(job.percent)}%</span>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	{/if}
 
 	<div class="max-w-article mb-6">
@@ -858,8 +808,12 @@
 												Day
 												<input class="field" type="date" bind:value={recordingDraft.recordedOn} />
 											</label>
+											<SessionDeviceSelect
+												bind:value={recordingDraft.device}
+												class="grid gap-1 text-12px text-dim"
+											/>
 											<label class="grid min-w-40 gap-1 text-12px text-dim">
-												Input source
+												Input name
 												<input
 													class="field"
 													type="text"
@@ -938,10 +892,11 @@
 										>
 										<span class="min-w-0 grow">
 											<span class="block truncate font-500" title={r.filename}
-												>{titleOf(r)}{#if r.source}
+												>{titleOf(r)}{#if r.source || r.device}
 													<span
 														class="ml-1.5 rounded border border-white/20 px-1 text-10px font-400 align-middle opacity-85"
-														title="Input source">{r.source}</span
+														title="Input device and name"
+														>{recordingInputText(r.device, r.source)}</span
 													>{/if}{#if r.song}
 													<a
 														class="ml-1.5 text-12px font-400 link-dim"
@@ -993,7 +948,13 @@
 													action: () =>
 														saveAs(
 															r.playbackUrl!,
-															recordingDownloadName(r.title, r.filename, "mp3", r.source),
+															recordingDownloadName(
+																r.title,
+																r.filename,
+																"mp3",
+																r.source,
+																SESSION_DEVICE_LABELS[r.device],
+															),
 														),
 												},
 												{
@@ -1005,7 +966,13 @@
 													action: () =>
 														saveAs(
 															r.url,
-															recordingDownloadName(r.title, r.filename, undefined, r.source),
+															recordingDownloadName(
+																r.title,
+																r.filename,
+																undefined,
+																r.source,
+																SESSION_DEVICE_LABELS[r.device],
+															),
 														),
 												},
 												{
@@ -1201,6 +1168,104 @@
 {/if}
 
 {#if data.canEdit}
+	<!-- The upload panel: closes once files are picked, so the progress shows on the page. -->
+	<div
+		id="add-recording"
+		popover="auto"
+		bind:this={addPanel}
+		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(40rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">Add a recording</h2>
+			<button
+				class="button button-xs"
+				type="button"
+				popovertarget="add-recording"
+				popovertargetaction="hide"
+			>
+				Close
+			</button>
+		</div>
+		<div
+			class="flex flex-wrap items-end gap-x-4 gap-y-3"
+			role="group"
+			aria-label="Upload recordings"
+		>
+			<label class="grid gap-1 text-13px text-dim">
+				Session
+				<ComboBox
+					ariaLabel="Session"
+					options={sessionOptions}
+					value={intoSession}
+					onchange={(v) => (intoSession = v)}
+					buttonClasses="min-w-56"
+				/>
+			</label>
+			{#if intoSession === "auto"}
+				<fieldset class="grid gap-1 text-13px text-dim">
+					<legend class="mb-1">Kind of a new session</legend>
+					<span class="flex items-center">
+						{#each SESSION_KINDS as k (k)}
+							<button
+								type="button"
+								class="rounded border px-3 py-1 text-14px {kind === k
+									? 'border-blue-300 bg-blue-300 text-dark'
+									: 'border-current/40 opacity-80 hover-opacity-100'} {k === 'practice'
+									? 'rounded-r-none'
+									: 'rounded-l-none border-l-0'}"
+								aria-pressed={kind === k}
+								onclick={() => (kind = k)}>{SESSION_KIND_LABELS[k]}</button
+							>
+						{/each}
+					</span>
+				</fieldset>
+				<label class="grid gap-1 text-13px text-dim">
+					Place
+					<input
+						class="field"
+						type="text"
+						placeholder="The rehearsal room, the venue"
+						maxlength="120"
+						bind:value={place}
+					/>
+				</label>
+			{/if}
+			<SessionDeviceSelect
+				bind:value={device}
+				title="What kind of device captured these files (optional)"
+			/>
+			<label class="grid gap-1 text-13px text-dim">
+				Input name
+				<input
+					class="field"
+					type="text"
+					placeholder="Kevin's phone, Room mic"
+					title="The name of the input these files were captured on, to tell apart recordings of one performance from several devices (optional)"
+					maxlength="120"
+					bind:value={source}
+				/>
+			</label>
+			<label class="button-accent cursor-pointer {busy ? 'opacity-60 pointer-events-none' : ''}">
+				<span class="i-ph-upload-simple" aria-hidden="true"></span>
+				{busy ? "Uploading…" : "Choose files"}
+				<input
+					class="sr-only"
+					type="file"
+					accept={DEMO_ACCEPT}
+					multiple
+					disabled={busy}
+					onchange={(e) => uploadPicked(e.currentTarget)}
+				/>
+			</label>
+		</div>
+		<p class="mt-4 text-12px text-dim">
+			Audio in any format a demo takes, up to {formatBytes(SESSION_MAX_BYTES)} a file. Each file is dated
+			by its own clock: by default it joins that day's session (or the day before's, for a show past midnight),
+			or a new one named after the place and the day. An MP3 of each renders for playing and the session's
+			download.
+		</p>
+	</div>
+
 	<!-- Viewing links for one recording: its own page is where they land (docs/uploads-and-blob.md, "Sessions"). -->
 	<div
 		id="recording-share"

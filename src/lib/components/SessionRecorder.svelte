@@ -2,6 +2,7 @@
 	import { inputSources, type InputSource } from "#lib/audio/inputs.svelte.js";
 	import { stereoFill } from "#lib/audio/stereoFill.js";
 	import ComboBox from "#lib/components/ComboBox.svelte";
+	import SessionDeviceSelect from "#lib/components/SessionDeviceSelect.svelte";
 	import {
 		SESSION_KIND_LABELS,
 		SESSION_KINDS,
@@ -22,6 +23,7 @@
 	} from "#lib/utils/recordingMimeType.js";
 	import { sessionRecordingTitle } from "#lib/utils/sessionRecordingTitle.js";
 	import { slugify } from "#lib/utils/slugify.js";
+	import type { SessionDevice } from "#lib/val/SessionRecordingSchema.js";
 	import { onDestroy, onMount } from "svelte";
 
 	/**
@@ -77,6 +79,8 @@
 	let kind = $state<SessionKind>("practice");
 	let place = $state("");
 	let inputSourceText = $state("");
+	/** The kind of device recording (a phone, a field rig), saved with the take; "" for unset. */
+	let inputDevice = $state<SessionDevice>("");
 	const sessionOptions = $derived([
 		{ value: "auto", label: "Today's session", description: "the session of today, or a new one" },
 		...sessions.map((s) => ({ value: s.id, label: s.label, description: s.description })),
@@ -236,6 +240,7 @@
 						recordedOn: localDay(take!.startedAt),
 						place,
 						source: inputSourceText,
+						device: inputDevice,
 						title,
 						filename: file.name,
 						sizeBytes: file.size,
@@ -467,8 +472,9 @@
 						/>
 					</label>
 				{/if}
+				<SessionDeviceSelect bind:value={inputDevice} />
 				<label class="grid gap-1 text-13px text-dim">
-					Input source
+					Input name
 					<input
 						class="field"
 						type="text"

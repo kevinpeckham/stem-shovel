@@ -6,7 +6,8 @@ import { slugify } from "./slugify";
  * "battle-of-the-bands-set-2"), the filename minus its extension when there
  * is no title, "recording" when neither leaves anything; the input source
  * slugified after it ("…-room-mic"), so one performance's recordings from
- * several devices stay apart; then `ext` (the MP3's) or the file's own
+ * several devices stay apart, or the input device's label when there is no
+name ("…-phone"); then `ext` (the MP3's) or the file's own
  * extension.
  */
 export function recordingDownloadName(
@@ -14,9 +15,10 @@ export function recordingDownloadName(
 	filename: string,
 	ext?: string,
 	source = "",
+	device = "",
 ): string {
 	const base = slugify(title || filename.replace(/\.[^.]+$/, "")) || "recording";
-	const from = slugify(source);
+	const from = slugify(source || device);
 	const stem = from ? `${base}-${from}` : base;
 	const extension = ext ?? filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() ?? "";
 	return extension ? `${stem}.${extension}` : stem;

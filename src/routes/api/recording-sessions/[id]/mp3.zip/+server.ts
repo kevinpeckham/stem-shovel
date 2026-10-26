@@ -2,6 +2,7 @@ import { accountOfRecordingSession, memberOf } from "#lib/server/access.js";
 import { readBlob } from "#lib/server/blob.js";
 import { sessionMp3s } from "#lib/server/data.js";
 import { attachmentDisposition } from "#lib/utils/attachmentDisposition.js";
+import { SESSION_DEVICE_LABELS } from "#lib/constants/sessionRecordings.js";
 import { recordingDownloadName } from "#lib/utils/recordingDownloadName.js";
 import { sessionDisplayName } from "#lib/utils/sessionName.js";
 import type { Config } from "@sveltejs/adapter-vercel";
@@ -42,7 +43,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				try {
 					for (const [i, r] of recordings.entries()) {
 						const entry = new ZipPassThrough(
-							`${String(i + 1).padStart(width, "0")}-${recordingDownloadName(r.title, r.filename, "mp3", r.source)}`,
+							`${String(i + 1).padStart(width, "0")}-${recordingDownloadName(r.title, r.filename, "mp3", r.source, SESSION_DEVICE_LABELS[r.device])}`,
 						);
 						zip.add(entry);
 						const res = await readBlob(r.playbackUrl!);

@@ -119,6 +119,7 @@ describe("createSessionRecording", () => {
 			recordedOn: "2026-10-18",
 			place: "",
 			source: "Room mic",
+			device: "field-rig",
 			...file,
 		});
 		expect(row).toMatchObject({
@@ -126,6 +127,7 @@ describe("createSessionRecording", () => {
 			title: "Set Two",
 			status: "uploading",
 			source: "Room mic",
+			device: "field-rig",
 		});
 		if (row && row !== "full") {
 			expect(row.pathname).toBe(`accounts/${A}/sessions/${row.id}.wav`);
@@ -150,7 +152,7 @@ describe("createSessionRecording", () => {
 			place: "",
 			...file,
 		});
-		expect(sameDay).toMatchObject({ sessionId: "p1" });
+		expect(sameDay).toMatchObject({ sessionId: "p1", device: "" });
 		const nextDay = await createSessionRecording(A, U, {
 			sessionId: null,
 			kind: "show",
@@ -326,6 +328,17 @@ describe("recordings: update and delete", () => {
 		).toBe("day");
 		expect(await updateSessionRecording(A, "r3", { ...words, sessionId: "pb" })).toBeNull();
 		expect(await updateSessionRecording(B, "r3", { ...words, sessionId: "pb" })).toBeNull();
+	});
+	test("saves the input device with the input name", async () => {
+		expect(
+			await updateSessionRecording(A, "r3", {
+				...words,
+				sessionId: "p1",
+				source: "Kevin's phone",
+				device: "phone",
+			}),
+		).toMatchObject({ source: "Kevin's phone", device: "phone" });
+		expect(recordings().find((r) => r.id === "r3")).toMatchObject({ device: "phone" });
 	});
 	test("a delete removes the row, the file and the MP3", async () => {
 		expect(await deleteSessionRecording(B, "r3")).toBe(false);

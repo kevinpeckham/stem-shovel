@@ -30,8 +30,13 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	test.setTimeout(300_000);
 	await open(page, PAGE);
 	await deleteEverySession(page);
+	// The upload form lives in the toolbar's "Add a recording" panel; picking files closes it.
+	await page.getByRole("button", { name: "Add a recording" }).click();
 	await page.getByRole("button", { name: "Show", exact: true }).first().click();
 	await page.getByLabel("Place").fill("The Elbow Room");
+	// The input device (a fixed list) and the input name (free text) travel with the upload.
+	await page.getByLabel("Input device").first().selectOption("phone");
+	await page.getByLabel("Input name").first().fill("Kevin's phone");
 	await page
 		.locator('input[type="file"]')
 		.setInputFiles(["static/stems/bass.wav", "static/stems/hats.wav"]);
@@ -39,6 +44,7 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	const sessions = page.locator("[data-session]");
 	await expect(sessions).toHaveCount(1);
 	await expect(sessions.first().locator("h2")).toContainText("The Elbow Room ·");
+	await expect(page.locator("[data-recording]").first()).toContainText("Phone · Kevin's phone");
 
 	// The player: Play all starts the first, Next moves on, the row's button pauses.
 	await sessions.first().getByRole("button", { name: "Play all" }).click();
@@ -47,6 +53,45 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	await page.getByRole("button", { name: "Next recording" }).click();
 	await expect(player).toContainText("2 of 2");
 	await page.getByRole("button", { name: "Pause", exact: true }).click();
+
+	// The playback EQ: the element runs through Web Audio, so a change is heard and remembered on the device.
+	const eqButton = player.getByRole("button", { name: "EQ", exact: true });
+	await expect(eqButton).toHaveAttribute("data-active", "false");
+	await eqButton.click();
+	const eqPanel = page.getByRole("heading", { name: "Playback EQ" }).locator("..").locator("..");
+	await expect(eqPanel).toBeVisible();
+	await eqPanel.getByLabel(/^Low/).fill("4");
+	await expect(eqPanel.getByTestId("eq-low-value")).toHaveText("+4 dB");
+	await eqPanel.getByRole("checkbox", { name: /High-pass/ }).check();
+	await expect(eqButton).toHaveAttribute("data-active", "true");
+	await eqPanel.getByRole("button", { name: "Close" }).click();
+	// Still playing through the graph: the clock moves on after the change.
+	await page.getByRole("button", { name: "Play", exact: true }).click();
+	const t0 = await page
+		.locator("audio[crossorigin]")
+		.evaluate((a) => (a as HTMLAudioElement).currentTime);
+	await page.waitForTimeout(1500);
+	const t1 = await page
+		.locator("audio[crossorigin]")
+		.evaluate((a) => (a as HTMLAudioElement).currentTime);
+	expect(t1).toBeGreaterThan(t0);
+	await page.getByRole("button", { name: "Pause", exact: true }).click();
+	expect(
+		await page.evaluate(() => JSON.parse(localStorage.getItem("stem-shovel:session-eq") ?? "null")),
+	).toEqual({ highPass: true, low: 4, mid: 0, high: 0 });
+	// A reload keeps it; Reset lets it go.
+	await page.reload();
+	await expect(player.getByRole("button", { name: "EQ", exact: true })).toHaveAttribute(
+		"data-active",
+		"true",
+	);
+	await player.getByRole("button", { name: "EQ", exact: true }).click();
+	await page.getByRole("button", { name: "Reset" }).click();
+	await expect(player.getByRole("button", { name: "EQ", exact: true })).toHaveAttribute(
+		"data-active",
+		"false",
+	);
+	await page.getByRole("button", { name: "Close" }).click();
 
 	// A name of its own.
 	await sessions
@@ -67,7 +112,8 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	await page.getByRole("option", { name: /New session/ }).click();
 	await second.getByLabel("New session's name").fill("Acoustic set");
 	await second.getByLabel("Title").fill("Hats only");
-	await second.getByLabel("Input source").fill("Room mic");
+	await second.getByLabel("Input device").selectOption("");
+	await second.getByLabel("Input name").fill("Room mic");
 	// The song it records, from the account's songs.
 	await second.getByRole("combobox", { name: /^Song of/ }).click();
 	await page

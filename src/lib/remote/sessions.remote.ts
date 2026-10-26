@@ -58,7 +58,7 @@ export const deleteSession = command(RecordingSessionDeleteSchema, async ({ id }
 /** A recording's title, day and notes, and the session it belongs to (of its day or the day before); an editor of the account. */
 export const updateRecording = command(
 	SessionRecordingUpdateSchema,
-	async ({ id, sessionId, title, recordedOn, notes, source, songId }) => {
+	async ({ id, sessionId, title, recordedOn, notes, source, device, songId }) => {
 		const { locals } = getRequestEvent();
 		const { accountId } = await memberOf(locals, accountOfSessionRecording, id);
 		const row = await saveRecording(accountId, id, {
@@ -67,6 +67,7 @@ export const updateRecording = command(
 			recordedOn,
 			notes,
 			source,
+			device,
 			songId,
 		});
 		if (row === "day")
@@ -78,6 +79,7 @@ export const updateRecording = command(
 			recordedOn: row.recordedOn,
 			notes: row.notes,
 			source: row.source,
+			device: row.device,
 			songId: row.songId,
 		};
 	},

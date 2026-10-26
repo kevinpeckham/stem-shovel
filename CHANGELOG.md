@@ -8,6 +8,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A playback EQ on the session player.** The EQ button on the Sessions page's player (and a recording's own page) opens a high-pass for rumble and low, mid and high bands, −12 to +12 dB, with Reset; lit while it changes the sound. Playback only, remembered on the device; the files and downloads are untouched (Kevin, 2026-10-26).
+
+- **A toolbar on the Sessions page.** Two buttons at the top for members: "Add a recording" opens the upload form in a panel (the session, kind, place, input device and name, and the files; it closes as the upload starts), and "Record a session" opens the recorder. The form no longer sits open on the page (Kevin, 2026-10-26).
+- **Input device on session recordings.** Each recording can say what captured it, from a fixed list (Soundboard, Field Recording Rig, Phone, Handheld Recorder (non-phone), Other), beside the free-text field now called "Input name" (was "Input source"). Set on the upload form, the Session Recorder's save or a recording's Edit; shown by the title as "Phone · Kevin's phone", searched, and used in the download's name when there is no input name (Kevin, 2026-10-26).
+
+### Technical
+
+- **Migration 0099** adds `session_recording.device` (text, default ""); `SESSION_DEVICE_VALUES` and `SessionDeviceSchema` in `val/SessionRecordingSchema.ts`, labels in `constants/sessionRecordings.ts`, `utils/recordingInputText.ts` and `utils/sessionDeviceOf.ts`.
+- **The session player runs through Web Audio** once the first play gives the context its gesture: `lib/audio/playbackEq.ts` (the graph), `utils/playbackEqStorage.ts` (the device's settings), `SessionEqPanel.svelte`; the `<audio>` element is `crossorigin="anonymous"` (both Blob stores answer every request with an open CORS header) and `playThroughSilentSwitch()` is asked on play so iOS's ring/silent switch does not mute it (docs/uploads-and-blob.md "The playback EQ"). The sessions browser test covers the EQ.
+- **docs/notifications.md** lists the `session` kind (every member but the uploader; emailed under the Demos opt-in).
+
 ## [0.168.2] - 2026-10-26
 
 ### Added

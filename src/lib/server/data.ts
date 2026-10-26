@@ -95,6 +95,7 @@ import {
 } from "#lib/constants/notationFormats.js";
 import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { MAX_SESSIONS_PER_ACCOUNT, type SessionKind } from "#lib/constants/sessionRecordings.js";
+import type { SessionDevice } from "#lib/val/SessionRecordingSchema.js";
 import { dayFitsSession, shiftDay } from "#lib/utils/isoDay.js";
 import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
 import { slugify } from "#lib/utils/slugify.js";
@@ -3943,6 +3944,8 @@ export async function createSessionRecording(
 		place: string;
 		/** Where it was captured ("Room mic"); the upload form's, for every file of the batch. */
 		source?: string;
+		/** The kind of device it was captured on; the upload form's, for every file of the batch. */
+		device?: SessionDevice;
 		/** A title given before the upload (the session recorder); the filename's stem otherwise. */
 		title?: string;
 		filename: string;
@@ -3990,6 +3993,7 @@ export async function createSessionRecording(
 			sessionId: session.id,
 			title: input.title || labelFromFilename(input.filename),
 			source: input.source ?? "",
+			device: input.device ?? "",
 			recordedOn,
 			url: "",
 			pathname: sessionPathname(accountId, id, input.filename),
@@ -4086,6 +4090,7 @@ export async function updateSessionRecording(
 		recordedOn: string;
 		notes: string;
 		source?: string;
+		device?: SessionDevice;
 		/** The song it records; "" or absent for none. */
 		songId?: string | null;
 	},
@@ -4140,7 +4145,14 @@ export async function sessionMp3s(accountId: string, sessionId: string) {
 			eq(sessionRecording.playbackStatus, "ready"),
 		),
 		orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
-		columns: { id: true, title: true, source: true, filename: true, playbackUrl: true },
+		columns: {
+			id: true,
+			title: true,
+			source: true,
+			device: true,
+			filename: true,
+			playbackUrl: true,
+		},
 	});
 	return { session, recordings: recordings.filter((r) => r.playbackUrl) };
 }
@@ -4168,6 +4180,7 @@ export async function sessionRecordingPage(accountId: string, recordingId: strin
 		title: r.title || r.filename,
 		filename: r.filename,
 		source: r.source,
+		device: r.device,
 		recordedOn: r.recordedOn,
 		notes: r.notes,
 		durationSeconds: r.durationSeconds,

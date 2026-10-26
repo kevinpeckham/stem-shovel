@@ -1,5 +1,6 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
+import type { SessionDevice } from "../../../val/SessionRecordingSchema";
 import type { PlaybackStatus } from "../../../val/PlaybackStatusSchema";
 import type { StemStatus } from "../../../val/StemStatusSchema";
 import { account } from "./account";
@@ -33,6 +34,8 @@ export const sessionRecording = table(
 		notes: t.text("notes").notNull().default(""),
 		/** Where it was captured ("Kevin's phone", "Room mic"): tells apart recordings of one performance from several devices; empty for unknown. */
 		source: t.text("source").notNull().default(""),
+		/** What kind of device captured it ("phone", "soundboard"…; labels in constants/sessionRecordings.ts), shown with `source` as the input's name; "" for unset. */
+		device: t.text("device").$type<SessionDevice>().notNull().default(""),
 		/** The song it is a recording of, when the band says so (one of the account's); a practice's tape may cover a set, so most have none. */
 		songId: t.text("song_id").references(() => song.id, { onDelete: "set null" }),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
