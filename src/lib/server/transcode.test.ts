@@ -337,7 +337,15 @@ describe("renderDemos", () => {
 			playbackUrl: null,
 		});
 		await renderDemos(["demo-1"]);
-		const args = h.runs[0];
+		// The first run is the left-only check (astats over the source), the second the MP3.
+		expect(h.runs[0].slice(-5)).toEqual([
+			"-af",
+			"astats=measure_overall=none:measure_perchannel=Peak_level",
+			"-f",
+			"null",
+			"-",
+		]);
+		const args = h.runs[1];
 		expect(args.slice(6)).toEqual([
 			"-vn",
 			"-map_metadata",
@@ -360,9 +368,9 @@ describe("renderDemos", () => {
 			"audio/mpeg",
 			"public",
 		);
-		// The waveform and the length, measured from the MP3 by a second ffmpeg (the peaks pass is the second run).
-		expect(h.runs).toHaveLength(2);
-		expect(h.runs[1].slice(-7)).toEqual(
+		// The waveform and the length, measured from the MP3 by another ffmpeg (the peaks pass is the third run).
+		expect(h.runs).toHaveLength(3);
+		expect(h.runs[2].slice(-7)).toEqual(
 			["-vn", "-ac", "1", "-ar", "8000", "-f", "s16le", "-"].slice(-7),
 		);
 		expect(h.data.finishDemoPlayback).toHaveBeenCalledWith("demo-1", {
@@ -372,8 +380,34 @@ describe("renderDemos", () => {
 			durationSeconds: 1,
 			peaks: expect.arrayContaining([0.5]),
 		});
-		// A demo is never probed for raw PCM or silence: the one run is the MP3.
+		// A demo is never probed for raw PCM or silence.
 		expect(h.data.replaceRecordingSource).not.toHaveBeenCalled();
+	});
+	it("folds a recording with sound on the left channel only to a mono MP3", async () => {
+		h.data.claimDemoPlayback.mockResolvedValue({
+			url: `${PUBLIC}/accounts/a/songs/s/demos/d1.m4a`,
+			pathname: "accounts/a/songs/s/demos/d1.m4a",
+			playbackUrl: null,
+		});
+		h.answer.mockImplementation((args) =>
+			args.includes("astats=measure_overall=none:measure_perchannel=Peak_level")
+				? {
+						stderr: [
+							"[Parsed_astats_0 @ 0x7f] Channel: 1",
+							"[Parsed_astats_0 @ 0x7f] Peak level dB: -12.5",
+							"[Parsed_astats_0 @ 0x7f] Channel: 2",
+							"[Parsed_astats_0 @ 0x7f] Peak level dB: -inf",
+						].join("\n"),
+					}
+				: { stderr: "" },
+		);
+		await renderDemos(["demo-1"]);
+		const mp3 = runFor(/\/demo\.mp3$/)!;
+		expect(mp3.slice(mp3.indexOf("-af"), mp3.indexOf("-af") + 2)).toEqual([
+			"-af",
+			"pan=mono|c0=c0",
+		]);
+		expect(h.data.finishDemoPlayback).toHaveBeenCalled();
 	});
 	it("an uploaded MP3 is its own rendition: no encode, the source recorded, the waveform measured from it", async () => {
 		h.data.claimDemoPlayback.mockResolvedValue({
@@ -434,6 +468,7 @@ describe("renderRecordings", () => {
 		await renderRecordings(["take-1"]);
 		expect(h.runs.map((r) => r[r.length - 1])).toEqual([
 			expect.stringMatching(/\/source$/), // the probe
+			"-", // the left-only check
 			expect.stringMatching(/\/demo\.mp3$/),
 		]);
 		expect(h.data.replaceRecordingSource).not.toHaveBeenCalled();

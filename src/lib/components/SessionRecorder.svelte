@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { inputSources, type InputSource } from "#lib/audio/inputs.svelte.js";
+	import { stereoFill } from "#lib/audio/stereoFill.js";
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import {
 		SESSION_KIND_LABELS,
@@ -146,7 +147,17 @@
 			node.connect(hp);
 			tail = hp;
 		}
-		tail.connect(dest);
+		// The stereo fill: a phone's mono microphone on both channels of the file (static/worklets/stereo-fill.js); without it, straight in.
+		let fill: AudioNode | null = null;
+		try {
+			fill = await stereoFill(ctx);
+		} catch {
+			fill = null;
+		}
+		if (fill) {
+			tail.connect(fill);
+			fill.connect(dest);
+		} else tail.connect(dest);
 		chunks = [];
 		const rec = new MediaRecorder(dest.stream, {
 			mimeType: format.mimeType,
@@ -155,7 +166,7 @@
 		rec.ondataavailable = (e) => {
 			if (e.data.size > 0) chunks.push(e.data);
 		};
-		rec.onstop = () => finish(dest, tail);
+		rec.onstop = () => finish(dest, tail, fill);
 		recorder = rec;
 		rec.start(1000);
 		runStart = performance.now();
@@ -173,8 +184,9 @@
 		recorder.stop(); // finish() runs once the last chunk is in
 	}
 
-	function finish(dest: MediaStreamAudioDestinationNode, node: AudioNode) {
-		node.disconnect(dest);
+	function finish(dest: MediaStreamAudioDestinationNode, node: AudioNode, fill: AudioNode | null) {
+		node.disconnect(fill ?? dest);
+		fill?.disconnect();
 		inputSources.stop(source);
 		if (ctx) inputSources.detach(ctx);
 		const session = audioSession();

@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A session recorded on a phone plays on both sides.** A phone's microphone is one channel, and on iPhones the session recorder (and the Idea Recorder's Sources mode) wrote it to the left channel of the file only. The recorders now fill both channels from a mono input, and a recording already made that way is mended when its MP3 is rendered: the one channel with sound becomes a mono MP3 that plays on both sides (the file as uploaded is kept).
+
+### Technical
+
+- **The stereo fill** (`static/worklets/stereo-fill.js`, `lib/audio/stereoFill.ts`): an `AudioWorkletNode` before a recording destination that copies the left channel into the right until the right carries a sample. **`leftOnly`** in `transcode.ts`: an `astats` pass before the MP3 of a demo, a take or a session recording; the right channel at or under −80 dBFS with sound on the left (`utils/silentRightChannel.ts`) renders `pan=mono|c0=c0`. **`bun run db:left-only [-- --apply [--origin <url>]]`** (`scripts/left-only-renditions.ts`) finds a stage's left-only MP3s and re-renders them through the jobs function (docs/uploads-and-blob.md "The stereo fill"; FINDINGS.md 2026-10-26).
+
 ## [0.168.0] - 2026-10-25
 
 ### Fixed

@@ -52,6 +52,7 @@
 	import { encodeWav } from "#lib/utils/encodeWav.js";
 	import { encodeWav24 } from "#lib/utils/encodeWav24.js";
 	import { inputSources } from "#lib/audio/inputs.svelte.js";
+	import { stereoFill } from "#lib/audio/stereoFill.js";
 	import { piano } from "#lib/audio/piano.svelte.js";
 	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
 	import { amp } from "#lib/audio/amp.svelte.js";
@@ -419,7 +420,7 @@
 					return;
 				}
 			}
-			const recorded = startMix(on);
+			const recorded = await startMix(on);
 			formatLine = [format.codec + (format.lossless ? " lossless" : ""), "stereo"].join(" · ");
 			inputLabel = on
 				.map(
@@ -835,12 +836,20 @@
 	 * one stereo file however many sources are in. Separate files per source
 	 * are the Studio's job (docs/multitrack-recorder.md).
 	 */
-	function startMix(on: RecorderSource[]): MediaStream {
+	async function startMix(on: RecorderSource[]): Promise<MediaStream> {
 		const c = ensureContext();
 		analyser = c.createAnalyser();
 		analyser.fftSize = 1024;
 		const mix = c.createMediaStreamDestination();
-		takeNodes = [analyser, mix];
+		// The stereo fill: a phone's mono microphone on both channels of the file (static/worklets/stereo-fill.js); without it, straight in.
+		let into: AudioNode = mix;
+		try {
+			into = await stereoFill(c);
+			into.connect(mix);
+		} catch {
+			into = mix;
+		}
+		takeNodes = [analyser, mix, ...(into === mix ? [] : [into])];
 		const streams = instrumentStreams();
 		allOutside = on.every(isOutside);
 		for (const src of on) {
@@ -851,7 +860,7 @@
 				takeNodes.push(node);
 			}
 			if (!node) continue;
-			node.connect(mix);
+			node.connect(into);
 			node.connect(analyser);
 		}
 		beginMeterLoop();

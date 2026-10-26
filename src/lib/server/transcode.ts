@@ -28,6 +28,7 @@ import { accessOfUrl } from "#lib/utils/blobAccess.js";
 import { createPcm16Peaks } from "#lib/utils/pcm16Peaks.js";
 import { studioSourceWantsFlac } from "#lib/utils/studioSourceWantsFlac.js";
 import { silenceBounds, type SilenceBounds } from "#lib/utils/silenceBounds.js";
+import { silentRightChannel } from "#lib/utils/silentRightChannel.js";
 import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
 import type { JobKind } from "#lib/val/JobSchema.js";
 import { playbackPathname } from "#lib/server/blob.js";
@@ -415,6 +416,8 @@ interface Mp3Target {
 	fail: (id: string) => Promise<void>;
 	/** Demos and session recordings: the MP3's waveform and length are measured with it, for the review's waveform. */
 	measure?: boolean;
+	/** A browser's recording (the Idea Recorder, the session recorder): a stereo file with sound on the left only is folded to mono (`leftOnly`). */
+	fromRecorder?: boolean;
 	/** Set on takes: a raw PCM source (Chrome's lossless recording) is kept as FLAC instead, and a trim replaces the source too. */
 	replaceSource?: (
 		id: string,
@@ -431,6 +434,7 @@ interface Mp3Target {
 }
 const DEMO_TARGET: Mp3Target = {
 	kind: "demo-playback",
+	fromRecorder: true,
 	claim: claimDemoPlayback,
 	finish: finishDemoPlayback,
 	fail: failDemoPlayback,
@@ -444,6 +448,7 @@ const MIX_TARGET: Mp3Target = {
 };
 const SESSION_TARGET: Mp3Target = {
 	kind: "session-playback",
+	fromRecorder: true,
 	claim: claimSessionPlayback,
 	finish: finishSessionPlayback,
 	fail: failSessionPlayback,
@@ -451,6 +456,7 @@ const SESSION_TARGET: Mp3Target = {
 };
 const RECORDING_TARGET: Mp3Target = {
 	kind: "recording-playback",
+	fromRecorder: true,
 	claim: claimRecordingPlayback,
 	finish: finishRecordingPlayback,
 	fail: failRecordingPlayback,
@@ -485,6 +491,33 @@ function findSilence(file: string): Effect.Effect<SilenceBounds | null, never, S
 		Effect.map(({ stderr }) => silenceBounds(stderr)),
 		// An unreadable file (or one that will not finish): the MP3 step reports it.
 		Effect.orElseSucceed(() => null),
+	);
+}
+
+/**
+ * Whether a recording has sound on the left channel only (src/lib/utils/silentRightChannel.ts):
+ * a phone's mono microphone written to a stereo file with the right channel
+ * silent, as iOS did through a `MediaStreamAudioDestinationNode` before the
+ * recorder's stereo fill (static/worklets/stereo-fill.js; Kevin, 2026-10-26).
+ * One pass over the file with `astats`; an unreadable file reads as not.
+ */
+function leftOnly(file: string): Effect.Effect<boolean, never, Services> {
+	return runFfmpeg(
+		[
+			"-hide_banner",
+			"-i",
+			file,
+			"-vn",
+			"-af",
+			"astats=measure_overall=none:measure_perchannel=Peak_level",
+			"-f",
+			"null",
+			"-",
+		],
+		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.leftOnly" },
+	).pipe(
+		Effect.map(({ stderr }) => silentRightChannel(stderr)),
+		Effect.orElseSucceed(() => false),
 	);
 }
 
@@ -664,6 +697,8 @@ function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
 				yield* store.delete([claim.playbackUrl]);
 			return;
 		}
+		// A left-only recording becomes a mono MP3: the one channel with sound, which plays on both sides.
+		const fold = target.fromRecorder ? yield* leftOnly(input) : false;
 		yield* runFfmpeg(
 			[
 				"-hide_banner",
@@ -676,7 +711,7 @@ function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
 				"-map_metadata",
 				"-1",
 				"-af",
-				"aformat=channel_layouts=mono|stereo",
+				fold ? "pan=mono|c0=c0" : "aformat=channel_layouts=mono|stereo",
 				"-ar",
 				"44100",
 				"-c:a",

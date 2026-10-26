@@ -429,6 +429,29 @@ recording. Nothing is kept in the browser: a take is saved or discarded
 lock holds a phone's screen; the audio session is "play-and-record" while
 capturing.
 
+**The stereo fill** (Kevin, 2026-10-26: a session recorded on the iPhone
+played back on the left channel only). A phone's microphone is one
+channel, and on iOS the recording destination's own up-mix (channelCount
+2, "speakers") left the right channel of the file silent. An
+`AudioWorkletNode` now sits between the input and the destination
+(`static/worklets/stereo-fill.js`, `lib/audio/stereoFill.ts`, in the
+session recorder and in the Idea Recorder's Sources mode): the left
+channel passes, the right is the input's right once that has carried a
+non-zero sample (a stereo interface's right input has a noise floor, so
+real stereo opens it in its first block) and a copy of the left until
+then, so a mono input, or a two-channel one whose right is digital
+silence, lands on both sides. The capture worklets (track-capture,
+loop-capture) have always copied the left into a missing right
+themselves. **Recordings already made** are mended at the rendition: the
+MP3 step (`transcode.ts` `leftOnly`, demos, takes and session recordings)
+measures the source with ffmpeg's `astats` and, when the right channel
+peaks at or under −80 dBFS while the left has sound
+(`utils/silentRightChannel.ts`), renders a mono MP3 (`pan=mono|c0=c0`),
+which plays on both sides; the source stays as uploaded. `bun run
+db:left-only` finds a stage's left-only MP3s (each fetched and measured)
+and with `--apply` clears their status and posts the jobs that render
+them again, to `--origin` or the production URL.
+
 **A recording's own page and its viewing links.** Each recording has a
 page, `/<account>/sessions/r/<id>` (`sessionRecordingPage`): the title,
 session, day, source, the waveform, a one-track `SessionPlayer` and the
