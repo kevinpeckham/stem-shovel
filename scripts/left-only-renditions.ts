@@ -15,7 +15,12 @@
  *
  * The jobs are posted to --origin, else https://$VERCEL_PROJECT_PRODUCTION_URL,
  * else the dev server. The stage's code must carry the fold already (a
- * re-render on the old code makes the same file again).
+ * re-render on the old code makes the same file again). The firewall's bot
+ * protection answers a post from outside the site with a 429 (FINDINGS.md
+ * 2026-10-26, "a script cannot post to the jobs function"): the status is
+ * cleared all the same, and the pages schedule the render themselves
+ * (the sessions page, a song's page, the Idea Recorder) on their next load,
+ * so the script says which to open.
  *
  * No import of src/lib/server (it pulls in $app/*).
  */
@@ -99,18 +104,27 @@ function astats(file: string): Promise<string> {
 	});
 }
 
-async function postJobs(kind: string, ids: string[]) {
+/** Posts the jobs; the status they answered when not 2xx (the firewall's 429 from outside the site). */
+async function postJobs(kind: string, ids: string[]): Promise<number | null> {
 	const token = createHmac("sha256", BETTER_AUTH_SECRET!).update("background-jobs").digest("hex");
 	const res = await fetch(`${origin}/api/jobs`, {
 		method: "POST",
 		headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
 		body: JSON.stringify({ kind, ids }),
 	});
-	if (!res.ok) throw new Error(`${origin}/api/jobs answered ${res.status} for ${kind}`);
+	return res.ok ? null : res.status;
 }
+
+/** Which page's load schedules the renders of a kind when the post does not reach the jobs function. */
+const PAGE_OF: Record<string, string> = {
+	"session-playback": "the account's Sessions page",
+	"demo-playback": "the song's page",
+	"recording-playback": "the Idea Recorder (signed in as the take's owner)",
+};
 
 const dir = await mkdtemp(join(tmpdir(), "left-only-"));
 let found = 0;
+const unposted: string[] = [];
 try {
 	for (const { table, label, kind } of TABLES) {
 		const rows = await db.execute(
@@ -140,8 +154,14 @@ try {
 				sql: `update ${table} set playback_status = null where id = ? and playback_status = 'ready'`,
 				args: [id],
 			});
-		await postJobs(kind, hit);
-		console.log(`  cleared ${hit.length} and posted ${kind} to ${origin}`);
+		const status = await postJobs(kind, hit);
+		if (status === null) console.log(`  cleared ${hit.length} and posted ${kind} to ${origin}`);
+		else {
+			unposted.push(kind);
+			console.log(
+				`  cleared ${hit.length}; ${origin}/api/jobs answered ${status}, so open ${PAGE_OF[kind]} to start the render`,
+			);
+		}
 	}
 } finally {
 	await rm(dir, { recursive: true, force: true });
@@ -150,6 +170,8 @@ console.log(
 	found === 0
 		? "No left-only rendition found."
 		: apply
-			? `${found} rendition(s) re-rendering; the pages show them again as each finishes.`
+			? unposted.length === 0
+				? `${found} rendition(s) re-rendering; the pages show them again as each finishes.`
+				: `${found} rendition(s) cleared; the ones whose post failed render once their page is opened (${unposted.map((k) => PAGE_OF[k]).join("; ")}).`
 			: `${found} left-only rendition(s); run with --apply to re-render them.`,
 );

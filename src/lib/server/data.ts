@@ -4286,6 +4286,25 @@ export function sessionsWantingPeaks(
 ) {
 	return demosWantingPeaks(recordings, now);
 }
+/**
+ * Ready session recordings owed an MP3: never rendered (or cleared by
+ * `db:left-only`), failed over an hour ago, or stuck pending. The sessions
+ * page schedules them, the backstop when the post after the upload was
+ * lost.
+ */
+export function sessionsWantingPlayback(
+	recordings: {
+		id: string;
+		status: string;
+		url: string;
+		playbackStatus: PlaybackStatus | null;
+		playbackStartedAt: Date | null;
+	}[],
+	now = Date.now(),
+) {
+	return stemsWantingPlayback(recordings, now);
+}
+
 export async function claimSessionPeaks(recordingId: string) {
 	const now = new Date();
 	const [row] = await db

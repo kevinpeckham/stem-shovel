@@ -450,7 +450,12 @@ peaks at or under −80 dBFS while the left has sound
 which plays on both sides; the source stays as uploaded. `bun run
 db:left-only` finds a stage's left-only MP3s (each fetched and measured)
 and with `--apply` clears their status and posts the jobs that render
-them again, to `--origin` or the production URL.
+them again, to `--origin` or the production URL. From outside the site
+that post is answered 429 by the firewall's bot protection (FINDINGS.md
+2026-10-26); the status is cleared all the same, and the sessions page's
+load schedules the render of a recording owed its MP3
+(`sessionsWantingPlayback`, as a song's page does for demos and the Idea
+Recorder for takes), so opening the page starts it.
 
 **A recording's own page and its viewing links.** Each recording has a
 page, `/<account>/sessions/r/<id>` (`sessionRecordingPage`): the title,

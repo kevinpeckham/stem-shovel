@@ -57,6 +57,16 @@
 				</div>
 			{/if}
 		</div>
+		{#if data.canEdit}
+			<!-- Members only: the sessions page is the band's own tapes (Kevin, 2026-10-26). -->
+			<a
+				class="button button-sm ml-auto"
+				href="/{data.account.slug}/sessions"
+				title="Practice and show recordings"
+			>
+				<span class="i-ph-cassette-tape" aria-hidden="true"></span> Live Session Recordings
+			</a>
+		{/if}
 	</header>
 
 	<section class="mt-10">

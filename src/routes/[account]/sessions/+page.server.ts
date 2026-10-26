@@ -6,8 +6,9 @@ import {
 	listSessionComments,
 	sessionChatSummaryOf,
 	sessionsWantingPeaks,
+	sessionsWantingPlayback,
 } from "#lib/server/data.js";
-import { scheduleSessionPeaks } from "#lib/server/jobs.js";
+import { scheduleSessionPeaks, scheduleSessionPlayback } from "#lib/server/jobs.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import copyFallback from "../../../../scripts/user-docs/sessions-page.md?raw";
 import type { PageServerLoad } from "./$types";
@@ -19,14 +20,18 @@ import type { PageServerLoad } from "./$types";
  * the recordings, and each session's chat at a glance (how many messages,
  * how many unseen, where this person marked it read). A recording whose
  * MP3 was rendered before the review shipped has no waveform yet: the
- * jobs function measures it.
+ * jobs function measures it; one owed its MP3 (the post after the upload
+ * lost, or cleared by `db:left-only`) gets it rendered, as the Idea
+ * Recorder does for its takes.
  */
 export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	const user = requireSignedIn(locals, url);
 	const { account } = await parent();
 	requireMember(locals, account.id);
 	const sessions = await listRecordingSessions(account.id);
-	scheduleSessionPeaks(sessionsWantingPeaks(sessions.flatMap((s) => s.recordings)));
+	const recordings = sessions.flatMap((s) => s.recordings);
+	scheduleSessionPlayback(sessionsWantingPlayback(recordings));
+	scheduleSessionPeaks(sessionsWantingPeaks(recordings));
 	const [comments, chat, songs, shareLinks] = await Promise.all([
 		listSessionComments(account.id),
 		sessionChatSummaryOf(

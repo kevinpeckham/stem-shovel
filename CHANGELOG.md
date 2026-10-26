@@ -8,6 +8,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A Live Session Recordings link on the Projects page.** The account's Projects page links to its sessions in the upper right, for members (Kevin, 2026-10-26).
+
+### Fixed
+
+- **A session recording owed its MP3 gets it on the sessions page.** The page's load schedules the render for a recording whose MP3 was never made, failed over an hour ago, or was cleared by `db:left-only`, as a song's page does for demos and the Idea Recorder for takes (`sessionsWantingPlayback`). Before, one whose post after the upload was lost showed "MP3 rendering…" for good.
+
+### Technical
+
+- **`db:left-only` survives the firewall.** A post to `/api/jobs` from outside the site is answered 429 by the firewall's bot protection; the script now clears the status all the same, carries on with the other tables, and says which page to open to start the render (FINDINGS 2026-10-26).
+
 ## [0.168.1] - 2026-10-26
 
 ### Fixed

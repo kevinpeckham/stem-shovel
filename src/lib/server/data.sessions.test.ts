@@ -205,6 +205,36 @@ describe("createSessionRecording", () => {
 });
 
 describe("ready, failed and the backstop", () => {
+	test("sessionsWantingPlayback: ready recordings never rendered, failed over an hour ago, or stuck pending", async () => {
+		const { sessionsWantingPlayback } = await import("./data");
+		const now = Date.UTC(2026, 9, 26, 12, 0, 0);
+		const r = (
+			id: string,
+			playbackStatus: "ready" | "pending" | "failed" | null,
+			minutesAgo = 0,
+			status = "ready",
+		) => ({
+			id,
+			status,
+			url: "https://b/x",
+			playbackStatus,
+			playbackStartedAt: playbackStatus ? new Date(now - minutesAgo * 60_000) : null,
+		});
+		expect(
+			sessionsWantingPlayback(
+				[
+					r("cleared", null),
+					r("done", "ready"),
+					r("retry", "failed", 61),
+					r("wait", "failed", 30),
+					r("stuck", "pending", 16),
+					r("busy", "pending", 5),
+					r("uploading", null, 0, "uploading"),
+				],
+				now,
+			),
+		).toEqual(["cleared", "retry", "stuck"]);
+	});
 	test("markSessionReady sets the URL for this account's row only and names the session", async () => {
 		expect(await markSessionReady(B, "r4", "https://blob/x")).toBeNull();
 		expect(await markSessionReady(A, "r4", "https://blob/r4")).toEqual({
