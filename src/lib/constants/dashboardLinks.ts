@@ -1,3 +1,4 @@
+import type { DashboardPinKind } from "#lib/val/DashboardPinSchema.js";
 /** A link on the dashboard: a button row (the no-account start) or a sidebar widget's list. */
 export interface DashboardLink {
 	label: string;
@@ -61,6 +62,8 @@ export interface DashboardEntry {
 	meta?: string;
 	/** The account's slug, for the account filter on a section of things that belong to accounts (projects, songs, sessions). */
 	account?: string;
+	/** What a pin of this entry is (its kind and the target's id), for the pin toggle on the row; absent on entries that cannot be pinned. */
+	pin?: { kind: DashboardPinKind; id: string };
 }
 
 /** Ideas, loops or multitracks a dashboard section shows at first, and how many more each "Show more" reveals. */

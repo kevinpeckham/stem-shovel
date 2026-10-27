@@ -22,5 +22,7 @@ export const user = table("user", {
 	twoFactorEnabled: t.integer("two_factor_enabled", { mode: "boolean" }).default(false).notNull(),
 	/** When the person accepted the plan terms at sign-up (/docs/plan-terms); null for users made outside sign-up. */
 	planTermsAcceptedAt: t.integer("plan_terms_accepted_at", { mode: "timestamp_ms" }),
+	/** When the person last loaded their dashboard (docs/dashboard-plan.md, step 5): the page marks what is newer as "since your last visit", then sets it. Null until the first visit. */
+	dashboardSeenAt: t.integer("dashboard_seen_at", { mode: "timestamp_ms" }),
 	...timestamps,
 });

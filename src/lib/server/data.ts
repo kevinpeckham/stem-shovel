@@ -134,8 +134,10 @@ import type { BugStatus } from "#lib/val/BugReportSchema.js";
 import type { AccountStatus } from "#lib/val/AccountStatusSchema.js";
 import type { ShareGrant } from "#lib/server/viewAccess.js";
 import type { Note } from "#lib/audio/chords.js";
+import type { DashboardPinKind } from "#lib/val/DashboardPinSchema.js";
 import type {
 	ActivityEvent,
+	ActivitySongFacts,
 	Nudge,
 	PendingState,
 	PendingWork,
@@ -230,6 +232,7 @@ const {
 	studioRevision,
 	studioComment,
 	user,
+	dashboardPin,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -9905,6 +9908,184 @@ export async function accountBand(
 		.map((m) => m.user.name)
 		.sort((a, b) => a.localeCompare(b));
 	return { total: members.length, active };
+}
+
+/**
+ * The person's last visit to their dashboard (docs/dashboard-plan.md, step
+ * 5), for "since you were last here": returns the stamp as it stood (null
+ * on the first visit) and moves it to `now`.
+ */
+export async function touchDashboardSeen(userId: string, now = new Date()): Promise<Date | null> {
+	const row = await db.query.user.findFirst({
+		where: eq(user.id, userId),
+		columns: { dashboardSeenAt: true },
+	});
+	await db.update(user).set({ dashboardSeenAt: now }).where(eq(user.id, userId));
+	return row?.dashboardSeenAt ?? null;
+}
+
+/** One thing a person pinned to their dashboard, resolved to where it lives and what `canViewSong` / `canViewProject` read. */
+export interface DashboardPinRow {
+	kind: DashboardPinKind;
+	targetId: string;
+	accountId: string;
+	/** The song's title, the project's name, or the session's display name (`sessionDisplayName`). */
+	title: string;
+	/** `/<accountSlug>/projects/<project>/<song>`, `/<accountSlug>/projects/<project>`, `/<accountSlug>/sessions/s/<id>`. */
+	href: string;
+	/** The target's updatedAt. */
+	at: Date;
+	pinnedAt: Date;
+	/** For a song pin: the facts `canViewSong` reads; otherwise null. */
+	song: ActivitySongFacts | null;
+	/** For a project pin: the facts `canViewProject` reads; otherwise null. */
+	project: { id: string; isPrivate: boolean; isRestricted: boolean } | null;
+}
+
+/**
+ * The person's pins across every account (docs/dashboard-plan.md, step 5),
+ * newest pin first: one query for the pins, one per kind for the targets.
+ * A pin whose target is gone or archived (a song in an archived project
+ * too) is left out; the caller still drops what the person may not open.
+ */
+export async function listDashboardPins(userId: string): Promise<DashboardPinRow[]> {
+	const pins = await db.query.dashboardPin.findMany({
+		where: eq(dashboardPin.userId, userId),
+		orderBy: [desc(dashboardPin.createdAt)],
+	});
+	if (pins.length === 0) return [];
+	const idsOf = (kind: DashboardPinKind) =>
+		pins.filter((p) => p.kind === kind).map((p) => p.targetId);
+	const [songIds, projectIds, sessionIds] = [idsOf("song"), idsOf("project"), idsOf("session")];
+	const [songs, projects, sessions] = await Promise.all([
+		songIds.length === 0
+			? []
+			: db.query.song.findMany({
+					where: inArray(song.id, songIds),
+					columns: {
+						id: true,
+						title: true,
+						slug: true,
+						isPrivate: true,
+						projectId: true,
+						status: true,
+						updatedAt: true,
+					},
+					with: {
+						account: { columns: { slug: true } },
+						project: {
+							columns: {
+								slug: true,
+								name: true,
+								status: true,
+								isPrivate: true,
+								isRestricted: true,
+							},
+						},
+					},
+				}),
+		projectIds.length === 0
+			? []
+			: db.query.project.findMany({
+					where: inArray(project.id, projectIds),
+					columns: {
+						id: true,
+						name: true,
+						slug: true,
+						status: true,
+						isPrivate: true,
+						isRestricted: true,
+						updatedAt: true,
+					},
+					with: { account: { columns: { slug: true } } },
+				}),
+		sessionIds.length === 0
+			? []
+			: db.query.recordingSession.findMany({
+					where: inArray(recordingSession.id, sessionIds),
+					columns: {
+						id: true,
+						name: true,
+						place: true,
+						kind: true,
+						startsOn: true,
+						updatedAt: true,
+					},
+					with: { account: { columns: { slug: true } } },
+				}),
+	]);
+	const songsById = new Map(songs.map((s) => [s.id, s]));
+	const projectsById = new Map(projects.map((p) => [p.id, p]));
+	const sessionsById = new Map(sessions.map((s) => [s.id, s]));
+	const rows: DashboardPinRow[] = [];
+	for (const pin of pins) {
+		const base = {
+			kind: pin.kind,
+			targetId: pin.targetId,
+			accountId: pin.accountId,
+			pinnedAt: pin.createdAt,
+		};
+		if (pin.kind === "song") {
+			const s = songsById.get(pin.targetId);
+			const place = s?.account ? songPlace(s.account.slug, s) : null;
+			if (!s || !place) continue;
+			rows.push({ ...base, ...place, at: s.updatedAt, project: null });
+		} else if (pin.kind === "project") {
+			const p = projectsById.get(pin.targetId);
+			if (!p?.account || p.status !== "active") continue;
+			rows.push({
+				...base,
+				title: p.name,
+				href: `/${p.account.slug}/projects/${p.slug}`,
+				at: p.updatedAt,
+				song: null,
+				project: { id: p.id, isPrivate: p.isPrivate, isRestricted: p.isRestricted },
+			});
+		} else {
+			const s = sessionsById.get(pin.targetId);
+			const place = s?.account ? sessionPlace(s.account.slug, s) : null;
+			if (!s || !place) continue;
+			rows.push({ ...base, ...place, at: s.updatedAt, project: null });
+		}
+	}
+	return rows;
+}
+
+/** Pins (or unpins) a song, project or session on the person's own dashboard; pinning twice keeps one row. */
+export async function setDashboardPin(
+	userId: string,
+	kind: DashboardPinKind,
+	targetId: string,
+	accountId: string,
+	pinned: boolean,
+): Promise<void> {
+	if (pinned) {
+		await db
+			.insert(dashboardPin)
+			.values({ userId, kind, targetId, accountId })
+			.onConflictDoNothing({
+				target: [dashboardPin.userId, dashboardPin.kind, dashboardPin.targetId],
+			});
+		return;
+	}
+	await db
+		.delete(dashboardPin)
+		.where(
+			and(
+				eq(dashboardPin.userId, userId),
+				eq(dashboardPin.kind, kind),
+				eq(dashboardPin.targetId, targetId),
+			),
+		);
+}
+
+/** The account a recording session belongs to, or null when there is no such session. */
+export async function accountOfRecordingSession(sessionId: string): Promise<string | null> {
+	const row = await db.query.recordingSession.findFirst({
+		where: eq(recordingSession.id, sessionId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
 }
 
 /** The account's storage used against its plan, for the dashboard tile of an owner or admin: bytes stored (`accountStorageBytes`) and the plan's limits (null = unlimited, a founder account). */

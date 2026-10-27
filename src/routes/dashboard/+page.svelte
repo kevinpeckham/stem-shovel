@@ -13,6 +13,11 @@
 	import { dashboardTools } from "#lib/utils/dashboardTools.js";
 	import { onboardingSteps, showOnboarding } from "#lib/utils/onboardingSteps.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { setPin } from "#lib/remote/dashboard.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import type { DashboardEntry } from "#lib/constants/dashboardLinks.js";
+	import { SvelteSet } from "svelte/reactivity";
 
 	let { data } = $props();
 
@@ -30,6 +35,37 @@
 	const at = (path: string) => (current ? `/${current}${path}` : "/accounts");
 	let tools = $derived(dashboardTools(current));
 	let more = $derived(dashboardMore(current));
+
+	// svelte-ignore state_referenced_locally
+	/** The Pinned section as it stands: the loader's pins, then each toggle moves an entry in or out without a reload. */
+	let pinned = $state<DashboardEntry[]>(data.pinned);
+	let pins = $derived(new SvelteSet(pinned.map((p) => `${p.pin!.kind}:${p.pin!.id}`)));
+	async function togglePin(entry: DashboardEntry, on: boolean) {
+		if (!entry.pin) return;
+		const { kind, id } = entry.pin;
+		try {
+			await setPin({ kind, id, pinned: on });
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+			return;
+		}
+		pinned = on
+			? [
+					{ ...entry, id: `pin:${kind}:${id}`, meta: pinMeta(entry) },
+					...pinned.filter((p) => p.pin!.id !== id || p.pin!.kind !== kind),
+				]
+			: pinned.filter((p) => p.pin!.id !== id || p.pin!.kind !== kind);
+		notify(on ? "Pinned to your dashboard" : "Unpinned");
+	}
+	const PIN_KIND_LABEL = { song: "Song", project: "Project", session: "Session" } as const;
+	/** A freshly pinned entry's line: its kind and, with several accounts, its account. */
+	const pinMeta = (entry: DashboardEntry) =>
+		[
+			PIN_KIND_LABEL[entry.pin!.kind],
+			accounts.length > 1 ? accounts.find((a) => a.slug === entry.account)?.name : "",
+		]
+			.filter(Boolean)
+			.join(" · ");
 </script>
 
 <svelte:head>
@@ -69,6 +105,19 @@
 						{/each}
 					</div>
 				</section>
+				{#if pinned.length > 0}
+					<DashboardIdeas
+						id="dashboard-pinned"
+						heading="Pinned"
+						accounts={data.accounts}
+						tip="What you pinned to your dashboard with the pin button on a project, song or session row. Pins are yours alone."
+						ideas={pinned}
+						empty="Nothing pinned."
+						search="Search pinned"
+						{pins}
+						onpin={togglePin}
+					/>
+				{/if}
 				<DashboardIdeas
 					id="dashboard-activity"
 					heading="Activity"
@@ -77,6 +126,7 @@
 					ideas={data.activity}
 					empty="Nothing in the last seven days."
 					search="Search activity"
+					since={data.seenAt}
 				/>
 				<DashboardIdeas
 					id="dashboard-projects"
@@ -88,6 +138,9 @@
 					action={{ label: "Create a project", href: at("/projects") }}
 					all={{ label: "All projects", href: "/projects" }}
 					search="Search projects"
+					since={data.seenAt}
+					{pins}
+					onpin={togglePin}
 				/>
 				<DashboardIdeas
 					id="dashboard-songs"
@@ -99,6 +152,9 @@
 					action={{ label: "Your projects", href: at("/projects") }}
 					all={{ label: "All songs", href: "/songs" }}
 					search="Search songs"
+					since={data.seenAt}
+					{pins}
+					onpin={togglePin}
 				/>
 				<DashboardIdeas
 					id="dashboard-sessions"
@@ -110,6 +166,9 @@
 					action={{ label: "Record a session", href: at("/sessions/record") }}
 					all={{ label: "All sessions", href: "/sessions" }}
 					search="Search sessions"
+					since={data.seenAt}
+					{pins}
+					onpin={togglePin}
 				/>
 			{/if}
 			<DashboardIdeas

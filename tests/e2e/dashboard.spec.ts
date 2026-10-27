@@ -62,6 +62,16 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 	await expect(
 		page.getByRole("region", { name: "Your Songs" }).getByRole("link", { name: "All songs" }),
 	).toHaveAttribute("href", "/songs");
+	// Pins: the pin button on a song row puts it in a Pinned section; unpinning there removes it. The bot's pins are its own.
+	const songsRegion = page.getByRole("region", { name: "Your Songs" });
+	const stale = songsRegion.getByRole("button", { name: "Unpin Eat All the Clocks" });
+	if (await stale.isVisible()) await stale.click();
+	await songsRegion.getByRole("button", { name: "Pin Eat All the Clocks" }).click();
+	const pinnedRegion = page.getByRole("region", { name: "Pinned" });
+	await expect(pinnedRegion.getByRole("link", { name: "Eat All the Clocks" })).toBeVisible();
+	await pinnedRegion.getByRole("button", { name: "Unpin Eat All the Clocks" }).click();
+	await expect(pinnedRegion).toBeHidden();
+	await expect(songsRegion.getByRole("button", { name: "Pin Eat All the Clocks" })).toBeVisible();
 	// Your Sessions: the bot's accounts hold none, so the card offers to record one.
 	await expect(page.getByRole("link", { name: "Record a session" })).toHaveAttribute(
 		"href",

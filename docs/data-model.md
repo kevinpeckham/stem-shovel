@@ -89,6 +89,10 @@ erDiagram
 - **chat_read** — when one person last looked at one song's chat
   (`user_id`, `song_id` primary key; `read_at`), for the tab's unread dot
   and the "New" line. Deleted with the song and the user.
+- **dashboard_pin** — one thing a person pinned to their own dashboard
+  (docs/dashboard-plan.md, step 5): `user_id`, `kind` (song, project,
+  session) and `target_id` as the primary key, with `account_id` for the
+  tenant sweep. Deleted with the target, the account and the user.
 - **song_mix** — a mix of the song (docs/mixes.md): a bounce an engineer
   sends the band for feedback, numbered within the song (`version`), with
   a label, the engineer's `notes` (markdown), one audio file in Blob at
@@ -262,16 +266,17 @@ per song), stem versions (replicator's `audio_version` pattern), comments.
 
 ### user
 
-| column         | type                    | notes                              |
-| -------------- | ----------------------- | ---------------------------------- |
-| id             | text PK                 | nanoid                             |
-| name           | text not null           |                                    |
-| email          | text not null unique    |                                    |
-| email_verified | integer bool, default 0 | Better Auth column                 |
-| image          | text null               | Better Auth column (avatar URL)    |
-| is_active      | integer bool, default 1 | soft-disable without deleting rows |
-| created_at     | timestamp_ms            |                                    |
-| updated_at     | timestamp_ms            |                                    |
+| column            | type                    | notes                              |
+| ----------------- | ----------------------- | ---------------------------------- |
+| id                | text PK                 | nanoid                             |
+| name              | text not null           |                                    |
+| email             | text not null unique    |                                    |
+| email_verified    | integer bool, default 0 | Better Auth column                 |
+| image             | text null               | Better Auth column (avatar URL)    |
+| is_active         | integer bool, default 1 | soft-disable without deleting rows |
+| dashboard_seen_at | timestamp_ms null       | the last dashboard visit (step 5)  |
+| created_at        | timestamp_ms            |                                    |
+| updated_at        | timestamp_ms            |                                    |
 
 ### account
 
@@ -562,6 +567,21 @@ are kept (`data.updateComment`); the comment's deletion removes them.
 
 Unique `(song_id, user_id)`; indexes on `account_id`, `song_id`, `user_id`.
 Deleting the song or the user removes the rows (`cascade.ts`).
+
+### dashboard_pin
+
+| column                 | type                     | notes                                 |
+| ---------------------- | ------------------------ | ------------------------------------- |
+| user_id                | text FK → user (cascade) | the pin's owner                       |
+| kind                   | text not null            | song, project or session              |
+| target_id              | text not null            | the song's, project's or session's id |
+| account_id             | text FK → account        | the target's account, for the sweep   |
+| created_at, updated_at | timestamp_ms             |                                       |
+
+Primary key `(user_id, kind, target_id)`; indexes on `target_id` and
+`account_id`. Deleting the target, the account or the user removes the
+rows (`cascade.ts`); a pin of something the person may no longer open
+stays as a row and is left out of the page.
 
 ### share_link
 

@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.190.0] - 2026-10-27
+
+### Added
+
+- **Pin to your dashboard.** Every project, song and session row on the dashboard has a pin button; what you pin sits in a Pinned section at the top, newest first, until you unpin it there. Pins are yours alone.
+- **Since your last visit.** Activity, Your Projects, Your Songs and Your Sessions put a dot on what is newer than your last visit to the dashboard and say how many there are.
+
+### Technical
+
+- Migration 0104 (`drizzle/0104_unknown_gateway.sql`): the `dashboard_pin` table (`user_id`, `kind`, `target_id`, `account_id`) and `user.dashboard_seen_at`. Applied on dev and staging; **production must migrate before this reaches main.** `listDashboardPins`, `setDashboardPin`, `touchDashboardSeen`, `accountOfRecordingSession` in `data.ts`; the `setPin` command in `remote/dashboard.remote.ts` with `val/DashboardPinSchema.ts`; pins join the song, project, session, account and user cascades.
+
 ## [0.189.0] - 2026-10-27
 
 ### Added

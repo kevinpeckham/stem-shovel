@@ -13,6 +13,7 @@ import { bugReportVote } from "./bugReportVote";
 import { chatMessage } from "./chatMessage";
 import { chatReaction } from "./chatReaction";
 import { chatRead } from "./chatRead";
+import { dashboardPin } from "./dashboardPin";
 import { comment } from "./comment";
 import { commentVersion } from "./commentVersion";
 import { demo } from "./demo";
@@ -198,6 +199,11 @@ export const chatMessageRelations = relations(chatMessage, ({ one, many }) => ({
 	song: one(song, { fields: [chatMessage.songId], references: [song.id] }),
 	author: one(user, { fields: [chatMessage.userId], references: [user.id] }),
 	reactions: many(chatReaction),
+}));
+
+export const dashboardPinRelations = relations(dashboardPin, ({ one }) => ({
+	user: one(user, { fields: [dashboardPin.userId], references: [user.id] }),
+	account: one(account, { fields: [dashboardPin.accountId], references: [account.id] }),
 }));
 
 export const chatReadRelations = relations(chatRead, ({ one }) => ({

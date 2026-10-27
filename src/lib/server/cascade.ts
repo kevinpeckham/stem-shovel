@@ -1,6 +1,6 @@
 import { db, schema } from "#lib/server/db/index.js";
 import { deleteAliasesOf } from "#lib/server/slugAlias.js";
-import { eq, inArray, type SQL, type SQLWrapper } from "drizzle-orm";
+import { and, eq, inArray, type SQL, type SQLWrapper } from "drizzle-orm";
 
 /**
  * The deletes the database does not do for us. The schema declares
@@ -43,6 +43,7 @@ const {
 	ampPreset,
 	progression,
 	chordStyle,
+	dashboardPin,
 	invitation,
 	inviteCode,
 	notification,
@@ -86,7 +87,7 @@ export async function deleteCommentRows(where: SQL): Promise<void> {
 	await db.delete(comment).where(where);
 }
 
-/** What a session's review leaves behind (docs/uploads-and-blob.md, "Sessions"): the comments on its recordings, the share links to them and to the sessions, its chat and the read marks. */
+/** What a session's review leaves behind (docs/uploads-and-blob.md, "Sessions"): the comments on its recordings, the share links to them and to the sessions, the dashboard pins of the sessions, its chat and the read marks. */
 export async function deleteSessionReviewRows(
 	sessionIds: string[],
 	recordingIds: string[],
@@ -97,6 +98,9 @@ export async function deleteSessionReviewRows(
 	}
 	if (sessionIds.length === 0) return;
 	await db.delete(shareLink).where(inArray(shareLink.sessionId, sessionIds));
+	await db
+		.delete(dashboardPin)
+		.where(and(eq(dashboardPin.kind, "session"), inArray(dashboardPin.targetId, sessionIds)));
 	await deleteChatReactionsOf(
 		db
 			.select({ id: sessionChatMessage.id })
@@ -107,7 +111,7 @@ export async function deleteSessionReviewRows(
 	await db.delete(sessionChatRead).where(inArray(sessionChatRead.sessionId, sessionIds));
 }
 
-/** Songs and everything hanging off them: stems, demos, attachments, notation files, comments and their revisions, chat messages and read marks, links, doc versions (shared and private), private notes, credits; AI requests lose their song. */
+/** Songs and everything hanging off them: stems, demos, attachments, notation files, dashboard pins, comments and their revisions, chat messages and read marks, links, doc versions (shared and private), private notes, credits; AI requests lose their song. */
 export async function deleteSongRows(songIds: string[]): Promise<void> {
 	if (songIds.length === 0) return;
 	await db.delete(songCredit).where(inArray(songCredit.songId, songIds));
@@ -125,6 +129,9 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(songFile).where(inArray(songFile.songId, songIds));
 	await db.delete(songNotation).where(inArray(songNotation.songId, songIds));
 	await db.delete(stem).where(inArray(stem.songId, songIds));
+	await db
+		.delete(dashboardPin)
+		.where(and(eq(dashboardPin.kind, "song"), inArray(dashboardPin.targetId, songIds)));
 	await db.update(aiRequest).set({ songId: null }).where(inArray(aiRequest.songId, songIds));
 	// A session recording of the song stays with its session, no longer of a song.
 	await db
@@ -136,7 +143,7 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(song).where(inArray(song.id, songIds));
 }
 
-/** Projects with their songs, their own attachments (song_pdf rows with no song) and project-level viewing links. */
+/** Projects with their songs, their own attachments (song_pdf rows with no song), project-level viewing links and dashboard pins. */
 export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 	if (projectIds.length === 0) return;
 	const songs = await db
@@ -148,6 +155,9 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 	await db.delete(shareLink).where(inArray(shareLink.projectId, projectIds));
 	await db.delete(projectMember).where(inArray(projectMember.projectId, projectIds));
 	await db.delete(invitation).where(inArray(invitation.projectId, projectIds));
+	await db
+		.delete(dashboardPin)
+		.where(and(eq(dashboardPin.kind, "project"), inArray(dashboardPin.targetId, projectIds)));
 	await deleteAliasesOf(projectIds);
 	await db.delete(project).where(inArray(project.id, projectIds));
 }
@@ -257,6 +267,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(invitation).where(eq(invitation.accountId, accountId));
 	await db.delete(notification).where(eq(notification.accountId, accountId));
 	await db.delete(inviteCode).where(eq(inviteCode.accountId, accountId));
+	await db.delete(dashboardPin).where(eq(dashboardPin.accountId, accountId));
 	await db.delete(accountMember).where(eq(accountMember.accountId, accountId));
 	await db.update(auditLog).set({ accountId: null }).where(eq(auditLog.accountId, accountId));
 	await db
@@ -267,7 +278,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(account).where(eq(account.id, accountId));
 }
 
-/** A user: memberships, sign-in records, sessions, two-factor, votes, comments (with their revisions), chat messages and read marks, private song notes and their revisions go; what else they made stays without an author. */
+/** A user: memberships, sign-in records, sessions, two-factor, dashboard pins, votes, comments (with their revisions), chat messages and read marks, private song notes and their revisions go; what else they made stays without an author. */
 export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(accountMember).where(eq(accountMember.userId, userId));
 	await db.delete(projectMember).where(eq(projectMember.userId, userId));
@@ -278,6 +289,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(passkey).where(eq(passkey.userId, userId));
 	await db.delete(notification).where(eq(notification.userId, userId));
 	await db.delete(notificationPreference).where(eq(notificationPreference.userId, userId));
+	await db.delete(dashboardPin).where(eq(dashboardPin.userId, userId));
 	await db.delete(bugReportVote).where(eq(bugReportVote.userId, userId));
 	await db.update(aiRequest).set({ userId: null }).where(eq(aiRequest.userId, userId));
 	await db.update(auditLog).set({ userId: null }).where(eq(auditLog.userId, userId));

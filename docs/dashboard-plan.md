@@ -196,10 +196,23 @@ project songs.
 
 ## Step 5 — "since your last visit" and personal touches
 
-- `user.dashboard_seen_at` (one migration): the activity and digest
-  sections count from it, and it is set when the dashboard loads.
-- **Pinned items**: a member pins a song, project or session to their own
-  dashboard (`dashboard_pin`, one migration).
+- `user.dashboard_seen_at` (v0.190.0, migration 0104 with the pins):
+  set when the dashboard loads (`touchDashboardSeen`, which returns the
+  previous stamp); Activity, Your Projects, Your Songs and Your Sessions
+  mark each entry newer than it with a dot and say "N since your last
+  visit" under the heading (`DashboardIdeas` `since`). The seven-day
+  Activity window stays: the mark is a highlight, not a filter, so a
+  daily visitor still sees the week.
+- **Pinned items** (v0.190.0): a pin button on every Your Projects, Your
+  Songs and Your Sessions row (`DashboardEntry.pin`, the toggle in
+  `DashboardIdeaList`) writes `dashboard_pin` through the `setPin`
+  command (`remote/dashboard.remote.ts`: the target's account must be
+  one the person belongs to); a **Pinned** section above Activity lists
+  them newest pin first (`listDashboardPins`, filtered by what the person
+  may still open), with the same toggle to unpin, and the page moves an
+  entry in or out without a reload. Pins are the person's, never the
+  band's; they go with the target, the account and the user
+  (cascade.ts).
 - Practice nudges (v0.189.0): **Worth a look** in the sidebar under In
   progress (`DashboardNudges`, hidden when empty): the account's active,
   unfinished songs nobody has changed in `DASHBOARD_STALE_DAYS` (30;

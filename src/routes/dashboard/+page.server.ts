@@ -11,6 +11,7 @@ import {
 import { SESSION_KIND_LABELS } from "#lib/constants/sessionRecordings.js";
 import { STAGE_LABEL } from "#lib/constants/songStages.js";
 import type { Nudge } from "#lib/constants/dashboardActivity.js";
+import type { DashboardPinRow } from "#lib/server/data.js";
 import { requireSignedIn } from "#lib/server/access.js";
 import {
 	accountActivity,
@@ -19,6 +20,7 @@ import {
 	accountNudges,
 	accountPendingWork,
 	accountQuota,
+	listDashboardPins,
 	listInviteCodes,
 	pendingInvitations,
 	projectRolesOf,
@@ -26,6 +28,7 @@ import {
 	recentRecordingSessions,
 	recentSongs,
 	recentUserIdeas,
+	touchDashboardSeen,
 	unreadSessionChats,
 	unreadSongChats,
 	userIdeaNudges,
@@ -83,7 +86,9 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 	return {
 		slug: m.slug,
 		name: m.name,
+		accountId: m.accountId,
 		role: m.role,
+		projectRoles,
 		counts,
 		quota,
 		band,
@@ -132,6 +137,7 @@ function projectEntries(tiles: Tile[]): DashboardEntry[] {
 				href: `/${t.slug}/projects/${p.slug}`,
 				when: p.updatedAt,
 				account: t.slug,
+				pin: { kind: "project" as const, id: p.id },
 				meta: line([plural(p.songCount, "song"), several ? t.name : ""]),
 			})),
 		)
@@ -149,6 +155,7 @@ function songEntries(tiles: Tile[]): DashboardEntry[] {
 				href: `/${t.slug}/projects/${s.project.slug}/${s.slug}`,
 				when: s.updatedAt,
 				account: t.slug,
+				pin: { kind: "song" as const, id: s.id },
 				meta: line([
 					s.project.name,
 					STAGE_LABEL[songStage(s)],
@@ -172,6 +179,7 @@ function sessionEntries(tiles: Tile[]): DashboardEntry[] {
 				href: `/${t.slug}/sessions/s/${s.id}`,
 				when: new Date(s.startsOn),
 				account: t.slug,
+				pin: { kind: "session" as const, id: s.id },
 				whenText: dayText(s.startsOn),
 				meta: line([
 					SESSION_KIND_LABELS[s.kind],
@@ -218,6 +226,32 @@ function pendingEntries(tiles: Tile[]): DashboardEntry[] {
 			})),
 		)
 		.sort((a, b) => a.when.getTime() - b.when.getTime());
+}
+
+const PIN_KIND_LABEL = { song: "Song", project: "Project", session: "Session" } as const;
+
+/** Pinned: what the person pinned, newest pin first, dropping what they may no longer open (a pin outlives a membership or a project role only as a row). */
+function pinnedEntries(tiles: Tile[], pins: DashboardPinRow[]): DashboardEntry[] {
+	const several = tiles.length > 1;
+	const byAccount = new Map(tiles.map((t) => [t.accountId, t]));
+	return pins.flatMap((p) => {
+		const t = byAccount.get(p.accountId);
+		if (!t) return [];
+		const who: Viewer = { accountRole: t.role, projectRoles: t.projectRoles };
+		if (p.song && !canViewSong(p.song, who, [])) return [];
+		if (p.project && !canViewProject(p.project, who, [])) return [];
+		return [
+			{
+				id: `pin:${p.kind}:${p.targetId}`,
+				title: p.title,
+				href: p.href,
+				when: p.at,
+				account: t.slug,
+				meta: line([PIN_KIND_LABEL[p.kind], several ? t.name : ""]),
+				pin: { kind: p.kind, id: p.targetId },
+			},
+		];
+	});
 }
 
 /** Worth a look: the nudges across the person's accounts and their own ideas, oldest first, at most DASHBOARD_NUDGE_CAP. */
@@ -296,14 +330,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const user = requireSignedIn(locals, url);
 	const memberships = realMemberships(locals.memberships);
 	const since = new Date(Date.now() - DASHBOARD_ACTIVITY_DAYS * DAY);
-	const [inbox, ideaRows, loopRows, multitrackRows, tiles, ideaNudges] = await Promise.all([
-		listInbox(user.id),
-		recentUserIdeas(user.id, "idea", DASHBOARD_LIST_CAP),
-		recentUserIdeas(user.id, "loop", DASHBOARD_LIST_CAP),
-		recentUserIdeas(user.id, "song", DASHBOARD_LIST_CAP),
-		Promise.all(memberships.map((m) => dashboardAccount(m, user.id, since))),
-		userIdeaNudges(user.id),
-	]);
+	const [inbox, ideaRows, loopRows, multitrackRows, tiles, ideaNudges, pins, seenAt] =
+		await Promise.all([
+			listInbox(user.id),
+			recentUserIdeas(user.id, "idea", DASHBOARD_LIST_CAP),
+			recentUserIdeas(user.id, "loop", DASHBOARD_LIST_CAP),
+			recentUserIdeas(user.id, "song", DASHBOARD_LIST_CAP),
+			Promise.all(memberships.map((m) => dashboardAccount(m, user.id, since))),
+			userIdeaNudges(user.id),
+			listDashboardPins(user.id),
+			// The visit before this one is what "since your last visit" means; this one is recorded now.
+			touchDashboardSeen(user.id),
+		]);
 	return {
 		accounts: tiles.map(({ slug, name, role, counts, quota, band, invites }) => ({
 			slug,
@@ -319,6 +357,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		activity: activityEntries(tiles),
 		pending: pendingEntries(tiles),
 		nudges: nudgeEntries(tiles, ideaNudges),
+		pinned: pinnedEntries(tiles, pins),
+		seenAt,
 		comments: inbox
 			.filter((i) => !i.readAt && COMMENT_KINDS.has(i.kind))
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),

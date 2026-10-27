@@ -20,6 +20,7 @@ const {
 	deleteBugReportRows,
 	deleteIdeaRows,
 	deleteProjectRows,
+	deleteSessionReviewRows,
 	deleteSongRows,
 	deleteUserDocRows,
 	deleteUserRows,
@@ -169,6 +170,7 @@ describe("deleteSongRows", () => {
 			"song_pdf",
 			"song_notation",
 			"stem",
+			"dashboard_pin",
 			"slug_alias",
 			"song",
 		]);
@@ -191,6 +193,23 @@ describe("deleteSongRows", () => {
 		await deleteSongRows(["s1"]);
 		expect(deletes()).not.toContain("comment_version");
 		expect(deletes()).toContain("comment");
+	});
+	test("the song's dashboard pins go, not a project's or a session's with the same id", async () => {
+		fake.reset({
+			song: [{ id: "s1", accountId: "a1" }],
+			dashboardPin: [
+				{ userId: "u1", kind: "song", targetId: "s1", accountId: "a1" },
+				{ userId: "u2", kind: "song", targetId: "s2", accountId: "a1" },
+				{ userId: "u1", kind: "project", targetId: "s1", accountId: "a1" },
+				{ userId: "u1", kind: "session", targetId: "s1", accountId: "a1" },
+			],
+		});
+		await deleteSongRows(["s1"]);
+		expect(fake.rows("dashboardPin").map((p) => [p.kind, p.targetId].join(":"))).toEqual([
+			"song:s2",
+			"project:s1",
+			"session:s1",
+		]);
 	});
 	test("covers every table with a foreign key to song", async () => {
 		await deleteSongRows(["s1"]);
@@ -224,15 +243,56 @@ describe("deleteProjectRows", () => {
 			"share_link",
 			"project_member",
 			"invitation",
+			"dashboard_pin",
 			"slug_alias",
 			"project",
 		]);
 		expect(fake.rows("project").map((p) => p.id)).toEqual(["p2"]);
 		expect(fake.rows("song").map((s) => s.id)).toEqual(["s2"]);
 	});
+	test("the project's dashboard pins go with it", async () => {
+		fake.reset({
+			project: [{ id: "p1", accountId: "a1" }],
+			dashboardPin: [
+				{ userId: "u1", kind: "project", targetId: "p1", accountId: "a1" },
+				{ userId: "u1", kind: "project", targetId: "p2", accountId: "a1" },
+				{ userId: "u1", kind: "song", targetId: "p1", accountId: "a1" },
+			],
+		});
+		await deleteProjectRows(["p1"]);
+		expect(fake.rows("dashboardPin").map((p) => [p.kind, p.targetId].join(":"))).toEqual([
+			"project:p2",
+			"song:p1",
+		]);
+	});
 	test("covers every table with a foreign key to project", async () => {
 		await deleteProjectRows(["p1"]);
 		expect(missingFor(schema.project)).toEqual([]);
+	});
+});
+
+describe("deleteSessionReviewRows", () => {
+	test("the sessions' dashboard pins go with their review", async () => {
+		fake.reset({
+			dashboardPin: [
+				{ userId: "u1", kind: "session", targetId: "rs1", accountId: "a1" },
+				{ userId: "u1", kind: "session", targetId: "rs2", accountId: "a1" },
+				{ userId: "u1", kind: "song", targetId: "rs1", accountId: "a1" },
+			],
+		});
+		await deleteSessionReviewRows(["rs1"], []);
+		expect(fake.rows("dashboardPin").map((p) => [p.kind, p.targetId].join(":"))).toEqual([
+			"session:rs2",
+			"song:rs1",
+		]);
+	});
+	test("a recording alone leaves the session's pins", async () => {
+		fake.reset({
+			dashboardPin: [{ userId: "u1", kind: "session", targetId: "rs1", accountId: "a1" }],
+		});
+		await deleteSessionReviewRows([], ["r1"]);
+		expect(deletes()).not.toContain("dashboard_pin");
+		expect(fake.rows("dashboardPin")).toHaveLength(1);
 	});
 });
 
@@ -318,6 +378,17 @@ describe("deleteAccountRows", () => {
 		expect(deletes()).not.toContain("support_request");
 		expect(deletes()).not.toContain("short_link");
 	});
+	test("every pin into the account goes, whoever made it", async () => {
+		fake.reset({
+			account: [{ id: "a1" }, { id: "a2" }],
+			dashboardPin: [
+				{ userId: "u1", kind: "session", targetId: "rs1", accountId: "a1" },
+				{ userId: "u2", kind: "song", targetId: "s9", accountId: "a2" },
+			],
+		});
+		await deleteAccountRows("a1");
+		expect(fake.rows("dashboardPin").map((p) => p.targetId)).toEqual(["s9"]);
+	});
 	test("covers every table with a foreign key to account", async () => {
 		await deleteAccountRows("a1");
 		expect(missingFor(schema.account)).toEqual([]);
@@ -361,6 +432,17 @@ describe("deleteUserRows", () => {
 		expect(fake.rows("studioRevision")).toEqual([{ id: "v1", savedBy: null }]);
 		// Private-note revisions go; shared-document revisions keep the text and lose the author.
 		expect(fake.rows("songDocVersion")).toEqual([{ id: "dv2", userId: null, createdBy: null }]);
+	});
+	test("the user's dashboard pins go, nobody else's", async () => {
+		fake.reset({
+			user: [{ id: "u1" }, { id: "u2" }],
+			dashboardPin: [
+				{ userId: "u1", kind: "song", targetId: "s1", accountId: "a1" },
+				{ userId: "u2", kind: "song", targetId: "s1", accountId: "a1" },
+			],
+		});
+		await deleteUserRows("u1");
+		expect(fake.rows("dashboardPin").map((p) => p.userId)).toEqual(["u2"]);
 	});
 	test("every cascade foreign key to user is deleted and every set-null one is nulled", async () => {
 		await deleteUserRows("u1");

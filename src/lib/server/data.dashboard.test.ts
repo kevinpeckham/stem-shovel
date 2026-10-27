@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vite-plus/test";
 import { PLAN_LIMITS } from "#lib/constants/plans.js";
 import { sessionDisplayName } from "#lib/utils/sessionName.js";
-import { reset } from "../../../tests/helpers/fakeDataLayer";
+import { fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
 const {
 	accountActivity,
@@ -10,10 +10,13 @@ const {
 	accountNudges,
 	accountPendingWork,
 	accountQuota,
+	listDashboardPins,
 	recentRecordingSessions,
 	recentProjects,
 	recentSongs,
 	recentUserIdeas,
+	setDashboardPin,
+	touchDashboardSeen,
 	unreadSessionChats,
 	unreadSongChats,
 	userIdeaNudges,
@@ -958,5 +961,135 @@ describe("accountPendingWork", () => {
 			"stem:stb",
 			"song-mix:sb",
 		]);
+	});
+});
+
+describe("touchDashboardSeen", () => {
+	beforeEach(() =>
+		reset({
+			user: [
+				{ id: U, name: "Uma", email: "u@x", dashboardSeenAt: null },
+				{ id: V, name: "Vic", email: "v@x", dashboardSeenAt: null },
+			],
+		}),
+	);
+	test("the first visit returns null and stamps; the next returns that stamp and moves it", async () => {
+		const first = at("2026-10-20T00:00:00Z");
+		const second = at("2026-10-27T00:00:00Z");
+		expect(await touchDashboardSeen(U, first)).toBeNull();
+		expect(await touchDashboardSeen(U, second)).toEqual(first);
+		expect(await touchDashboardSeen(U, at("2026-10-28T00:00:00Z"))).toEqual(second);
+		// Another person's stamp is untouched.
+		expect(await touchDashboardSeen(V, second)).toBeNull();
+	});
+});
+
+describe("listDashboardPins", () => {
+	const pin = (userId: string, kind: string, targetId: string, accountId: string, iso: string) => ({
+		userId,
+		kind,
+		targetId,
+		accountId,
+		createdAt: at(iso),
+		updatedAt: at(iso),
+	});
+	beforeEach(() =>
+		reset({
+			account: [
+				{ id: A, slug: "band-a" },
+				{ id: B, slug: "band-b" },
+			],
+			project: [
+				project("p1", A, 1, { isPrivate: true }),
+				project("gone", A, 9, { status: "archived" }),
+				project("pb", B, 20, { isRestricted: true }),
+			],
+			song: [
+				song("s1", A, "p1", 2, { isPrivate: true }),
+				song("s4", A, "p1", 8, { status: "archived" }),
+				song("s5", A, "gone", 9),
+			],
+			recordingSession: [session("new", A, { updatedAt: at("2026-10-18T00:00:00Z") })],
+			dashboardPin: [
+				pin(U, "song", "s1", A, "2026-10-20T00:00:00Z"),
+				pin(U, "project", "pb", B, "2026-10-22T00:00:00Z"),
+				pin(U, "session", "new", A, "2026-10-21T00:00:00Z"),
+				// Archived song, a song in an archived project, an archived project, a gone session.
+				pin(U, "song", "s4", A, "2026-10-23T00:00:00Z"),
+				pin(U, "song", "s5", A, "2026-10-23T00:00:00Z"),
+				pin(U, "project", "gone", A, "2026-10-23T00:00:00Z"),
+				pin(U, "session", "nope", A, "2026-10-23T00:00:00Z"),
+				// Someone else's.
+				pin(V, "song", "s1", A, "2026-10-25T00:00:00Z"),
+			],
+		}),
+	);
+	test("a song, a project and a session resolved with title, href and view facts, newest pin first", async () => {
+		expect(await listDashboardPins(U)).toEqual([
+			{
+				kind: "project",
+				targetId: "pb",
+				accountId: B,
+				title: "Project pb",
+				href: "/band-b/projects/pb",
+				at: at("2026-10-20T00:00:00Z"),
+				pinnedAt: at("2026-10-22T00:00:00Z"),
+				song: null,
+				project: { id: "pb", isPrivate: false, isRestricted: true },
+			},
+			{
+				kind: "session",
+				targetId: "new",
+				accountId: A,
+				title: sessionDisplayName({
+					name: "",
+					place: "The Room",
+					kind: "practice",
+					startsOn: "2026-10-17",
+				}),
+				href: "/band-a/sessions/s/new",
+				at: at("2026-10-18T00:00:00Z"),
+				pinnedAt: at("2026-10-21T00:00:00Z"),
+				song: null,
+				project: null,
+			},
+			{
+				kind: "song",
+				targetId: "s1",
+				accountId: A,
+				title: "Song s1",
+				href: "/band-a/projects/p1/s1",
+				at: at("2026-10-02T00:00:00Z"),
+				pinnedAt: at("2026-10-20T00:00:00Z"),
+				song: {
+					id: "s1",
+					isPrivate: true,
+					projectId: "p1",
+					project: { isPrivate: true, isRestricted: false },
+				},
+				project: null,
+			},
+		]);
+	});
+	test("another person's pins only; none is an empty list", async () => {
+		expect((await listDashboardPins(V)).map((p) => p.targetId)).toEqual(["s1"]);
+		expect(await listDashboardPins("nobody______________")).toEqual([]);
+	});
+});
+
+describe("setDashboardPin", () => {
+	const pinRows = () =>
+		fake.rows("dashboardPin").map((p) => [p.userId, p.kind, p.targetId, p.accountId].join(":"));
+	beforeEach(() => reset({ dashboardPin: [] }));
+	test("on adds one row however often; off removes only that pin", async () => {
+		await setDashboardPin(U, "song", "s1", A, true);
+		await setDashboardPin(U, "song", "s1", A, true);
+		await setDashboardPin(U, "project", "s1", A, true);
+		await setDashboardPin(V, "song", "s1", A, true);
+		expect(pinRows()).toEqual([`${U}:song:s1:${A}`, `${U}:project:s1:${A}`, `${V}:song:s1:${A}`]);
+		await setDashboardPin(U, "song", "s1", A, false);
+		expect(pinRows()).toEqual([`${U}:project:s1:${A}`, `${V}:song:s1:${A}`]);
+		await setDashboardPin(U, "song", "s1", A, false);
+		expect(pinRows()).toHaveLength(2);
 	});
 });

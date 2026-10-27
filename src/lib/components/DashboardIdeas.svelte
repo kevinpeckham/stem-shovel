@@ -28,8 +28,30 @@
 		tip: string;
 		/** The person's accounts, for a filter by account when they belong to several (the entries carry `account`). */
 		accounts?: { slug: string; name: string }[];
+		/** The person's last dashboard visit: entries newer than it carry a dot, and a line counts them. */
+		since?: Date | null;
+		/** The pins the person has (`kind:id`) and the toggle's handler, for rows that can be pinned. */
+		pins?: Set<string>;
+		onpin?: (idea: DashboardEntry, pinned: boolean) => void;
 	}
-	let { id, heading, ideas, empty, action, all, search, tip, accounts = [] }: Props = $props();
+	let {
+		id,
+		heading,
+		ideas,
+		empty,
+		action,
+		all,
+		search,
+		tip,
+		accounts = [],
+		since = null,
+		pins,
+		onpin,
+	}: Props = $props();
+	/** How many entries are newer than the last visit. */
+	let fresh = $derived(
+		since === null ? 0 : ideas.filter((i) => i.when.getTime() > since.getTime()).length,
+	);
 
 	let query = $state("");
 	/** The account filter: an account's slug, or "" for all. */
@@ -61,6 +83,9 @@
 			{/if}
 		</div>
 	{:else}
+		{#if fresh > 0}
+			<p class="text-13px opacity-80">{fresh} since your last visit</p>
+		{/if}
 		<div class="flex flex-wrap items-center gap-3">
 			<label class="relative w-full sm-w-72">
 				<span
@@ -95,6 +120,9 @@
 			ideas={matches}
 			shown={pages * DASHBOARD_IDEAS_PAGE}
 			{capped}
+			{since}
+			{pins}
+			{onpin}
 			onmore={() => (pages += 1)}
 		/>
 	{/if}

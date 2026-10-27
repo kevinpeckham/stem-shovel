@@ -13,6 +13,7 @@ export * from "./bugReportVote";
 export * from "./chatMessage";
 export * from "./chatReaction";
 export * from "./chatRead";
+export * from "./dashboardPin";
 export * from "./comment";
 export * from "./commentVersion";
 export * from "./demo";
