@@ -9,22 +9,26 @@ import { expect, open, test } from "./fixtures";
 test("the dashboard shows what is new and each account's recent work", async ({ page, errors }) => {
 	await open(page, "/dashboard");
 	await expect(page.getByRole("heading", { level: 1, name: "User Dashboard" })).toBeVisible();
-	// The account tile: projects, songs and sessions to jump to.
+	// The account tile: the person's role and the counts, each a link.
 	const account = page.locator('[data-dashboard-account="mmkk"]');
 	await expect(account).toBeVisible();
-	for (const list of ["Projects", "Songs", "Sessions"])
-		await expect(account.getByRole("heading", { name: list })).toBeVisible();
-	await expect(account.getByRole("link", { name: "All projects" })).toHaveAttribute(
+	await expect(account.getByTitle("Your role in MMKK")).toHaveText(/Owner|Admin|Member/);
+	await expect(account.getByRole("link", { name: /^\d+ projects?$/ })).toHaveAttribute(
 		"href",
 		"/mmkk/projects",
 	);
-	await expect(account.getByRole("link", { name: "All sessions" })).toHaveAttribute(
+	await expect(account.getByRole("link", { name: /^\d+ sessions?$/ })).toHaveAttribute(
 		"href",
 		"/mmkk/sessions",
 	);
+	await expect(account.getByRole("link", { name: /^\d+ members?$/ })).toHaveAttribute(
+		"href",
+		"/mmkk/settings",
+	);
 	// The person's own work, each with a way to start when empty.
 	for (const name of [
-		"Your Projects & Songs",
+		"Your Accounts",
+		"Your Projects",
 		"Your Songs",
 		"Your Sessions",
 		"Your Ideas",
@@ -32,6 +36,11 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		"Your Loops",
 	])
 		await expect(page.getByRole("heading", { name })).toBeVisible();
+	// Your Projects: each with its song count; All projects opens the page across accounts.
+	await expect(page.getByRole("list", { name: "Your Projects" })).toContainText(/\d+ songs?/);
+	await expect(
+		page.getByRole("region", { name: "Your Projects" }).getByRole("link", { name: "All projects" }),
+	).toHaveAttribute("href", "/projects");
 	// Your Songs: each song under its project.
 	await expect(page.getByRole("list", { name: "Your Songs" })).toContainText("Badverbs");
 	await expect(

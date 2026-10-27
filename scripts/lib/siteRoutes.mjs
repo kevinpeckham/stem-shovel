@@ -50,6 +50,7 @@ export const ROUTES = [
 	["studio (server)", "/studio", [301, 308], [301, 308]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
 	["[account]/artists", "/{account}/artists", [303], [200]],
+	["projects", "/projects", [303], [200]],
 	["sessions", "/sessions", [303], [200]],
 	["songs", "/songs", [303], [200]],
 	["[account]/sessions", "/{account}/sessions", [303], [200]],

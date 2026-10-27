@@ -8,6 +8,21 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.181.0] - 2026-10-27
+
+### Added
+
+- **Your Projects on the dashboard.** Above Your Songs: every project you may open across your accounts, last changed first, each with its song count (and its account, when you belong to several), with the same search, paging and an "All projects" link to a new `/projects` page: every project across your accounts with its account, song count and when it last changed, searchable and sortable. `/projects` was a redirect to the current account's projects before.
+
+### Changed
+
+- **Account tiles at a glance.** The tiles share a row (two across from small screens, three from wide ones) and show just the account's name (as a small monospace label, like the sidebar's headings), your role in it (Owner, Admin or Member) and its counts of projects, songs, sessions and members, each a link; the recent-work lists moved to the Your Projects, Your Songs and Your Sessions sections. The heading over them is "Your Accounts". A new account's checklist still sits in its tile.
+- **More room between the columns.** The gap between the dashboard's content and sidebar grows with the screen (`lg-gap-12 xl-gap-16 2xl-gap-20`).
+
+### Technical
+
+- `accountCounts` also counts the account's recording sessions. `DashboardTileList.svelte` is gone. The dashboard loader fetches each account's projects, songs and sessions once (cap 500) for the sections and keeps only the counts and role for the tile. `siteRoutes.mjs` expects 200 from `/projects`. `TableSort` (`src/lib/state/tableSort.svelte.ts`) holds a sortable table's column and direction for the Projects, Songs and Sessions tables.
+
 ## [0.180.0] - 2026-10-27
 
 ### Added

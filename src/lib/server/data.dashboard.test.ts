@@ -230,9 +230,21 @@ describe("recentSongs", () => {
 });
 
 describe("accountCounts", () => {
-	test("projects, songs, ready recordings and members of the account only", async () => {
-		expect(await accountCounts(A)).toEqual({ projects: 4, songs: 4, recordings: 2, members: 2 });
-		expect(await accountCounts(B)).toEqual({ projects: 1, songs: 1, recordings: 1, members: 1 });
+	test("projects, songs, sessions, ready recordings and members of the account only", async () => {
+		expect(await accountCounts(A)).toEqual({
+			projects: 4,
+			songs: 4,
+			sessions: 3,
+			recordings: 2,
+			members: 2,
+		});
+		expect(await accountCounts(B)).toEqual({
+			projects: 1,
+			songs: 1,
+			sessions: 1,
+			recordings: 1,
+			members: 1,
+		});
 	});
 });
 

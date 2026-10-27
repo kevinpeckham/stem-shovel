@@ -45,14 +45,21 @@ members). The sign-up page still sends an already signed-in visitor to
 `/`.
 
 **Laid out again 2026-10-27 (Kevin):** the first thing on the page is a
-tile per account (`DashboardAccount`, `DashboardTileList`) listing its
+tile per account (`DashboardAccount`; `DashboardTileList`, since removed) listing its
 six most recent projects, songs and sessions side by side with "All …"
 links, so a person jumps straight to one; the sessions link to their own
-pages. Two columns from `lg:` (content left, a 20 rem sidebar right,
-`+page.svelte`), one column on a phone with the sidebar after. The
+pages. Since v0.181.0 the tiles share a row (`sm:grid-cols-2 xl:grid-cols-3`)
+and hold only the account's name, the person's role and its counts of
+projects, songs, sessions and members (each a link; `accountCounts`),
+under a "Your Accounts" heading; the lists moved to **Your Projects**
+(every project the person may open across accounts, with its song count;
+"All projects" opens `/projects`, the same sortable, filterable page as
+`/songs`, where it redirected to the current account before), then the
+sections below. Two columns from `lg:` (content left, a 20 rem sidebar
+right, `+page.svelte`), one column on a phone with the sidebar after. The
 content column continues with **Your Songs** (every song the person may
 open across their accounts, last changed first, each under its project and,
-with several accounts, its account; `allSongs` in `+page.server.ts`;
+with several accounts, its account; `songEntries` in `+page.server.ts`;
 "All songs" opens `/songs`, every song across accounts, sortable and
 filterable), **Your Sessions** (the same for recording sessions, latest
 day first, each under its kind, place and recording count; "All sessions"

@@ -9168,12 +9168,13 @@ export async function recentSongs(accountId: string, n: number) {
 	}));
 }
 
-/** How much the account holds, for the dashboard's onboarding checklist: projects, songs, ready session recordings and members. */
+/** How much the account holds, for the dashboard's tile and onboarding checklist: projects, songs, sessions, ready session recordings and members. */
 export async function accountCounts(accountId: string) {
 	const count = sql<number>`count(*)`;
-	const [[projects], [songs], [recordings], [members]] = await Promise.all([
+	const [[projects], [songs], [sessions], [recordings], [members]] = await Promise.all([
 		db.select({ n: count }).from(project).where(eq(project.accountId, accountId)),
 		db.select({ n: count }).from(song).where(eq(song.accountId, accountId)),
+		db.select({ n: count }).from(recordingSession).where(eq(recordingSession.accountId, accountId)),
 		db
 			.select({ n: count })
 			.from(sessionRecording)
@@ -9183,6 +9184,7 @@ export async function accountCounts(accountId: string) {
 	return {
 		projects: Number(projects?.n ?? 0),
 		songs: Number(songs?.n ?? 0),
+		sessions: Number(sessions?.n ?? 0),
 		recordings: Number(recordings?.n ?? 0),
 		members: Number(members?.n ?? 0),
 	};

@@ -1,13 +1,12 @@
 <script lang="ts">
+	import { TableSort } from "#lib/state/tableSort.svelte.js";
 	import {
 		SESSION_KIND_LABELS,
 		SESSION_KINDS,
 		type SessionKind,
 	} from "#lib/constants/sessionRecordings.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
-	import { nextSort } from "#lib/utils/nextSort.js";
 	import { dayText } from "#lib/utils/sessionName.js";
-	import { sortRows } from "#lib/utils/sortRows.js";
 	import SearchBox from "./SearchBox.svelte";
 	import SortHeader from "./SortHeader.svelte";
 
@@ -36,14 +35,12 @@
 	type Key = "title" | "kind" | "place" | "startsOn" | "recordingCount" | "account";
 	let query = $state("");
 	let kind = $state<SessionKind | "">("");
-	let sort = $state<{ key: Key; dir: "asc" | "desc" }>({ key: "startsOn", dir: "desc" });
+	const { dirOf, sortBy, apply } = new TableSort<Key>("startsOn", ["startsOn", "recordingCount"]);
 
 	let matches = $derived(
 		filterByTitle(kind ? sessions.filter((s) => s.kind === kind) : sessions, query),
 	);
-	let rows = $derived(sortRows(matches, sort.key, sort.dir));
-	const dirOf = (key: Key) => (sort.key === key ? sort.dir : null);
-	const sortBy = (key: Key) => (sort = nextSort(sort, key, ["startsOn", "recordingCount"]));
+	let rows = $derived(apply(matches));
 	const recordings = (n: number) => `${n} recording${n === 1 ? "" : "s"}`;
 	const phoneLine = (s: SessionRow) =>
 		[SESSION_KIND_LABELS[s.kind], s.place, recordings(s.recordingCount), s.account]

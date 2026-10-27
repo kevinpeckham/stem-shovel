@@ -1,9 +1,8 @@
 <script lang="ts">
+	import { TableSort } from "#lib/state/tableSort.svelte.js";
 	import { STAGE_LABEL } from "#lib/constants/songStages.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
-	import { nextSort } from "#lib/utils/nextSort.js";
-	import { sortRows } from "#lib/utils/sortRows.js";
 	import { SONG_STAGES, type SongStage } from "#lib/val/SongStageSchema.js";
 	import SearchBox from "./SearchBox.svelte";
 	import SortHeader from "./SortHeader.svelte";
@@ -33,14 +32,12 @@
 	type Key = "title" | "project" | "account" | "stageRank" | "updatedAt";
 	let query = $state("");
 	let stage = $state<SongStage | "">("");
-	let sort = $state<{ key: Key; dir: "asc" | "desc" }>({ key: "updatedAt", dir: "desc" });
+	const { dirOf, sortBy, apply } = new TableSort<Key>("updatedAt", ["updatedAt"]);
 
 	let matches = $derived(
 		filterByTitle(stage ? songs.filter((s) => s.stage === stage) : songs, query),
 	);
-	let rows = $derived(sortRows(matches, sort.key, sort.dir));
-	const dirOf = (key: Key) => (sort.key === key ? sort.dir : null);
-	const sortBy = (key: Key) => (sort = nextSort(sort, key, ["updatedAt"]));
+	let rows = $derived(apply(matches));
 </script>
 
 <div class="grid gap-3">

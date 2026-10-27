@@ -29,16 +29,31 @@ test("the songs page lists every song across accounts with a search and a stage 
 	expect(errors).toEqual([]);
 });
 
+test("the projects page lists every project across accounts", async ({ page, errors }) => {
+	await open(page, "/projects");
+	await expect(page.getByRole("heading", { level: 1, name: "Your Projects" })).toBeVisible();
+	await expect(page.getByRole("link", { name: "Badverbs" })).toHaveAttribute(
+		"href",
+		"/mmkk/projects/badverbs",
+	);
+	const search = page.getByRole("searchbox", { name: "Search projects" });
+	await search.fill("zzzz-no-such-project");
+	await expect(page.getByRole("link", { name: "Badverbs" })).toHaveCount(0);
+	expect(errors).toEqual([]);
+});
+
 test("the sessions page lists every session across accounts", async ({ page, errors }) => {
 	await open(page, "/sessions");
 	await expect(page.getByRole("heading", { level: 1, name: "Your Sessions" })).toBeVisible();
 	expect(errors).toEqual([]);
 });
 
-test("signed out, both pages send to sign-in", async ({ browser }) => {
+test("signed out, the three pages send to sign-in", async ({ browser }) => {
 	const context = await browser.newContext({ ignoreHTTPSErrors: true });
 	const guest = await context.newPage();
 	const base = test.info().project.use.baseURL;
+	await guest.goto(`${base}/projects`);
+	await expect(guest).toHaveURL(/\/sign-in\?next=%2Fprojects/);
 	await guest.goto(`${base}/songs`);
 	await expect(guest).toHaveURL(/\/sign-in\?next=%2Fsongs/);
 	await guest.goto(`${base}/sessions`);

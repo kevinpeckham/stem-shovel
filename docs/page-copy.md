@@ -68,7 +68,8 @@ and (2026-10-20, Kevin) to the Sessions page, an account's page: its copy
 doc is `sessions-page`, and the editor's way back is `/sessions`: since
 v0.180.0 the signed-in person's sessions across all their accounts (each
 linking to its session page), where it redirected to the current
-account's sessions before (`/projects` still does).
+account's sessions before (`/projects` lists the person's projects the same
+way since v0.181.0).
 The recorder's tips show from sm only: on a phone the page is an app-height
 screen of its own, and the user docs are a button away.
 

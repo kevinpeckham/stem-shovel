@@ -34,19 +34,30 @@
 <main class="page">
 	<h1 class="app-page-heading">User Dashboard</h1>
 
-	<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+	<div
+		class="grid gap-8 lg-gap-12 xl-gap-16 2xl-gap-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start"
+	>
 		<div class="grid min-w-0 gap-8">
 			{#if accounts.length === 0}
 				<DashboardStart />
 			{:else}
-				<section class="grid gap-8" aria-labelledby="dashboard-accounts">
-					<h2 class="marketing-topic-heading mb-0" id="dashboard-accounts">
-						Your Projects & Songs
-					</h2>
-					{#each accounts as account (account.slug)}
-						<DashboardAccount {account} />
-					{/each}
+				<section class="grid gap-3" aria-labelledby="dashboard-accounts">
+					<h2 class="marketing-topic-heading mb-0" id="dashboard-accounts">Your Accounts</h2>
+					<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+						{#each accounts as account (account.slug)}
+							<DashboardAccount {account} />
+						{/each}
+					</div>
 				</section>
+				<DashboardIdeas
+					id="dashboard-projects"
+					heading="Your Projects"
+					ideas={data.projects}
+					empty="No projects yet."
+					action={{ label: "Create a project", href: `/${data.currentSlug}/projects` }}
+					all={{ label: "All projects", href: "/projects" }}
+					search="Search projects"
+				/>
 				<DashboardIdeas
 					id="dashboard-songs"
 					heading="Your Songs"

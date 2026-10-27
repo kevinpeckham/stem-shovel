@@ -1,88 +1,68 @@
 <script lang="ts">
-	import type { SessionKind } from "#lib/constants/sessionRecordings.js";
 	import type { OnboardingStep } from "#lib/utils/onboardingSteps.js";
-	import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 	import DashboardChecklist from "./DashboardChecklist.svelte";
-	import DashboardTileList from "./DashboardTileList.svelte";
 
 	/**
-	 * One account's tile on the dashboard: its name, then its recent
-	 * projects, songs and sessions side by side, or the checklist while it
-	 * holds nothing.
+	 * One account's tile on the dashboard: its name (to its projects), the
+	 * person's role in it, and its counts of projects, songs, sessions and
+	 * members, each a link; a new account's checklist below while it holds
+	 * nothing.
 	 */
 	interface Props {
 		account: {
 			slug: string;
 			name: string;
-			projects: { id: string; name: string; slug: string; songCount: number }[];
-			songs: { id: string; title: string; href: string; project: string }[];
-			sessions: {
-				id: string;
-				name: string;
-				place: string;
-				kind: SessionKind;
-				startsOn: string;
-				recordingCount: number;
-			}[];
+			role: string;
+			counts: { projects: number; songs: number; sessions: number; members: number };
 			steps: OnboardingStep[];
 			onboarding: boolean;
 		};
 	}
 	let { account }: Props = $props();
 
-	const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
-
-	let projects = $derived(
-		account.projects.map((p) => ({
-			id: p.id,
-			label: p.name,
-			href: `/${account.slug}/projects/${p.slug}`,
-			detail: plural(p.songCount, "song"),
-		})),
-	);
-	let songs = $derived(
-		account.songs.map((s) => ({ id: s.id, label: s.title, href: s.href, detail: s.project })),
-	);
-	let sessions = $derived(
-		account.sessions.map((s) => ({
-			id: s.id,
-			label: sessionDisplayName(s),
-			href: `/${account.slug}/sessions/s/${s.id}`,
-			detail: `${dayText(s.startsOn)} · ${plural(s.recordingCount, "recording")}`,
-		})),
-	);
+	const count = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
+	/** "owner" → "Owner". */
+	let role = $derived(account.role.charAt(0).toUpperCase() + account.role.slice(1));
+	let stats = $derived([
+		{
+			id: "projects",
+			label: count(account.counts.projects, "project"),
+			href: `/${account.slug}/projects`,
+		},
+		{ id: "songs", label: count(account.counts.songs, "song"), href: `/${account.slug}/projects` },
+		{
+			id: "sessions",
+			label: count(account.counts.sessions, "session"),
+			href: `/${account.slug}/sessions`,
+		},
+		{
+			id: "members",
+			label: count(account.counts.members, "member"),
+			href: `/${account.slug}/settings`,
+		},
+	]);
 </script>
 
 <section
-	class="surface grid gap-4 p-5"
+	class="surface grid content-start gap-3 p-5"
 	aria-label={account.name}
 	data-dashboard-account={account.slug}
 >
-	<h2 class="heading-2 mb-0">
-		<a class="hover:text-accent" href="/{account.slug}/projects">{account.name}</a>
-	</h2>
+	<div class="flex items-baseline justify-between gap-3">
+		<h3 class="marketing-section-heading mb-0 min-w-0 truncate">
+			<a class="hover:text-accent" href="/{account.slug}/projects">{account.name}</a>
+		</h3>
+		<span
+			class="shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-11px uppercase tracking-wider opacity-80"
+			title="Your role in {account.name}">{role}</span
+		>
+	</div>
+	<ul class="grid grid-cols-2 gap-x-4 gap-y-1 text-14px" aria-label="{account.name} at a glance">
+		{#each stats as stat (stat.id)}
+			<li><a class="link" href={stat.href}>{stat.label}</a></li>
+		{/each}
+	</ul>
 	{#if account.onboarding}
 		<DashboardChecklist steps={account.steps} />
-	{:else}
-		<div class="grid gap-4 sm:grid-cols-3">
-			<DashboardTileList
-				heading="Projects"
-				items={projects}
-				empty="No projects yet."
-				all={{ label: "All projects", href: `/${account.slug}/projects` }}
-			/>
-			<DashboardTileList
-				heading="Songs"
-				items={songs}
-				empty="No songs yet."
-				all={{ label: "All songs", href: `/${account.slug}/projects` }}
-			/>
-			<DashboardTileList
-				heading="Sessions"
-				items={sessions}
-				empty="No sessions yet."
-				all={{ label: "All sessions", href: `/${account.slug}/sessions` }}
-			/>
-		</div>
 	{/if}
 </section>
