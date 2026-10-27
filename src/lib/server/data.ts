@@ -9134,8 +9134,9 @@ export async function recentProjects(accountId: string, n: number) {
 
 /**
  * The account's `n` most recently updated active songs, each with its
- * project's name and address, the fields the view rules read, and what
- * `songStage` reads (whether a ready stem and a ready mix exist).
+ * project's name and address, the fields the view rules read, its counts
+ * of ready stems and demos, and what `songStage` reads (whether a ready
+ * stem and a ready mix exist).
  */
 export async function recentSongs(accountId: string, n: number) {
 	const rows = await db.query.song.findMany({
@@ -9159,10 +9160,13 @@ export async function recentSongs(accountId: string, n: number) {
 			},
 			stems: { where: eq(stem.status, "ready"), columns: { id: true } },
 			mixes: { where: eq(songMix.status, "ready"), columns: { id: true } },
+			demos: { where: eq(demo.status, "ready"), columns: { id: true } },
 		},
 	});
-	return rows.map(({ stems, mixes, ...s }) => ({
+	return rows.map(({ stems, mixes, demos, ...s }) => ({
 		...s,
+		stemCount: stems.length,
+		demoCount: demos.length,
 		hasStem: stems.length > 0,
 		hasMix: mixes.length > 0,
 	}));

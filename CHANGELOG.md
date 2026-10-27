@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.182.0] - 2026-10-27
+
+### Changed
+
+- **Your Songs says more.** Each song on the dashboard shows its stage (Writing, Arranging, Mixing or Finished) and how many stems and demos it has, after its project.
+- **Go to account page.** Each account tile ends with a link to the account's page.
+
+### Technical
+
+- `recentSongs` also returns `stemCount` and `demoCount` (ready ones).
+
 ## [0.181.0] - 2026-10-27
 
 ### Added

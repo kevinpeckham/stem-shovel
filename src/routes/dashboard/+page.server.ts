@@ -1,5 +1,6 @@
 import type { DashboardEntry } from "#lib/constants/dashboardLinks.js";
 import { SESSION_KIND_LABELS } from "#lib/constants/sessionRecordings.js";
+import { STAGE_LABEL } from "#lib/constants/songStages.js";
 import { requireSignedIn } from "#lib/server/access.js";
 import {
 	accountCounts,
@@ -14,6 +15,7 @@ import { canViewProject, canViewSong, type Viewer } from "#lib/server/viewAccess
 import { realMemberships, type Membership } from "#lib/utils/actingMemberships.js";
 import { inboxDigest } from "#lib/utils/inboxDigest.js";
 import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
+import { songStage } from "#lib/utils/songStage.js";
 import type { PageServerLoad } from "./$types";
 
 /** A cap on each account's projects, songs and sessions and on each kind of idea: all of them in practice, searched and paged in the browser. */
@@ -57,7 +59,7 @@ function projectEntries(tiles: Tile[]): DashboardEntry[] {
 		.sort(newestFirst);
 }
 
-/** Your Songs: every song the person may open across their accounts, last changed first, under its project. */
+/** Your Songs: every song the person may open across their accounts, last changed first, under its project, stage and counts of stems and demos. */
 function songEntries(tiles: Tile[]): DashboardEntry[] {
 	const several = tiles.length > 1;
 	return tiles
@@ -67,7 +69,13 @@ function songEntries(tiles: Tile[]): DashboardEntry[] {
 				title: s.title,
 				href: `/${t.slug}/projects/${s.project.slug}/${s.slug}`,
 				when: s.updatedAt,
-				meta: line([s.project.name, several ? t.name : ""]),
+				meta: line([
+					s.project.name,
+					STAGE_LABEL[songStage(s)],
+					count(s.stemCount, "stem"),
+					count(s.demoCount, "demo"),
+					several ? t.name : "",
+				]),
 			})),
 		)
 		.sort(newestFirst);

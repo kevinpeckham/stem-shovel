@@ -114,6 +114,11 @@ beforeEach(() =>
 			{ id: "mx1", accountId: A, songId: "s2", status: "ready" },
 			{ id: "mx2", accountId: A, songId: "s3", status: "failed" },
 		],
+		demo: [
+			{ id: "d1", accountId: A, songId: "s2", status: "ready" },
+			{ id: "d2", accountId: A, songId: "s2", status: "ready" },
+			{ id: "d3", accountId: A, songId: "s3", status: "failed" },
+		],
 		accountMember: [
 			{ id: "m1", accountId: A, userId: U, role: "owner" },
 			{ id: "m2", accountId: A, userId: V, role: "member" },
@@ -208,24 +213,51 @@ describe("recentSongs", () => {
 		expect((await recentSongs(B, 5)).map((s) => s.id)).toEqual(["sb"]);
 	});
 
-	test("with the stage fields and whether a ready stem and a ready mix exist", async () => {
+	test("with the stage fields, the ready stem and demo counts, and whether a ready stem and mix exist", async () => {
 		const rows = await recentSongs(A, 5);
 		expect(
-			rows.map(({ id, stage, isFinished, hasStem, hasMix }) => ({
+			rows.map(({ id, stage, isFinished, stemCount, demoCount, hasStem, hasMix }) => ({
 				id,
 				stage,
 				isFinished,
+				stemCount,
+				demoCount,
 				hasStem,
 				hasMix,
 			})),
 		).toEqual([
-			{ id: "s2", stage: null, isFinished: false, hasStem: true, hasMix: true },
-			{ id: "s3", stage: "finished", isFinished: true, hasStem: false, hasMix: false },
-			{ id: "s1", stage: null, isFinished: false, hasStem: false, hasMix: false },
+			{
+				id: "s2",
+				stage: null,
+				isFinished: false,
+				stemCount: 1,
+				demoCount: 2,
+				hasStem: true,
+				hasMix: true,
+			},
+			{
+				id: "s3",
+				stage: "finished",
+				isFinished: true,
+				stemCount: 0,
+				demoCount: 0,
+				hasStem: false,
+				hasMix: false,
+			},
+			{
+				id: "s1",
+				stage: null,
+				isFinished: false,
+				stemCount: 0,
+				demoCount: 0,
+				hasStem: false,
+				hasMix: false,
+			},
 		]);
 		expect(rows[0].createdAt).toEqual(at("2026-09-01T00:00:00Z"));
 		expect(rows[0]).not.toHaveProperty("stems");
 		expect(rows[0]).not.toHaveProperty("mixes");
+		expect(rows[0]).not.toHaveProperty("demos");
 	});
 });
 

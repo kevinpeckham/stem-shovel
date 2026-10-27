@@ -25,6 +25,10 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		"href",
 		"/mmkk/settings",
 	);
+	await expect(account.getByRole("link", { name: "Go to account page" })).toHaveAttribute(
+		"href",
+		"/mmkk/projects",
+	);
 	// The person's own work, each with a way to start when empty.
 	for (const name of [
 		"Your Accounts",
@@ -42,7 +46,12 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		page.getByRole("region", { name: "Your Projects" }).getByRole("link", { name: "All projects" }),
 	).toHaveAttribute("href", "/projects");
 	// Your Songs: each song under its project.
-	await expect(page.getByRole("list", { name: "Your Songs" })).toContainText("Badverbs");
+	const songs = page.getByRole("list", { name: "Your Songs" });
+	await expect(songs).toContainText("Badverbs");
+	// … with its stage and counts of stems and demos.
+	await expect(songs).toContainText(/Writing|Arranging|Mixing|Finished/);
+	await expect(songs).toContainText(/\d+ stems?/);
+	await expect(songs).toContainText(/\d+ demos?/);
 	await expect(
 		page.getByRole("region", { name: "Your Songs" }).getByRole("link", { name: "All songs" }),
 	).toHaveAttribute("href", "/songs");

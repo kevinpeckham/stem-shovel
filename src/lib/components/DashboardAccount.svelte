@@ -6,7 +6,7 @@
 	 * One account's tile on the dashboard: its name (to its projects), the
 	 * person's role in it, and its counts of projects, songs, sessions and
 	 * members, each a link; a new account's checklist below while it holds
-	 * nothing.
+	 * nothing; and a link to the account's page last.
 	 */
 	interface Props {
 		account: {
@@ -65,4 +65,7 @@
 	{#if account.onboarding}
 		<DashboardChecklist steps={account.steps} />
 	{/if}
+	<p class="text-14px">
+		<a class="link" href="/{account.slug}/projects">Go to account page</a>
+	</p>
 </section>

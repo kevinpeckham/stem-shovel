@@ -58,8 +58,9 @@ under a "Your Accounts" heading; the lists moved to **Your Projects**
 sections below. Two columns from `lg:` (content left, a 20 rem sidebar
 right, `+page.svelte`), one column on a phone with the sidebar after. The
 content column continues with **Your Songs** (every song the person may
-open across their accounts, last changed first, each under its project and,
-with several accounts, its account; `songEntries` in `+page.server.ts`;
+open across their accounts, last changed first, each under its project,
+its stage (`songStage`), its counts of ready stems and demos (`recentSongs`)
+and, with several accounts, its account; `songEntries` in `+page.server.ts`;
 "All songs" opens `/songs`, every song across accounts, sortable and
 filterable), **Your Sessions** (the same for recording sessions, latest
 day first, each under its kind, place and recording count; "All sessions"
