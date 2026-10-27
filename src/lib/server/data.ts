@@ -132,7 +132,12 @@ import { INVITATION_TTL_MS, type InviteRole } from "#lib/val/InvitationSchema.js
 import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "#lib/val/InviteCodeSchema.js";
 import type { BugStatus } from "#lib/val/BugReportSchema.js";
 import type { AccountStatus } from "#lib/val/AccountStatusSchema.js";
-import type { ShareGrant } from "#lib/server/viewAccess.js";
+import {
+	canViewProject,
+	isAccountAdmin,
+	type ShareGrant,
+	type Viewer,
+} from "#lib/server/viewAccess.js";
 import type { Note } from "#lib/audio/chords.js";
 import type { DashboardPinKind } from "#lib/val/DashboardPinSchema.js";
 import type {
@@ -10101,18 +10106,40 @@ export async function accountQuota(accountId: string) {
 	return { bytes, storageLimit: limits.storageBytes, memberLimit: limits.members };
 }
 
-/** How much the account holds, for the dashboard's tile and onboarding checklist: active projects and songs, sessions, ready session recordings and members. */
-export async function accountCounts(accountId: string) {
+/**
+ * How much the account holds, for the dashboard's tile and onboarding
+ * checklist: active projects and their active songs, sessions, ready
+ * session recordings and members. With a viewer, the projects and songs are the ones they may
+ * open (viewAccess.canViewProject): an admin's are the account's, a
+ * member's leave out the restricted projects they are not on, so the tile
+ * agrees with the lists.
+ */
+export async function accountCounts(accountId: string, who?: Viewer) {
 	const count = sql<number>`count(*)`;
+	const open =
+		who && !isAccountAdmin(who.accountRole) ? await openProjectIds(accountId, who) : null;
+	const projectsWhere = and(
+		eq(project.accountId, accountId),
+		eq(project.status, "active"),
+		open ? inArray(project.id, open) : undefined,
+	);
+	// A song counts while its project is active too (an archived project's songs leave the lists with it).
+	const songsWhere = and(
+		eq(song.accountId, accountId),
+		eq(song.status, "active"),
+		eq(project.status, "active"),
+		open ? inArray(song.projectId, open) : undefined,
+	);
+	const none = Promise.resolve([{ n: 0 }]);
 	const [[projects], [songs], [sessions], [recordings], [members]] = await Promise.all([
-		db
-			.select({ n: count })
-			.from(project)
-			.where(and(eq(project.accountId, accountId), eq(project.status, "active"))),
-		db
-			.select({ n: count })
-			.from(song)
-			.where(and(eq(song.accountId, accountId), eq(song.status, "active"))),
+		open?.length === 0 ? none : db.select({ n: count }).from(project).where(projectsWhere),
+		open?.length === 0
+			? none
+			: db
+					.select({ n: count })
+					.from(song)
+					.innerJoin(project, eq(project.id, song.projectId))
+					.where(songsWhere),
 		db.select({ n: count }).from(recordingSession).where(eq(recordingSession.accountId, accountId)),
 		db
 			.select({ n: count })
@@ -10127,6 +10154,15 @@ export async function accountCounts(accountId: string) {
 		recordings: Number(recordings?.n ?? 0),
 		members: Number(members?.n ?? 0),
 	};
+}
+
+/** The active projects of the account a person may open (viewAccess.canViewProject, with no share grants). */
+async function openProjectIds(accountId: string, who: Viewer): Promise<string[]> {
+	const rows = await db.query.project.findMany({
+		where: and(eq(project.accountId, accountId), eq(project.status, "active")),
+		columns: { id: true, isPrivate: true, isRestricted: true },
+	});
+	return rows.filter((p) => canViewProject(p, who, [])).map((p) => p.id);
 }
 
 /** The user's `n` newest ideas of one kind (ideas, loops), whichever account holds them: just enough to list and link (no takes, no URLs). */

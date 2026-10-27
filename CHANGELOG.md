@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.191.0] - 2026-10-27
+
+### Fixed
+
+- **Account tile counts match the lists.** A member's tile counted every active project and song in the account, including the restricted projects they are not on, so the number could exceed what Your Projects and Your Songs showed. `accountCounts` now takes the person as a viewer and counts what they may open (an admin's counts are the account's); a song counts only while its project is active, as in the lists.
+- **A pin needs a target the person may open.** The `setPin` command admitted any member of the target's account, so a crafted request could pin a restricted song or project its sender cannot open (the page already dropped such pins when listing). It now answers "not found" for a target the view rules refuse, like the target's own page; a session needs only membership.
+
+### Technical
+
+- **Dashboard loader tests** (`src/routes/dashboard/+page.server.test.ts`): the first unit test of a page's `load`, through the remote-function helpers (docs/testing.md "Browser tests"); the loader looks up project roles first and hands the viewer to the counts and the lists.
+
 ## [0.190.0] - 2026-10-27
 
 ### Added

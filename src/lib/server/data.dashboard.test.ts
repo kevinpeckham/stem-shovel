@@ -509,7 +509,7 @@ describe("accountQuota", () => {
 });
 
 describe("accountCounts", () => {
-	test("active projects and songs, sessions, ready recordings and members of the account only", async () => {
+	test("active projects and their active songs, sessions, ready recordings and members of the account only", async () => {
 		expect(await accountCounts(A)).toEqual({
 			projects: 3,
 			songs: 3,
@@ -523,6 +523,51 @@ describe("accountCounts", () => {
 			sessions: 1,
 			recordings: 1,
 			members: 1,
+		});
+	});
+	describe("with a viewer, the projects and songs they may open", () => {
+		beforeEach(() =>
+			reset({
+				project: [
+					project("p1", A, 1),
+					project("pr", A, 5, { isRestricted: true }),
+					project("gone", A, 9, { status: "archived", isRestricted: true }),
+				],
+				song: [
+					song("s1", A, "p1", 2),
+					song("sr", A, "pr", 4),
+					song("sr2", A, "pr", 6, { isPrivate: true }),
+					song("sg", A, "gone", 8),
+				],
+				accountMember: [{ accountId: A, userId: U, role: "member" }],
+			}),
+		);
+		test("a member's leave out the restricted projects they are not on", async () => {
+			expect(await accountCounts(A, { accountRole: "member", projectRoles: {} })).toMatchObject({
+				projects: 1,
+				songs: 1,
+			});
+		});
+		test("a member on the restricted project counts it and its songs", async () => {
+			expect(
+				await accountCounts(A, { accountRole: "member", projectRoles: { pr: "member" } }),
+			).toMatchObject({ projects: 2, songs: 3 });
+		});
+		test("an admin's are the account's", async () => {
+			expect(await accountCounts(A, { accountRole: "admin", projectRoles: {} })).toMatchObject({
+				projects: 2,
+				songs: 3,
+			});
+		});
+		test("zero when every project is restricted and they are on none", async () => {
+			reset({
+				project: [project("pr", A, 5, { isRestricted: true })],
+				song: [song("sr", A, "pr", 4)],
+			});
+			expect(await accountCounts(A, { accountRole: "member", projectRoles: {} })).toMatchObject({
+				projects: 0,
+				songs: 0,
+			});
 		});
 	});
 });

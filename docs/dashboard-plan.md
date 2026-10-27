@@ -41,7 +41,9 @@ project roles, so a restricted project they are not on stays out
 ideas without presigning take URLs; ideas link to the Idea Recorder since
 no page opens one idea by address; "dashboard" is a reserved short-link
 slug. Counts: `accountCounts` (projects, songs, ready recordings,
-members). The sign-up page still sends an already signed-in visitor to
+members; since v0.191.0 it takes the person as a viewer, so a member's
+tile leaves out the restricted projects they are not on, and their
+songs, as the lists do). The sign-up page still sends an already signed-in visitor to
 `/`.
 
 **Laid out again 2026-10-27 (Kevin):** the first thing on the page is a
@@ -207,7 +209,9 @@ project songs.
   Songs and Your Sessions row (`DashboardEntry.pin`, the toggle in
   `DashboardIdeaList`) writes `dashboard_pin` through the `setPin`
   command (`remote/dashboard.remote.ts`: the target's account must be
-  one the person belongs to); a **Pinned** section above Activity lists
+  one the person belongs to, and the target one they may open by the
+  view rules, else "not found" like its page; v0.191.0); a **Pinned**
+  section above Activity lists
   them newest pin first (`listDashboardPins`, filtered by what the person
   may still open), with the same toggle to unpin, and the page moves an
   entry in or out without a reload. Pins are the person's, never the

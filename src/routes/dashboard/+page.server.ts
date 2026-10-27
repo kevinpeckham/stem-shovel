@@ -49,12 +49,14 @@ import type { PageServerLoad } from "./$types";
 /** One account: its tile's counts and the person's role; the newest projects, songs and sessions they may open, for the Your Projects, Your Songs and Your Sessions sections; its chats with messages they have not seen; what happened in it lately and what is still in progress. */
 async function dashboardAccount(m: Membership, userId: string, since: Date) {
 	const admin = m.role === "owner" || m.role === "admin";
+	// The person as viewAccess.ts sees them, first: the counts and the lists both go by what they may open.
+	const projectRoles = await projectRolesOf(m.accountId, userId);
+	const who: Viewer = { accountRole: m.role, projectRoles };
 	const [
 		counts,
 		sessions,
 		projectRows,
 		songRows,
-		projectRoles,
 		songChats,
 		sessionChats,
 		quota,
@@ -64,11 +66,10 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		invites,
 		nudges,
 	] = await Promise.all([
-		accountCounts(m.accountId),
+		accountCounts(m.accountId, who),
 		recentRecordingSessions(m.accountId, DASHBOARD_LIST_CAP),
 		recentProjects(m.accountId, DASHBOARD_LIST_CAP),
 		recentSongs(m.accountId, DASHBOARD_LIST_CAP),
-		projectRolesOf(m.accountId, userId),
 		unreadSongChats(m.accountId, m.slug, userId),
 		unreadSessionChats(m.accountId, m.slug, userId),
 		// The plan's storage and seats are an owner's or admin's concern (docs/billing.md); a member's tile goes without.
@@ -80,7 +81,6 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		admin ? openInvites(m.accountId) : null,
 		accountNudges(m.accountId, m.slug, new Date(Date.now() - DASHBOARD_STALE_DAYS * DAY)),
 	]);
-	const who: Viewer = { accountRole: m.role, projectRoles };
 	const projects = projectRows.filter((p) => canViewProject(p, who, []));
 	const songs = songRows.filter((s) => s.project.status === "active" && canViewSong(s, who, []));
 	return {

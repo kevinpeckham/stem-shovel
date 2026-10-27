@@ -18,8 +18,13 @@ through the dev build's `window.__studio`, `__looper`, `__drums`,
 `__piano`, `__metronome` and `__inputs` hooks, drive the device buttons by
 their labels, and delete what they made through the app (the Studio's songs,
 the recorder's idea). They are the only tests that run the Web Audio
-engines and the pages, so coverage of `src/lib/audio` and `src/routes` lives
-here, not in Vitest. One worker, as the specs share the bot's account; traces
+engines and the pages, so coverage of `src/lib/audio` and the pages' markup
+lives here, not in Vitest (a page's `load` can still have a unit test
+beside it, as `src/routes/dashboard/+page.server.test.ts` does: the
+helpers in `tests/helpers/fakeServerModules.ts` and
+`tests/helpers/fakeRequestEvent.ts` give it a mocked data layer and
+`locals` in the shape the hooks produce, and the loader is called with
+`{ locals, url }` directly). One worker, as the specs share the bot's account; traces
 of failures land in `.screenshots/e2e/`. Not part of CI, which has neither
 a dev server nor the token.
 
