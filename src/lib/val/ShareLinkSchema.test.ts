@@ -11,6 +11,7 @@ describe("ShareLinkCreateSchema", () => {
 			mixId: "",
 			projectId: "",
 			recordingId: "",
+			sessionId: "",
 			note: "",
 			maxUses: null,
 			expiresDays: 0,
@@ -18,6 +19,12 @@ describe("ShareLinkCreateSchema", () => {
 		// A session recording's link (docs/uploads-and-blob.md, "Sessions") is the third kind, one at a time.
 		expect(v.parse(ShareLinkCreateSchema, { recordingId: id })).toMatchObject({ recordingId: id });
 		expect(v.safeParse(ShareLinkCreateSchema, { recordingId: id, songId: id }).success).toBe(false);
+		// A whole session's link is the fourth.
+		expect(v.parse(ShareLinkCreateSchema, { sessionId: id })).toMatchObject({ sessionId: id });
+		expect(v.safeParse(ShareLinkCreateSchema, { sessionId: id, recordingId: id }).success).toBe(
+			false,
+		);
+		expect(v.safeParse(ShareLinkCreateSchema, { sessionId: "not an id!" }).success).toBe(false);
 		expect(
 			v.parse(ShareLinkCreateSchema, { projectId: id, maxUses: "3", expiresDays: "30" }),
 		).toMatchObject({ projectId: id, maxUses: 3, expiresDays: 30 });

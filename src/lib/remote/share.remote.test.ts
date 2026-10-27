@@ -125,6 +125,32 @@ describe("createShareLink", () => {
 			call(share.createShareLink, { recordingId: RECORDING, songId: SONG }),
 		).rejects.toBeDefined();
 	});
+	it('a link for a whole session (docs/uploads-and-blob.md, "Sessions"): the session\'s account, the session recorded', async () => {
+		const SESSION = fakeId("ses-one");
+		givenRow("recordingSession", { accountId: ACCOUNT });
+		asOutsider();
+		await expect(call(share.createShareLink, { sessionId: SESSION })).rejects.toMatchObject(
+			httpError(404),
+		);
+		asViewerOf(ACCOUNT);
+		await expect(call(share.createShareLink, { sessionId: SESSION })).rejects.toMatchObject(
+			httpError(404),
+		);
+		expect(data.createShareLink).not.toHaveBeenCalled();
+		asEditorOf(ACCOUNT);
+		await expect(call(share.createShareLink, { sessionId: SESSION })).resolves.toEqual({
+			code: "abc",
+		});
+		expect(data.createShareLink).toHaveBeenLastCalledWith(
+			ACCOUNT,
+			USER,
+			{ sessionId: SESSION },
+			{ note: "", maxUses: null, expiresDays: 0 },
+		);
+		await expect(
+			call(share.createShareLink, { sessionId: SESSION, recordingId: fakeId("rec-one") }),
+		).rejects.toBeDefined();
+	});
 	it("an editor makes one for a song, or a project, under the account and as themselves", async () => {
 		asEditorOf(ACCOUNT);
 		await expect(call(share.createShareLink, { songId: SONG })).resolves.toEqual({ code: "abc" });

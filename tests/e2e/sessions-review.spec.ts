@@ -32,6 +32,8 @@ test("comments on a recording's waveform, chats about the session, and searches"
 	test.setTimeout(300_000);
 	await open(page, PAGE);
 	await deleteEverySession(page);
+	// The upload form lives in the toolbar's "Add a recording" panel; picking files closes it.
+	await page.getByRole("button", { name: "Add a recording" }).click();
 	await page.getByRole("button", { name: "Practice", exact: true }).first().click();
 	await page.getByLabel("Place").fill("The Garage");
 	await page.locator('input[type="file"]').setInputFiles(["static/stems/keys.wav"]);
@@ -148,6 +150,41 @@ test("comments on a recording's waveform, chats about the session, and searches"
 	);
 	expect(res?.status()).toBe(404);
 	await visitor.close();
+
+	// A viewing link for the whole session: made from the session's menu, it opens the session's own page
+	// with every recording, and from there each recording's page; without the code the page is not there.
+	await session
+		.getByRole("button", { name: /actions$/ })
+		.first()
+		.click();
+	await page.getByRole("button", { name: /^Share…/ }).click();
+	await expect(sharePopover).toBeVisible();
+	await expect(sharePopover).toContainText("every recording of this session");
+	await sharePopover.getByRole("button", { name: "New link" }).click();
+	const shownSession = (await sharePopover.locator("code").first().textContent())?.trim() ?? "";
+	const sessionCode = shownSession.slice(0, 4) + shownSession.slice(5, 9) + shownSession.slice(10);
+	expect(sessionCode).toHaveLength(12);
+	await sharePopover.getByRole("button", { name: "Close" }).click();
+	const sessionId = await session.getAttribute("data-session");
+	const visitor2 = await page.context().browser()!.newContext();
+	const guest2 = await visitor2.newPage();
+	await guest2.goto(`/s/${sessionCode}`);
+	await expect(guest2).toHaveURL(new RegExp(`/mmkk/sessions/s/${sessionId}`));
+	await expect(guest2.locator("[data-session-title]")).toContainText("The Garage");
+	await expect(guest2.getByRole("button", { name: "Download MP3s" })).toBeVisible();
+	await guest2.getByRole("link", { name: "keys" }).click();
+	await expect(guest2.locator("[data-recording-title]")).toHaveText("keys");
+	await expect(guest2.getByRole("link", { name: /^← / })).toHaveAttribute(
+		"href",
+		`/mmkk/sessions/s/${sessionId}`,
+	);
+	const stranger2 = await visitor2.newPage();
+	await visitor2.clearCookies();
+	const res2 = await stranger2.goto(
+		page.url().replace(/\/mmkk\/sessions.*$/, "") + `/mmkk/sessions/s/${sessionId}`,
+	);
+	expect(res2?.status()).toBe(404);
+	await visitor2.close();
 
 	await deleteEverySession(page);
 	await expect(page.locator("[data-session]")).toHaveCount(0);

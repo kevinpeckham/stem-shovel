@@ -116,7 +116,7 @@ erDiagram
   Written by system admins with the shared `MarkdownDocEditor`.
 - Projects and songs carry `no_ai`; songs also hold the transcribed notes
   (`notes_json`, `notes_key`, `notes_done_seconds`, `notes_started_at`).
-- **share_link** — a viewing code for one private song or one project
+- **share_link** — a viewing code for one private song, one project, one session or one session recording
   (exactly one of `song_id` / `project_id`): note, creator, optional
   `expires_at` and `max_uses`, `uses`, `revoked_at`. Projects and songs carry
   `is_private`.
@@ -565,15 +565,19 @@ Deleting the song or the user removes the rows (`cascade.ts`).
 
 ### share_link
 
-| column     | type                      | notes                               |
-| ---------- | ------------------------- | ----------------------------------- |
-| id         | text PK                   |                                     |
-| song_id    | text FK → song (cascade)  |                                     |
-| token      | text not null unique      | nanoid(32); the URL is `/s/<token>` |
-| expires_at | timestamp_ms null         | null = never                        |
-| revoked_at | timestamp_ms null         |                                     |
-| created_by | text FK → user (set null) |                                     |
-| created_at | timestamp_ms              |                                     |
+| column       | type                          | notes                               |
+| ------------ | ----------------------------- | ----------------------------------- |
+| id           | text PK                       |                                     |
+| song_id      | text FK → song (cascade)      | exactly one of the four targets     |
+| project_id   | text FK → project             | opens every song in it              |
+| recording_id | text FK → session_recording   | one session recording's page        |
+| session_id   | text FK → recording_session   | a whole session's page (0103)       |
+| mix_id       | text FK → song_mix (set null) | a song link that opens on a mix     |
+| token        | text not null unique          | nanoid(32); the URL is `/s/<token>` |
+| expires_at   | timestamp_ms null             | null = never                        |
+| revoked_at   | timestamp_ms null             |                                     |
+| created_by   | text FK → user (set null)     |                                     |
+| created_at   | timestamp_ms                  |                                     |
 
 ### short_link
 

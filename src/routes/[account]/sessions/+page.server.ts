@@ -4,6 +4,7 @@ import {
 	listRecordingSessions,
 	listRecordingShareLinks,
 	listSessionComments,
+	listSessionShareLinks,
 	sessionChatSummaryOf,
 	sessionsWantingPeaks,
 	sessionsWantingPlayback,
@@ -39,7 +40,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	scheduleSessionPeaks(sessionsWantingPeaks(recordings));
 	// The octave-band spectrum behind the player's Auto EQ (docs/uploads-and-blob.md, "Auto EQ").
 	scheduleSessionSpectrum(sessionsWantingSpectrum(recordings));
-	const [comments, chat, songs, shareLinks] = await Promise.all([
+	const [comments, chat, songs, shareLinks, sessionShareLinks] = await Promise.all([
 		listSessionComments(account.id),
 		sessionChatSummaryOf(
 			sessions.map((s) => s.id),
@@ -49,6 +50,8 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		listAccountSongs(account.id, account.slug),
 		// Viewing links for the recordings (docs/uploads-and-blob.md, "Sessions"), keyed by recording on the page.
 		listRecordingShareLinks(account.id),
+		// And for whole sessions, keyed by session.
+		listSessionShareLinks(account.id),
 	]);
 	return {
 		sessions,
@@ -56,6 +59,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		chat: Object.fromEntries(chat),
 		songs,
 		shareLinks,
+		sessionShareLinks,
 		/** The title and the words under it, edited in the app by a system admin (docs/page-copy.md). */
 		copy: await pageCopy("sessions-page", copyFallback, locals),
 	};

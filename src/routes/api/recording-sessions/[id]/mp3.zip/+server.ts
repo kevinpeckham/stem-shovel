@@ -1,6 +1,8 @@
-import { accountOfRecordingSession, memberOf } from "#lib/server/access.js";
+import { accountOfRecordingSession, viewerOf } from "#lib/server/access.js";
 import { readBlob } from "#lib/server/blob.js";
-import { sessionMp3s } from "#lib/server/data.js";
+import { openShareLinks, sessionMp3s } from "#lib/server/data.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
+import { canViewSession, shareCodesFrom } from "#lib/server/viewAccess.js";
 import { attachmentDisposition } from "#lib/utils/attachmentDisposition.js";
 import { SESSION_DEVICE_LABELS } from "#lib/constants/sessionRecordings.js";
 import { recordingDownloadName } from "#lib/utils/recordingDownloadName.js";
@@ -16,13 +18,24 @@ export const config: Config = { maxDuration: 300 };
 /**
  * A session's recordings as MP3s in one zip (docs/uploads-and-blob.md,
  * "Sessions"), numbered in the order they were made ("01 Set one.mp3"),
- * named after the session; a member of the account. Stored, not
- * compressed (MP3 does not shrink), and streamed file by file so an
- * evening of recordings never sits in memory at once. 404 until at least
- * one MP3 has rendered.
+ * named after the session: a member of the account, or a visitor holding
+ * the session's share link (`?share=` or the cookie), rate-limited per
+ * caller; anyone else gets a 404. Stored, not compressed (MP3 does not
+ * shrink), and streamed file by file so an evening of recordings never
+ * sits in memory at once. 404 until at least one MP3 has rendered.
  */
-export const GET: RequestHandler = async ({ params, locals }) => {
-	const { accountId } = await memberOf(locals, accountOfRecordingSession, params.id);
+export const GET: RequestHandler = async ({ params, url, locals, cookies, getClientAddress }) => {
+	const accountId = await accountOfRecordingSession(params.id);
+	if (!accountId) error(404, "Not found");
+	const who = viewerOf(locals, accountId, {});
+	const grants = await openShareLinks(shareCodesFrom(url, cookies));
+	if (!canViewSession({ id: params.id }, who, grants)) error(404, "Not found");
+	// A visitor's zip reads every MP3 from Blob; bound it per caller.
+	if (
+		who.accountRole === null &&
+		(await rateLimited(`sessionzip:${locals.user?.id ?? getClientAddress()}`, 10, HOUR))
+	)
+		error(429, "Too many downloads in one hour; try again later.");
 	const found = await sessionMp3s(accountId, params.id);
 	if (!found) error(404, "Not found");
 	const { session, recordings } = found;

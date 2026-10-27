@@ -8,6 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.175.0] - 2026-10-27
+
+### Added
+
+- **Viewing links for a whole session.** A session's menu on the Sessions page has "Share…" (and "Open its page"): a link opens the session on a page of its own, `/<account>/sessions/s/<id>`, with every recording in order, the player, waveform, loop and EQ, each recording's downloads and the MP3s in one zip; from it each recording's own page opens too, with a way back. Links expire, cap their uses and revoke as a recording's do. Sessions stay members-only otherwise.
+
+### Changed
+
+- **The session's Chat button says Chat**, like Play all and Download MP3s beside it.
+
+### Technical
+
+- `share_link.session_id` (migration 0103); `canViewSession`, `canViewRecording` takes the recording's `sessionId`; `recordingSessionPage`, `listSessionShareLinks`; the zip endpoint takes a session's share code and rate-limits a visitor; deleting a session or a recording now removes its share links (Turso enforces no foreign keys; an older gap).
+
 ## [0.174.0] - 2026-10-26
 
 ### Added

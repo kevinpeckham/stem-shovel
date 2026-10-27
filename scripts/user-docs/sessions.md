@@ -34,7 +34,7 @@ The search field beside the Practice and Show filter narrows the list as you typ
 
 ## Sharing one recording
 
-Sessions are for members, but one recording can go further. Choose **Share…** in a recording's menu and make a viewing link. Whoever opens it hears that recording on a page of its own, with the waveform and the downloads, and nothing else of the band's sessions. Links can expire, be limited to a number of uses, and be revoked; **Open its page** shows you the page they land on. To open a recording to everyone, tick **Public** in **Edit recording**: anyone with its page's address can then listen and download it, no link needed, and the row shows a Public tag. Recordings are private until you do; untick it to close the page again.
+Sessions are for members, but a session or one recording can go further. Choose **Share…** in a session's menu and make a viewing link: whoever opens it gets the whole session on a page of its own, every recording in order with the player, the waveform, the loop and the EQ, each recording's downloads and all the MP3s in one zip, and nothing else of the band's sessions; **Open its page** in the same menu shows you that page. For one recording alone, choose **Share…** in the recording's menu instead: that link opens just that recording on a page of its own, with the waveform and the downloads. Links can expire, be limited to a number of uses, and be revoked; **Open its page** shows you the page they land on. To open a recording to everyone, tick **Public** in **Edit recording**: anyone with its page's address can then listen and download it, no link needed, and the row shows a Public tag. Recordings are private until you do; untick it to close the page again.
 
 ## Sorting recordings into sessions
 

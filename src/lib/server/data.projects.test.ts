@@ -7,6 +7,7 @@ const {
 	createProject,
 	createShareLink,
 	listProjectPeople,
+	listSessionShareLinks,
 	listShareLinks,
 	openShareLinks,
 	permalinkTarget,
@@ -354,6 +355,25 @@ describe("listShareLinks, revokeShareLink, openShareLinks", () => {
 		]);
 		expect((await listShareLinks({ projectId: "p1" })).map((l) => l.id)).toEqual(["l5"]);
 	});
+	test("a session's links, and every session link of the account keyed by session", async () => {
+		reset({
+			user: [u1],
+			shareLink: [
+				link("l1", { songId: null, sessionId: "ses1", createdAt: at(1) }),
+				link("l2", { songId: null, sessionId: "ses2", createdAt: at(2) }),
+				link("l3", { songId: null, sessionId: "ses3", accountId: "a2" }),
+				link("l4"),
+			],
+		});
+		expect((await listShareLinks({ sessionId: "ses1" })).map((l) => l.id)).toEqual(["l1"]);
+		expect((await listSessionShareLinks("a1")).map((l) => [l.id, l.sessionId, l.state])).toEqual([
+			["l2", "ses2", "open"],
+			["l1", "ses1", "open"],
+		]);
+		expect((await openShareLinks([link("l1").code])).map((g) => [g.code, g.sessionId])).toEqual([
+			[link("l1").code, "ses1"],
+		]);
+	});
 	test("revoking is scoped to the account", async () => {
 		expect(await revokeShareLink("a1", "l6")).toBe(false);
 		expect(await revokeShareLink("a1", "l1")).toBe(true);
@@ -395,6 +415,21 @@ describe("permalinkTarget, shareLinkTarget", () => {
 		expect(await shareLinkTarget(link("l2").code)).toBe("/band/projects/album");
 		expect(await shareLinkTarget(link("l3").code)).toBeNull();
 		expect(await shareLinkTarget("NOPE")).toBeNull();
+	});
+	test("a session's or a session recording's page (docs/uploads-and-blob.md, \"Sessions\")", async () => {
+		reset({
+			account: [a1],
+			recordingSession: [{ id: "ses1", accountId: "a1" }],
+			sessionRecording: [{ id: "rec1", accountId: "a1", sessionId: "ses1" }],
+			shareLink: [
+				link("l1", { songId: null, sessionId: "ses1" }),
+				link("l2", { songId: null, recordingId: "rec1" }),
+				link("l3", { songId: null, sessionId: "gone" }),
+			],
+		});
+		expect(await shareLinkTarget(link("l1").code)).toBe("/band/sessions/s/ses1");
+		expect(await shareLinkTarget(link("l2").code)).toBe("/band/sessions/r/rec1");
+		expect(await shareLinkTarget(link("l3").code)).toBeNull();
 	});
 });
 

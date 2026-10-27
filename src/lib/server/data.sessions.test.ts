@@ -1,7 +1,7 @@
 import { MAX_SESSIONS_PER_ACCOUNT } from "#lib/constants/sessionRecordings.js";
 import { DEFAULT_PLAYBACK_EQ } from "#lib/val/PlaybackEqSchema.js";
 import { beforeEach, describe, expect, test } from "vite-plus/test";
-import { blob, fake, reset } from "../../../tests/helpers/fakeDataLayer";
+import { blob, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
 const {
 	claimSessionPlayback,
@@ -15,6 +15,7 @@ const {
 	listRecordingSessions,
 	markSessionReady,
 	parseSessionEq,
+	recordingSessionPage,
 	recordSessionUrl,
 	reservedPathname,
 	sessionMp3s,
@@ -352,6 +353,8 @@ describe("sessions: create, update, delete", () => {
 			"https://blob/r4.m4a",
 			"",
 		]);
+		// The comments, chat and share links go through the cascade, the recordings' and the session's.
+		expect(cascade.deleteSessionReviewRows).toHaveBeenCalledWith(["sh1"], ["r3", "r4"]);
 	});
 });
 
@@ -399,6 +402,28 @@ describe("recordings: update and delete", () => {
 		expect(await deleteSessionRecording(A, "r3")).toBe(true);
 		expect(recordings().some((r) => r.id === "r3")).toBe(false);
 		expect(blob.deleteBlobs).toHaveBeenCalledWith(["https://blob/r3.m4a", "https://blob/r3.mp3"]);
+		// Its comments and its share links go through the cascade.
+		expect(cascade.deleteSessionReviewRows).toHaveBeenCalledWith([], ["r3"]);
+	});
+});
+
+describe("recordingSessionPage", () => {
+	test("the account's session with its ready recordings in order; null for another account's", async () => {
+		expect(await recordingSessionPage(B, "p1")).toBeNull();
+		expect(await recordingSessionPage(A, "nope")).toBeNull();
+		const page = await recordingSessionPage(A, "p1");
+		expect(page?.session).toMatchObject({
+			id: "p1",
+			kind: "practice",
+			place: "The Room",
+			eq: null,
+		});
+		expect(page?.recordings.map((r) => r.id)).toEqual(["r2", "r1"]);
+		expect(page?.recordings[0]).toMatchObject({ title: "r2", uploader: "Kevin", isPublic: false });
+		expect((await recordingSessionPage(A, "sh1"))?.recordings.map((r) => r.id)).toEqual(["r3"]);
+	});
+	test("the recording page names its session, for the session's link", async () => {
+		expect(await sessionRecordingPage(A, "r1")).toMatchObject({ sessionId: "p1" });
 	});
 });
 

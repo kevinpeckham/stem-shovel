@@ -85,16 +85,21 @@ What protects what, and where each rule lives. The first security pass ran on
   between a project and its own songs.
 - **Session downloads** (`GET /api/recording-sessions/[id]/mp3.zip`,
   `GET /api/sessions/[id]/eq.mp3`; docs/uploads-and-blob.md, "Sessions")
-  are for a member of the account (`memberOf`), as the Sessions page is;
-  the EQ endpoint's query carries only gains and centers, clamped.
+  are for a member of the account, as the Sessions page is; the zip also
+  answers a visitor holding the session's viewing link (`canViewSession`
+  with the codes from `?share=` or the cookie, rate-limited to 10 an
+  hour), 404 otherwise; the EQ endpoint (`memberOf`) carries only gains
+  and centers in its query, clamped.
 - **Session recordings are private by default** (docs/uploads-and-blob.md,
   "Sessions"): the Sessions page is members-only, a recording's own page
-  opens for a member, a holder of its viewing link, or anyone when a
-  member marked that one recording public (`session_recording.is_public`,
-  `canViewRecording` in viewAccess.ts; 404 otherwise). Public is per
-  recording, never per session or account, and it opens only the
-  recording's page: the files reach the visitor through the presigned
-  URLs the page presents, as for a link holder.
+  opens for a member, a holder of its viewing link or of its whole
+  session's, or anyone when a member marked that one recording public
+  (`session_recording.is_public`, `canViewRecording` in viewAccess.ts; 404
+  otherwise), and a session's own page for a member or a holder of the
+  session's link (`share_link.session_id`, `canViewSession`; 404
+  otherwise). Public is per recording, never per session or account, and
+  it opens only the recording's page: the files reach the visitor through
+  the presigned URLs the page presents, as for a link holder.
 - **Downloads** (`GET /api/songs/[id]/documentation.pdf`,
   `GET /api/projects/[id]/documentation.zip`, `GET /api/projects/[id]/charts.zip`;
   docs/uploads-and-blob.md, "Documentation downloads") are open to whoever

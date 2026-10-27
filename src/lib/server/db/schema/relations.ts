@@ -327,6 +327,10 @@ export const shareLinkRelations = relations(shareLink, ({ one }) => ({
 		fields: [shareLink.recordingId],
 		references: [sessionRecording.id],
 	}),
+	session: one(recordingSession, {
+		fields: [shareLink.sessionId],
+		references: [recordingSession.id],
+	}),
 	creator: one(user, { fields: [shareLink.createdBy], references: [user.id] }),
 }));
 

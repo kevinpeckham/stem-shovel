@@ -563,6 +563,34 @@ recording and nothing else of the account's sessions. The Sessions page's row me
 its page" and "Share…" (editors: one popover with `ShareLinks` for the
 recording, the links loaded for the page by `listRecordingShareLinks`);
 the recording's page has Share too.
+
+**A session's own page and its viewing links** (Kevin, 2026-10-27: "a
+share link option … for the entire session"). A whole session has a page
+too, `/<account>/sessions/s/<id>` (`recordingSessionPage`: the session
+with its ready recordings in order, `recordingPageFields` shared with the
+recording page): the name, kind, day, place and notes, the waveform of the
+recording playing (or the first), a `SessionPlayer` with every recording
+queued, Play all, Download MP3s (the zip) and a row per recording
+(`SessionPageRecording.svelte`: play/pause, the title linking to the
+recording's page, input, length, size, the MP3 and the original). A link
+for the session is `share_link.session_id` (migration 0103;
+`ShareLinkCreateSchema` takes exactly one of a song, a project, a session
+or a recording; `createShareLink` checks membership through
+`accountOfRecordingSession`; `/s/<code>` resolves to the session page).
+`canViewSession` lets in a member or a holder of the session's code, and
+nobody else (404); a public recording alone does not open its session.
+The session's code also opens each of its recordings' pages
+(`canViewRecording` takes `sessionId`), where a visitor through it gets a
+"← <session>" link back in place of "← Sessions". The zip endpoint
+(`api/recording-sessions/[id]/mp3.zip`) answers a member or a holder of
+the session's code (`?share=` or the cookie, as the mix endpoint does),
+rate-limited for a visitor to 10 an hour, 404 otherwise. On the Sessions
+page the session's menu has "Open its page" and "Share…" ("(linked)"
+while an open link exists), sharing the recording popover (`sharing` is
+a recording or a session; `listSessionShareLinks` loads the session
+links); the session page has Share too. Deleting a session removes its
+links and its recordings' (`deleteSessionReviewRows`), and deleting a
+recording removes that recording's: Turso enforces no foreign keys.
 `sessions.remote.ts`: `createSession` (a second session of a day, to
 move recordings into), `updateSession`, `deleteSession` (its recordings
 and their files go), `updateRecording` (title, day, notes and the session,

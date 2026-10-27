@@ -3091,7 +3091,13 @@ export async function setSongPrivacy(accountId: string, id: string, isPrivate: b
 export async function createShareLink(
 	accountId: string,
 	createdBy: string,
-	target: { songId?: string; projectId?: string; mixId?: string; recordingId?: string },
+	target: {
+		songId?: string;
+		projectId?: string;
+		mixId?: string;
+		recordingId?: string;
+		sessionId?: string;
+	},
 	opts: { note: string; maxUses: number | null; expiresDays: number },
 ) {
 	const [row] = await db
@@ -3102,6 +3108,7 @@ export async function createShareLink(
 			projectId: target.projectId ?? null,
 			mixId: target.mixId ?? null,
 			recordingId: target.recordingId ?? null,
+			sessionId: target.sessionId ?? null,
 			code: newCode(),
 			note: opts.note,
 			createdBy,
@@ -3121,17 +3128,23 @@ function shareLinkState(r: ShareLinkRow) {
 	return "open" as const;
 }
 
-/** The links made for one song, one project or one session recording, newest first, with whether each still works. */
-export async function listShareLinks(
-	target: { songId: string } | { projectId: string } | { recordingId: string },
-) {
+type ShareLinkTarget =
+	| { songId: string }
+	| { projectId: string }
+	| { recordingId: string }
+	| { sessionId: string };
+
+function shareLinkWhere(target: ShareLinkTarget) {
+	if ("songId" in target) return eq(shareLink.songId, target.songId);
+	if ("recordingId" in target) return eq(shareLink.recordingId, target.recordingId);
+	if ("sessionId" in target) return eq(shareLink.sessionId, target.sessionId);
+	return eq(shareLink.projectId, target.projectId);
+}
+
+/** The links made for one song, one project, one session or one session recording, newest first, with whether each still works. */
+export async function listShareLinks(target: ShareLinkTarget) {
 	const rows = await db.query.shareLink.findMany({
-		where:
-			"songId" in target
-				? eq(shareLink.songId, target.songId)
-				: "recordingId" in target
-					? eq(shareLink.recordingId, target.recordingId)
-					: eq(shareLink.projectId, target.projectId),
+		where: shareLinkWhere(target),
 		orderBy: [desc(shareLink.createdAt)],
 		with: { creator: { columns: { name: true } } },
 	});
@@ -3148,6 +3161,20 @@ export async function listRecordingShareLinks(accountId: string) {
 	return rows.map((r) => ({
 		...r,
 		recordingId: r.recordingId as string,
+		state: shareLinkState(r),
+	}));
+}
+
+/** Every link made for the account's sessions as a whole (the Sessions page keys them by session), newest first. */
+export async function listSessionShareLinks(accountId: string) {
+	const rows = await db.query.shareLink.findMany({
+		where: and(eq(shareLink.accountId, accountId), isNotNull(shareLink.sessionId)),
+		orderBy: [desc(shareLink.createdAt)],
+		with: { creator: { columns: { name: true } } },
+	});
+	return rows.map((r) => ({
+		...r,
+		sessionId: r.sessionId as string,
 		state: shareLinkState(r),
 	}));
 }
@@ -3172,6 +3199,7 @@ export async function openShareLinks(codes: string[]): Promise<ShareGrant[]> {
 			projectId: r.projectId,
 			songId: r.songId,
 			recordingId: r.recordingId,
+			sessionId: r.sessionId,
 		}));
 }
 
@@ -3202,16 +3230,12 @@ export async function permalinkTarget(kind: PermalinkKind, id: string): Promise<
 	return a ? `/${a.slug}` : null;
 }
 
-/** The current page of the song or project a code was made for (`/s/<code>`), or null when no such code. */
-/** The page a share link opens: the song's or the project's current address, or a mix's page (docs/mixes.md). */
-export async function shareLinkTarget(code: string): Promise<string | null> {
-	const link = await db.query.shareLink.findFirst({
-		where: eq(shareLink.code, code),
-		columns: { songId: true, projectId: true, mixId: true, recordingId: true },
-	});
-	if (!link) return null;
+/** A session recording's own page, or a whole session's (docs/uploads-and-blob.md, "Sessions"), under the account. */
+async function sessionShareTarget(link: {
+	recordingId: string | null;
+	sessionId: string | null;
+}): Promise<string | null> {
 	if (link.recordingId) {
-		// A session recording's own page (docs/uploads-and-blob.md, "Sessions"), under the account.
 		const r = await db.query.sessionRecording.findFirst({
 			where: eq(sessionRecording.id, link.recordingId),
 			columns: { id: true },
@@ -3219,6 +3243,23 @@ export async function shareLinkTarget(code: string): Promise<string | null> {
 		});
 		return r ? `/${r.account.slug}/sessions/r/${r.id}` : null;
 	}
+	if (!link.sessionId) return null;
+	const s = await db.query.recordingSession.findFirst({
+		where: eq(recordingSession.id, link.sessionId),
+		columns: { id: true },
+		with: { account: { columns: { slug: true } } },
+	});
+	return s ? `/${s.account.slug}/sessions/s/${s.id}` : null;
+}
+
+/** The page a share link opens (`/s/<code>`): the song's or the project's current address, a mix's page (docs/mixes.md), a session's or a session recording's; null when no such code. */
+export async function shareLinkTarget(code: string): Promise<string | null> {
+	const link = await db.query.shareLink.findFirst({
+		where: eq(shareLink.code, code),
+		columns: { songId: true, projectId: true, mixId: true, recordingId: true, sessionId: true },
+	});
+	if (!link) return null;
+	if (link.recordingId || link.sessionId) return sessionShareTarget(link);
 	if (link.songId) {
 		const s = await db.query.song.findFirst({
 			where: eq(song.id, link.songId),
@@ -4163,7 +4204,8 @@ export async function deleteSessionRecording(accountId: string, recordingId: str
 		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)))
 		.returning({ url: sessionRecording.url, playbackUrl: sessionRecording.playbackUrl });
 	if (!row) return false;
-	await db.delete(sessionComment).where(eq(sessionComment.recordingId, recordingId));
+	// Its comments and its share links (src/lib/server/cascade.ts).
+	await deleteSessionReviewRows([], [recordingId]);
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	return true;
 }
@@ -4194,6 +4236,27 @@ export async function sessionMp3s(accountId: string, sessionId: string) {
 	return { session, recordings: recordings.filter((r) => r.playbackUrl) };
 }
 
+/** What a recording's page and its session's page show of it. */
+function recordingPageFields(r: typeof sessionRecording.$inferSelect) {
+	return {
+		id: r.id,
+		title: r.title || r.filename,
+		filename: r.filename,
+		source: r.source,
+		device: r.device,
+		recordedOn: r.recordedOn,
+		notes: r.notes,
+		durationSeconds: r.durationSeconds,
+		peaks: r.peaks,
+		spectrum: r.spectrum,
+		url: r.url,
+		playbackUrl: r.playbackUrl,
+		playbackStatus: r.playbackStatus,
+		sizeBytes: r.sizeBytes,
+		isPublic: r.isPublic,
+	};
+}
+
 /**
  * One session recording for its own page (docs/uploads-and-blob.md,
  * "Sessions"): a member's, a visitor's through a share link, or anyone's
@@ -4216,21 +4279,8 @@ export async function sessionRecordingPage(accountId: string, recordingId: strin
 	});
 	if (!r) return null;
 	return {
-		id: r.id,
-		title: r.title || r.filename,
-		filename: r.filename,
-		source: r.source,
-		device: r.device,
-		recordedOn: r.recordedOn,
-		notes: r.notes,
-		durationSeconds: r.durationSeconds,
-		peaks: r.peaks,
-		spectrum: r.spectrum,
-		url: r.url,
-		playbackUrl: r.playbackUrl,
-		playbackStatus: r.playbackStatus,
-		sizeBytes: r.sizeBytes,
-		isPublic: r.isPublic,
+		...recordingPageFields(r),
+		sessionId: r.sessionId || null,
 		session: r.session
 			? {
 					id: r.session.id,
@@ -4239,6 +4289,44 @@ export async function sessionRecordingPage(accountId: string, recordingId: strin
 				}
 			: null,
 		uploader: r.uploader?.name ?? null,
+	};
+}
+
+/**
+ * A whole session for its own page (docs/uploads-and-blob.md, "Sessions"):
+ * a member's, or a visitor's through the session's share link. Its ready
+ * recordings in the order they were made; null when it is not the
+ * account's.
+ */
+export async function recordingSessionPage(accountId: string, sessionId: string) {
+	const s = await db.query.recordingSession.findFirst({
+		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
+		columns: {
+			id: true,
+			kind: true,
+			name: true,
+			startsOn: true,
+			place: true,
+			notes: true,
+			eq: true,
+		},
+	});
+	if (!s) return null;
+	const rows = await db.query.sessionRecording.findMany({
+		where: and(
+			eq(sessionRecording.accountId, accountId),
+			eq(sessionRecording.sessionId, sessionId),
+			eq(sessionRecording.status, "ready"),
+		),
+		orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
+		with: { uploader: { columns: { name: true } } },
+	});
+	return {
+		session: { ...s, eq: parseSessionEq(s.eq) },
+		recordings: rows.map((r) => ({
+			...recordingPageFields(r),
+			uploader: r.uploader?.name ?? null,
+		})),
 	};
 }
 

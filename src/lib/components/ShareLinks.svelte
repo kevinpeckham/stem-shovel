@@ -4,11 +4,13 @@
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import { formatInviteCode } from "#lib/utils/formatInviteCode.js";
+	import { shareTargetIds, type ShareTarget } from "#lib/utils/shareTargetIds.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { page } from "$app/state";
 
 	/**
-	 * Viewing links for one song or one project: the list any member sees in
+	 * Viewing links for one song, one project, one session or one session
+	 * recording: the list any member sees in
 	 * the share or settings popover, with a form to make one and a revoke
 	 * per row. A link is `/s/<code>`, which redirects to the page's current URL with `?share=<code>`.
 	 */
@@ -24,8 +26,8 @@
 		state: "open" | "revoked" | "expired" | "used up";
 	}
 	interface Props {
-		/** A song, with a mix of it (docs/mixes.md) when the links should open on that mix; a project; or one session recording. */
-		target: { songId: string; mixId?: string } | { projectId: string } | { recordingId: string };
+		/** A song, with a mix of it (docs/mixes.md) when the links should open on that mix; a project; a whole session; or one session recording. */
+		target: ShareTarget;
 		links: Link[];
 		isPrivate: boolean;
 	}
@@ -41,6 +43,8 @@
 			notify("Could not copy the link", { kind: "error" });
 		}
 	}
+	/** The form's id fields: the target's own set, the others "". */
+	const ids = $derived(shareTargetIds(target));
 	let open = $derived(links.filter((l) => l.state === "open"));
 </script>
 
@@ -58,10 +62,11 @@
 		class="mt-2 flex flex-wrap items-end gap-3"
 		{...createShareLink.enhance(async ({ submit, element }) => {
 			// The form remembers its last values for the life of the page (CLAUDE.md): the target is set at submit, not left to the hidden fields' defaults, so a link made on a mix's page records the mix.
-			createShareLink.fields.songId.set("songId" in target ? target.songId : "");
-			createShareLink.fields.mixId.set("songId" in target ? (target.mixId ?? "") : "");
-			createShareLink.fields.projectId.set("projectId" in target ? target.projectId : "");
-			createShareLink.fields.recordingId.set("recordingId" in target ? target.recordingId : "");
+			createShareLink.fields.songId.set(ids.songId);
+			createShareLink.fields.mixId.set(ids.mixId);
+			createShareLink.fields.projectId.set(ids.projectId);
+			createShareLink.fields.recordingId.set(ids.recordingId);
+			createShareLink.fields.sessionId.set(ids.sessionId);
 			await submit();
 			if (createShareLink.result?.code) {
 				notify("Viewing link created");
@@ -70,14 +75,11 @@
 			}
 		})}
 	>
-		{#if "songId" in target}
-			<input {...createShareLink.fields.songId.as("hidden", target.songId)} />
-			<input {...createShareLink.fields.mixId.as("hidden", target.mixId ?? "")} />
-		{:else if "projectId" in target}
-			<input {...createShareLink.fields.projectId.as("hidden", target.projectId)} />
-		{:else}
-			<input {...createShareLink.fields.recordingId.as("hidden", target.recordingId)} />
-		{/if}
+		<input {...createShareLink.fields.songId.as("hidden", ids.songId)} />
+		<input {...createShareLink.fields.mixId.as("hidden", ids.mixId)} />
+		<input {...createShareLink.fields.projectId.as("hidden", ids.projectId)} />
+		<input {...createShareLink.fields.sessionId.as("hidden", ids.sessionId)} />
+		<input {...createShareLink.fields.recordingId.as("hidden", ids.recordingId)} />
 		<label class="block grow">
 			<span class="text-13px text-dim">Note (optional)</span>
 			<input

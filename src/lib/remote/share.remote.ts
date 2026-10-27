@@ -1,6 +1,7 @@
 import { form, getRequestEvent } from "$app/server";
 import {
 	accountOfProject,
+	accountOfRecordingSession,
 	accountOfSessionRecording,
 	accountOfSong,
 	memberOf,
@@ -19,6 +20,7 @@ import {
 	PrivacySchema,
 	ShareLinkCreateSchema,
 	ShareLinkIdSchema,
+	type ShareLinkCreate,
 } from "#lib/val/ShareLinkSchema.js";
 import { background } from "#lib/server/background.js";
 import { relocateProjectFiles, relocateSongFiles } from "#lib/server/relocate.js";
@@ -47,36 +49,41 @@ export const setSongPrivate = form(PrivacySchema, async ({ id, isPrivate }) => {
 	return { isPrivate: isPrivate === "true" };
 });
 
-/** Any member makes a viewing link for a song, a project or a session recording of their account. */
+type ShareTarget = Pick<ShareLinkCreate, "songId" | "projectId" | "recordingId" | "sessionId">;
+
+/** The account the link's target belongs to, as a member of it (a 404 otherwise). */
+function memberForTarget(locals: App.Locals, t: ShareTarget) {
+	if (t.songId) return memberOf(locals, accountOfSong, t.songId);
+	if (t.recordingId) return memberOf(locals, accountOfSessionRecording, t.recordingId);
+	if (t.sessionId) return memberOf(locals, accountOfRecordingSession, t.sessionId);
+	return memberOf(locals, accountOfProject, t.projectId);
+}
+
+/** What the link opens, as data.ts records it (exactly one is set; the schema checks). */
+function targetOf(t: ShareTarget, mixId: string) {
+	if (t.songId) return { songId: t.songId, mixId: mixId || undefined };
+	if (t.recordingId) return { recordingId: t.recordingId };
+	if (t.sessionId) return { sessionId: t.sessionId };
+	return { projectId: t.projectId };
+}
+
+/** Any member makes a viewing link for a song, a project, a session or a session recording of their account. */
 export const createShareLink = form(
 	ShareLinkCreateSchema,
-	async ({ songId, mixId, projectId, recordingId, note, maxUses, expiresDays }) => {
+	async ({ mixId, note, maxUses, expiresDays, ...target }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		if (await rateLimited(`sharelink:${user.id}`, 60, HOUR))
 			error(429, "Too many links in one hour.");
-		const m = songId
-			? await memberOf(locals, accountOfSong, songId)
-			: recordingId
-				? await memberOf(locals, accountOfSessionRecording, recordingId)
-				: await memberOf(locals, accountOfProject, projectId);
+		const m = await memberForTarget(locals, target);
 		// A link made for a mix (docs/mixes.md): the mix must be this song's.
-		if (mixId && (!songId || (await mixOwnership(mixId))?.songId !== songId))
+		if (mixId && (!target.songId || (await mixOwnership(mixId))?.songId !== target.songId))
 			error(404, "Mix not found");
-		const row = await create(
-			m.accountId,
-			user.id,
-			songId
-				? { songId, mixId: mixId || undefined }
-				: recordingId
-					? { recordingId }
-					: { projectId },
-			{
-				note,
-				maxUses,
-				expiresDays,
-			},
-		);
+		const row = await create(m.accountId, user.id, targetOf(target, mixId), {
+			note,
+			maxUses,
+			expiresDays,
+		});
 		return { code: row.code };
 	},
 );

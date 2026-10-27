@@ -302,13 +302,20 @@
 		});
 	}
 
-	// ---- viewing links for one recording (its own page, docs/uploads-and-blob.md "Sessions"): one popover ----
+	// ---- viewing links for one recording or a whole session (their own pages, docs/uploads-and-blob.md "Sessions"): one popover ----
 	let sharePanel = $state<HTMLDivElement | null>(null);
-	let sharing = $state<string | null>(null);
-	const sharingRecording = $derived(sharing ? recordingOf(sharing) : null);
+	let sharing = $state.raw<
+		{ kind: "recording"; recording: Recording } | { kind: "session"; session: Session } | null
+	>(null);
 	const linksOf = (id: string) => data.shareLinks.filter((l) => l.recordingId === id);
+	const sessionLinksOf = (id: string) => data.sessionShareLinks.filter((l) => l.sessionId === id);
+	const isLinked = (links: { state: string }[]) => links.some((l) => l.state === "open");
 	function openShare(r: Recording) {
-		sharing = r.id;
+		sharing = { kind: "recording", recording: r };
+		sharePanel?.showPopover();
+	}
+	function openSessionShare(s: Session) {
+		sharing = { kind: "session", session: s };
 		sharePanel?.showPopover();
 	}
 
@@ -784,6 +791,23 @@
 													"A second session of the same day (an afternoon set and the evening show), to move recordings into",
 												action: () => newSession(s),
 											},
+											{
+												id: "page",
+												kind: "button",
+												label: "Open its page",
+												iconClass: "i-ph-arrow-square-out",
+												title:
+													"The session on a page of its own, every recording of it, where a viewing link lands",
+												action: () => void goto(`/${data.account.slug}/sessions/s/${s.id}`),
+											},
+											{
+												id: "share",
+												kind: "button",
+												label: `Share…${isLinked(sessionLinksOf(s.id)) ? " (linked)" : ""}`,
+												iconClass: "i-ph-paper-plane-tilt",
+												title: "Viewing links for the whole session",
+												action: () => openSessionShare(s),
+											},
 											{ id: "d", kind: "divider" },
 											{
 												id: "delete",
@@ -1033,7 +1057,7 @@
 												{
 													id: "share",
 													kind: "button",
-													label: `Share…${linksOf(r.id).some((l) => l.state === "open") ? " (linked)" : ""}`,
+													label: `Share…${isLinked(linksOf(r.id)) ? " (linked)" : ""}`,
 													iconClass: "i-ph-paper-plane-tilt",
 													title: "Viewing links for this recording alone",
 													condition: data.canEdit,
@@ -1351,7 +1375,7 @@
 		</p>
 	</div>
 
-	<!-- Viewing links for one recording: its own page is where they land (docs/uploads-and-blob.md, "Sessions"). -->
+	<!-- Viewing links for one recording or a whole session: their own pages are where they land (docs/uploads-and-blob.md, "Sessions"). -->
 	<div
 		id="recording-share"
 		popover="auto"
@@ -1363,8 +1387,9 @@
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
 			<h2 class="heading-2 mb-0">
-				Share{#if sharingRecording}
-					"{titleOf(sharingRecording)}"{/if}
+				Share{#if sharing?.kind === "recording"}
+					"{titleOf(sharing.recording)}"{:else if sharing?.kind === "session"}
+					"{nameOf(sharing.session)}"{/if}
 			</h2>
 			<button
 				class="button button-xs"
@@ -1376,16 +1401,23 @@
 			</button>
 		</div>
 		<p class="mb-3 text-sm text-dim">
-			A link opens this one recording on a page of its own, for someone outside the band; the rest
-			of the sessions stay members-only.
+			{#if sharing?.kind === "session"}
+				A link opens every recording of this session on a page of its own, for someone outside the
+				band; the rest of the sessions stay members-only.
+			{:else}
+				A link opens this one recording on a page of its own, for someone outside the band; the rest
+				of the sessions stay members-only.
+			{/if}
 		</p>
-		{#if sharingRecording}
-			{#key sharingRecording.id}
-				<ShareLinks
-					target={{ recordingId: sharingRecording.id }}
-					links={linksOf(sharingRecording.id)}
-					isPrivate={!sharingRecording.isPublic}
-				/>
+		{#if sharing?.kind === "recording"}
+			{@const r = sharing.recording}
+			{#key r.id}
+				<ShareLinks target={{ recordingId: r.id }} links={linksOf(r.id)} isPrivate={!r.isPublic} />
+			{/key}
+		{:else if sharing?.kind === "session"}
+			{@const s = sharing.session}
+			{#key s.id}
+				<ShareLinks target={{ sessionId: s.id }} links={sessionLinksOf(s.id)} isPrivate={true} />
 			{/key}
 		{/if}
 	</div>

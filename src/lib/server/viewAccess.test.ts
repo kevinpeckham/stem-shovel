@@ -3,6 +3,7 @@ import {
 	canCommentProject,
 	canEditProject,
 	canViewRecording,
+	canViewSession,
 	canViewProject,
 	canViewSong,
 	NOBODY,
@@ -113,7 +114,7 @@ describe("canEditProject / canCommentProject", () => {
 });
 
 describe("canViewRecording", () => {
-	const tape = { id: "r1", isPublic: false };
+	const tape = { id: "r1", isPublic: false, sessionId: "s1" };
 	const grantR1 = [{ code: "z", projectId: null, songId: null, recordingId: "r1" }];
 	const stranger: Viewer = { accountRole: null, projectRoles: {} };
 	test("a public recording is open to everyone", () => {
@@ -126,5 +127,33 @@ describe("canViewRecording", () => {
 		expect(canViewRecording(tape, member, [])).toBe(true);
 		expect(canViewRecording(tape, NOBODY, grantR1)).toBe(true);
 		expect(canViewRecording({ ...tape, id: "r2" }, NOBODY, grantR1)).toBe(false);
+	});
+	test("a session's link opens every recording of that session, no other", () => {
+		const grantS1 = [{ code: "s", projectId: null, songId: null, sessionId: "s1" }];
+		expect(canViewRecording(tape, NOBODY, grantS1)).toBe(true);
+		expect(canViewRecording({ ...tape, id: "r2" }, NOBODY, grantS1)).toBe(true);
+		expect(canViewRecording({ ...tape, sessionId: "s2" }, NOBODY, grantS1)).toBe(false);
+		expect(canViewRecording({ ...tape, sessionId: null }, NOBODY, grantS1)).toBe(false);
+		expect(
+			canViewRecording({ ...tape, sessionId: "" }, NOBODY, [{ ...grantS1[0], sessionId: "" }]),
+		).toBe(false);
+	});
+});
+
+describe("canViewSession", () => {
+	const session = { id: "s1" };
+	const grantS1 = [{ code: "s", projectId: null, songId: null, sessionId: "s1" }];
+	test("the account's members", () => {
+		expect(canViewSession(session, member, [])).toBe(true);
+		expect(canViewSession(session, NOBODY, [])).toBe(false);
+	});
+	test("a visitor holding the session's link, not a recording's", () => {
+		expect(canViewSession(session, NOBODY, grantS1)).toBe(true);
+		expect(canViewSession({ id: "s2" }, NOBODY, grantS1)).toBe(false);
+		expect(
+			canViewSession(session, NOBODY, [
+				{ code: "z", projectId: null, songId: null, recordingId: "r1" },
+			]),
+		).toBe(false);
 	});
 });

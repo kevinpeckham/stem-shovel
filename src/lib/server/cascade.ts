@@ -86,14 +86,17 @@ export async function deleteCommentRows(where: SQL): Promise<void> {
 	await db.delete(comment).where(where);
 }
 
-/** What a session's review leaves behind (docs/uploads-and-blob.md, "Sessions"): the comments on its recordings, its chat and the read marks. */
+/** What a session's review leaves behind (docs/uploads-and-blob.md, "Sessions"): the comments on its recordings, the share links to them and to the sessions, its chat and the read marks. */
 export async function deleteSessionReviewRows(
 	sessionIds: string[],
 	recordingIds: string[],
 ): Promise<void> {
-	if (recordingIds.length > 0)
+	if (recordingIds.length > 0) {
 		await db.delete(sessionComment).where(inArray(sessionComment.recordingId, recordingIds));
+		await db.delete(shareLink).where(inArray(shareLink.recordingId, recordingIds));
+	}
 	if (sessionIds.length === 0) return;
+	await db.delete(shareLink).where(inArray(shareLink.sessionId, sessionIds));
 	await deleteChatReactionsOf(
 		db
 			.select({ id: sessionChatMessage.id })

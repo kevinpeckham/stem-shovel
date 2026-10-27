@@ -57,6 +57,10 @@
 			<p class="mb-2 text-sm">
 				<a class="link-dim" href="/{data.account.slug}/sessions?recording={r.id}">← Sessions</a>
 			</p>
+		{:else if data.sessionPage}
+			<p class="mb-2 text-sm">
+				<a class="link-dim" href={data.sessionPage}>← {r.session?.name || "Session"}</a>
+			</p>
 		{/if}
 		<h1 class="heading-2 mb-1" data-recording-title>
 			{r.title}{#if data.member && r.isPublic}

@@ -20,6 +20,8 @@ export interface ShareGrant {
 	songId: string | null;
 	/** A link for one session recording (docs/uploads-and-blob.md, "Sessions"). */
 	recordingId?: string | null;
+	/** A link for a whole session: every recording of it, and its own page. */
+	sessionId?: string | null;
 }
 
 export interface Viewer {
@@ -89,16 +91,34 @@ export function canViewSong(
 /**
  * A session recording (docs/uploads-and-blob.md, "Sessions"): anyone when a
  * member marked it public; otherwise the account's members, or a visitor
- * holding its link.
+ * holding its link or a link to its whole session.
  */
 export function canViewRecording(
-	recording: { id: string; isPublic: boolean },
+	recording: { id: string; isPublic: boolean; sessionId: string | null },
 	who: Viewer,
 	grants: ShareGrant[],
 ): boolean {
 	if (recording.isPublic) return true;
 	if (who.accountRole !== null) return true;
-	return grants.some((g) => g.recordingId === recording.id);
+	return grants.some(
+		(g) =>
+			g.recordingId === recording.id ||
+			(!!recording.sessionId && g.sessionId === recording.sessionId),
+	);
+}
+
+/**
+ * A session's own page (every recording of it): the account's members, or
+ * a visitor holding the session's link. A public recording alone does not
+ * open its session.
+ */
+export function canViewSession(
+	session: { id: string },
+	who: Viewer,
+	grants: ShareGrant[],
+): boolean {
+	if (who.accountRole !== null) return true;
+	return grants.some((g) => g.sessionId === session.id);
 }
 
 /** Who may change a project and what is in it. */
