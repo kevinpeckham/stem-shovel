@@ -9090,31 +9090,27 @@ export async function songExportMetadata(accountId: string, songId: string) {
 // ---- the dashboard (docs/dashboard-plan.md) ------------------------------------
 
 /**
- * The account's newest session (by its day, then when it was made, as
- * `listRecordingSessions` orders them) with how many recordings are ready
- * in it and the newest one's title; null when it has none.
+ * The account's `n` newest sessions (by their day, then when they were
+ * made, as `listRecordingSessions` orders them), each with how many
+ * recordings are ready in it.
  */
-export async function latestRecordingSession(accountId: string) {
-	const row = await db.query.recordingSession.findFirst({
+export async function recentRecordingSessions(accountId: string, n: number) {
+	const rows = await db.query.recordingSession.findMany({
 		where: eq(recordingSession.accountId, accountId),
 		orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
+		limit: n,
 		columns: { id: true, name: true, place: true, kind: true, startsOn: true },
 		with: {
 			recordings: {
 				where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.status, "ready")),
-				orderBy: [desc(sessionRecording.recordedOn), desc(sessionRecording.createdAt)],
-				columns: { title: true, filename: true },
+				columns: { id: true },
 			},
 		},
 	});
-	if (!row) return null;
-	const { recordings, ...session } = row;
-	const newest = recordings[0];
-	return {
+	return rows.map(({ recordings, ...session }) => ({
 		...session,
 		recordingCount: recordings.length,
-		newestRecording: newest ? newest.title || newest.filename : null,
-	};
+	}));
 }
 
 /** The account's `n` most recently updated active projects, with their song counts and the fields the view rules read. */
@@ -9127,7 +9123,6 @@ export async function recentProjects(accountId: string, n: number) {
 			id: true,
 			name: true,
 			slug: true,
-			imageUrl: true,
 			isPrivate: true,
 			isRestricted: true,
 			updatedAt: true,
@@ -9179,12 +9174,12 @@ export async function accountCounts(accountId: string) {
 	};
 }
 
-/** The user's `n` newest ideas, whichever account holds them: just enough to list and link (no takes, no URLs). */
-export function recentUserIdeas(userId: string, n: number) {
+/** The user's `n` newest ideas of one kind (ideas, loops), whichever account holds them: just enough to list and link (no takes, no URLs). */
+export function recentUserIdeas(userId: string, kind: IdeaKind, n: number) {
 	return db.query.idea.findMany({
-		where: eq(idea.createdBy, userId),
+		where: and(eq(idea.createdBy, userId), eq(idea.kind, kind)),
 		orderBy: [desc(idea.createdAt)],
 		limit: n,
-		columns: { id: true, title: true, createdAt: true },
+		columns: { id: true, title: true, kind: true, createdAt: true },
 	});
 }

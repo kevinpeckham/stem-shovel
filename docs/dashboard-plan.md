@@ -44,6 +44,25 @@ slug. Counts: `accountCounts` (projects, songs, ready recordings,
 members). The sign-up page still sends an already signed-in visitor to
 `/`.
 
+**Laid out again 2026-10-27 (Kevin):** the first thing on the page is a
+tile per account (`DashboardAccount`, `DashboardTileList`) listing its
+six most recent projects, songs and sessions side by side with "All …"
+links, so a person jumps straight to one; the sessions link to their own
+pages. Two columns from `lg:` (content left, a 20 rem sidebar right,
+`+page.svelte`), one column on a phone with the sidebar after. The
+content column continues with **Your ideas**, **Your loops** and **Your
+multitrack recordings** (one `DashboardIdeas` component for the three
+idea kinds, `recentUserIdeas(userId, kind, n)`; each empty state is the
+call to action: Record an idea, Record a loop, Record a multitrack; Dawn
+songs open by `?song=<id>`, ideas and loops have no address of their own
+yet). The sidebar holds **New for you**, then the **Tools**,
+**Instruments** and **More** widgets (`DashboardWidget`, lists in
+`constants/dashboardLinks.ts`; Session Recorder needs the current
+account's slug, `utils/dashboardTools.ts`; "Report a bug" opens the
+footer's form, "Share Stem Shovel" uses the share sheet or copies the
+address, `utils/shareSite.ts`). Quick actions are gone; the start card
+for a person with no account stays.
+
 - `src/routes/dashboard/+page.server.ts` (`requireSignedIn`) and
   `+page.svelte`, title "Dashboard" (`app-page-heading`), noindex (the
   route is not in `isIndexablePath`, and `scripts/lib/siteRoutes.mjs`

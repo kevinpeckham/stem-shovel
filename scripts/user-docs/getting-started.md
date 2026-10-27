@@ -15,7 +15,7 @@ When sign-up is invitation-only, as it was during the early beta, one of those t
 
 ## Your dashboard
 
-Signing in lands you on your **dashboard**, and the Stem Shovel wordmark at the top left brings you back to it. It shows what is new for you (the notifications you have not opened, with the newest few right there and a link to the inbox), quick actions (add a recording, start a song or an idea, record a session, the tuner and the metronome), and for each band you belong to its latest session, the projects and songs touched last. Your own newest ideas are listed too. A new account shows a short getting-started checklist instead until the first things are in.
+Signing in lands you on your **dashboard**, and the Stem Shovel wordmark at the top left brings you back to it. For each band you belong to there is a tile with its projects, songs and sessions, so you can jump straight to one; below the tiles come your own newest ideas, loops and multitrack recordings, each with a button to record one when you have none yet. The sidebar shows what is new for you (the notifications you have not opened, with the newest few right there and a link to the inbox), then the tools, the instruments and more: the docs, feature requests, reporting a bug, help, sharing Stem Shovel and the blog. A new account shows a short getting-started checklist in its tile until the first things are in.
 
 ## The account menu
 

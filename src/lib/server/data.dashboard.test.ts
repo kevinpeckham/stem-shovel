@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vite-plus/test";
 import { reset } from "../../../tests/helpers/fakeDataLayer";
 
-const { accountCounts, latestRecordingSession, recentProjects, recentSongs, recentUserIdeas } =
+const { accountCounts, recentRecordingSessions, recentProjects, recentSongs, recentUserIdeas } =
 	await import("./data");
 
 const A = "acct-one____________";
@@ -113,14 +113,23 @@ beforeEach(() =>
 				id: "i1",
 				accountId: A,
 				createdBy: U,
+				kind: "idea",
 				title: "Riff",
 				createdAt: at("2026-10-01T00:00:00Z"),
 			},
-			{ id: "i2", accountId: B, createdBy: U, title: "", createdAt: at("2026-10-03T00:00:00Z") },
+			{
+				id: "i2",
+				accountId: B,
+				createdBy: U,
+				kind: "idea",
+				title: "",
+				createdAt: at("2026-10-03T00:00:00Z"),
+			},
 			{
 				id: "i3",
 				accountId: A,
 				createdBy: U,
+				kind: "idea",
 				title: "Hook",
 				createdAt: at("2026-10-02T00:00:00Z"),
 			},
@@ -128,24 +137,45 @@ beforeEach(() =>
 				id: "iv",
 				accountId: A,
 				createdBy: V,
+				kind: "idea",
 				title: "Theirs",
 				createdAt: at("2026-10-09T00:00:00Z"),
+			},
+			{
+				id: "l1",
+				accountId: A,
+				createdBy: U,
+				kind: "loop",
+				title: "Loop",
+				createdAt: at("2026-10-10T00:00:00Z"),
+			},
+			{
+				id: "d1",
+				accountId: B,
+				createdBy: U,
+				kind: "song",
+				title: "Dawn song",
+				createdAt: at("2026-10-11T00:00:00Z"),
 			},
 		],
 	}),
 );
 
-describe("latestRecordingSession", () => {
-	test("the account's newest session by day then creation, with its ready recordings counted", async () => {
-		expect(await latestRecordingSession(A)).toMatchObject({
-			id: "new",
-			recordingCount: 2,
-			newestRecording: "r2.m4a",
-		});
+describe("recentRecordingSessions", () => {
+	test("the account's newest sessions by day then creation, limited, with their ready recordings counted", async () => {
+		const rows = await recentRecordingSessions(A, 2);
+		expect(rows.map((s) => s.id)).toEqual(["new", "same-day-earlier"]);
+		expect(rows[0].recordingCount).toBe(2);
+		expect(rows[1].recordingCount).toBe(0);
+		expect((await recentRecordingSessions(A, 10)).map((s) => s.id)).toEqual([
+			"new",
+			"same-day-earlier",
+			"old",
+		]);
 	});
-	test("scoped by account; null with none", async () => {
-		expect((await latestRecordingSession(B))?.id).toBe("b");
-		expect(await latestRecordingSession("nobody______________")).toBeNull();
+	test("scoped by account; empty with none", async () => {
+		expect((await recentRecordingSessions(B, 6)).map((s) => s.id)).toEqual(["b"]);
+		expect(await recentRecordingSessions("nobody______________", 6)).toEqual([]);
 	});
 });
 
@@ -176,8 +206,11 @@ describe("accountCounts", () => {
 });
 
 describe("recentUserIdeas", () => {
-	test("the user's own ideas across accounts, newest first, limited", async () => {
-		expect((await recentUserIdeas(U, 2)).map((i) => i.id)).toEqual(["i2", "i3"]);
-		expect((await recentUserIdeas(U, 5)).map((i) => i.id)).toEqual(["i2", "i3", "i1"]);
+	test("the user's own ideas of one kind across accounts, newest first, limited", async () => {
+		expect((await recentUserIdeas(U, "idea", 2)).map((i) => i.id)).toEqual(["i2", "i3"]);
+		expect((await recentUserIdeas(U, "idea", 5)).map((i) => i.id)).toEqual(["i2", "i3", "i1"]);
+		expect((await recentUserIdeas(U, "loop", 5)).map((i) => i.id)).toEqual(["l1"]);
+		expect((await recentUserIdeas(U, "song", 5)).map((i) => i.id)).toEqual(["d1"]);
+		expect(await recentUserIdeas(V, "loop", 5)).toEqual([]);
 	});
 });

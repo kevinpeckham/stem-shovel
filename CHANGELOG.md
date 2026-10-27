@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.177.0] - 2026-10-27
+
+### Changed
+
+- **The dashboard laid out again** (Kevin): a tile per account comes first, listing its six most recent projects, songs and sessions side by side with "All …" links; then Your ideas, Your loops and Your multitrack recordings, each with a Record button when empty; two columns at desktop with a sidebar holding New for you and the Tools, Instruments and More widgets (Docs, Feature Requests, Report a bug, Help, Share Stem Shovel, Stem Shovel Blog). Quick actions are gone.
+
+### Technical
+
+- `recentRecordingSessions(accountId, n)` replaces `latestRecordingSession`; `recentUserIdeas(userId, kind, n)`; `DashboardTileList`, `DashboardWidget`; utils `dashboardTools`, `shareSite` (Web Share API, clipboard fallback).
+
 ## [0.176.0] - 2026-10-27
 
 ### Added

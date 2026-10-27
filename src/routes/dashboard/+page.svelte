@@ -1,29 +1,26 @@
 <script lang="ts">
 	import DashboardAccount from "#lib/components/DashboardAccount.svelte";
 	import DashboardIdeas from "#lib/components/DashboardIdeas.svelte";
-	import DashboardLinks from "#lib/components/DashboardLinks.svelte";
 	import DashboardNew from "#lib/components/DashboardNew.svelte";
 	import DashboardStart from "#lib/components/DashboardStart.svelte";
-	import { DASHBOARD_TOOLS } from "#lib/constants/dashboardLinks.js";
-	import { accountActions } from "#lib/utils/accountActions.js";
+	import DashboardWidget from "#lib/components/DashboardWidget.svelte";
+	import { DASHBOARD_INSTRUMENTS, DASHBOARD_MORE } from "#lib/constants/dashboardLinks.js";
+	import { dashboardTools } from "#lib/utils/dashboardTools.js";
 	import { onboardingSteps, showOnboarding } from "#lib/utils/onboardingSteps.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 
 	let { data } = $props();
 
-	let several = $derived(data.accounts.length > 1);
-	/** Each account with its checklist, shown in place of its sections while it holds nothing. */
+	/** Each account with its checklist, shown in place of its lists while it holds nothing. */
 	let accounts = $derived(
 		data.accounts.map((a) => {
-			const counts = { ...a.counts, ideas: data.ideas.length };
+			const counts = { ...a.counts, ideas: data.ideas.length + data.loops.length };
 			const steps = onboardingSteps(counts, a.slug);
 			return { ...a, steps, onboarding: showOnboarding(steps, counts) };
 		}),
 	);
-	/** One account: its actions and the tools in one row; several: the tools here, each account's actions in its section. */
-	let quickActions = $derived(
-		several ? DASHBOARD_TOOLS : [...accountActions(accounts[0]?.slug ?? ""), ...DASHBOARD_TOOLS],
-	);
+	/** The Session Recorder goes to the current account (the root layout's), when there is one. */
+	let tools = $derived(dashboardTools(accounts.length > 0 ? data.currentSlug : null));
 </script>
 
 <svelte:head>
@@ -34,20 +31,46 @@
 <main class="page">
 	<h1 class="app-page-heading">Dashboard</h1>
 
-	{#if accounts.length === 0}
-		<DashboardStart />
-	{:else}
-		<DashboardNew digest={data.digest} />
-		<section class="max-w-article grid gap-3" aria-labelledby="dashboard-actions">
-			<h2 class="heading-2 mb-0" id="dashboard-actions">Quick actions</h2>
-			<DashboardLinks links={quickActions} label="Quick actions" />
-		</section>
-		{#each accounts as account (account.slug)}
-			<DashboardAccount {account} {several} />
-		{/each}
-	{/if}
+	<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+		<div class="grid min-w-0 gap-8">
+			{#if accounts.length === 0}
+				<DashboardStart />
+			{:else}
+				{#each accounts as account (account.slug)}
+					<DashboardAccount {account} />
+				{/each}
+			{/if}
+			<DashboardIdeas
+				id="dashboard-ideas"
+				heading="Your ideas"
+				ideas={data.ideas}
+				href={() => "/idea-recorder"}
+				empty="No ideas yet."
+				action={{ label: "Record an idea", href: "/idea-recorder" }}
+			/>
+			<DashboardIdeas
+				id="dashboard-loops"
+				heading="Your loops"
+				ideas={data.loops}
+				href={() => "/looper"}
+				empty="No loops yet."
+				action={{ label: "Record a loop", href: "/looper" }}
+			/>
+			<DashboardIdeas
+				id="dashboard-multitracks"
+				heading="Your multitrack recordings"
+				ideas={data.multitracks}
+				href={(id) => `/multitrack-recorder?song=${encodeURIComponent(id)}`}
+				empty="No multitrack recordings yet."
+				action={{ label: "Record a multitrack", href: "/multitrack-recorder" }}
+			/>
+		</div>
 
-	{#if data.ideas.length > 0}
-		<DashboardIdeas ideas={data.ideas} />
-	{/if}
+		<aside aria-label="Dashboard sidebar" class="grid gap-6">
+			<DashboardNew digest={data.digest} />
+			<DashboardWidget heading="Tools" items={tools} />
+			<DashboardWidget heading="Instruments" items={DASHBOARD_INSTRUMENTS} />
+			<DashboardWidget heading="More" items={DASHBOARD_MORE} />
+		</aside>
+	</div>
 </main>

@@ -20,7 +20,7 @@
 	let line = $derived(digest.byKind.map((k) => kindLabel(k.kind, k.count)).join(" · "));
 </script>
 
-<section class="max-w-article" aria-labelledby="dashboard-new">
+<section aria-labelledby="dashboard-new">
 	<h2 class="heading-2" id="dashboard-new">New for you</h2>
 	{#if digest.unread > 0}
 		<p class="mb-3 text-15px opacity-90">{line}</p>
