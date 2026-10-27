@@ -137,15 +137,25 @@ project songs.
 - Browser test: the bot signs in and lands on `/dashboard`; the sections
   render; the latest session links to the session page.
 
-## Step 2 — conversations and comments waiting
+## Step 2 — conversations and comments waiting (v0.185.0)
 
-- **Unread chats**: song chats (`chatSummaryOf` over the account's songs),
-  session chats (`sessionChatSummaryOf`) and project feeds
-  (`projectChatFeed` read marks), as "3 conversations with new messages"
-  with a jump into each, newest first.
-- **Comments waiting for you**: comments on the person's own takes,
-  recordings and demos since their last read, and mentions.
-- No migration: every read mark exists.
+- **Unread chats**: song chats and session chats with messages by others
+  since the person's read mark (`unreadSongChats`, `unreadSessionChats`
+  in data.ts, the counting rule of `chatSummaryOf`), as "3 chats with new
+  messages" in a **Conversations** block under Latest
+  (`DashboardConversations`), newest message first, each a link that
+  opens the chat (`?open=chat`, `?session=<id>&open=chat`). Project feeds
+  have no read mark of their own (the feed is the songs' chats) and are
+  left out.
+- **Comments waiting for you**: there is no comment read mark, so these
+  are the person's unread `comment` and `mention` notifications, as inbox
+  rows that mark themselves read when opened.
+- No migration.
+- Shipped alongside (also v0.185.0): plan usage on the account tiles for
+  owners and admins (`accountQuota`: bytes stored and the plan's storage
+  and member limits, a meter red from 90 %), and an account select on
+  Your Projects, Songs and Sessions for people in several accounts
+  (`DashboardEntry.account`).
 
 ## Step 3 — activity and work in progress
 

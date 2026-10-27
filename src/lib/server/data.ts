@@ -4742,6 +4742,146 @@ export async function sessionChatSummaryOf(
 	return out;
 }
 
+/** Per key, how many messages by others are newer than the person's read mark and when the newest of them was sent (the counting rule of chatSummaryOf). */
+function unreadByKey(
+	messages: { key: string; userId: string; createdAt: Date }[],
+	reads: { key: string; readAt: Date }[],
+	userId: string,
+): Map<string, { unread: number; latest: Date }> {
+	const readAt = new Map(reads.map((r) => [r.key, r.readAt.getTime()]));
+	const out = new Map<string, { unread: number; latest: Date }>();
+	for (const m of messages) {
+		const mark = readAt.get(m.key);
+		if (m.userId === userId || (mark !== undefined && m.createdAt.getTime() <= mark)) continue;
+		const s = out.get(m.key);
+		if (!s) out.set(m.key, { unread: 1, latest: m.createdAt });
+		else {
+			s.unread += 1;
+			if (m.createdAt > s.latest) s.latest = m.createdAt;
+		}
+	}
+	return out;
+}
+
+/** The account's active songs with chat messages the person has not seen, newest unread first, for the dashboard's Conversations block; the caller filters them with canViewSong. */
+export async function unreadSongChats(
+	accountId: string,
+	accountSlug: string,
+	userId: string,
+): Promise<
+	{
+		songId: string;
+		title: string;
+		href: string;
+		unread: number;
+		latest: Date;
+		id: string;
+		projectId: string;
+		isPrivate: boolean;
+		project: { name: string; isPrivate: boolean; isRestricted: boolean };
+	}[]
+> {
+	const messages = await db
+		.select({
+			key: chatMessage.songId,
+			userId: chatMessage.userId,
+			createdAt: chatMessage.createdAt,
+		})
+		.from(chatMessage)
+		.where(eq(chatMessage.accountId, accountId));
+	const songIds = [...new Set(messages.map((m) => m.key))];
+	if (songIds.length === 0) return [];
+	const reads = await db
+		.select({ key: chatRead.songId, readAt: chatRead.readAt })
+		.from(chatRead)
+		.where(and(eq(chatRead.userId, userId), inArray(chatRead.songId, songIds)));
+	const unread = unreadByKey(messages, reads, userId);
+	if (unread.size === 0) return [];
+	const songs = await db.query.song.findMany({
+		where: and(
+			eq(song.accountId, accountId),
+			eq(song.status, "active"),
+			inArray(song.id, [...unread.keys()]),
+		),
+		columns: { id: true, title: true, slug: true, projectId: true, isPrivate: true },
+		with: {
+			project: {
+				columns: { name: true, slug: true, status: true, isPrivate: true, isRestricted: true },
+			},
+		},
+	});
+	return songs
+		.filter((s) => s.project?.status === "active")
+		.map((s) => ({
+			songId: s.id,
+			title: s.title,
+			href: `/${accountSlug}/projects/${s.project.slug}/${s.slug}?open=chat`,
+			...unread.get(s.id)!,
+			id: s.id,
+			projectId: s.projectId,
+			isPrivate: s.isPrivate,
+			project: {
+				name: s.project.name,
+				isPrivate: s.project.isPrivate,
+				isRestricted: s.project.isRestricted,
+			},
+		}))
+		.sort((a, b) => b.latest.getTime() - a.latest.getTime());
+}
+
+/** The account's sessions with chat messages the person has not seen, newest unread first, for the dashboard's Conversations block. */
+export async function unreadSessionChats(
+	accountId: string,
+	accountSlug: string,
+	userId: string,
+): Promise<
+	{
+		sessionId: string;
+		name: string;
+		place: string;
+		kind: SessionKind;
+		startsOn: string;
+		href: string;
+		unread: number;
+		latest: Date;
+	}[]
+> {
+	const messages = await db
+		.select({
+			key: sessionChatMessage.sessionId,
+			userId: sessionChatMessage.userId,
+			createdAt: sessionChatMessage.createdAt,
+		})
+		.from(sessionChatMessage)
+		.where(eq(sessionChatMessage.accountId, accountId));
+	const sessionIds = [...new Set(messages.map((m) => m.key))];
+	if (sessionIds.length === 0) return [];
+	const reads = await db
+		.select({ key: sessionChatRead.sessionId, readAt: sessionChatRead.readAt })
+		.from(sessionChatRead)
+		.where(and(eq(sessionChatRead.userId, userId), inArray(sessionChatRead.sessionId, sessionIds)));
+	const unread = unreadByKey(messages, reads, userId);
+	if (unread.size === 0) return [];
+	const sessions = await db.query.recordingSession.findMany({
+		where: and(
+			eq(recordingSession.accountId, accountId),
+			inArray(recordingSession.id, [...unread.keys()]),
+		),
+		columns: { id: true, name: true, place: true, kind: true, startsOn: true },
+	});
+	return sessions
+		.map((s) => ({
+			sessionId: s.id,
+			name: s.name,
+			place: s.place,
+			kind: s.kind,
+			startsOn: s.startsOn,
+			href: `/${accountSlug}/sessions?session=${s.id}&open=chat`,
+			...unread.get(s.id)!,
+		}))
+		.sort((a, b) => b.latest.getTime() - a.latest.getTime());
+}
+
 /** Marks a session's chat read now for a person; returns the mark (ms). */
 export async function markSessionChatRead(sessionId: string, userId: string): Promise<number> {
 	const readAt = new Date();
@@ -9170,6 +9310,19 @@ export async function recentSongs(accountId: string, n: number) {
 		hasStem: stems.length > 0,
 		hasMix: mixes.length > 0,
 	}));
+}
+
+/** The account's storage used against its plan, for the dashboard tile of an owner or admin: bytes stored (`accountStorageBytes`) and the plan's limits (null = unlimited, a founder account). */
+export async function accountQuota(accountId: string) {
+	const [bytes, row] = await Promise.all([
+		accountStorageBytes(accountId),
+		db.query.account.findFirst({
+			where: eq(account.id, accountId),
+			columns: { plan: true, isFounder: true, storageLimitBytes: true },
+		}),
+	]);
+	const limits = row ? accountLimits(row) : { storageBytes: null, members: null };
+	return { bytes, storageLimit: limits.storageBytes, memberLimit: limits.members };
 }
 
 /** How much the account holds, for the dashboard's tile and onboarding checklist: active projects and songs, sessions, ready session recordings and members. */

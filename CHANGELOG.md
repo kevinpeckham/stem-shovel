@@ -8,6 +8,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.185.0] - 2026-10-27
+
+### Added
+
+- **Conversations on the dashboard.** Under Latest: every song and session chat with messages you have not seen, across your accounts, newest first, each opening that chat; and the comments and mentions waiting for you, each opening where it was made. "Nothing waiting." when you are caught up.
+- **Plan usage on the account tiles.** An owner or admin sees how much of the account's storage is used (with a thin meter that turns red near the limit) and how many of its seats are taken; a founder account shows what is stored and "no limit".
+- **Filter by account.** Your Projects, Your Songs and Your Sessions gain an account select beside the search when you belong to several accounts.
+
+### Technical
+
+- `unreadSongChats(accountId, accountSlug, userId)` and `unreadSessionChats(accountId, accountSlug, userId)` in `data.ts` count unread messages by the chat read marks, as `chatSummaryOf` and `sessionChatSummaryOf` do, and return only the chats with some. Comments waiting are the person's unread `comment` and `mention` notifications (there is no comment read mark). Project feeds have no read mark of their own and are left out.
+- `accountQuota(accountId)` returns the bytes stored (`accountStorageBytes`) and the plan's limits (`accountLimits`); the dashboard loads it for owners and admins only. `DashboardEntry.account` carries the account slug for the filter.
+
 ## [0.184.0] - 2026-10-27
 
 ### Changed

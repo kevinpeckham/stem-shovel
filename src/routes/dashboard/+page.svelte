@@ -1,5 +1,6 @@
 <script lang="ts">
 	import DashboardAccount from "#lib/components/DashboardAccount.svelte";
+	import DashboardConversations from "#lib/components/DashboardConversations.svelte";
 	import DashboardIdeas from "#lib/components/DashboardIdeas.svelte";
 	import DashboardNew from "#lib/components/DashboardNew.svelte";
 	import DashboardStart from "#lib/components/DashboardStart.svelte";
@@ -41,8 +42,9 @@
 	<div
 		class="grid gap-8 lg-gap-x-12 xl-gap-x-16 2xl-gap-x-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-y-6 lg:items-start"
 	>
-		<aside aria-label="Latest" class="lg:col-start-2 lg:row-start-1">
+		<aside aria-label="Latest" class="grid gap-6 lg:col-start-2 lg:row-start-1">
 			<DashboardNew digest={data.digest} />
+			<DashboardConversations chats={data.chats} comments={data.comments} />
 		</aside>
 		<div class="grid min-w-0 gap-8 lg:col-start-1 lg:row-start-1 lg:row-span-2">
 			{#if accounts.length === 0}
@@ -66,6 +68,7 @@
 				<DashboardIdeas
 					id="dashboard-projects"
 					heading="Your Projects"
+					accounts={data.accounts}
 					tip="A project is a collection of songs: an album, a set, or a batch of works in progress. Every song lives in one project."
 					ideas={data.projects}
 					empty="No projects yet."
@@ -76,6 +79,7 @@
 				<DashboardIdeas
 					id="dashboard-songs"
 					heading="Your Songs"
+					accounts={data.accounts}
 					tip="A song holds its stems (the separate tracks), demos, lyrics, charts and notes, and moves through the writing, arranging, mixing and finished stages."
 					ideas={data.songs}
 					empty="No songs yet."
@@ -86,6 +90,7 @@
 				<DashboardIdeas
 					id="dashboard-sessions"
 					heading="Your Sessions"
+					accounts={data.accounts}
 					tip="Sessions are live recordings of shows or practices, captured with the Session Recorder."
 					ideas={data.sessions}
 					empty="No sessions yet."

@@ -24,13 +24,19 @@
 		search: string;
 		/** A sentence on what this kind of thing is, behind an info button beside the heading. */
 		tip: string;
+		/** The person's accounts, for a filter by account when they belong to several (the entries carry `account`). */
+		accounts?: { slug: string; name: string }[];
 	}
-	let { id, heading, ideas, empty, action, all, search, tip }: Props = $props();
+	let { id, heading, ideas, empty, action, all, search, tip, accounts = [] }: Props = $props();
 
 	let query = $state("");
-	/** Pages of DASHBOARD_IDEAS_PAGE shown; back to one whenever the query changes. */
+	/** The account filter: an account's slug, or "" for all. */
+	let account = $state("");
+	/** Pages of DASHBOARD_IDEAS_PAGE shown; back to one whenever the query or the account changes. */
 	let pages = $state(1);
-	let matches = $derived(filterByTitle(ideas, query));
+	let matches = $derived(
+		filterByTitle(account ? ideas.filter((i) => i.account === account) : ideas, query),
+	);
 	/** The server sends the newest DASHBOARD_LIST_CAP; a full list may have more behind the "All …" link. */
 	let capped = $derived(ideas.length >= DASHBOARD_LIST_CAP);
 </script>
@@ -42,7 +48,7 @@
 			<InfoTip text={tip} label="About {heading}" class="text-16px" />
 		</h2>
 		{#if ideas.length > 0}
-			<a class="link-dim text-14px" href={all.href}>{all.label}</a>
+			<a class="link text-14px" href={all.href}>{all.label}</a>
 		{/if}
 	</div>
 	{#if ideas.length === 0}
@@ -51,20 +57,35 @@
 			<a class="button-accent button-sm" href={action.href}>{action.label}</a>
 		</div>
 	{:else}
-		<label class="relative w-full sm-w-72">
-			<span
-				class="i-ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-dim"
-				aria-hidden="true"
-			></span>
-			<input
-				class="field w-full py-1 pl-7 text-13px"
-				type="search"
-				placeholder="Search by title"
-				aria-label={search}
-				bind:value={query}
-				oninput={() => (pages = 1)}
-			/>
-		</label>
+		<div class="flex flex-wrap items-center gap-3">
+			<label class="relative w-full sm-w-72">
+				<span
+					class="i-ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-dim"
+					aria-hidden="true"
+				></span>
+				<input
+					class="field w-full py-1 pl-7 text-13px"
+					type="search"
+					placeholder="Search by title"
+					aria-label={search}
+					bind:value={query}
+					oninput={() => (pages = 1)}
+				/>
+			</label>
+			{#if accounts.length > 1}
+				<select
+					class="field w-auto py-1 text-13px"
+					aria-label="Account"
+					bind:value={account}
+					onchange={() => (pages = 1)}
+				>
+					<option value="">All accounts</option>
+					{#each accounts as a (a.slug)}
+						<option value={a.slug}>{a.name}</option>
+					{/each}
+				</select>
+			{/if}
+		</div>
 		<DashboardIdeaList
 			{heading}
 			ideas={matches}

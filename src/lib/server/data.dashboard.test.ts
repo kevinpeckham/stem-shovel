@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, test } from "vite-plus/test";
+import { PLAN_LIMITS } from "#lib/constants/plans.js";
 import { reset } from "../../../tests/helpers/fakeDataLayer";
 
-const { accountCounts, recentRecordingSessions, recentProjects, recentSongs, recentUserIdeas } =
-	await import("./data");
+const {
+	accountCounts,
+	accountQuota,
+	recentRecordingSessions,
+	recentProjects,
+	recentSongs,
+	recentUserIdeas,
+	unreadSessionChats,
+	unreadSongChats,
+} = await import("./data");
 
 const A = "acct-one____________";
 const B = "acct-two____________";
@@ -39,6 +48,34 @@ const recording = (
 	filename: `${id}.m4a`,
 	createdAt: at("2026-10-17T20:00:00Z"),
 	...over,
+});
+const message = (id: string, accountId: string, songId: string, userId: string, iso: string) => ({
+	id,
+	accountId,
+	songId,
+	userId,
+	body: `Message ${id}`,
+	mentions: null,
+	editedAt: null,
+	createdAt: at(iso),
+	updatedAt: at(iso),
+});
+const sessionMessage = (
+	id: string,
+	accountId: string,
+	sessionId: string,
+	userId: string,
+	iso: string,
+) => ({
+	id,
+	accountId,
+	sessionId,
+	userId,
+	body: `Message ${id}`,
+	mentions: null,
+	editedAt: null,
+	createdAt: at(iso),
+	updatedAt: at(iso),
 });
 const project = (
 	id: string,
@@ -106,9 +143,13 @@ beforeEach(() =>
 			song("s4", A, "p2", 8, { status: "archived" }),
 			song("sb", B, "pb", 20),
 		],
+		account: [
+			{ id: A, plan: "free", isFounder: false, storageLimitBytes: null },
+			{ id: B, plan: "free", isFounder: true, storageLimitBytes: null },
+		],
 		stem: [
-			{ id: "st1", accountId: A, songId: "s2", status: "ready" },
-			{ id: "st2", accountId: A, songId: "s3", status: "uploading" },
+			{ id: "st1", accountId: A, songId: "s2", status: "ready", sizeBytes: 1000 },
+			{ id: "st2", accountId: A, songId: "s3", status: "uploading", sizeBytes: 500 },
 		],
 		songMix: [
 			{ id: "mx1", accountId: A, songId: "s2", status: "ready" },
@@ -118,6 +159,43 @@ beforeEach(() =>
 			{ id: "d1", accountId: A, songId: "s2", status: "ready" },
 			{ id: "d2", accountId: A, songId: "s2", status: "ready" },
 			{ id: "d3", accountId: A, songId: "s3", status: "failed" },
+		],
+		chatMessage: [
+			// s1: three by V after U's mark (out of order), one before it, and U's own after it.
+			message("c1", A, "s1", V, "2026-10-20T09:00:00Z"),
+			message("c2", A, "s1", V, "2026-10-20T11:00:00Z"),
+			message("c3", A, "s1", V, "2026-10-20T10:00:00Z"),
+			message("c4", A, "s1", V, "2026-10-19T00:00:00Z"),
+			message("c5", A, "s1", U, "2026-10-21T00:00:00Z"),
+			// s2: never read, one by V.
+			message("c6", A, "s2", V, "2026-10-22T00:00:00Z"),
+			// s3: read after every message.
+			message("c7", A, "s3", V, "2026-10-18T00:00:00Z"),
+			// s4 is archived; sb is another account's.
+			message("c8", A, "s4", V, "2026-10-23T00:00:00Z"),
+			message("c9", B, "sb", V, "2026-10-23T00:00:00Z"),
+		],
+		chatRead: [
+			{ userId: U, songId: "s1", readAt: at("2026-10-20T00:00:00Z") },
+			{ userId: U, songId: "s3", readAt: at("2026-10-19T00:00:00Z") },
+			{ userId: V, songId: "s2", readAt: at("2026-10-30T00:00:00Z") },
+		],
+		sessionChatMessage: [
+			// "new": one by V after U's mark, one before it, U's own after it.
+			sessionMessage("x1", A, "new", V, "2026-10-18T12:00:00Z"),
+			sessionMessage("x2", A, "new", V, "2026-10-17T12:00:00Z"),
+			sessionMessage("x3", A, "new", U, "2026-10-19T00:00:00Z"),
+			// "old": never read, two by V, newer than "new"'s.
+			sessionMessage("x4", A, "old", V, "2026-10-20T00:00:00Z"),
+			sessionMessage("x5", A, "old", V, "2026-10-21T00:00:00Z"),
+			// "same-day-earlier": read after its message.
+			sessionMessage("x6", A, "same-day-earlier", V, "2026-10-17T05:00:00Z"),
+			// Another account's.
+			sessionMessage("x7", B, "b", V, "2026-10-25T00:00:00Z"),
+		],
+		sessionChatRead: [
+			{ userId: U, sessionId: "new", readAt: at("2026-10-18T00:00:00Z") },
+			{ userId: U, sessionId: "same-day-earlier", readAt: at("2026-10-18T00:00:00Z") },
 		],
 		accountMember: [
 			{ id: "m1", accountId: A, userId: U, role: "owner" },
@@ -261,6 +339,17 @@ describe("recentSongs", () => {
 	});
 });
 
+describe("accountQuota", () => {
+	test("bytes stored (uploads still in flight count, failed ones do not) against the plan's limits; a founder account has none", async () => {
+		expect(await accountQuota(A)).toEqual({
+			bytes: 1500,
+			storageLimit: PLAN_LIMITS.free.storageBytes,
+			memberLimit: PLAN_LIMITS.free.members,
+		});
+		expect(await accountQuota(B)).toEqual({ bytes: 0, storageLimit: null, memberLimit: null });
+	});
+});
+
 describe("accountCounts", () => {
 	test("active projects and songs, sessions, ready recordings and members of the account only", async () => {
 		expect(await accountCounts(A)).toEqual({
@@ -288,5 +377,81 @@ describe("recentUserIdeas", () => {
 		expect((await recentUserIdeas(U, "song", 5)).map((i) => i.id)).toEqual(["d1"]);
 		expect((await recentUserIdeas(U, "idea", 500)).map((i) => i.id)).toEqual(["i2", "i3", "i1"]);
 		expect(await recentUserIdeas(V, "loop", 5)).toEqual([]);
+	});
+});
+
+describe("unreadSongChats", () => {
+	test("songs with messages by others after the person's read mark, newest unread first, with the href and view facts", async () => {
+		const rows = await unreadSongChats(A, "band", U);
+		expect(rows.map((r) => r.songId)).toEqual(["s2", "s1"]);
+		const [s2, s1] = rows;
+		expect(s1).toMatchObject({
+			title: "Song s1",
+			unread: 3,
+			latest: at("2026-10-20T11:00:00Z"),
+			href: "/band/projects/p1/s1?open=chat",
+			id: "s1",
+			projectId: "p1",
+			isPrivate: false,
+			project: { name: "Project p1", isPrivate: false, isRestricted: false },
+		});
+		expect(s2).toMatchObject({ unread: 1, latest: at("2026-10-22T00:00:00Z") });
+	});
+	test("the person's own messages never count; a song read after every message, an archived song and another account's are left out", async () => {
+		const ids = (await unreadSongChats(A, "band", U)).map((r) => r.songId);
+		expect(ids).not.toContain("s3");
+		expect(ids).not.toContain("s4");
+		expect(ids).not.toContain("sb");
+		// For V only U's message on s1 counts: V's own never do, and V read s2 after its message.
+		expect(
+			(await unreadSongChats(A, "band", V)).map((r) => [r.songId, r.unread, r.latest]),
+		).toEqual([["s1", 1, at("2026-10-21T00:00:00Z")]]);
+		expect(await unreadSongChats(B, "other", V)).toEqual([]);
+		expect((await unreadSongChats(B, "other", U)).map((r) => r.href)).toEqual([
+			"/other/projects/pb/sb?open=chat",
+		]);
+	});
+	test("a song whose project is not active is left out", async () => {
+		reset({
+			project: [project("gone", A, 9, { status: "archived" })],
+			song: [song("sg", A, "gone", 2)],
+			chatMessage: [message("g1", A, "sg", V, "2026-10-20T00:00:00Z")],
+		});
+		expect(await unreadSongChats(A, "band", U)).toEqual([]);
+	});
+});
+
+describe("unreadSessionChats", () => {
+	test("sessions with messages by others after the person's read mark, newest unread first, with the href", async () => {
+		const rows = await unreadSessionChats(A, "band", U);
+		expect(rows).toEqual([
+			{
+				sessionId: "old",
+				name: "",
+				place: "The Room",
+				kind: "practice",
+				startsOn: "2026-10-10",
+				href: "/band/sessions?session=old&open=chat",
+				unread: 2,
+				latest: at("2026-10-21T00:00:00Z"),
+			},
+			{
+				sessionId: "new",
+				name: "",
+				place: "The Room",
+				kind: "practice",
+				startsOn: "2026-10-17",
+				href: "/band/sessions?session=new&open=chat",
+				unread: 1,
+				latest: at("2026-10-18T12:00:00Z"),
+			},
+		]);
+	});
+	test("the person's own messages never count; another account's sessions are left out", async () => {
+		expect((await unreadSessionChats(A, "band", V)).map((r) => r.sessionId)).toEqual(["new"]);
+		expect((await unreadSessionChats(B, "other", U)).map((r) => r.href)).toEqual([
+			"/other/sessions?session=b&open=chat",
+		]);
+		expect(await unreadSessionChats(B, "other", V)).toEqual([]);
 	});
 });

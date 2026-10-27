@@ -68,6 +68,10 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 	await expect(
 		page.getByRole("complementary", { name: "Latest" }).getByRole("heading", { name: "Latest" }),
 	).toBeVisible();
+	// Conversations: the chats with new messages and the comments waiting, or "Nothing waiting."
+	const conversations = page.getByRole("region", { name: "Conversations" });
+	await expect(conversations).toBeVisible();
+	await expect(conversations).toContainText(/with new messages|waiting/);
 	const sidebar = page.getByRole("complementary", { name: "Dashboard sidebar" });
 	await expect(sidebar.getByRole("link", { name: "Whirl Looper" })).toHaveAttribute(
 		"href",

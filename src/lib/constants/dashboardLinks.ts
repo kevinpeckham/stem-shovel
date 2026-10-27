@@ -59,9 +59,22 @@ export interface DashboardEntry {
 	when: Date;
 	whenText?: string;
 	meta?: string;
+	/** The account's slug, for the account filter on a section of things that belong to accounts (projects, songs, sessions). */
+	account?: string;
 }
 
 /** Ideas, loops or multitracks a dashboard section shows at first, and how many more each "Show more" reveals. */
+/** A chat with messages the person has not seen (the dashboard's Conversations): a song's or a session's, with a link that opens it. */
+export interface Conversation {
+	id: string;
+	title: string;
+	/** The line under the title: the project or the session's day, and the account when there are several. */
+	meta: string;
+	href: string;
+	unread: number;
+	latest: Date;
+}
+
 export const DASHBOARD_IDEAS_PAGE = 10;
 
 /** The most of each kind (per account for projects, songs and sessions; per person for ideas, loops and multitracks) the dashboard loads: the newest, enough for the lists and their search; the "All …" pages hold the rest. */
