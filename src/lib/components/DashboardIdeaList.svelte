@@ -8,9 +8,11 @@
 		heading: string;
 		ideas: DashboardEntry[];
 		shown: number;
+		/** The list holds only the newest the server sends, so the count reads "of the latest N". */
+		capped?: boolean;
 		onmore: () => void;
 	}
-	let { heading, ideas, shown, onmore }: Props = $props();
+	let { heading, ideas, shown, capped = false, onmore }: Props = $props();
 
 	let page = $derived(pageOf(ideas, shown));
 </script>
@@ -33,7 +35,9 @@
 	</ul>
 	{#if page.total > DASHBOARD_IDEAS_PAGE}
 		<div class="flex flex-wrap items-center gap-3">
-			<p class="text-12px opacity-70">Showing {page.count} of {page.total}</p>
+			<p class="text-12px opacity-70">
+				Showing {page.count} of {capped ? `the latest ${page.total}` : page.total}
+			</p>
 			{#if page.more}
 				<button type="button" class="button button-xs" onclick={onmore}>Show more</button>
 			{/if}

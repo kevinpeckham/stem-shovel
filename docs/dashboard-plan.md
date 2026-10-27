@@ -61,7 +61,11 @@ sections below. Two columns from `lg:` (content left, a 20 rem sidebar
 right, `+page.svelte`), one column on a phone; since 0.183.1 Latest is
 its own aside placed first on a phone (grid rows and columns at `lg:`,
 so the right column reads Latest, then the widgets), the dates in the
-lists are days only, and the tile counts are of active projects and songs. The
+lists are days only, and the tile counts are of active projects and songs.
+Since 0.184.0 the loader fetches the newest `DASHBOARD_LIST_CAP` (50) of
+each kind rather than 500: the lists show ten at a time and the "All …"
+pages hold everything, so the page data stays small as accounts grow (a
+capped list's count reads "of the latest 50"). The
 content column continues with **Your Songs** (every song the person may
 open across their accounts, last changed first, each under its project,
 its stage (`songStage`), its counts of ready stems and demos (`recentSongs`)

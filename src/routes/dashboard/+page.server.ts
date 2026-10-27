@@ -1,4 +1,4 @@
-import type { DashboardEntry } from "#lib/constants/dashboardLinks.js";
+import { DASHBOARD_LIST_CAP, type DashboardEntry } from "#lib/constants/dashboardLinks.js";
 import { SESSION_KIND_LABELS } from "#lib/constants/sessionRecordings.js";
 import { STAGE_LABEL } from "#lib/constants/songStages.js";
 import { requireSignedIn } from "#lib/server/access.js";
@@ -19,16 +19,13 @@ import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 import { songStage } from "#lib/utils/songStage.js";
 import type { PageServerLoad } from "./$types";
 
-/** A cap on each account's projects, songs and sessions and on each kind of idea: all of them in practice, searched and paged in the browser. */
-const LIMIT = 500;
-
 /** One account: its tile's counts and the person's role, and every project, song and session they may open, for the Your Projects, Your Songs and Your Sessions sections. */
 async function dashboardAccount(m: Membership, userId: string) {
 	const [counts, sessions, projectRows, songRows, projectRoles] = await Promise.all([
 		accountCounts(m.accountId),
-		recentRecordingSessions(m.accountId, LIMIT),
-		recentProjects(m.accountId, LIMIT),
-		recentSongs(m.accountId, LIMIT),
+		recentRecordingSessions(m.accountId, DASHBOARD_LIST_CAP),
+		recentProjects(m.accountId, DASHBOARD_LIST_CAP),
+		recentSongs(m.accountId, DASHBOARD_LIST_CAP),
 		projectRolesOf(m.accountId, userId),
 	]);
 	const who: Viewer = { accountRole: m.role, projectRoles };
@@ -123,9 +120,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const memberships = realMemberships(locals.memberships);
 	const [inbox, ideaRows, loopRows, multitrackRows, tiles] = await Promise.all([
 		listInbox(user.id),
-		recentUserIdeas(user.id, "idea", LIMIT),
-		recentUserIdeas(user.id, "loop", LIMIT),
-		recentUserIdeas(user.id, "song", LIMIT),
+		recentUserIdeas(user.id, "idea", DASHBOARD_LIST_CAP),
+		recentUserIdeas(user.id, "loop", DASHBOARD_LIST_CAP),
+		recentUserIdeas(user.id, "song", DASHBOARD_LIST_CAP),
 		Promise.all(memberships.map((m) => dashboardAccount(m, user.id))),
 	]);
 	return {

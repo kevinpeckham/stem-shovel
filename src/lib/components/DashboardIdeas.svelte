@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { DASHBOARD_IDEAS_PAGE, type DashboardEntry } from "#lib/constants/dashboardLinks.js";
+	import {
+		DASHBOARD_IDEAS_PAGE,
+		DASHBOARD_LIST_CAP,
+		type DashboardEntry,
+	} from "#lib/constants/dashboardLinks.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
 	import DashboardIdeaList from "./DashboardIdeaList.svelte";
 	import InfoTip from "./InfoTip.svelte";
@@ -27,6 +31,8 @@
 	/** Pages of DASHBOARD_IDEAS_PAGE shown; back to one whenever the query changes. */
 	let pages = $state(1);
 	let matches = $derived(filterByTitle(ideas, query));
+	/** The server sends the newest DASHBOARD_LIST_CAP; a full list may have more behind the "All …" link. */
+	let capped = $derived(ideas.length >= DASHBOARD_LIST_CAP);
 </script>
 
 <section class="grid gap-3" aria-labelledby={id}>
@@ -63,6 +69,7 @@
 			{heading}
 			ideas={matches}
 			shown={pages * DASHBOARD_IDEAS_PAGE}
+			{capped}
 			onmore={() => (pages += 1)}
 		/>
 	{/if}

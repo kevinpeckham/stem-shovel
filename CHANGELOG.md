@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.184.0] - 2026-10-27
+
+### Changed
+
+- **A lighter dashboard.** Each list on the dashboard loads the newest fifty of its kind instead of everything, so the page stays quick as accounts grow; the "All projects", "All songs" and "All sessions" pages hold the rest, and a capped list's count reads "Showing 10 of the latest 50".
+
+### Technical
+
+- `DASHBOARD_LIST_CAP` (50) replaces the loader's 500 per kind per account. Measured before the change with the bot's two small accounts: the dashboard's data was under 5 KB and about 0.2 s on the dev server, 0.4 s warm on staging, so this is protective rather than a fix.
+
 ## [0.183.1] - 2026-10-27
 
 ### Changed

@@ -63,3 +63,6 @@ export interface DashboardEntry {
 
 /** Ideas, loops or multitracks a dashboard section shows at first, and how many more each "Show more" reveals. */
 export const DASHBOARD_IDEAS_PAGE = 10;
+
+/** The most of each kind (per account for projects, songs and sessions; per person for ideas, loops and multitracks) the dashboard loads: the newest, enough for the lists and their search; the "All …" pages hold the rest. */
+export const DASHBOARD_LIST_CAP = 50;
