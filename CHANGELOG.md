@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.175.1] - 2026-10-27
+
+### Technical
+
+- **Packages updated** (2026-10-27): Vite+ 1.4.0 (with its Vite core alias), Svelte 5.57.3, UnoCSS 66.12, better-auth 1.7.14 and the passkey plugin, the AI SDK 7.0.154 and gateway 4.0.127, Sentry 11.9, marked 18.1.2, mediabunny 1.62.1, fallow 3.36. TypeScript stays on 6: svelte-check 4.7 declares TypeScript 5 or 6 as its peer, so version 7 (the Go compiler) waits for it. SvelteKit 3 has been in since v0.113.1; the parked "SvelteKit 3 upgrade" item is done.
+
 ## [0.175.0] - 2026-10-27
 
 ### Added
