@@ -52,7 +52,12 @@ pages. Two columns from `lg:` (content left, a 20 rem sidebar right,
 `+page.svelte`), one column on a phone with the sidebar after. The
 content column continues with **Your Songs** (every song the person may
 open across their accounts, last changed first, each under its project and,
-with several accounts, its account; `allSongs` in `+page.server.ts`), then
+with several accounts, its account; `allSongs` in `+page.server.ts`;
+"All songs" opens `/songs`, every song across accounts, sortable and
+filterable), **Your Sessions** (the same for recording sessions, latest
+day first, each under its kind, place and recording count; "All sessions"
+opens `/sessions`, the same page for sessions, which was a redirect to the
+current account's before), then
 **Your Ideas**, **Your Multitrack
 Recordings** and **Your Loops** (one `DashboardIdeas` component for the three
 idea kinds, `recentUserIdeas(userId, kind, n)`; each empty state is the

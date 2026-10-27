@@ -8,6 +8,21 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.180.0] - 2026-10-27
+
+### Added
+
+- **Your Sessions on the dashboard.** Under Your Songs: every recording session across your accounts, latest day first, each under its kind, place and recording count (and its account, when you belong to several), with the same search, paging and "All sessions" link; with none, a card to record one.
+- **Songs and Sessions pages.** `/songs` lists every song you may open across your accounts with its project, account, stage and when it last changed; `/sessions` every session with its kind, place, day, recordings and account. Both have a search, a filter by stage or kind, and sortable columns. The dashboard's "All songs" and "All sessions" open them (the account-bound link was misleading with several accounts). `/sessions` was a redirect to the current account's sessions before.
+
+### Changed
+
+- **DAW project file converter** is what the Tools widget calls Convert.
+
+### Technical
+
+- `recentSongs` now returns `stage`, `isFinished`, `createdAt`, `hasStem` and `hasMix` (ready stems and mixes through nested `with`), so a list can compute `songStage` without the stems. `sortRows` (`src/lib/utils/sortRows.ts`) sorts rows by a key and direction. `DashboardEntry.whenText` shows a session's day in place of a date and time. "songs" joins the reserved short-link slugs; `siteRoutes.mjs` expects 200 from `/sessions` and `/songs`.
+
 ## [0.179.0] - 2026-10-27
 
 ### Added

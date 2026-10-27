@@ -50,7 +50,8 @@ export const ROUTES = [
 	["studio (server)", "/studio", [301, 308], [301, 308]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
 	["[account]/artists", "/{account}/artists", [303], [200]],
-	["sessions", "/sessions", [303], [307]],
+	["sessions", "/sessions", [303], [200]],
+	["songs", "/songs", [303], [200]],
 	["[account]/sessions", "/{account}/sessions", [303], [200]],
 	["[account]/sessions/record", "/{account}/sessions/record", [303], [200]],
 	// A recording's own page: a member's, or a share link's; nobody else (an id nobody has: 404 either way).

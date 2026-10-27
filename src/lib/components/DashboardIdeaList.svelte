@@ -27,7 +27,7 @@
 						<div class="text-12px opacity-70">{idea.meta}</div>
 					{/if}
 				</div>
-				<span class="text-12px opacity-60">{formatWhen(idea.when)}</span>
+				<span class="text-12px opacity-60">{idea.whenText ?? formatWhen(idea.when)}</span>
 			</li>
 		{/each}
 	</ul>

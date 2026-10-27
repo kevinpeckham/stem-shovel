@@ -65,9 +65,10 @@ Two components render it:
 Rolled out to the drum machine, piano, tuner, metronome and (2026-10-02)
 Idea Recorder pages, so every tool and instrument page's words are editable;
 and (2026-10-20, Kevin) to the Sessions page, an account's page: its copy
-doc is `sessions-page`, and since the editor's way back needs one address,
-`/sessions` redirects to the current account's sessions (as `/projects`
-does).
+doc is `sessions-page`, and the editor's way back is `/sessions`: since
+v0.180.0 the signed-in person's sessions across all their accounts (each
+linking to its session page), where it redirected to the current
+account's sessions before (`/projects` still does).
 The recorder's tips show from sm only: on a phone the page is an app-height
 screen of its own, and the user docs are a button away.
 

@@ -28,7 +28,7 @@ export const DASHBOARD_TOOLS: DashboardLink[] = [
 	{ label: "Dawn Multitrack Studio", href: "/multitrack-recorder" },
 	{ label: "Tuner", href: "/tuner" },
 	{ label: "Metronome", href: "/metronome" },
-	{ label: "Convert", href: "/convert" },
+	{ label: "DAW project file converter", href: "/convert" },
 ];
 
 /** The sidebar's Instruments, as the footer names them. */
@@ -51,12 +51,13 @@ export const DASHBOARD_MORE: (DashboardLink | DashboardAction)[] = [
 	{ label: "Stem Shovel Blog", href: "/blog" },
 ];
 
-/** An entry in a dashboard list (Your Songs, Your Ideas, Your Multitrack Recordings, Your Loops): a title linking somewhere, when it was made or last changed, and a line under the title (a song's project). */
+/** An entry in a dashboard list (Your Songs, Your Sessions, Your Ideas, Your Multitrack Recordings, Your Loops): a title linking somewhere, when it was made or last changed (`whenText` shows in place of the date and time, for a session's day), and a line under the title (a song's project, a session's kind and place). */
 export interface DashboardEntry {
 	id: string;
 	title: string;
 	href: string;
 	when: Date;
+	whenText?: string;
 	meta?: string;
 }
 

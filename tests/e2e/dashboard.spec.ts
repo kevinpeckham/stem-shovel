@@ -26,6 +26,7 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 	for (const name of [
 		"Your Projects & Songs",
 		"Your Songs",
+		"Your Sessions",
 		"Your Ideas",
 		"Your Multitrack Recordings",
 		"Your Loops",
@@ -33,6 +34,14 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		await expect(page.getByRole("heading", { name })).toBeVisible();
 	// Your Songs: each song under its project.
 	await expect(page.getByRole("list", { name: "Your Songs" })).toContainText("Badverbs");
+	await expect(
+		page.getByRole("region", { name: "Your Songs" }).getByRole("link", { name: "All songs" }),
+	).toHaveAttribute("href", "/songs");
+	// Your Sessions: the bot's accounts hold none, so the card offers to record one.
+	await expect(page.getByRole("link", { name: "Record a session" })).toHaveAttribute(
+		"href",
+		/\/sessions\/record$/,
+	);
 	// The sidebar: what is new, then the tools, instruments and more.
 	const sidebar = page.getByRole("complementary", { name: "Dashboard sidebar" });
 	await expect(sidebar.getByRole("heading", { name: "Latest" })).toBeVisible();

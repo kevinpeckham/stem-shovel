@@ -96,6 +96,7 @@ export const SHORT_LINK_RESERVED_SLUGS: readonly string[] = [
 	"releases",
 	"reset-password",
 	"sessions",
+	"songs",
 	"studio",
 	"support",
 	"tuner",

@@ -71,6 +71,9 @@ const song = (
 	slug: id,
 	isPrivate: false,
 	status: "active",
+	stage: null,
+	isFinished: false,
+	createdAt: at("2026-09-01T00:00:00Z"),
 	updatedAt: at(`2026-10-${String(day).padStart(2, "0")}T00:00:00Z`),
 	...over,
 });
@@ -99,9 +102,17 @@ beforeEach(() =>
 		song: [
 			song("s1", A, "p1", 2),
 			song("s2", A, "p1", 6),
-			song("s3", A, "p2", 4),
+			song("s3", A, "p2", 4, { stage: "finished", isFinished: true }),
 			song("s4", A, "p2", 8, { status: "archived" }),
 			song("sb", B, "pb", 20),
+		],
+		stem: [
+			{ id: "st1", accountId: A, songId: "s2", status: "ready" },
+			{ id: "st2", accountId: A, songId: "s3", status: "uploading" },
+		],
+		songMix: [
+			{ id: "mx1", accountId: A, songId: "s2", status: "ready" },
+			{ id: "mx2", accountId: A, songId: "s3", status: "failed" },
 		],
 		accountMember: [
 			{ id: "m1", accountId: A, userId: U, role: "owner" },
@@ -195,6 +206,26 @@ describe("recentSongs", () => {
 		expect(rows.map((s) => s.id)).toEqual(["s2", "s3"]);
 		expect(rows[0].project).toMatchObject({ name: "Project p1", slug: "p1" });
 		expect((await recentSongs(B, 5)).map((s) => s.id)).toEqual(["sb"]);
+	});
+
+	test("with the stage fields and whether a ready stem and a ready mix exist", async () => {
+		const rows = await recentSongs(A, 5);
+		expect(
+			rows.map(({ id, stage, isFinished, hasStem, hasMix }) => ({
+				id,
+				stage,
+				isFinished,
+				hasStem,
+				hasMix,
+			})),
+		).toEqual([
+			{ id: "s2", stage: null, isFinished: false, hasStem: true, hasMix: true },
+			{ id: "s3", stage: "finished", isFinished: true, hasStem: false, hasMix: false },
+			{ id: "s1", stage: null, isFinished: false, hasStem: false, hasMix: false },
+		]);
+		expect(rows[0].createdAt).toEqual(at("2026-09-01T00:00:00Z"));
+		expect(rows[0]).not.toHaveProperty("stems");
+		expect(rows[0]).not.toHaveProperty("mixes");
 	});
 });
 

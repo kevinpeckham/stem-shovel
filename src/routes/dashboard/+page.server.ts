@@ -10,22 +10,24 @@ import {
 } from "#lib/server/data.js";
 import { listInbox } from "#lib/server/notifications.js";
 import { canViewProject, canViewSong, type Viewer } from "#lib/server/viewAccess.js";
+import { SESSION_KIND_LABELS } from "#lib/constants/sessionRecordings.js";
 import { realMemberships, type Membership } from "#lib/utils/actingMemberships.js";
 import { inboxDigest } from "#lib/utils/inboxDigest.js";
+import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 import type { PageServerLoad } from "./$types";
 
 /** Entries in each of an account tile's lists. */
 const SHOWN = 6;
-/** A cap on each of Your Songs (per account), Your Ideas, Your Multitrack Recordings and Your Loops: all of them in practice, searched and paged in the browser. */
+/** A cap on each of Your Songs and Your Sessions (per account), Your Ideas, Your Multitrack Recordings and Your Loops: all of them in practice, searched and paged in the browser. */
 const IDEAS = 500;
 /** Fetched past the shown number, so restricted projects the person cannot open leave room for others. */
 const SLACK = 3;
 
-/** One account's tile: its counts (for the checklist) and the recent projects, songs and sessions the person may open; `allSongs` is every song they may open, for Your Songs. */
+/** One account's tile: its counts (for the checklist) and the recent projects, songs and sessions the person may open; `allSongs` and `allSessions` are every one of them, for Your Songs and Your Sessions. */
 async function dashboardAccount(m: Membership, userId: string) {
-	const [counts, sessions, projectRows, songRows, projectRoles] = await Promise.all([
+	const [counts, allSessions, projectRows, songRows, projectRoles] = await Promise.all([
 		accountCounts(m.accountId),
-		recentRecordingSessions(m.accountId, SHOWN),
+		recentRecordingSessions(m.accountId, IDEAS),
 		recentProjects(m.accountId, SHOWN * SLACK),
 		recentSongs(m.accountId, IDEAS),
 		projectRolesOf(m.accountId, userId),
@@ -47,11 +49,49 @@ async function dashboardAccount(m: Membership, userId: string) {
 	const songs = allSongs
 		.slice(0, SHOWN)
 		.map(({ id, title, href, project }) => ({ id, title, href, project }));
-	return { slug: m.slug, name: m.name, role: m.role, counts, sessions, projects, songs, allSongs };
+	const sessions = allSessions.slice(0, SHOWN);
+	return {
+		slug: m.slug,
+		name: m.name,
+		role: m.role,
+		counts,
+		sessions,
+		projects,
+		songs,
+		allSongs,
+		allSessions,
+	};
+}
+
+type Tile = Awaited<ReturnType<typeof dashboardAccount>>;
+
+/** Your Sessions: every session across the person's accounts, latest day first, each under its kind, place, recording count (and its account, when they belong to several). */
+function allSessions(tiles: Tile[]): DashboardEntry[] {
+	const several = tiles.length > 1;
+	return tiles
+		.flatMap((t) =>
+			t.allSessions.map((s) => {
+				const facts = [
+					SESSION_KIND_LABELS[s.kind],
+					s.place.trim(),
+					`${s.recordingCount} ${s.recordingCount === 1 ? "recording" : "recordings"}`,
+					several ? t.name : "",
+				].filter(Boolean);
+				return {
+					id: s.id,
+					title: sessionDisplayName(s),
+					href: `/${t.slug}/sessions/s/${s.id}`,
+					when: new Date(s.startsOn),
+					whenText: dayText(s.startsOn),
+					meta: facts.join(" · "),
+				};
+			}),
+		)
+		.sort((a, b) => b.when.getTime() - a.when.getTime());
 }
 
 /** Your Songs: every song the person may open across their accounts, last changed first, each under its project (and its account, when they belong to several). */
-function allSongs(tiles: Awaited<ReturnType<typeof dashboardAccount>>[]): DashboardEntry[] {
+function allSongs(tiles: Tile[]): DashboardEntry[] {
 	const several = tiles.length > 1;
 	return tiles
 		.flatMap((t) =>
@@ -77,8 +117,8 @@ function entries(
 /**
  * Where a signed-in person lands (docs/dashboard-plan.md): a tile per
  * account they really belong to (not a super admin's acting ones) with its
- * recent projects, songs and sessions; their songs across those accounts;
- * their own ideas, loops and multitrack recordings (all of them, newest
+ * recent projects, songs and sessions; their songs and sessions across
+ * those accounts; their own ideas, loops and multitrack recordings (all of them, newest
  * first); and what is new in their inbox.
  */
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -104,6 +144,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		accounts,
 		digest: inboxDigest(inbox),
 		songs: allSongs(tiles),
+		sessions: allSessions(tiles),
 		ideas: entries(ideaRows, () => "/idea-recorder"),
 		loops: entries(loopRows, () => "/looper"),
 		multitracks: entries(

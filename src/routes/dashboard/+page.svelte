@@ -53,8 +53,17 @@
 					ideas={data.songs}
 					empty="No songs yet."
 					action={{ label: "Your projects", href: `/${data.currentSlug}/projects` }}
-					all={{ label: "All songs", href: `/${data.currentSlug}/projects` }}
+					all={{ label: "All songs", href: "/songs" }}
 					search="Search songs"
+				/>
+				<DashboardIdeas
+					id="dashboard-sessions"
+					heading="Your Sessions"
+					ideas={data.sessions}
+					empty="No sessions yet."
+					action={{ label: "Record a session", href: `/${data.currentSlug}/sessions/record` }}
+					all={{ label: "All sessions", href: "/sessions" }}
+					search="Search sessions"
 				/>
 			{/if}
 			<DashboardIdeas

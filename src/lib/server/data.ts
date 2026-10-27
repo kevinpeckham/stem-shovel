@@ -9132,9 +9132,13 @@ export async function recentProjects(accountId: string, n: number) {
 	return rows.map(({ songs, ...p }) => ({ ...p, songCount: songs.length }));
 }
 
-/** The account's `n` most recently updated active songs, each with its project's name and address and the fields the view rules read. */
-export function recentSongs(accountId: string, n: number) {
-	return db.query.song.findMany({
+/**
+ * The account's `n` most recently updated active songs, each with its
+ * project's name and address, the fields the view rules read, and what
+ * `songStage` reads (whether a ready stem and a ready mix exist).
+ */
+export async function recentSongs(accountId: string, n: number) {
+	const rows = await db.query.song.findMany({
 		where: and(eq(song.accountId, accountId), eq(song.status, "active")),
 		orderBy: [desc(song.updatedAt)],
 		limit: n,
@@ -9144,14 +9148,24 @@ export function recentSongs(accountId: string, n: number) {
 			slug: true,
 			projectId: true,
 			isPrivate: true,
+			stage: true,
+			isFinished: true,
+			createdAt: true,
 			updatedAt: true,
 		},
 		with: {
 			project: {
 				columns: { name: true, slug: true, status: true, isPrivate: true, isRestricted: true },
 			},
+			stems: { where: eq(stem.status, "ready"), columns: { id: true } },
+			mixes: { where: eq(songMix.status, "ready"), columns: { id: true } },
 		},
 	});
+	return rows.map(({ stems, mixes, ...s }) => ({
+		...s,
+		hasStem: stems.length > 0,
+		hasMix: mixes.length > 0,
+	}));
 }
 
 /** How much the account holds, for the dashboard's onboarding checklist: projects, songs, ready session recordings and members. */

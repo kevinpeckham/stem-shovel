@@ -68,9 +68,11 @@ the tuner (a wrench menu on a phone), so a take can be recorded to a click
 or a beat that stays off the microphone. Neutral pages: `/` (the front
 page with live demos of a public song, the recorder, the tuner and the
 drum machine), `/tuner`, `/metronome`, `/drum-machine`, `/convert` (the tools, public
-and indexable), `/dashboard` (where a signed-in person lands: what is
-new, quick actions, each account's latest session and recent work;
-docs/dashboard-plan.md), `/inbox` and `/settings/notifications`, `/docs` (user
+and indexable), `/dashboard` (where a signed-in person lands: each
+account's recent work, their songs, sessions, ideas, loops and multitracks,
+what is new, tools and more; docs/dashboard-plan.md), `/songs` and
+`/sessions` (every song or session across their accounts, sortable and
+filterable), `/inbox` and `/settings/notifications`, `/docs` (user
 documentation, editable by system admins) and `/releases`, `/blog`,
 `/pricing`, `/built-with`, `/feature-requests`, `/support`, `/waitlist`,
 `/accounts`, `/settings/security` (two-factor and passkeys), `/admin`
