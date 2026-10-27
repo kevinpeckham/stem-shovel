@@ -5,6 +5,7 @@ import { reset } from "../../../tests/helpers/fakeDataLayer";
 
 const {
 	accountActivity,
+	accountBand,
 	accountCounts,
 	accountPendingWork,
 	accountQuota,
@@ -339,6 +340,40 @@ describe("recentSongs", () => {
 		expect(rows[0]).not.toHaveProperty("stems");
 		expect(rows[0]).not.toHaveProperty("mixes");
 		expect(rows[0]).not.toHaveProperty("demos");
+	});
+});
+
+describe("accountBand", () => {
+	const W = "user-three__________";
+	const far = new Date("2027-01-01");
+	beforeEach(() =>
+		reset({
+			user: [
+				{ id: U, name: "Uma", email: "u@x" },
+				{ id: V, name: "Vic", email: "v@x" },
+				{ id: W, name: "Wes", email: "w@x" },
+			],
+			accountMember: [
+				{ id: "m1", accountId: A, userId: U, role: "owner" },
+				{ id: "m2", accountId: A, userId: V, role: "member" },
+				{ id: "m4", accountId: A, userId: W, role: "member" },
+				{ id: "m3", accountId: B, userId: U, role: "owner" },
+			],
+			session: [
+				{ id: "se1", token: "t1", userId: V, expiresAt: far, updatedAt: new Date("2026-10-26") },
+				{ id: "se2", token: "t2", userId: U, expiresAt: far, updatedAt: new Date("2026-10-01") },
+				{ id: "se3", token: "t3", userId: U, expiresAt: far, updatedAt: new Date("2026-10-25") },
+				{ id: "se4", token: "t4", userId: W, expiresAt: far, updatedAt: new Date("2026-09-01") },
+			],
+		}),
+	);
+	test("the members with a session touched since the date, by name alphabetically, and how many members there are", async () => {
+		expect(await accountBand(A, new Date("2026-10-13"))).toEqual({
+			total: 3,
+			active: ["Uma", "Vic"],
+		});
+		expect(await accountBand(B, new Date("2026-10-13"))).toEqual({ total: 1, active: ["Uma"] });
+		expect(await accountBand(A, new Date("2026-10-27"))).toEqual({ total: 3, active: [] });
 	});
 });
 

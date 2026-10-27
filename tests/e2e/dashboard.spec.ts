@@ -25,6 +25,8 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		"href",
 		"/mmkk/settings",
 	);
+	// The band at a glance: who has been active lately (the bot just signed in).
+	await expect(account).toContainText(/active in the last two weeks/i);
 	await expect(account.getByRole("link", { name: "Go to account page" })).toHaveAttribute(
 		"href",
 		"/mmkk/projects",

@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.188.0] - 2026-10-27
+
+### Added
+
+- **The band at a glance.** Each account tile on the dashboard says who has used Stem Shovel in the last two weeks ("Active in the last two weeks: Pat, Sam", "Everyone", "Just you" or "No one"), and an owner's or admin's tile adds the invitations still open ("2 invitations pending · 1 invite link open"), linking to the account's settings.
+
+### Technical
+
+- `accountBand(accountId, since)` in `data.ts` (a member is active when a Better Auth `session` row of theirs was updated since); the loader counts pending invitations not yet expired and open invite codes for admins. `DASHBOARD_ACTIVE_DAYS` (14).
+
 ## [0.187.0] - 2026-10-27
 
 ### Added

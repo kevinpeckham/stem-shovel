@@ -84,3 +84,5 @@ export const DASHBOARD_LIST_CAP = 50;
 export const DASHBOARD_ACTIVITY_DAYS = 7;
 /** The most activity events the dashboard loads per account. */
 export const DASHBOARD_ACTIVITY_CAP = 30;
+/** A member counts as active on the account tile when they used Stem Shovel within this many days. */
+export const DASHBOARD_ACTIVE_DAYS = 14;

@@ -180,13 +180,19 @@ project songs.
   rendered only with something in it.
 - No migration. Types in `constants/dashboardActivity.ts`.
 
-## Step 4 — the band at a glance
+## Step 4 — the band at a glance (v0.188.0; storage and seats in v0.185.0)
 
-- **Members active lately** and, for admins, **pending invites**
-  (`listInviteCodes`).
-- **Storage and seats**: the plan's usage (`accountUsage`, the limits in
-  `constants/plans`) as two bars, with the nudge the notifications
-  already send at the threshold, otherwise only in settings.
+- **Members active lately**: each tile says who used Stem Shovel in the
+  last `DASHBOARD_ACTIVE_DAYS` (14) by name (`accountBand` in data.ts: a
+  member whose Better Auth session row was touched since then; the first
+  five names, then "and N more"; "Everyone" or "Just you" when all are).
+- **Invitations open**: an owner or admin's tile links to settings with
+  "2 invitations pending · 1 invite link open" (`pendingInvitations` not
+  yet expired, `listInviteCodes` in the open state); nothing when both
+  are zero, nothing for a member.
+- **Storage and seats** shipped in v0.185.0 (`accountQuota`, step 2's
+  notes above).
+- No migration.
 
 ## Step 5 — "since your last visit" and personal touches
 

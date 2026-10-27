@@ -1,4 +1,5 @@
 import {
+	DASHBOARD_ACTIVE_DAYS,
 	DASHBOARD_ACTIVITY_CAP,
 	DASHBOARD_ACTIVITY_DAYS,
 	DASHBOARD_LIST_CAP,
@@ -10,9 +11,12 @@ import { STAGE_LABEL } from "#lib/constants/songStages.js";
 import { requireSignedIn } from "#lib/server/access.js";
 import {
 	accountActivity,
+	accountBand,
 	accountCounts,
 	accountPendingWork,
 	accountQuota,
+	listInviteCodes,
+	pendingInvitations,
 	projectRolesOf,
 	recentProjects,
 	recentRecordingSessions,
@@ -47,6 +51,8 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		quota,
 		activity,
 		pending,
+		band,
+		invites,
 	] = await Promise.all([
 		accountCounts(m.accountId),
 		recentRecordingSessions(m.accountId, DASHBOARD_LIST_CAP),
@@ -59,6 +65,9 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		admin ? accountQuota(m.accountId) : null,
 		accountActivity(m.accountId, m.slug, since, DASHBOARD_ACTIVITY_CAP),
 		accountPendingWork(m.accountId, m.slug),
+		accountBand(m.accountId, new Date(Date.now() - DASHBOARD_ACTIVE_DAYS * DAY)),
+		// Pending invitations and open invite links are an owner's or admin's to see (the settings page shows them).
+		admin ? openInvites(m.accountId) : null,
 	]);
 	const who: Viewer = { accountRole: m.role, projectRoles };
 	const projects = projectRows.filter((p) => canViewProject(p, who, []));
@@ -69,6 +78,8 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		role: m.role,
 		counts,
 		quota,
+		band,
+		invites,
 		projects,
 		songs,
 		sessions,
@@ -77,6 +88,21 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		// A song's event or job shows only when the person may open the song; a session's shows to every member.
 		activity: activity.filter((e) => !e.song || canViewSong(e.song, who, [])),
 		pending: pending.filter((p) => !p.song || canViewSong(p.song, who, [])),
+	};
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** What an admin's tile says about invitations: email invitations still pending (not accepted, revoked or expired) and invite links still open. */
+async function openInvites(accountId: string) {
+	const [invitations, codes] = await Promise.all([
+		pendingInvitations(accountId),
+		listInviteCodes(accountId),
+	]);
+	const now = Date.now();
+	return {
+		invitations: invitations.filter((i) => i.expiresAt.getTime() > now).length,
+		codes: codes.filter((c) => c.state === "open").length,
 	};
 }
 
@@ -227,13 +253,14 @@ function ideaEntries(
  * counts and their role; their projects, songs and sessions across those
  * accounts; their own ideas, loops and multitrack recordings, newest
  * first; what is new in their inbox; the chats, comments and mentions
- * waiting for them; what happened in their accounts this week; and what
- * the server has not finished.
+ * waiting for them; what happened in their accounts this week; what the
+ * server has not finished; and, on each tile, who has been active lately
+ * and (for an admin) the invitations still open.
  */
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const user = requireSignedIn(locals, url);
 	const memberships = realMemberships(locals.memberships);
-	const since = new Date(Date.now() - DASHBOARD_ACTIVITY_DAYS * 24 * 60 * 60 * 1000);
+	const since = new Date(Date.now() - DASHBOARD_ACTIVITY_DAYS * DAY);
 	const [inbox, ideaRows, loopRows, multitrackRows, tiles] = await Promise.all([
 		listInbox(user.id),
 		recentUserIdeas(user.id, "idea", DASHBOARD_LIST_CAP),
@@ -242,12 +269,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		Promise.all(memberships.map((m) => dashboardAccount(m, user.id, since))),
 	]);
 	return {
-		accounts: tiles.map(({ slug, name, role, counts, quota }) => ({
+		accounts: tiles.map(({ slug, name, role, counts, quota, band, invites }) => ({
 			slug,
 			name,
 			role,
 			counts,
 			quota,
+			band,
+			invites,
 		})),
 		digest: inboxDigest(inbox),
 		chats: conversations(tiles),

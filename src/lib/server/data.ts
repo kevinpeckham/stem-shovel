@@ -177,6 +177,7 @@ import { chatReactionSummary, type ChatReactionSummary } from "#lib/utils/chatRe
 const {
 	account,
 	accountMember,
+	session,
 	project,
 	projectMember,
 	song,
@@ -9787,6 +9788,37 @@ export async function recentSongs(accountId: string, n: number) {
 		hasStem: stems.length > 0,
 		hasMix: mixes.length > 0,
 	}));
+}
+
+/** The band at a glance, for the dashboard tile: how many members the account has and the names of those who have used Stem Shovel since `since` (a Better Auth session touched after it), alphabetically. */
+export async function accountBand(
+	accountId: string,
+	since: Date,
+): Promise<{ total: number; active: string[] }> {
+	const members = await db.query.accountMember.findMany({
+		where: eq(accountMember.accountId, accountId),
+		columns: { userId: true },
+		with: { user: { columns: { name: true } } },
+	});
+	if (members.length === 0) return { total: 0, active: [] };
+	const sessions = await db
+		.select({ userId: session.userId })
+		.from(session)
+		.where(
+			and(
+				inArray(
+					session.userId,
+					members.map((m) => m.userId),
+				),
+				gt(session.updatedAt, since),
+			),
+		);
+	const activeIds = new Set(sessions.map((r) => r.userId));
+	const active = members
+		.filter((m) => activeIds.has(m.userId))
+		.map((m) => m.user.name)
+		.sort((a, b) => a.localeCompare(b));
+	return { total: members.length, active };
 }
 
 /** The account's storage used against its plan, for the dashboard tile of an owner or admin: bytes stored (`accountStorageBytes`) and the plan's limits (null = unlimited, a founder account). */
