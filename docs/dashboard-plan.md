@@ -58,7 +58,10 @@ moved to **Your Projects**
 "All projects" opens `/projects`, the same sortable, filterable page as
 `/songs`, where it redirected to the current account before), then the
 sections below. Two columns from `lg:` (content left, a 20 rem sidebar
-right, `+page.svelte`), one column on a phone with the sidebar after. The
+right, `+page.svelte`), one column on a phone; since 0.183.1 Latest is
+its own aside placed first on a phone (grid rows and columns at `lg:`,
+so the right column reads Latest, then the widgets), the dates in the
+lists are days only, and the tile counts are of active projects and songs. The
 content column continues with **Your Songs** (every song the person may
 open across their accounts, last changed first, each under its project,
 its stage (`songStage`), its counts of ready stems and demos (`recentSongs`)

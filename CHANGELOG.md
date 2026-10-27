@@ -8,6 +8,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.183.1] - 2026-10-27
+
+### Changed
+
+- **Latest first on a phone.** The dashboard's unread notifications come before the lists on narrow screens, where they sat below every section; on wide screens the layout is unchanged.
+- **Days, not times.** Your Projects and Your Songs show the day something last changed, not the time of day.
+- **Tile counts match the lists.** An account tile counts active projects and songs, so an archived project no longer makes the count exceed what the lists show.
+
+### Technical
+
+- `plural(n, one, many?)` (`src/lib/utils/plural.ts`) replaces three local copies. The dashboard's calls to action go to the accounts page when there is no current account to point at.
+
 ## [0.183.0] - 2026-10-27
 
 ### Added

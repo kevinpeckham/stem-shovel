@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { OnboardingStep } from "#lib/utils/onboardingSteps.js";
+	import { plural } from "#lib/utils/plural.js";
 	import DashboardChecklist from "./DashboardChecklist.svelte";
 
 	/**
@@ -20,24 +21,23 @@
 	}
 	let { account }: Props = $props();
 
-	const count = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
 	/** "owner" → "Owner". */
 	let role = $derived(account.role.charAt(0).toUpperCase() + account.role.slice(1));
 	let stats = $derived([
 		{
 			id: "projects",
-			label: count(account.counts.projects, "project"),
+			label: plural(account.counts.projects, "project"),
 			href: `/${account.slug}/projects`,
 		},
-		{ id: "songs", label: count(account.counts.songs, "song"), href: `/${account.slug}/projects` },
+		{ id: "songs", label: plural(account.counts.songs, "song"), href: `/${account.slug}/projects` },
 		{
 			id: "sessions",
-			label: count(account.counts.sessions, "session"),
+			label: plural(account.counts.sessions, "session"),
 			href: `/${account.slug}/sessions`,
 		},
 		{
 			id: "members",
-			label: count(account.counts.members, "member"),
+			label: plural(account.counts.members, "member"),
 			href: `/${account.slug}/settings`,
 		},
 	]);

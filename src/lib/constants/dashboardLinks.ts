@@ -51,7 +51,7 @@ export const DASHBOARD_MORE: (DashboardLink | DashboardAction)[] = [
 	{ label: "Stem Shovel Blog", href: "/blog" },
 ];
 
-/** An entry in a dashboard list (Your Songs, Your Sessions, Your Ideas, Your Multitrack Recordings, Your Loops): a title linking somewhere, when it was made or last changed (`whenText` shows in place of the date and time, for a session's day), and a line under the title (a song's project, a session's kind and place). */
+/** An entry in a dashboard list (Your Songs, Your Sessions, Your Ideas, Your Multitrack Recordings, Your Loops): a title linking somewhere, when it was made or last changed, shown as a day (`whenText` shows instead, for a session's own day), and a line under the title (a song's project, a session's kind and place). */
 export interface DashboardEntry {
 	id: string;
 	title: string;

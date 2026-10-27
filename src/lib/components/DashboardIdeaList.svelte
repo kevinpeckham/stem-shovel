@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { DASHBOARD_IDEAS_PAGE, type DashboardEntry } from "#lib/constants/dashboardLinks.js";
-	import { formatWhen } from "#lib/utils/formatWhen.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
 	import { pageOf } from "#lib/utils/pageOf.js";
 
 	/** A dashboard section's ideas after the search: the first `shown`, then how many of how many with a Show more button while some remain. */
@@ -27,7 +27,7 @@
 						<div class="text-12px opacity-70">{idea.meta}</div>
 					{/if}
 				</div>
-				<span class="text-12px opacity-60">{idea.whenText ?? formatWhen(idea.when)}</span>
+				<span class="text-12px opacity-60">{idea.whenText ?? formatDate(idea.when)}</span>
 			</li>
 		{/each}
 	</ul>

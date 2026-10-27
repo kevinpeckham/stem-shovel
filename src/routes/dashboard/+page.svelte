@@ -21,8 +21,10 @@
 			return { ...a, steps, onboarding: showOnboarding(steps, counts) };
 		}),
 	);
-	/** The Session Recorder and Account settings go to the current account (the root layout's), when there is one. */
+	/** The Session Recorder, Account settings and the sections' calls to action go to the current account (the root layout's), when there is one. */
 	let current = $derived(accounts.length > 0 ? data.currentSlug : null);
+	/** A path inside the current account, or the accounts page when there is none to go to. */
+	const at = (path: string) => (current ? `/${current}${path}` : "/accounts");
 	let tools = $derived(dashboardTools(current));
 	let more = $derived(dashboardMore(current));
 </script>
@@ -35,10 +37,14 @@
 <main class="page">
 	<h1 class="app-page-heading">User Dashboard</h1>
 
+	<!-- Three grid children: Latest, the content, the widgets. One column on a phone in that order, so what is new comes first; from lg the content takes the left column over two rows and Latest sits above the widgets on the right. -->
 	<div
-		class="grid gap-8 lg-gap-12 xl-gap-16 2xl-gap-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start"
+		class="grid gap-8 lg-gap-x-12 xl-gap-x-16 2xl-gap-x-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-y-6 lg:items-start"
 	>
-		<div class="grid min-w-0 gap-8">
+		<aside aria-label="Latest" class="lg:col-start-2 lg:row-start-1">
+			<DashboardNew digest={data.digest} />
+		</aside>
+		<div class="grid min-w-0 gap-8 lg:col-start-1 lg:row-start-1 lg:row-span-2">
 			{#if accounts.length === 0}
 				<DashboardStart />
 			{:else}
@@ -63,7 +69,7 @@
 					tip="A project is a collection of songs: an album, a set, or a batch of works in progress. Every song lives in one project."
 					ideas={data.projects}
 					empty="No projects yet."
-					action={{ label: "Create a project", href: `/${data.currentSlug}/projects` }}
+					action={{ label: "Create a project", href: at("/projects") }}
 					all={{ label: "All projects", href: "/projects" }}
 					search="Search projects"
 				/>
@@ -73,7 +79,7 @@
 					tip="A song holds its stems (the separate tracks), demos, lyrics, charts and notes, and moves through the writing, arranging, mixing and finished stages."
 					ideas={data.songs}
 					empty="No songs yet."
-					action={{ label: "Your projects", href: `/${data.currentSlug}/projects` }}
+					action={{ label: "Your projects", href: at("/projects") }}
 					all={{ label: "All songs", href: "/songs" }}
 					search="Search songs"
 				/>
@@ -83,7 +89,7 @@
 					tip="Sessions are live recordings of shows or practices, captured with the Session Recorder."
 					ideas={data.sessions}
 					empty="No sessions yet."
-					action={{ label: "Record a session", href: `/${data.currentSlug}/sessions/record` }}
+					action={{ label: "Record a session", href: at("/sessions/record") }}
 					all={{ label: "All sessions", href: "/sessions" }}
 					search="Search sessions"
 				/>
@@ -120,8 +126,7 @@
 			/>
 		</div>
 
-		<aside aria-label="Dashboard sidebar" class="grid gap-6">
-			<DashboardNew digest={data.digest} />
+		<aside aria-label="Dashboard sidebar" class="grid gap-6 lg:col-start-2 lg:row-start-2">
 			<DashboardWidget heading="Tools" items={tools} />
 			<DashboardWidget heading="Instruments" items={DASHBOARD_INSTRUMENTS} />
 			<DashboardWidget heading="More" items={more} />

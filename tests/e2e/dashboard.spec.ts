@@ -64,9 +64,11 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		"href",
 		/\/sessions\/record$/,
 	);
-	// The sidebar: what is new, then the tools, instruments and more.
+	// Latest (what is new) is its own aside, first on a phone; then the sidebar: tools, instruments and more.
+	await expect(
+		page.getByRole("complementary", { name: "Latest" }).getByRole("heading", { name: "Latest" }),
+	).toBeVisible();
 	const sidebar = page.getByRole("complementary", { name: "Dashboard sidebar" });
-	await expect(sidebar.getByRole("heading", { name: "Latest" })).toBeVisible();
 	await expect(sidebar.getByRole("link", { name: "Whirl Looper" })).toHaveAttribute(
 		"href",
 		"/looper",

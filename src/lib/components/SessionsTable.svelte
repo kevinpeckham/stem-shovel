@@ -6,6 +6,7 @@
 		type SessionKind,
 	} from "#lib/constants/sessionRecordings.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
+	import { plural } from "#lib/utils/plural.js";
 	import { dayText } from "#lib/utils/sessionName.js";
 	import SearchBox from "./SearchBox.svelte";
 	import SortHeader from "./SortHeader.svelte";
@@ -41,7 +42,7 @@
 		filterByTitle(kind ? sessions.filter((s) => s.kind === kind) : sessions, query),
 	);
 	let rows = $derived(apply(matches));
-	const recordings = (n: number) => `${n} recording${n === 1 ? "" : "s"}`;
+	const recordings = (n: number) => plural(n, "recording");
 	const phoneLine = (s: SessionRow) =>
 		[SESSION_KIND_LABELS[s.kind], s.place, recordings(s.recordingCount), s.account]
 			.filter(Boolean)

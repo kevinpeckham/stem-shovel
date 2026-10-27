@@ -14,6 +14,7 @@ import { listInbox } from "#lib/server/notifications.js";
 import { canViewProject, canViewSong, type Viewer } from "#lib/server/viewAccess.js";
 import { realMemberships, type Membership } from "#lib/utils/actingMemberships.js";
 import { inboxDigest } from "#lib/utils/inboxDigest.js";
+import { plural } from "#lib/utils/plural.js";
 import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 import { songStage } from "#lib/utils/songStage.js";
 import type { PageServerLoad } from "./$types";
@@ -39,7 +40,6 @@ async function dashboardAccount(m: Membership, userId: string) {
 type Tile = Awaited<ReturnType<typeof dashboardAccount>>;
 
 const newestFirst = (a: DashboardEntry, b: DashboardEntry) => b.when.getTime() - a.when.getTime();
-const count = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
 /** The line under an entry's title: its facts joined with a middle dot, the account among them only when the person belongs to several. */
 const line = (facts: string[]) => facts.filter(Boolean).join(" · ");
 
@@ -53,7 +53,7 @@ function projectEntries(tiles: Tile[]): DashboardEntry[] {
 				title: p.name,
 				href: `/${t.slug}/projects/${p.slug}`,
 				when: p.updatedAt,
-				meta: line([count(p.songCount, "song"), several ? t.name : ""]),
+				meta: line([plural(p.songCount, "song"), several ? t.name : ""]),
 			})),
 		)
 		.sort(newestFirst);
@@ -72,8 +72,8 @@ function songEntries(tiles: Tile[]): DashboardEntry[] {
 				meta: line([
 					s.project.name,
 					STAGE_LABEL[songStage(s)],
-					count(s.stemCount, "stem"),
-					count(s.demoCount, "demo"),
+					plural(s.stemCount, "stem"),
+					plural(s.demoCount, "demo"),
 					several ? t.name : "",
 				]),
 			})),
@@ -95,7 +95,7 @@ function sessionEntries(tiles: Tile[]): DashboardEntry[] {
 				meta: line([
 					SESSION_KIND_LABELS[s.kind],
 					s.place.trim(),
-					count(s.recordingCount, "recording"),
+					plural(s.recordingCount, "recording"),
 					several ? t.name : "",
 				]),
 			})),

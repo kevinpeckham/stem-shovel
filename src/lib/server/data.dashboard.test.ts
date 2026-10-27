@@ -262,10 +262,10 @@ describe("recentSongs", () => {
 });
 
 describe("accountCounts", () => {
-	test("projects, songs, sessions, ready recordings and members of the account only", async () => {
+	test("active projects and songs, sessions, ready recordings and members of the account only", async () => {
 		expect(await accountCounts(A)).toEqual({
-			projects: 4,
-			songs: 4,
+			projects: 3,
+			songs: 3,
 			sessions: 3,
 			recordings: 2,
 			members: 2,
