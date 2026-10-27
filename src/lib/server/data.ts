@@ -134,7 +134,12 @@ import type { BugStatus } from "#lib/val/BugReportSchema.js";
 import type { AccountStatus } from "#lib/val/AccountStatusSchema.js";
 import type { ShareGrant } from "#lib/server/viewAccess.js";
 import type { Note } from "#lib/audio/chords.js";
-import type { ActivityEvent, PendingState, PendingWork } from "#lib/constants/dashboardActivity.js";
+import type {
+	ActivityEvent,
+	Nudge,
+	PendingState,
+	PendingWork,
+} from "#lib/constants/dashboardActivity.js";
 import {
 	like,
 	and,
@@ -9788,6 +9793,87 @@ export async function recentSongs(accountId: string, n: number) {
 		hasStem: stems.length > 0,
 		hasMix: mixes.length > 0,
 	}));
+}
+
+/**
+ * Practice nudges for the dashboard (docs/dashboard-plan.md, step 5): the
+ * account's active, unfinished songs nobody has changed since `staleBefore`
+ * ("stale"), and its songs with a chart but no ready stem or demo yet
+ * ("chart-no-recording"); each with the facts `canViewSong` reads.
+ */
+export async function accountNudges(
+	accountId: string,
+	accountSlug: string,
+	staleBefore: Date,
+): Promise<Nudge[]> {
+	const rows = await db.query.song.findMany({
+		where: and(eq(song.accountId, accountId), eq(song.status, "active")),
+		columns: {
+			id: true,
+			title: true,
+			slug: true,
+			isPrivate: true,
+			projectId: true,
+			isFinished: true,
+			chartMarkdown: true,
+			updatedAt: true,
+		},
+		with: {
+			project: { columns: { slug: true, status: true, isPrivate: true, isRestricted: true } },
+			stems: { where: eq(stem.status, "ready"), columns: { id: true } },
+			demos: { where: eq(demo.status, "ready"), columns: { id: true } },
+		},
+	});
+	const out: Nudge[] = [];
+	for (const r of rows) {
+		if (r.project.status !== "active") continue;
+		const facts = {
+			id: r.id,
+			isPrivate: r.isPrivate,
+			projectId: r.projectId,
+			project: { isPrivate: r.project.isPrivate, isRestricted: r.project.isRestricted },
+		};
+		const href = `/${accountSlug}/projects/${r.project.slug}/${r.slug}`;
+		if (!r.isFinished && r.updatedAt.getTime() < staleBefore.getTime())
+			out.push({
+				id: `stale:${r.id}`,
+				kind: "stale",
+				title: r.title,
+				href,
+				at: r.updatedAt,
+				song: facts,
+			});
+		if (r.chartMarkdown.trim() && r.stems.length === 0 && r.demos.length === 0)
+			out.push({
+				id: `chart-no-recording:${r.id}`,
+				kind: "chart-no-recording",
+				title: r.title,
+				href,
+				at: r.updatedAt,
+				song: facts,
+			});
+	}
+	return out.sort((a, b) => a.at.getTime() - b.at.getTime());
+}
+
+/** The person's ideas (the Idea Recorder's, not loops or Studio songs) with no take yet, oldest first: a nudge to record one. */
+export async function userIdeaNudges(userId: string): Promise<Nudge[]> {
+	const rows = await db.query.idea.findMany({
+		where: and(eq(idea.createdBy, userId), eq(idea.kind, "idea")),
+		columns: { id: true, title: true, createdAt: true },
+		with: { takes: { columns: { id: true } } },
+	});
+	return rows
+		.filter((r) => r.takes.length === 0)
+		.map((r) => ({
+			id: `idea-no-take:${r.id}`,
+			kind: "idea-no-take" as const,
+			title: r.title,
+			href: "/idea-recorder",
+			at: r.createdAt,
+			song: null,
+		}))
+		.sort((a, b) => a.at.getTime() - b.at.getTime());
 }
 
 /** The band at a glance, for the dashboard tile: how many members the account has and the names of those who have used Stem Shovel since `since` (a Better Auth session touched after it), alphabetically. */

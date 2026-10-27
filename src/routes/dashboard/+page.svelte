@@ -3,6 +3,7 @@
 	import DashboardConversations from "#lib/components/DashboardConversations.svelte";
 	import DashboardIdeas from "#lib/components/DashboardIdeas.svelte";
 	import DashboardNew from "#lib/components/DashboardNew.svelte";
+	import DashboardNudges from "#lib/components/DashboardNudges.svelte";
 	import DashboardPending from "#lib/components/DashboardPending.svelte";
 	import DashboardStart from "#lib/components/DashboardStart.svelte";
 	import DashboardWidget from "#lib/components/DashboardWidget.svelte";
@@ -47,6 +48,7 @@
 			<DashboardNew digest={data.digest} />
 			<DashboardConversations chats={data.chats} comments={data.comments} />
 			<DashboardPending items={data.pending} />
+			<DashboardNudges items={data.nudges} />
 		</aside>
 		<div class="grid min-w-0 gap-8 lg:col-start-1 lg:row-start-1 lg:row-span-2">
 			{#if accounts.length === 0}

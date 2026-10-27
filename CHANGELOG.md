@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.189.0] - 2026-10-27
+
+### Added
+
+- **Worth a look.** In the dashboard's sidebar, under In progress: songs nobody has changed in a month (unfinished ones), songs with a chart but no recording yet, and your own ideas with no take yet, oldest first, each opening the song or the Idea Recorder. It appears only when there is something.
+
+### Technical
+
+- `accountNudges(accountId, accountSlug, staleBefore)` and `userIdeaNudges(userId)` in `data.ts`, the `Nudge` type in `constants/dashboardActivity.ts`, `utils/nudgeText.ts`; `DASHBOARD_STALE_DAYS` (30) and `DASHBOARD_NUDGE_CAP` (8).
+
 ## [0.188.0] - 2026-10-27
 
 ### Added

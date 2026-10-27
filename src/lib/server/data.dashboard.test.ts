@@ -7,6 +7,7 @@ const {
 	accountActivity,
 	accountBand,
 	accountCounts,
+	accountNudges,
 	accountPendingWork,
 	accountQuota,
 	recentRecordingSessions,
@@ -15,6 +16,7 @@ const {
 	recentUserIdeas,
 	unreadSessionChats,
 	unreadSongChats,
+	userIdeaNudges,
 } = await import("./data");
 
 const A = "acct-one____________";
@@ -374,6 +376,121 @@ describe("accountBand", () => {
 		});
 		expect(await accountBand(B, new Date("2026-10-13"))).toEqual({ total: 1, active: ["Uma"] });
 		expect(await accountBand(A, new Date("2026-10-27"))).toEqual({ total: 3, active: [] });
+	});
+});
+
+describe("accountNudges and userIdeaNudges", () => {
+	const d = (iso: string) => new Date(iso);
+	const p = (id: string, slug: string, status = "active") => ({
+		id,
+		accountId: A,
+		slug,
+		name: slug,
+		status,
+		isPrivate: false,
+		isRestricted: false,
+	});
+	const sg = (id: string, slug: string, over: Record<string, unknown>) => ({
+		id,
+		accountId: A,
+		projectId: "p1",
+		slug,
+		title: slug,
+		status: "active",
+		isPrivate: false,
+		isFinished: false,
+		chartMarkdown: "",
+		...over,
+	});
+	beforeEach(() =>
+		reset({
+			project: [p("p1", "album"), p("pg", "gone", "archived")],
+			song: [
+				// Stale: unfinished and untouched since September.
+				sg("s1", "old", { updatedAt: d("2026-09-01") }),
+				// Finished songs rest in peace.
+				sg("s2", "done", { isFinished: true, updatedAt: d("2026-08-01") }),
+				// A chart with no recording, changed lately: only the chart nudge.
+				sg("s3", "chart", {
+					isPrivate: true,
+					chartMarkdown: "# Verse",
+					updatedAt: d("2026-10-20"),
+				}),
+				// A chart with a demo: nothing to say.
+				sg("s4", "demoed", { chartMarkdown: "# A", updatedAt: d("2026-10-20") }),
+				// Both reasons at once.
+				sg("s5", "both", { chartMarkdown: "# B", updatedAt: d("2026-07-01") }),
+				sg("s6", "x", { projectId: "pg", chartMarkdown: "# C", updatedAt: d("2026-07-01") }),
+				sg("s7", "y", { status: "archived", updatedAt: d("2026-07-01") }),
+				{ ...sg("sb", "b", { updatedAt: d("2026-07-01") }), accountId: B },
+			],
+			demo: [{ id: "d1", accountId: A, songId: "s4", status: "ready" }],
+			stem: [],
+			idea: [
+				{
+					id: "i1",
+					accountId: A,
+					createdBy: U,
+					kind: "idea",
+					title: "Riff",
+					createdAt: d("2026-10-02"),
+				},
+				{
+					id: "i2",
+					accountId: A,
+					createdBy: U,
+					kind: "idea",
+					title: "Taken",
+					createdAt: d("2026-10-01"),
+				},
+				{
+					id: "i3",
+					accountId: A,
+					createdBy: U,
+					kind: "loop",
+					title: "Loop",
+					createdAt: d("2026-10-03"),
+				},
+				{
+					id: "i4",
+					accountId: A,
+					createdBy: V,
+					kind: "idea",
+					title: "Vic's",
+					createdAt: d("2026-10-04"),
+				},
+				{
+					id: "i5",
+					accountId: A,
+					createdBy: U,
+					kind: "idea",
+					title: "Older",
+					createdAt: d("2026-09-20"),
+				},
+			],
+			recording: [{ id: "r1", accountId: A, ideaId: "i2", status: "ready" }],
+		}),
+	);
+	test("stale unfinished songs and charts without a recording, oldest first, with the view facts", async () => {
+		const out = await accountNudges(A, "acct", d("2026-09-27"));
+		expect(out.map((n) => [n.id, n.title, n.href])).toEqual([
+			["stale:s5", "both", "/acct/projects/album/both"],
+			["chart-no-recording:s5", "both", "/acct/projects/album/both"],
+			["stale:s1", "old", "/acct/projects/album/old"],
+			["chart-no-recording:s3", "chart", "/acct/projects/album/chart"],
+		]);
+		expect(out[3].song).toEqual({
+			id: "s3",
+			isPrivate: true,
+			projectId: "p1",
+			project: { isPrivate: false, isRestricted: false },
+		});
+	});
+	test("the person's ideas without a take, oldest first; loops, others' ideas and ideas with a take are left out", async () => {
+		expect((await userIdeaNudges(U)).map((n) => [n.id, n.title, n.href])).toEqual([
+			["idea-no-take:i5", "Older", "/idea-recorder"],
+			["idea-no-take:i1", "Riff", "/idea-recorder"],
+		]);
 	});
 });
 

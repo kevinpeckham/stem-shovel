@@ -86,3 +86,7 @@ export const DASHBOARD_ACTIVITY_DAYS = 7;
 export const DASHBOARD_ACTIVITY_CAP = 30;
 /** A member counts as active on the account tile when they used Stem Shovel within this many days. */
 export const DASHBOARD_ACTIVE_DAYS = 14;
+/** A song nobody has changed in this many days gets a nudge on the dashboard. */
+export const DASHBOARD_STALE_DAYS = 30;
+/** The most nudges the dashboard shows. */
+export const DASHBOARD_NUDGE_CAP = 8;

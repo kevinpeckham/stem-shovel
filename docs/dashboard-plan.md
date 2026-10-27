@@ -200,8 +200,15 @@ project songs.
   sections count from it, and it is set when the dashboard loads.
 - **Pinned items**: a member pins a song, project or session to their own
   dashboard (`dashboard_pin`, one migration).
-- Practice nudges: songs nobody opened in a month, charts without a
-  recording, ideas without a take.
+- Practice nudges (v0.189.0): **Worth a look** in the sidebar under In
+  progress (`DashboardNudges`, hidden when empty): the account's active,
+  unfinished songs nobody has changed in `DASHBOARD_STALE_DAYS` (30;
+  there is no "opened" record, so "changed" stands in), songs with a
+  chart but no ready stem or demo yet (`accountNudges`), and the
+  person's own ideas with no take yet (`userIdeaNudges`); oldest first,
+  at most `DASHBOARD_NUDGE_CAP` (8), the reason under each
+  (`utils/nudgeText.ts`). A song's nudge shows only when the person may
+  open the song. No migration.
 
 ## Later, once the parked work exists
 

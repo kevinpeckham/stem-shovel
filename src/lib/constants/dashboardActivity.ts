@@ -66,3 +66,17 @@ export interface PendingWork {
 	since: Date;
 	song: ActivitySongFacts | null;
 }
+
+export const NUDGE_KINDS = ["stale", "chart-no-recording", "idea-no-take"] as const;
+export type NudgeKind = (typeof NUDGE_KINDS)[number];
+
+/** Something worth a look (the dashboard's nudges): a song nobody has touched in a month, a chart with no recording yet, an idea with no take yet. */
+export interface Nudge {
+	id: string; // `${kind}:${rowId}`
+	kind: NudgeKind;
+	title: string;
+	href: string;
+	/** When the thing was last changed (stale) or made (the others). */
+	at: Date;
+	song: ActivitySongFacts | null;
+}

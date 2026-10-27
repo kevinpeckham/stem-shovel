@@ -3,16 +3,20 @@ import {
 	DASHBOARD_ACTIVITY_CAP,
 	DASHBOARD_ACTIVITY_DAYS,
 	DASHBOARD_LIST_CAP,
+	DASHBOARD_NUDGE_CAP,
+	DASHBOARD_STALE_DAYS,
 	type Conversation,
 	type DashboardEntry,
 } from "#lib/constants/dashboardLinks.js";
 import { SESSION_KIND_LABELS } from "#lib/constants/sessionRecordings.js";
 import { STAGE_LABEL } from "#lib/constants/songStages.js";
+import type { Nudge } from "#lib/constants/dashboardActivity.js";
 import { requireSignedIn } from "#lib/server/access.js";
 import {
 	accountActivity,
 	accountBand,
 	accountCounts,
+	accountNudges,
 	accountPendingWork,
 	accountQuota,
 	listInviteCodes,
@@ -24,6 +28,7 @@ import {
 	recentUserIdeas,
 	unreadSessionChats,
 	unreadSongChats,
+	userIdeaNudges,
 } from "#lib/server/data.js";
 import { listInbox } from "#lib/server/notifications.js";
 import { canViewProject, canViewSong, type Viewer } from "#lib/server/viewAccess.js";
@@ -31,6 +36,7 @@ import { realMemberships, type Membership } from "#lib/utils/actingMemberships.j
 import { activityText } from "#lib/utils/activityText.js";
 import { formatWhen } from "#lib/utils/formatWhen.js";
 import { inboxDigest } from "#lib/utils/inboxDigest.js";
+import { nudgeText } from "#lib/utils/nudgeText.js";
 import { pendingText } from "#lib/utils/pendingText.js";
 import { plural } from "#lib/utils/plural.js";
 import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
@@ -53,6 +59,7 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		pending,
 		band,
 		invites,
+		nudges,
 	] = await Promise.all([
 		accountCounts(m.accountId),
 		recentRecordingSessions(m.accountId, DASHBOARD_LIST_CAP),
@@ -68,6 +75,7 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		accountBand(m.accountId, new Date(Date.now() - DASHBOARD_ACTIVE_DAYS * DAY)),
 		// Pending invitations and open invite links are an owner's or admin's to see (the settings page shows them).
 		admin ? openInvites(m.accountId) : null,
+		accountNudges(m.accountId, m.slug, new Date(Date.now() - DASHBOARD_STALE_DAYS * DAY)),
 	]);
 	const who: Viewer = { accountRole: m.role, projectRoles };
 	const projects = projectRows.filter((p) => canViewProject(p, who, []));
@@ -88,6 +96,7 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		// A song's event or job shows only when the person may open the song; a session's shows to every member.
 		activity: activity.filter((e) => !e.song || canViewSong(e.song, who, [])),
 		pending: pending.filter((p) => !p.song || canViewSong(p.song, who, [])),
+		nudges: nudges.filter((n) => !n.song || canViewSong(n.song, who, [])),
 	};
 }
 
@@ -211,6 +220,32 @@ function pendingEntries(tiles: Tile[]): DashboardEntry[] {
 		.sort((a, b) => a.when.getTime() - b.when.getTime());
 }
 
+/** Worth a look: the nudges across the person's accounts and their own ideas, oldest first, at most DASHBOARD_NUDGE_CAP. */
+function nudgeEntries(tiles: Tile[], ideas: Nudge[]): DashboardEntry[] {
+	const several = tiles.length > 1;
+	return [
+		...tiles.flatMap((t) =>
+			t.nudges.map((n) => ({
+				id: `${t.slug}:${n.id}`,
+				title: n.title,
+				href: n.href,
+				when: n.at,
+				account: t.slug,
+				meta: line([nudgeText(n), several ? t.name : ""]),
+			})),
+		),
+		...ideas.map((n) => ({
+			id: n.id,
+			title: n.title,
+			href: n.href,
+			when: n.at,
+			meta: nudgeText(n),
+		})),
+	]
+		.sort((a, b) => a.when.getTime() - b.when.getTime())
+		.slice(0, DASHBOARD_NUDGE_CAP);
+}
+
 /** Conversations: every song and session chat with messages the person has not seen, across their accounts, newest message first. */
 function conversations(tiles: Tile[]): Conversation[] {
 	const several = tiles.length > 1;
@@ -261,12 +296,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const user = requireSignedIn(locals, url);
 	const memberships = realMemberships(locals.memberships);
 	const since = new Date(Date.now() - DASHBOARD_ACTIVITY_DAYS * DAY);
-	const [inbox, ideaRows, loopRows, multitrackRows, tiles] = await Promise.all([
+	const [inbox, ideaRows, loopRows, multitrackRows, tiles, ideaNudges] = await Promise.all([
 		listInbox(user.id),
 		recentUserIdeas(user.id, "idea", DASHBOARD_LIST_CAP),
 		recentUserIdeas(user.id, "loop", DASHBOARD_LIST_CAP),
 		recentUserIdeas(user.id, "song", DASHBOARD_LIST_CAP),
 		Promise.all(memberships.map((m) => dashboardAccount(m, user.id, since))),
+		userIdeaNudges(user.id),
 	]);
 	return {
 		accounts: tiles.map(({ slug, name, role, counts, quota, band, invites }) => ({
@@ -282,6 +318,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		chats: conversations(tiles),
 		activity: activityEntries(tiles),
 		pending: pendingEntries(tiles),
+		nudges: nudgeEntries(tiles, ideaNudges),
 		comments: inbox
 			.filter((i) => !i.readAt && COMMENT_KINDS.has(i.kind))
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
