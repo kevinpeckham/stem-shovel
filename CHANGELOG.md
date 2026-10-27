@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.176.0] - 2026-10-27
+
+### Added
+
+- **A dashboard where a signed-in person lands** (`/dashboard`; docs/dashboard-plan.md, step 1): what is new for you (the unread notifications as a line per kind and the newest five, opening each as the inbox does), quick actions (Add a recording, New song, New idea, Record a session, Tuner, Metronome), and for each account the latest session (linking to its page), the four projects and five songs touched last, plus your own newest ideas. A new account shows a getting-started checklist in place of its sections; a person with no account gets a "Start your band" card and the free tools. Sign-in and the two-factor step land there unless a page asked for somewhere else, and the wordmark goes there when signed in.
+
+### Technical
+
+- `data.ts` dashboard helpers `latestRecordingSession`, `recentProjects`, `recentSongs`, `accountCounts`, `recentUserIdeas`; utils `inboxDigest`, `kindLabel`, `onboardingSteps`, `formatWhen`, `accountActions`; `InboxItem.svelte` shared with the inbox; "dashboard" reserved as a short-link slug; the smoke route list knows `/dashboard`.
+
 ## [0.175.1] - 2026-10-27
 
 ### Technical

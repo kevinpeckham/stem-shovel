@@ -159,7 +159,9 @@ public by URL; editing needs a signed-in member.
   answers `twoFactorRedirect` instead of a session, and the sign-in page
   goes to `/verify-2fa?next=…`, where a TOTP or backup code completes the
   session. `locals.user.twoFactorEnabled` mirrors the flag; the Screenshot
-  Bot has none. The plugin rate-limits `/two-factor/*` (3 per 10 s) and
+  Bot has none. After sign-in (and after the 2FA step) the person lands on
+  `?next=` when a page sent them, else on `/dashboard`
+  (docs/dashboard-plan.md; `safeNext(next, "/dashboard")` on both pages). The plugin rate-limits `/two-factor/*` (3 per 10 s) and
   locks after repeated failures.
 - **Passkeys** (WebAuthn): `@better-auth/passkey` with the `passkey` table
   (migration 0057; columns named as the plugin's fields, since the Drizzle

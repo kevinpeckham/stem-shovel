@@ -13,6 +13,10 @@ You can also arrive through someone else's account:
 
 When sign-up is invitation-only, as it was during the early beta, one of those two is required and the waitlist collects everyone else. Forgot your password? The sign-in page has a reset link.
 
+## Your dashboard
+
+Signing in lands you on your **dashboard**, and the Stem Shovel wordmark at the top left brings you back to it. It shows what is new for you (the notifications you have not opened, with the newest few right there and a link to the inbox), quick actions (add a recording, start a song or an idea, record a session, the tuner and the metronome), and for each band you belong to its latest session, the projects and songs touched last. Your own newest ideas are listed too. A new account shows a short getting-started checklist instead until the first things are in.
+
 ## The account menu
 
 Once signed in, the button at the top right names the account you are in. It opens a menu with **Projects**, the **Idea Recorder** (record riffs and rough takes straight from the microphone; see its own page in these docs), **Account settings**, any other accounts you belong to, and **Sign out**. From tablet width up, Projects and Idea Recorder also sit in the header.

@@ -1,11 +1,8 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
-	import { formatDate } from "#lib/utils/formatDate.js";
-	import {
-		markAllNotificationsRead,
-		markNotificationRead,
-	} from "#lib/remote/notifications.remote.js";
-	import { goto, refreshAll } from "$app/navigation";
+	import { markAllNotificationsRead } from "#lib/remote/notifications.remote.js";
+	import { refreshAll } from "$app/navigation";
+	import InboxItem from "#lib/components/InboxItem.svelte";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 
@@ -13,31 +10,6 @@
 	let unread = $derived(data.items.filter((i) => !i.readAt).length);
 	let busy = $state(false);
 
-	const ICON: Record<string, string> = {
-		"storage-limit": "i-ph-hard-drives",
-		"seats-full": "i-ph-users-three",
-		"invitation-accepted": "i-ph-hand-waving",
-		comment: "i-ph-hands-clapping-bold",
-		chat: "i-ph-chat-circle-dots",
-		mention: "i-ph-at",
-		stems: "i-ph-waveform",
-		song: "i-ph-music-notes-plus",
-		demo: "i-ph-microphone",
-		mix: "i-ph-waveform",
-		session: "i-ph-cassette-tape",
-	};
-	const when = (d: Date) =>
-		`${formatDate(d)} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()}`;
-
-	/** Opening an item reads it and goes where it points. */
-	async function open(item: (typeof data.items)[number]) {
-		try {
-			if (!item.readAt) await markNotificationRead({ id: item.id });
-		} catch (e) {
-			notify(errorMessage(e), { kind: "error" });
-		}
-		await goto(item.href || "/inbox", { refreshAll: true });
-	}
 	async function readAll() {
 		busy = true;
 		try {
@@ -83,36 +55,7 @@
 			<ul class="surface divide-y divide-white/10 text-15px" aria-label="Notifications">
 				{#each data.items as item (item.id)}
 					<li>
-						<button
-							class="grid w-full grid-cols-[auto_1fr_auto] items-start gap-x-4 px-5 py-3 text-left hover:bg-white/5 {item.readAt
-								? 'opacity-70'
-								: ''}"
-							type="button"
-							onclick={() => open(item)}
-						>
-							<span
-								class="{ICON[item.kind] ?? 'i-ph-bell'} mt-1 text-18px {item.priority === 'high'
-									? 'text-accent'
-									: 'opacity-80'}"
-								aria-hidden="true"
-							></span>
-							<span class="min-w-0">
-								<span class="block font-600 {item.readAt ? '' : 'text-white'}">
-									{item.title}
-									{#if item.priority === "high"}
-										<span
-											class="ml-2 rounded border border-accent/60 px-1.5 py-0.5 text-10px uppercase tracking-wider text-accent"
-											>Important</span
-										>
-									{/if}
-								</span>
-								<span class="block text-sm opacity-90">{item.body}</span>
-								<span class="block text-12px opacity-60">{when(item.updatedAt)}</span>
-							</span>
-							{#if !item.readAt}
-								<span class="mt-2 h-2 w-2 rounded-full bg-accent" aria-label="Unread"></span>
-							{/if}
-						</button>
+						<InboxItem {item} />
 					</li>
 				{/each}
 			</ul>

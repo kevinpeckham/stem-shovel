@@ -68,7 +68,9 @@ the tuner (a wrench menu on a phone), so a take can be recorded to a click
 or a beat that stays off the microphone. Neutral pages: `/` (the front
 page with live demos of a public song, the recorder, the tuner and the
 drum machine), `/tuner`, `/metronome`, `/drum-machine`, `/convert` (the tools, public
-and indexable), `/inbox` and `/settings/notifications`, `/docs` (user
+and indexable), `/dashboard` (where a signed-in person lands: what is
+new, quick actions, each account's latest session and recent work;
+docs/dashboard-plan.md), `/inbox` and `/settings/notifications`, `/docs` (user
 documentation, editable by system admins) and `/releases`, `/blog`,
 `/pricing`, `/built-with`, `/feature-requests`, `/support`, `/waitlist`,
 `/accounts`, `/settings/security` (two-factor and passkeys), `/admin`
@@ -318,6 +320,7 @@ check and the tests without any secret.
 - [docs/daw-sync.md](docs/daw-sync.md) — DAW project storage and sync as a paid add-on (research): sizes, who has tried, costs, three options, a recommendation.
 - [docs/drum-machine.md](docs/drum-machine.md) — the drum machine: what the precedents teach, the phases shipped and planned, the pattern model, the share-link format, the samples and their credits.
 - [docs/notifications.md](docs/notifications.md) — the inbox, email and the digest: what is sent, to whom, and when.
+- [docs/dashboard-plan.md](docs/dashboard-plan.md) — the dashboard a signed-in person lands on: the decisions (per user across accounts, always the landing, onboarding as the empty state) and the steps, one release each.
 - [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, Sentry, the ESM-only rule, Turso + Drizzle.
 - [docs/auth.md](docs/auth.md) — Better Auth: sign-in, passkeys, two-factor, open and invitation-only sign-up, invitations and the waitlist, memberships and project people, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.

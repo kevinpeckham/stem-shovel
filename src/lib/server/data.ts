@@ -9086,3 +9086,105 @@ export async function songExportMetadata(accountId: string, songId: string) {
 		path: isPublic ? `/${row.project.account.slug}/projects/${row.project.slug}/${row.slug}` : "",
 	};
 }
+
+// ---- the dashboard (docs/dashboard-plan.md) ------------------------------------
+
+/**
+ * The account's newest session (by its day, then when it was made, as
+ * `listRecordingSessions` orders them) with how many recordings are ready
+ * in it and the newest one's title; null when it has none.
+ */
+export async function latestRecordingSession(accountId: string) {
+	const row = await db.query.recordingSession.findFirst({
+		where: eq(recordingSession.accountId, accountId),
+		orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
+		columns: { id: true, name: true, place: true, kind: true, startsOn: true },
+		with: {
+			recordings: {
+				where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.status, "ready")),
+				orderBy: [desc(sessionRecording.recordedOn), desc(sessionRecording.createdAt)],
+				columns: { title: true, filename: true },
+			},
+		},
+	});
+	if (!row) return null;
+	const { recordings, ...session } = row;
+	const newest = recordings[0];
+	return {
+		...session,
+		recordingCount: recordings.length,
+		newestRecording: newest ? newest.title || newest.filename : null,
+	};
+}
+
+/** The account's `n` most recently updated active projects, with their song counts and the fields the view rules read. */
+export async function recentProjects(accountId: string, n: number) {
+	const rows = await db.query.project.findMany({
+		where: and(eq(project.accountId, accountId), eq(project.status, "active")),
+		orderBy: [desc(project.updatedAt)],
+		limit: n,
+		columns: {
+			id: true,
+			name: true,
+			slug: true,
+			imageUrl: true,
+			isPrivate: true,
+			isRestricted: true,
+			updatedAt: true,
+		},
+		with: { songs: { where: eq(song.status, "active"), columns: { id: true } } },
+	});
+	return rows.map(({ songs, ...p }) => ({ ...p, songCount: songs.length }));
+}
+
+/** The account's `n` most recently updated active songs, each with its project's name and address and the fields the view rules read. */
+export function recentSongs(accountId: string, n: number) {
+	return db.query.song.findMany({
+		where: and(eq(song.accountId, accountId), eq(song.status, "active")),
+		orderBy: [desc(song.updatedAt)],
+		limit: n,
+		columns: {
+			id: true,
+			title: true,
+			slug: true,
+			projectId: true,
+			isPrivate: true,
+			updatedAt: true,
+		},
+		with: {
+			project: {
+				columns: { name: true, slug: true, status: true, isPrivate: true, isRestricted: true },
+			},
+		},
+	});
+}
+
+/** How much the account holds, for the dashboard's onboarding checklist: projects, songs, ready session recordings and members. */
+export async function accountCounts(accountId: string) {
+	const count = sql<number>`count(*)`;
+	const [[projects], [songs], [recordings], [members]] = await Promise.all([
+		db.select({ n: count }).from(project).where(eq(project.accountId, accountId)),
+		db.select({ n: count }).from(song).where(eq(song.accountId, accountId)),
+		db
+			.select({ n: count })
+			.from(sessionRecording)
+			.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.status, "ready"))),
+		db.select({ n: count }).from(accountMember).where(eq(accountMember.accountId, accountId)),
+	]);
+	return {
+		projects: Number(projects?.n ?? 0),
+		songs: Number(songs?.n ?? 0),
+		recordings: Number(recordings?.n ?? 0),
+		members: Number(members?.n ?? 0),
+	};
+}
+
+/** The user's `n` newest ideas, whichever account holds them: just enough to list and link (no takes, no URLs). */
+export function recentUserIdeas(userId: string, n: number) {
+	return db.query.idea.findMany({
+		where: eq(idea.createdBy, userId),
+		orderBy: [desc(idea.createdAt)],
+		limit: n,
+		columns: { id: true, title: true, createdAt: true },
+	});
+}

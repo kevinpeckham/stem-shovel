@@ -88,8 +88,8 @@
 >
 	<a
 		class="font-brand text-accent text-20px md-text-24px lg-text-28px leading-none tracking-wide flex shrink-0 items-baseline gap-2"
-		href="/"
-		title="Back to home"
+		href={user ? "/dashboard" : "/"}
+		title={user ? "Your dashboard" : "Back to home"}
 	>
 		<img class="h-6 w-auto" src={wordmark} loading="eager" alt="Stem Shovel wordmark" />
 		<div class="sr-only">Stem Shovel App</div>

@@ -24,7 +24,7 @@
 			error = "";
 			passkeyBusy = true;
 		}
-		const next = safeNext(data.next);
+		const next = safeNext(data.next, "/dashboard");
 		try {
 			const result = await authClient.signIn.passkey({ autoFill });
 			if (result?.error) {
@@ -49,7 +49,7 @@
 		e.preventDefault();
 		error = "";
 		busy = true;
-		const next = safeNext(data.next); // before any reload swaps `data` (see verify-2fa)
+		const next = safeNext(data.next, "/dashboard"); // before any reload swaps `data` (see verify-2fa)
 		const result = await authClient.signIn.email({
 			email,
 			password,

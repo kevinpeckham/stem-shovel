@@ -78,6 +78,7 @@ export const SHORT_LINK_RESERVED_SLUGS: readonly string[] = [
 	"built-with",
 	"chord-player",
 	"convert",
+	"dashboard",
 	"drum-machine",
 	"feature-requests",
 	"forgot-password",

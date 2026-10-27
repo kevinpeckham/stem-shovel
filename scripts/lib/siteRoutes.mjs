@@ -97,6 +97,7 @@ export const ROUTES = [
 	["settings/notifications", "/settings/notifications", [303], [200]],
 	["settings/links", "/settings/links", [303], [200]],
 	["inbox", "/inbox", [303], [200]],
+	["dashboard", "/dashboard", [303], [200]],
 	["api/notifications/digest (server)", "/api/notifications/digest", [200], [200]],
 	["sign-in", "/sign-in", [200], [303]],
 	["sign-up", "/sign-up", [200], [200, 303]],
