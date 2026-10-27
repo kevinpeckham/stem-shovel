@@ -32,6 +32,7 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 	// The person's own work, each with a way to start when empty.
 	for (const name of [
 		"Your Accounts",
+		"Activity",
 		"Your Projects",
 		"Your Songs",
 		"Your Sessions",
@@ -69,6 +70,12 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		page.getByRole("complementary", { name: "Latest" }).getByRole("heading", { name: "Latest" }),
 	).toBeVisible();
 	// Conversations: the chats with new messages and the comments waiting, or "Nothing waiting."
+	// Activity: the week's events (the bot's accounts have some), or the empty line.
+	const activity = page.getByRole("region", { name: "Activity" });
+	await expect(activity).toBeVisible();
+	await expect(activity).toContainText(
+		/added the|edited the|wrote in|commented|New song|New project|Nothing in the last seven days/,
+	);
 	const conversations = page.getByRole("region", { name: "Conversations" });
 	await expect(conversations).toBeVisible();
 	await expect(conversations).toContainText(/with new messages|waiting/);

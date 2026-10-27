@@ -79,3 +79,8 @@ export const DASHBOARD_IDEAS_PAGE = 10;
 
 /** The most of each kind (per account for projects, songs and sessions; per person for ideas, loops and multitracks) the dashboard loads: the newest, enough for the lists and their search; the "All …" pages hold the rest. */
 export const DASHBOARD_LIST_CAP = 50;
+
+/** How far back the dashboard's Activity looks, in days. */
+export const DASHBOARD_ACTIVITY_DAYS = 7;
+/** The most activity events the dashboard loads per account. */
+export const DASHBOARD_ACTIVITY_CAP = 30;

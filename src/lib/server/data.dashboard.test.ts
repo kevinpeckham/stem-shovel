@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, test } from "vite-plus/test";
 import { PLAN_LIMITS } from "#lib/constants/plans.js";
+import { sessionDisplayName } from "#lib/utils/sessionName.js";
 import { reset } from "../../../tests/helpers/fakeDataLayer";
 
 const {
+	accountActivity,
 	accountCounts,
+	accountPendingWork,
 	accountQuota,
 	recentRecordingSessions,
 	recentProjects,
@@ -453,5 +456,355 @@ describe("unreadSessionChats", () => {
 			"/other/sessions?session=b&open=chat",
 		]);
 		expect(await unreadSessionChats(B, "other", V)).toEqual([]);
+	});
+});
+
+/** A file row (stem, demo, mix, notation) of account A on a song, with its upload and rendition state. */
+const file = (
+	id: string,
+	songId: string,
+	iso: string,
+	over: Record<string, unknown> = {},
+	accountId = A,
+) => ({
+	id,
+	accountId,
+	songId,
+	label: `Label ${id}`,
+	status: "ready",
+	playbackStatus: "ready",
+	uploadedBy: U,
+	createdAt: at(iso),
+	...over,
+});
+const users = [
+	{ id: U, name: "Uma" },
+	{ id: V, name: "Vic" },
+];
+const newSessionName = sessionDisplayName({
+	name: "",
+	place: "The Room",
+	kind: "practice",
+	startsOn: "2026-10-17",
+});
+const s1Facts = {
+	id: "s1",
+	isPrivate: false,
+	projectId: "p1",
+	project: { isPrivate: false, isRestricted: false },
+};
+
+describe("accountActivity", () => {
+	const since = at("2026-10-20T00:00:00Z");
+	beforeEach(() =>
+		reset({
+			user: users,
+			recordingSession: [session("new", A), session("b", B)],
+			project: [
+				project("p1", A, 1, { createdAt: at("2026-10-21T00:00:00Z") }),
+				project("p2", A, 1, { createdAt: at("2026-10-01T00:00:00Z") }),
+				project("pr", A, 1, {
+					isPrivate: true,
+					isRestricted: true,
+					createdAt: at("2026-10-01T00:00:00Z"),
+				}),
+				project("gone", A, 9, { status: "archived", createdAt: at("2026-10-22T00:00:00Z") }),
+				project("pb", B, 20, { createdAt: at("2026-10-22T00:00:00Z") }),
+			],
+			song: [
+				song("s1", A, "p1", 2),
+				song("s5", A, "p1", 2, { createdAt: at("2026-10-23T00:00:00Z") }),
+				song("sp", A, "pr", 2, { isPrivate: true }),
+				song("s4", A, "p1", 2, { status: "archived", createdAt: at("2026-10-22T00:00:00Z") }),
+				song("sg", A, "gone", 2),
+				song("sb", B, "pb", 2, { createdAt: at("2026-10-22T00:00:00Z") }),
+			],
+			stem: [
+				file("st1", "s1", "2026-10-22T10:00:00Z"),
+				file("st2", "s1", "2026-10-10T00:00:00Z"), // before the window
+				file("st3", "s1", "2026-10-22T10:30:00Z", { status: "uploading" }),
+				file("stp", "sp", "2026-10-22T09:00:00Z", { uploadedBy: null }),
+				file("st4", "s4", "2026-10-22T10:00:00Z"), // archived song
+				file("stg", "sg", "2026-10-22T10:00:00Z"), // archived project
+				file("stb", "sb", "2026-10-22T10:00:00Z", {}, B),
+			],
+			demo: [file("d1", "s1", "2026-10-22T11:00:00Z", { uploadedBy: V })],
+			songMix: [file("mx1", "s1", "2026-10-22T12:00:00Z", { version: 3, label: "Rough mix" })],
+			sessionRecording: [
+				recording("r1", A, "new", { title: "Take one", createdAt: at("2026-10-22T13:00:00Z") }),
+				recording("r2", A, "new", { status: "uploading", createdAt: at("2026-10-22T13:30:00Z") }),
+				recording("rb", B, "b", { createdAt: at("2026-10-22T13:00:00Z") }),
+			],
+			songDocVersion: [
+				{
+					id: "dv1",
+					songId: "s1",
+					kind: "chart",
+					userId: null,
+					createdBy: V,
+					createdAt: at("2026-10-22T14:00:00Z"),
+				},
+				// A private note's revision, and another account's doc.
+				{
+					id: "dv2",
+					songId: "s1",
+					kind: "mynotes",
+					userId: U,
+					createdBy: U,
+					createdAt: at("2026-10-22T15:00:00Z"),
+				},
+				{
+					id: "dvb",
+					songId: "sb",
+					kind: "lyrics",
+					userId: null,
+					createdBy: V,
+					createdAt: at("2026-10-22T15:00:00Z"),
+				},
+			],
+			chatMessage: [
+				message("c1", A, "s1", V, "2026-10-22T16:00:00Z"),
+				message("c0", A, "s1", V, "2026-10-19T00:00:00Z"), // before the window
+				message("cb", B, "sb", V, "2026-10-22T16:00:00Z"),
+			],
+			sessionChatMessage: [sessionMessage("x1", A, "new", U, "2026-10-22T17:00:00Z")],
+			comment: [
+				{ id: "cm1", accountId: A, songId: "s1", userId: U, createdAt: at("2026-10-22T18:00:00Z") },
+				{ id: "cm4", accountId: A, songId: "s4", userId: U, createdAt: at("2026-10-22T18:00:00Z") },
+			],
+			sessionComment: [
+				{
+					id: "sc1",
+					accountId: A,
+					recordingId: "r1",
+					userId: V,
+					createdAt: at("2026-10-22T19:00:00Z"),
+				},
+			],
+		}),
+	);
+
+	test("every kind merged newest first with who, label, title, href and the song's view facts", async () => {
+		const rows = await accountActivity(A, "band", since, 50);
+		expect(rows.map((r) => r.id)).toEqual([
+			"song:s5",
+			"session-comment:sc1",
+			"comment:cm1",
+			"session-chat:x1",
+			"chat:c1",
+			"doc:dv1",
+			"session-recording:r1",
+			"mix:mx1",
+			"demo:d1",
+			"stem:st1",
+			"stem:stp",
+			"project:p1",
+		]);
+		const byId = new Map(rows.map((r) => [r.id, r]));
+		expect(byId.get("stem:st1")).toEqual({
+			id: "stem:st1",
+			kind: "stem",
+			at: at("2026-10-22T10:00:00Z"),
+			who: "Uma",
+			label: "Label st1",
+			title: "Song s1",
+			href: "/band/projects/p1/s1",
+			song: s1Facts,
+		});
+		expect(byId.get("mix:mx1")).toMatchObject({ label: "v3 Rough mix", who: "Uma" });
+		expect(byId.get("demo:d1")).toMatchObject({ who: "Vic" });
+		expect(byId.get("doc:dv1")).toMatchObject({ label: "chart", who: "Vic", song: s1Facts });
+		expect(byId.get("chat:c1")).toMatchObject({ label: "", who: "Vic", title: "Song s1" });
+		expect(byId.get("stem:stp")).toMatchObject({
+			who: null,
+			href: "/band/projects/pr/sp",
+			song: {
+				id: "sp",
+				isPrivate: true,
+				projectId: "pr",
+				project: { isPrivate: true, isRestricted: true },
+			},
+		});
+		for (const id of ["session-recording:r1", "session-chat:x1", "session-comment:sc1"])
+			expect(byId.get(id)).toMatchObject({
+				title: newSessionName,
+				href: "/band/sessions/s/new",
+				song: null,
+			});
+		expect(byId.get("session-recording:r1")).toMatchObject({ label: "Take one", who: null });
+		expect(byId.get("session-comment:sc1")).toMatchObject({ who: "Vic", label: "" });
+		expect(byId.get("song:s5")).toMatchObject({ label: "Song s5", who: null, title: "Song s5" });
+		expect(byId.get("project:p1")).toEqual({
+			id: "project:p1",
+			kind: "project",
+			at: at("2026-10-21T00:00:00Z"),
+			who: null,
+			label: "Project p1",
+			title: "Project p1",
+			href: "/band/projects/p1",
+			song: null,
+		});
+	});
+
+	test("the window, uploads not ready, private doc revisions, archived songs and projects and another account are left out", async () => {
+		const ids = (await accountActivity(A, "band", since, 50)).map((r) => r.id);
+		for (const id of [
+			"stem:st2",
+			"chat:c0",
+			"project:p2",
+			"stem:st3",
+			"session-recording:r2",
+			"doc:dv2",
+			"doc:dvb",
+			"stem:st4",
+			"comment:cm4",
+			"song:s4",
+			"stem:stg",
+			"project:gone",
+			"stem:stb",
+			"chat:cb",
+		])
+			expect(ids).not.toContain(id);
+		expect(
+			(await accountActivity(A, "band", at("2026-10-22T17:30:00Z"), 50)).map((r) => r.id),
+		).toEqual(["song:s5", "session-comment:sc1", "comment:cm1"]);
+		expect((await accountActivity(B, "other", since, 50)).map((r) => r.id)).toEqual([
+			"chat:cb",
+			"doc:dvb",
+			"session-recording:rb",
+			"stem:stb",
+			"song:sb",
+			"project:pb",
+		]);
+	});
+
+	test("at most `limit` events after the merge", async () => {
+		expect((await accountActivity(A, "band", since, 3)).map((r) => r.id)).toEqual([
+			"song:s5",
+			"session-comment:sc1",
+			"comment:cm1",
+		]);
+		expect(await accountActivity("nobody______________", "x", since, 10)).toEqual([]);
+	});
+});
+
+describe("accountPendingWork", () => {
+	beforeEach(() =>
+		reset({
+			recordingSession: [session("new", A)],
+			project: [project("p1", A, 1), project("pb", B, 1)],
+			song: [
+				song("s1", A, "p1", 2, {
+					mixStartedAt: at("2026-10-20T08:00:00Z"),
+					notesStartedAt: at("2026-10-20T09:00:00Z"),
+				}),
+				song("s2", A, "p1", 2, { mixStartedAt: null, notesStartedAt: null }),
+				song("s4", A, "p1", 2, { status: "archived", mixStartedAt: at("2026-10-20T08:00:00Z") }),
+				song("sb", B, "pb", 2, { mixStartedAt: at("2026-10-20T08:00:00Z") }),
+			],
+			stem: [
+				file("pu1", "s1", "2026-10-20T01:00:00Z", { status: "uploading", playbackStatus: null }),
+				file("pr1", "s1", "2026-10-20T02:00:00Z", { playbackStatus: null }),
+				file("pr2", "s2", "2026-10-20T03:00:00Z", { playbackStatus: "pending" }),
+				file("pf", "s1", "2026-10-20T04:00:00Z", { playbackStatus: "failed" }),
+				file("pok", "s1", "2026-10-20T04:30:00Z"), // done
+				file("pab", "s1", "2026-10-20T04:40:00Z", { status: "failed", playbackStatus: null }),
+				file("p4", "s4", "2026-10-20T04:50:00Z", { status: "uploading" }), // archived song
+				file("stb", "sb", "2026-10-20T00:00:00Z", { status: "uploading" }, B),
+			],
+			demo: [file("dp", "s1", "2026-10-20T05:00:00Z", { playbackStatus: "pending" })],
+			songMix: [
+				file("mp", "s2", "2026-10-20T06:00:00Z", {
+					status: "uploading",
+					playbackStatus: null,
+					version: 2,
+					label: "Final",
+				}),
+			],
+			sessionRecording: [
+				recording("rp", A, "new", {
+					title: "Set one",
+					playbackStatus: null,
+					createdAt: at("2026-10-20T07:00:00Z"),
+				}),
+				recording("rok", A, "new", { playbackStatus: "ready" }),
+			],
+			songNotation: [
+				file("n1", "s1", "2026-10-20T10:00:00Z", { title: "Lead sheet", pdfStatus: "pending" }),
+				file("n2", "s1", "2026-10-20T00:30:00Z", {
+					status: "uploading",
+					title: "",
+					pdfStatus: null,
+				}),
+				file("n3", "s1", "2026-10-20T10:30:00Z", { pdfStatus: "ready" }),
+				file("n4", "s2", "2026-10-20T11:00:00Z", { title: "Old score", pdfStatus: "failed" }),
+				file("n5", "s2", "2026-10-20T12:00:00Z", { title: "Before PDFs", pdfStatus: null }),
+			],
+		}),
+	);
+
+	test("each unfinished thing oldest first, in its state, with its label, title and href", async () => {
+		const rows = await accountPendingWork(A, "band");
+		expect(rows.map((r) => [r.id, r.state])).toEqual([
+			["notation:n2", "uploading"],
+			["stem:pu1", "uploading"],
+			["stem:pr1", "rendering"],
+			["stem:pr2", "rendering"],
+			["stem:pf", "failed"],
+			["demo:dp", "rendering"],
+			["mix:mp", "uploading"],
+			["session-recording:rp", "rendering"],
+			["song-mix:s1", "rendering"],
+			["notes:s1", "rendering"],
+			["notation:n1", "rendering"],
+			["notation:n4", "failed"],
+			["notation:n5", "rendering"],
+		]);
+		const byId = new Map(rows.map((r) => [r.id, r]));
+		expect(byId.get("stem:pu1")).toEqual({
+			id: "stem:pu1",
+			kind: "stem",
+			state: "uploading",
+			label: "Label pu1",
+			title: "Song s1",
+			href: "/band/projects/p1/s1",
+			since: at("2026-10-20T01:00:00Z"),
+			song: s1Facts,
+		});
+		expect(byId.get("mix:mp")).toMatchObject({ label: "v2 Final", href: "/band/projects/p1/s2" });
+		expect(byId.get("session-recording:rp")).toMatchObject({
+			label: "Set one",
+			title: newSessionName,
+			href: "/band/sessions/s/new",
+			song: null,
+		});
+		expect(byId.get("song-mix:s1")).toMatchObject({
+			kind: "song-mix",
+			label: "",
+			since: at("2026-10-20T08:00:00Z"),
+			song: s1Facts,
+		});
+		expect(byId.get("notes:s1")).toMatchObject({ label: "", since: at("2026-10-20T09:00:00Z") });
+		expect(byId.get("notation:n1")).toMatchObject({ kind: "notation", label: "Lead sheet" });
+	});
+
+	test("finished work, an abandoned upload, archived songs and another account are left out", async () => {
+		const ids = (await accountPendingWork(A, "band")).map((r) => r.id);
+		for (const id of [
+			"stem:pok",
+			"stem:pab",
+			"stem:p4",
+			"song-mix:s4",
+			"song-mix:s2",
+			"session-recording:rok",
+			"notation:n3",
+			"stem:stb",
+			"song-mix:sb",
+		])
+			expect(ids).not.toContain(id);
+		expect((await accountPendingWork(B, "other")).map((r) => r.id)).toEqual([
+			"stem:stb",
+			"song-mix:sb",
+		]);
 	});
 });

@@ -157,14 +157,28 @@ project songs.
   Your Projects, Songs and Sessions for people in several accounts
   (`DashboardEntry.account`).
 
-## Step 3 — activity and work in progress
+## Step 3 — activity and work in progress (v0.187.0)
 
-- **Across the account**: the last few days merged from every project
-  and session: recordings added, mixes rendered, charts edited, messages
-  posted; one list per account, newest first, with who and when.
-- **Still rendering**: uploads whose MP3, mix, transcription or notation
-  is in progress (`playback_status`, mix status, notes status), so a
-  member knows why something is not there yet; links to the row.
+- **Activity**: the last `DASHBOARD_ACTIVITY_DAYS` (7) merged from every
+  project and session of each account (`accountActivity` in data.ts, at
+  most `DASHBOARD_ACTIVITY_CAP` (30) events per account): stems, demos
+  and mixes added, session recordings added, the shared chart, lyrics
+  and notes edited (`song_doc_version` rows without a user; a private
+  note is nobody else's), chat messages and comments posted, songs and
+  projects created; one section across accounts under Your Accounts,
+  newest first, each titled by its song or session with who did what
+  under it (`utils/activityText.ts`) and the moment; the same search,
+  account filter and paging as the other sections (`DashboardIdeas`,
+  whose "All …" link and empty-state button became optional). A song's
+  event shows only when the person may open the song.
+- **In progress** (the plan's "still rendering"): `accountPendingWork`
+  lists uploads not finished, playback renditions pending or failed, a
+  song's stem mix or notes transcription in flight (`mixStartedAt`,
+  `notesStartedAt`) and notation without its PDF yet, oldest first, each
+  linking to its row with its state (`utils/pendingText.ts`) and since
+  when; a block in the sidebar under Conversations (`DashboardPending`),
+  rendered only with something in it.
+- No migration. Types in `constants/dashboardActivity.ts`.
 
 ## Step 4 — the band at a glance
 

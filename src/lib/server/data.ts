@@ -134,6 +134,7 @@ import type { BugStatus } from "#lib/val/BugReportSchema.js";
 import type { AccountStatus } from "#lib/val/AccountStatusSchema.js";
 import type { ShareGrant } from "#lib/server/viewAccess.js";
 import type { Note } from "#lib/audio/chords.js";
+import type { ActivityEvent, PendingState, PendingWork } from "#lib/constants/dashboardActivity.js";
 import {
 	like,
 	and,
@@ -141,6 +142,7 @@ import {
 	count,
 	desc,
 	eq,
+	exists,
 	gt,
 	inArray,
 	isNotNull,
@@ -4880,6 +4882,481 @@ export async function unreadSessionChats(
 			...unread.get(s.id)!,
 		}))
 		.sort((a, b) => b.latest.getTime() - a.latest.getTime());
+}
+
+// ---- The dashboard's Activity and "Still rendering" (docs/dashboard-plan.md, "Step 3") ----
+
+/** The song columns an activity or pending row carries: what its href, its title and `canViewSong` read, and whether it is still active. */
+const ACTIVITY_SONG = {
+	columns: { id: true, title: true, slug: true, isPrivate: true, projectId: true, status: true },
+	with: {
+		project: {
+			columns: { slug: true, name: true, status: true, isPrivate: true, isRestricted: true },
+		},
+	},
+} as const;
+
+/** The session columns `sessionDisplayName` reads. */
+const ACTIVITY_SESSION = {
+	columns: { id: true, name: true, place: true, kind: true, startsOn: true },
+} as const;
+
+interface ActivitySongRow {
+	id: string;
+	title: string;
+	slug: string;
+	isPrivate: boolean;
+	projectId: string;
+	status: string;
+	project: {
+		slug: string;
+		name: string;
+		status: string;
+		isPrivate: boolean;
+		isRestricted: boolean;
+	} | null;
+}
+
+type ActivityPlace = Pick<ActivityEvent, "title" | "href" | "song">;
+
+/** Where a song-bound row lives (title, href, view facts), or null when the song or its project is gone or not active. */
+function songPlace(
+	accountSlug: string,
+	s: ActivitySongRow | null | undefined,
+): ActivityPlace | null {
+	if (!s || s.status !== "active" || !s.project || s.project.status !== "active") return null;
+	return {
+		title: s.title,
+		href: `/${accountSlug}/projects/${s.project.slug}/${s.slug}`,
+		song: {
+			id: s.id,
+			isPrivate: s.isPrivate,
+			projectId: s.projectId,
+			project: { isPrivate: s.project.isPrivate, isRestricted: s.project.isRestricted },
+		},
+	};
+}
+
+/** Where a session-bound row lives, or null when the session is gone. */
+function sessionPlace(
+	accountSlug: string,
+	s:
+		| { id: string; name: string; place: string; kind: SessionKind; startsOn: string }
+		| null
+		| undefined,
+): ActivityPlace | null {
+	if (!s) return null;
+	return { title: sessionDisplayName(s), href: `/${accountSlug}/sessions/s/${s.id}`, song: null };
+}
+
+/** A mix's label as the dashboard shows it: "v3 Rough mix". */
+const mixLabel = (m: { version: number; label: string }) => `v${m.version} ${m.label}`.trim();
+
+/**
+ * Everything that happened in the account after `since`, newest first, at
+ * most `limit` events, for the dashboard's Activity (docs/dashboard-plan.md,
+ * "Step 3"): ready stems, demos, mixes and session recordings, shared doc
+ * revisions (a private note's are nobody else's business), chat messages
+ * and comments on songs and sessions, and new songs and projects. Each
+ * source reads its own newest `limit` in parallel, the merge keeps the
+ * newest `limit` of all; a row whose song or project is not active is left
+ * out, and the names come from one query over every person named. The
+ * caller drops what the person may not open with `canViewSong` on `song`.
+ */
+export async function accountActivity(
+	accountId: string,
+	accountSlug: string,
+	since: Date,
+	limit: number,
+): Promise<ActivityEvent[]> {
+	const [
+		stems,
+		demos,
+		mixes,
+		recordings,
+		docs,
+		chats,
+		sessionChats,
+		comments,
+		sessionComments,
+		songs,
+		projects,
+	] = await Promise.all([
+		db.query.stem.findMany({
+			where: and(
+				eq(stem.accountId, accountId),
+				eq(stem.status, "ready"),
+				gt(stem.createdAt, since),
+			),
+			orderBy: desc(stem.createdAt),
+			limit,
+			columns: { id: true, label: true, uploadedBy: true, createdAt: true },
+			with: { song: ACTIVITY_SONG },
+		}),
+		db.query.demo.findMany({
+			where: and(
+				eq(demo.accountId, accountId),
+				eq(demo.status, "ready"),
+				gt(demo.createdAt, since),
+			),
+			orderBy: desc(demo.createdAt),
+			limit,
+			columns: { id: true, label: true, uploadedBy: true, createdAt: true },
+			with: { song: ACTIVITY_SONG },
+		}),
+		db.query.songMix.findMany({
+			where: and(
+				eq(songMix.accountId, accountId),
+				eq(songMix.status, "ready"),
+				gt(songMix.createdAt, since),
+			),
+			orderBy: desc(songMix.createdAt),
+			limit,
+			columns: { id: true, version: true, label: true, uploadedBy: true, createdAt: true },
+			with: { song: ACTIVITY_SONG },
+		}),
+		db.query.sessionRecording.findMany({
+			where: and(
+				eq(sessionRecording.accountId, accountId),
+				eq(sessionRecording.status, "ready"),
+				gt(sessionRecording.createdAt, since),
+			),
+			orderBy: desc(sessionRecording.createdAt),
+			limit,
+			columns: { id: true, title: true, createdAt: true },
+			with: { session: ACTIVITY_SESSION },
+		}),
+		// A doc revision carries no account: its song's says whose it is.
+		db
+			.select({
+				id: songDocVersion.id,
+				songId: songDocVersion.songId,
+				kind: songDocVersion.kind,
+				createdBy: songDocVersion.createdBy,
+				createdAt: songDocVersion.createdAt,
+			})
+			.from(songDocVersion)
+			.where(
+				and(
+					isNull(songDocVersion.userId),
+					gt(songDocVersion.createdAt, since),
+					exists(
+						db
+							.select({ id: song.id })
+							.from(song)
+							.where(and(eq(song.id, songDocVersion.songId), eq(song.accountId, accountId))),
+					),
+				),
+			)
+			.orderBy(desc(songDocVersion.createdAt))
+			.limit(limit),
+		db.query.chatMessage.findMany({
+			where: and(eq(chatMessage.accountId, accountId), gt(chatMessage.createdAt, since)),
+			orderBy: desc(chatMessage.createdAt),
+			limit,
+			columns: { id: true, userId: true, createdAt: true },
+			with: { song: ACTIVITY_SONG },
+		}),
+		db.query.sessionChatMessage.findMany({
+			where: and(
+				eq(sessionChatMessage.accountId, accountId),
+				gt(sessionChatMessage.createdAt, since),
+			),
+			orderBy: desc(sessionChatMessage.createdAt),
+			limit,
+			columns: { id: true, userId: true, createdAt: true },
+			with: { session: ACTIVITY_SESSION },
+		}),
+		db.query.comment.findMany({
+			where: and(eq(comment.accountId, accountId), gt(comment.createdAt, since)),
+			orderBy: desc(comment.createdAt),
+			limit,
+			columns: { id: true, userId: true, createdAt: true },
+			with: { song: ACTIVITY_SONG },
+		}),
+		// A session comment is on a recording; the recording names the session.
+		db.query.sessionComment.findMany({
+			where: and(eq(sessionComment.accountId, accountId), gt(sessionComment.createdAt, since)),
+			orderBy: desc(sessionComment.createdAt),
+			limit,
+			columns: { id: true, userId: true, createdAt: true },
+			with: { recording: { columns: { id: true }, with: { session: ACTIVITY_SESSION } } },
+		}),
+		db.query.song.findMany({
+			where: and(
+				eq(song.accountId, accountId),
+				eq(song.status, "active"),
+				gt(song.createdAt, since),
+			),
+			orderBy: desc(song.createdAt),
+			limit,
+			columns: { ...ACTIVITY_SONG.columns, createdAt: true },
+			with: ACTIVITY_SONG.with,
+		}),
+		db.query.project.findMany({
+			where: and(
+				eq(project.accountId, accountId),
+				eq(project.status, "active"),
+				gt(project.createdAt, since),
+			),
+			orderBy: desc(project.createdAt),
+			limit,
+			columns: { id: true, name: true, slug: true, createdAt: true },
+		}),
+	]);
+
+	const docSongIds = [...new Set(docs.map((d) => d.songId))];
+	const userIds = [
+		...new Set(
+			[
+				...stems.map((r) => r.uploadedBy),
+				...demos.map((r) => r.uploadedBy),
+				...mixes.map((r) => r.uploadedBy),
+				...docs.map((r) => r.createdBy),
+				...chats.map((r) => r.userId),
+				...sessionChats.map((r) => r.userId),
+				...comments.map((r) => r.userId),
+				...sessionComments.map((r) => r.userId),
+			].filter((id): id is string => id != null),
+		),
+	];
+	const [docSongs, people] = await Promise.all([
+		docSongIds.length === 0
+			? []
+			: db.query.song.findMany({
+					where: and(eq(song.accountId, accountId), inArray(song.id, docSongIds)),
+					columns: ACTIVITY_SONG.columns,
+					with: ACTIVITY_SONG.with,
+				}),
+		userIds.length === 0
+			? []
+			: db.query.user.findMany({
+					where: inArray(user.id, userIds),
+					columns: { id: true, name: true },
+				}),
+	]);
+	const songById = new Map<string, ActivitySongRow>(docSongs.map((s) => [s.id, s]));
+	const nameById = new Map(people.map((p) => [p.id, p.name]));
+	const who = (id: string | null) => (id ? (nameById.get(id) ?? null) : null);
+
+	const events: ActivityEvent[] = [];
+	const push = (
+		kind: ActivityEvent["kind"],
+		rowId: string,
+		at: Date,
+		place: ActivityPlace | null,
+		label: string,
+		by: string | null,
+	) => {
+		if (place) events.push({ id: `${kind}:${rowId}`, kind, at, who: who(by), label, ...place });
+	};
+	for (const r of stems)
+		push("stem", r.id, r.createdAt, songPlace(accountSlug, r.song), r.label, r.uploadedBy);
+	for (const r of demos)
+		push("demo", r.id, r.createdAt, songPlace(accountSlug, r.song), r.label, r.uploadedBy);
+	for (const r of mixes)
+		push("mix", r.id, r.createdAt, songPlace(accountSlug, r.song), mixLabel(r), r.uploadedBy);
+	for (const r of recordings)
+		push(
+			"session-recording",
+			r.id,
+			r.createdAt,
+			sessionPlace(accountSlug, r.session),
+			r.title,
+			null,
+		);
+	for (const r of docs)
+		push(
+			"doc",
+			r.id,
+			r.createdAt,
+			songPlace(accountSlug, songById.get(r.songId)),
+			r.kind,
+			r.createdBy,
+		);
+	for (const r of chats)
+		push("chat", r.id, r.createdAt, songPlace(accountSlug, r.song), "", r.userId);
+	for (const r of sessionChats)
+		push("session-chat", r.id, r.createdAt, sessionPlace(accountSlug, r.session), "", r.userId);
+	for (const r of comments)
+		push("comment", r.id, r.createdAt, songPlace(accountSlug, r.song), "", r.userId);
+	for (const r of sessionComments)
+		push(
+			"session-comment",
+			r.id,
+			r.createdAt,
+			sessionPlace(accountSlug, r.recording?.session),
+			"",
+			r.userId,
+		);
+	for (const r of songs) push("song", r.id, r.createdAt, songPlace(accountSlug, r), r.title, null);
+	for (const r of projects)
+		push(
+			"project",
+			r.id,
+			r.createdAt,
+			{ title: r.name, href: `/${accountSlug}/projects/${r.slug}`, song: null },
+			r.name,
+			null,
+		);
+	return events.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, limit);
+}
+
+/** A file's unfinished state: still uploading, its rendition owed (null = not attempted yet) or rendering, or the rendition failed. */
+function fileState(r: { status: string; playbackStatus: string | null }): PendingState {
+	if (r.status === "uploading") return "uploading";
+	return r.playbackStatus === "failed" ? "failed" : "rendering";
+}
+
+/**
+ * Everything the server has not finished in the account, oldest first, for
+ * the dashboard's "Still rendering" (docs/dashboard-plan.md, "Step 3"):
+ * stems, demos, mixes and session recordings still uploading, with their
+ * rendition owed or rendering, or with it failed (an abandoned upload,
+ * status "failed", is not pending work); a song's original mixdown or notes
+ * transcription while a job holds it (`mixStartedAt`, `notesStartedAt`);
+ * and notation files uploading or with their PDF owed (null `pdfStatus` on a
+ * ready row is a file from before PDFs, which the song page schedules),
+ * rendering or failed. A row whose song or project is not active is left
+ * out; the caller filters with `canViewSong` on `song`.
+ */
+export async function accountPendingWork(
+	accountId: string,
+	accountSlug: string,
+): Promise<PendingWork[]> {
+	const fileColumns = {
+		id: true,
+		label: true,
+		status: true,
+		playbackStatus: true,
+		createdAt: true,
+	} as const;
+	const [stems, demos, mixes, recordings, songs, notations] = await Promise.all([
+		db.query.stem.findMany({
+			where: and(
+				eq(stem.accountId, accountId),
+				or(
+					eq(stem.status, "uploading"),
+					and(
+						eq(stem.status, "ready"),
+						or(isNull(stem.playbackStatus), ne(stem.playbackStatus, "ready")),
+					),
+				),
+			),
+			columns: fileColumns,
+			with: { song: ACTIVITY_SONG },
+		}),
+		db.query.demo.findMany({
+			where: and(
+				eq(demo.accountId, accountId),
+				or(
+					eq(demo.status, "uploading"),
+					and(
+						eq(demo.status, "ready"),
+						or(isNull(demo.playbackStatus), ne(demo.playbackStatus, "ready")),
+					),
+				),
+			),
+			columns: fileColumns,
+			with: { song: ACTIVITY_SONG },
+		}),
+		db.query.songMix.findMany({
+			where: and(
+				eq(songMix.accountId, accountId),
+				or(
+					eq(songMix.status, "uploading"),
+					and(
+						eq(songMix.status, "ready"),
+						or(isNull(songMix.playbackStatus), ne(songMix.playbackStatus, "ready")),
+					),
+				),
+			),
+			columns: { ...fileColumns, version: true },
+			with: { song: ACTIVITY_SONG },
+		}),
+		db.query.sessionRecording.findMany({
+			where: and(
+				eq(sessionRecording.accountId, accountId),
+				or(
+					eq(sessionRecording.status, "uploading"),
+					and(
+						eq(sessionRecording.status, "ready"),
+						or(
+							isNull(sessionRecording.playbackStatus),
+							ne(sessionRecording.playbackStatus, "ready"),
+						),
+					),
+				),
+			),
+			columns: { id: true, title: true, status: true, playbackStatus: true, createdAt: true },
+			with: { session: ACTIVITY_SESSION },
+		}),
+		db.query.song.findMany({
+			where: and(
+				eq(song.accountId, accountId),
+				eq(song.status, "active"),
+				or(isNotNull(song.mixStartedAt), isNotNull(song.notesStartedAt)),
+			),
+			columns: { ...ACTIVITY_SONG.columns, mixStartedAt: true, notesStartedAt: true },
+			with: ACTIVITY_SONG.with,
+		}),
+		db.query.songNotation.findMany({
+			where: and(
+				eq(songNotation.accountId, accountId),
+				or(
+					eq(songNotation.status, "uploading"),
+					and(
+						eq(songNotation.status, "ready"),
+						or(isNull(songNotation.pdfStatus), ne(songNotation.pdfStatus, "ready")),
+					),
+				),
+			),
+			columns: { id: true, title: true, status: true, pdfStatus: true, createdAt: true },
+			with: { song: ACTIVITY_SONG },
+		}),
+	]);
+
+	const out: PendingWork[] = [];
+	const push = (
+		kind: PendingWork["kind"],
+		rowId: string,
+		state: PendingState,
+		since: Date,
+		place: ActivityPlace | null,
+		label: string,
+	) => {
+		if (place) out.push({ id: `${kind}:${rowId}`, kind, state, label, since, ...place });
+	};
+	for (const r of stems)
+		push("stem", r.id, fileState(r), r.createdAt, songPlace(accountSlug, r.song), r.label);
+	for (const r of demos)
+		push("demo", r.id, fileState(r), r.createdAt, songPlace(accountSlug, r.song), r.label);
+	for (const r of mixes)
+		push("mix", r.id, fileState(r), r.createdAt, songPlace(accountSlug, r.song), mixLabel(r));
+	for (const r of recordings)
+		push(
+			"session-recording",
+			r.id,
+			fileState(r),
+			r.createdAt,
+			sessionPlace(accountSlug, r.session),
+			r.title,
+		);
+	for (const r of songs) {
+		const place = songPlace(accountSlug, r);
+		if (r.mixStartedAt) push("song-mix", r.id, "rendering", r.mixStartedAt, place, "");
+		if (r.notesStartedAt) push("notes", r.id, "rendering", r.notesStartedAt, place, "");
+	}
+	for (const r of notations)
+		push(
+			"notation",
+			r.id,
+			r.status === "uploading" ? "uploading" : r.pdfStatus === "failed" ? "failed" : "rendering",
+			r.createdAt,
+			songPlace(accountSlug, r.song),
+			r.title,
+		);
+	return out.sort((a, b) => a.since.getTime() - b.since.getTime());
 }
 
 /** Marks a session's chat read now for a person; returns the mark (ms). */

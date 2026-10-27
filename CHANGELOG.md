@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.187.0] - 2026-10-27
+
+### Added
+
+- **Activity on the dashboard.** Under Your Accounts: what happened in your accounts over the last seven days, newest first, with who did what: stems, demos and mixes added, session recordings added, charts, lyrics and notes edited, chat messages and comments posted, songs and projects created. Each line opens its song or session, and the section has the same search, account filter and paging as the others.
+- **In progress.** In the sidebar, under Conversations: anything the server has not finished across your accounts, with its state and since when: an upload not completed, a playback rendition pending or failed, a stem mix or notes transcription still rendering, a notation PDF not made yet. It appears only when there is something.
+
+### Technical
+
+- `accountActivity(accountId, accountSlug, since, limit)` and `accountPendingWork(accountId, accountSlug)` in `data.ts`; types in `constants/dashboardActivity.ts`; `utils/activityText.ts` and `utils/pendingText.ts` word the lines. `DashboardIdeas` takes an optional `all` link and `action` button. `DASHBOARD_ACTIVITY_DAYS` (7) and `DASHBOARD_ACTIVITY_CAP` (30 per account).
+
 ## [0.186.0] - 2026-10-27
 
 ### Fixed

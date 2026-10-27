@@ -9,18 +9,20 @@
 	import InfoTip from "./InfoTip.svelte";
 
 	/**
-	 * A list of the person's own things on the dashboard (Your Songs, Your
-	 * Ideas, Your Multitrack Recordings, Your Loops), newest first, each a
-	 * link to it, with a link to all of them and a search; with none, a card
-	 * that sends them where to start.
+	 * A list of the person's things on the dashboard (Activity, Your
+	 * Projects, Songs, Sessions, Ideas, Multitrack Recordings, Loops), newest
+	 * first, each a link to it, with a link to all of them and a search; with
+	 * none, a card that sends them where to start.
 	 */
 	interface Props {
 		id: string;
 		heading: string;
 		ideas: DashboardEntry[];
 		empty: string;
-		action: { label: string; href: string };
-		all: { label: string; href: string };
+		/** The empty state's button; none for a section that is only ever a record of what happened (Activity). */
+		action?: { label: string; href: string };
+		/** The "All …" link beside the heading; none when there is no page of all of them. */
+		all?: { label: string; href: string };
 		search: string;
 		/** A sentence on what this kind of thing is, behind an info button beside the heading. */
 		tip: string;
@@ -47,14 +49,16 @@
 			{heading}
 			<InfoTip text={tip} label="About {heading}" class="text-16px" />
 		</h2>
-		{#if ideas.length > 0}
+		{#if all && ideas.length > 0}
 			<a class="link text-14px" href={all.href}>{all.label}</a>
 		{/if}
 	</div>
 	{#if ideas.length === 0}
 		<div class="surface grid justify-items-start gap-3 p-5">
 			<p class="text-15px opacity-90">{empty}</p>
-			<a class="button-accent button-sm" href={action.href}>{action.label}</a>
+			{#if action}
+				<a class="button-accent button-sm" href={action.href}>{action.label}</a>
+			{/if}
 		</div>
 	{:else}
 		<div class="flex flex-wrap items-center gap-3">

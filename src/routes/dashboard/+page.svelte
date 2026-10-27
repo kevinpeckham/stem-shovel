@@ -3,6 +3,7 @@
 	import DashboardConversations from "#lib/components/DashboardConversations.svelte";
 	import DashboardIdeas from "#lib/components/DashboardIdeas.svelte";
 	import DashboardNew from "#lib/components/DashboardNew.svelte";
+	import DashboardPending from "#lib/components/DashboardPending.svelte";
 	import DashboardStart from "#lib/components/DashboardStart.svelte";
 	import DashboardWidget from "#lib/components/DashboardWidget.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
@@ -45,6 +46,7 @@
 		<aside aria-label="Latest" class="grid gap-6 lg:col-start-2 lg:row-start-1">
 			<DashboardNew digest={data.digest} />
 			<DashboardConversations chats={data.chats} comments={data.comments} />
+			<DashboardPending items={data.pending} />
 		</aside>
 		<div class="grid min-w-0 gap-8 lg:col-start-1 lg:row-start-1 lg:row-span-2">
 			{#if accounts.length === 0}
@@ -65,6 +67,15 @@
 						{/each}
 					</div>
 				</section>
+				<DashboardIdeas
+					id="dashboard-activity"
+					heading="Activity"
+					accounts={data.accounts}
+					tip="What happened in your accounts over the last seven days: stems, demos, mixes and recordings added, charts and lyrics edited, chat messages and comments posted, songs and projects created."
+					ideas={data.activity}
+					empty="Nothing in the last seven days."
+					search="Search activity"
+				/>
 				<DashboardIdeas
 					id="dashboard-projects"
 					heading="Your Projects"
