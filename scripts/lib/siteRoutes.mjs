@@ -125,10 +125,11 @@ export const ROUTES = [
 	["api/sessions (server)", "/api/sessions", [405], [405]],
 	["api/sessions/[id]/ready (server)", "/api/sessions/x/ready", [405], [405]],
 	["api/sessions/[id]/eq.mp3 (server)", "/api/sessions/x/eq.mp3", [401], [404]],
+	// A visitor with the session's share code may fetch it, so an unknown session is a 404 either way.
 	[
 		"api/recording-sessions/[id]/mp3.zip (server)",
 		"/api/recording-sessions/x/mp3.zip",
-		[401],
+		[404],
 		[404],
 	],
 	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
