@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.183.0] - 2026-10-27
+
+### Added
+
+- **What is this?** Each dashboard section heading (Your Accounts, Projects, Songs, Sessions, Ideas, Multitrack Recordings, Loops) has an info button that explains the kind of thing it lists, for someone new to it.
+
 ## [0.182.0] - 2026-10-27
 
 ### Changed

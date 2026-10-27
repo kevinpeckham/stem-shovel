@@ -40,6 +40,10 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		"Your Loops",
 	])
 		await expect(page.getByRole("heading", { name })).toBeVisible();
+	// Each section heading carries an info button explaining the kind of thing it lists.
+	await page.getByRole("button", { name: "About Your Sessions" }).click();
+	await expect(page.getByRole("note")).toContainText("live recordings of shows or practices");
+	await page.keyboard.press("Escape");
 	// Your Projects: each with its song count; All projects opens the page across accounts.
 	await expect(page.getByRole("list", { name: "Your Projects" })).toContainText(/\d+ songs?/);
 	await expect(

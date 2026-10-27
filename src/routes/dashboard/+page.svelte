@@ -4,6 +4,7 @@
 	import DashboardNew from "#lib/components/DashboardNew.svelte";
 	import DashboardStart from "#lib/components/DashboardStart.svelte";
 	import DashboardWidget from "#lib/components/DashboardWidget.svelte";
+	import InfoTip from "#lib/components/InfoTip.svelte";
 	import { DASHBOARD_INSTRUMENTS } from "#lib/constants/dashboardLinks.js";
 	import { dashboardMore } from "#lib/utils/dashboardMore.js";
 	import { dashboardTools } from "#lib/utils/dashboardTools.js";
@@ -42,7 +43,14 @@
 				<DashboardStart />
 			{:else}
 				<section class="grid gap-3" aria-labelledby="dashboard-accounts">
-					<h2 class="marketing-topic-heading mb-0" id="dashboard-accounts">Your Accounts</h2>
+					<h2 class="marketing-topic-heading mb-0 flex items-center gap-2" id="dashboard-accounts">
+						Your Accounts
+						<InfoTip
+							text="An account is a band or a group with its own projects, songs, sessions and members. You can belong to several, and the tile shows your role in each."
+							label="About Your Accounts"
+							class="text-16px"
+						/>
+					</h2>
 					<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 						{#each accounts as account (account.slug)}
 							<DashboardAccount {account} />
@@ -52,6 +60,7 @@
 				<DashboardIdeas
 					id="dashboard-projects"
 					heading="Your Projects"
+					tip="A project is a collection of songs: an album, a set, or a batch of works in progress. Every song lives in one project."
 					ideas={data.projects}
 					empty="No projects yet."
 					action={{ label: "Create a project", href: `/${data.currentSlug}/projects` }}
@@ -61,6 +70,7 @@
 				<DashboardIdeas
 					id="dashboard-songs"
 					heading="Your Songs"
+					tip="A song holds its stems (the separate tracks), demos, lyrics, charts and notes, and moves through the writing, arranging, mixing and finished stages."
 					ideas={data.songs}
 					empty="No songs yet."
 					action={{ label: "Your projects", href: `/${data.currentSlug}/projects` }}
@@ -70,6 +80,7 @@
 				<DashboardIdeas
 					id="dashboard-sessions"
 					heading="Your Sessions"
+					tip="Sessions are live recordings of shows or practices, captured with the Session Recorder."
 					ideas={data.sessions}
 					empty="No sessions yet."
 					action={{ label: "Record a session", href: `/${data.currentSlug}/sessions/record` }}
@@ -80,6 +91,7 @@
 			<DashboardIdeas
 				id="dashboard-ideas"
 				heading="Your Ideas"
+				tip="Ideas are quick recordings from the Lark Idea Recorder: a riff, a melody or a verse caught before it is a song. They are yours, not an account's."
 				ideas={data.ideas}
 				empty="No ideas yet."
 				action={{ label: "Record an idea", href: "/idea-recorder" }}
@@ -89,6 +101,7 @@
 			<DashboardIdeas
 				id="dashboard-multitracks"
 				heading="Your Multitrack Recordings"
+				tip="Multitrack recordings are made in the Dawn Multitrack Studio, each instrument on its own track, ready to mix."
 				ideas={data.multitracks}
 				empty="No multitrack recordings yet."
 				action={{ label: "Record a multitrack", href: "/multitrack-recorder" }}
@@ -98,6 +111,7 @@
 			<DashboardIdeas
 				id="dashboard-loops"
 				heading="Your Loops"
+				tip="Loops are recordings from the Whirl Looper: layers played over a repeating stretch of bars."
 				ideas={data.loops}
 				empty="No loops yet."
 				action={{ label: "Record a loop", href: "/looper" }}

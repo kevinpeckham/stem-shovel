@@ -51,7 +51,9 @@ links, so a person jumps straight to one; the sessions link to their own
 pages. Since v0.181.0 the tiles share a row (`sm:grid-cols-2 xl:grid-cols-3`)
 and hold only the account's name, the person's role and its counts of
 projects, songs, sessions and members (each a link; `accountCounts`),
-under a "Your Accounts" heading; the lists moved to **Your Projects**
+under a "Your Accounts" heading (every section heading carries an
+`InfoTip` saying what the kind of thing is, since v0.183.0); the lists
+moved to **Your Projects**
 (every project the person may open across accounts, with its song count;
 "All projects" opens `/projects`, the same sortable, filterable page as
 `/songs`, where it redirected to the current account before), then the

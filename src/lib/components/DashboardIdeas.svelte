@@ -2,6 +2,7 @@
 	import { DASHBOARD_IDEAS_PAGE, type DashboardEntry } from "#lib/constants/dashboardLinks.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
 	import DashboardIdeaList from "./DashboardIdeaList.svelte";
+	import InfoTip from "./InfoTip.svelte";
 
 	/**
 	 * A list of the person's own things on the dashboard (Your Songs, Your
@@ -17,8 +18,10 @@
 		action: { label: string; href: string };
 		all: { label: string; href: string };
 		search: string;
+		/** A sentence on what this kind of thing is, behind an info button beside the heading. */
+		tip: string;
 	}
-	let { id, heading, ideas, empty, action, all, search }: Props = $props();
+	let { id, heading, ideas, empty, action, all, search, tip }: Props = $props();
 
 	let query = $state("");
 	/** Pages of DASHBOARD_IDEAS_PAGE shown; back to one whenever the query changes. */
@@ -28,7 +31,10 @@
 
 <section class="grid gap-3" aria-labelledby={id}>
 	<div class="flex items-baseline justify-between gap-4">
-		<h2 class="marketing-topic-heading mb-0" {id}>{heading}</h2>
+		<h2 class="marketing-topic-heading mb-0 flex items-center gap-2" {id}>
+			{heading}
+			<InfoTip text={tip} label="About {heading}" class="text-16px" />
+		</h2>
 		{#if ideas.length > 0}
 			<a class="link-dim text-14px" href={all.href}>{all.label}</a>
 		{/if}
