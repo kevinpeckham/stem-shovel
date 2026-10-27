@@ -211,6 +211,7 @@ describe("recentUserIdeas", () => {
 		expect((await recentUserIdeas(U, "idea", 5)).map((i) => i.id)).toEqual(["i2", "i3", "i1"]);
 		expect((await recentUserIdeas(U, "loop", 5)).map((i) => i.id)).toEqual(["l1"]);
 		expect((await recentUserIdeas(U, "song", 5)).map((i) => i.id)).toEqual(["d1"]);
+		expect((await recentUserIdeas(U, "idea", 500)).map((i) => i.id)).toEqual(["i2", "i3", "i1"]);
 		expect(await recentUserIdeas(V, "loop", 5)).toEqual([]);
 	});
 });

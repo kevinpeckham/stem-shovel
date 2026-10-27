@@ -47,3 +47,6 @@ export const DASHBOARD_MORE: (DashboardLink | DashboardAction)[] = [
 	{ label: "Share Stem Shovel", action: "share" },
 	{ label: "Stem Shovel Blog", href: "/blog" },
 ];
+
+/** Ideas, loops or multitracks a dashboard section shows at first, and how many more each "Show more" reveals. */
+export const DASHBOARD_IDEAS_PAGE = 10;

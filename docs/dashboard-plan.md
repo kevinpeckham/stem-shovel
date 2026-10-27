@@ -61,7 +61,15 @@ yet). The sidebar holds **New for you**, then the **Tools**,
 account's slug, `utils/dashboardTools.ts`; "Report a bug" opens the
 footer's form, "Share Stem Shovel" uses the share sheet or copies the
 address, `utils/shareSite.ts`). Quick actions are gone; the start card
-for a person with no account stays.
+for a person with no account stays. Later the same day: the three idea
+sections load every item of their kind (capped at 500, newest first),
+with an "All ideas" / "All loops" / "All multitracks" link beside the
+heading, a search by title (`utils/filterByTitle.ts`) and ten items at a
+time with "Showing N of M" and Show more (`utils/pageOf.ts`,
+`DASHBOARD_IDEAS_PAGE`, `DashboardIdeaList`); the link and the search
+appear only once the section has something in it. Dawn songs stay out of
+the account tiles' Songs lists (Kevin, 2026-10-27): those are the band's
+project songs.
 
 - `src/routes/dashboard/+page.server.ts` (`requireSignedIn`) and
   `+page.svelte`, title "Dashboard" (`app-page-heading`), noindex (the

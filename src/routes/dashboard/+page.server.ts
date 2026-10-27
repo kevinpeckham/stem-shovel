@@ -15,8 +15,8 @@ import type { PageServerLoad } from "./$types";
 
 /** Entries in each of an account tile's lists. */
 const SHOWN = 6;
-/** Entries in each of Your ideas, Your loops and Your multitrack recordings. */
-const IDEAS = 5;
+/** A cap on each of Your ideas, Your loops and Your multitrack recordings: all of them in practice, searched and paged in the browser. */
+const IDEAS = 500;
 /** Fetched past the shown number, so restricted projects the person cannot open leave room for others. */
 const SLACK = 3;
 
@@ -49,8 +49,8 @@ async function dashboardAccount(m: Membership, userId: string) {
 /**
  * Where a signed-in person lands (docs/dashboard-plan.md): a tile per
  * account they really belong to (not a super admin's acting ones) with its
- * recent projects, songs and sessions; their own newest ideas, loops and
- * multitrack recordings; and what is new in their inbox.
+ * recent projects, songs and sessions; their own ideas, loops and
+ * multitrack recordings (all of them, newest first); and what is new in their inbox.
  */
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const user = requireSignedIn(locals, url);

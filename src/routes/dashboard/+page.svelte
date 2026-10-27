@@ -47,6 +47,8 @@
 				href={() => "/idea-recorder"}
 				empty="No ideas yet."
 				action={{ label: "Record an idea", href: "/idea-recorder" }}
+				all={{ label: "All ideas", href: "/idea-recorder" }}
+				search="Search ideas"
 			/>
 			<DashboardIdeas
 				id="dashboard-loops"
@@ -55,6 +57,8 @@
 				href={() => "/looper"}
 				empty="No loops yet."
 				action={{ label: "Record a loop", href: "/looper" }}
+				all={{ label: "All loops", href: "/looper" }}
+				search="Search loops"
 			/>
 			<DashboardIdeas
 				id="dashboard-multitracks"
@@ -63,6 +67,8 @@
 				href={(id) => `/multitrack-recorder?song=${encodeURIComponent(id)}`}
 				empty="No multitrack recordings yet."
 				action={{ label: "Record a multitrack", href: "/multitrack-recorder" }}
+				all={{ label: "All multitracks", href: "/multitrack-recorder" }}
+				search="Search multitracks"
 			/>
 		</div>
 

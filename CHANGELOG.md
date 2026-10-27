@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.178.0] - 2026-10-27
+
+### Changed
+
+- **The dashboard's ideas, loops and multitrack recordings** list everything you have, newest first, ten at a time with "Showing 10 of 23" and Show more, a search by title, and an "All ideas" / "All loops" / "All multitracks" link beside the heading; the search and the link appear once there is something to search.
+
+### Technical
+
+- `DashboardIdeaList.svelte`; utils `filterByTitle`, `pageOf`; `DASHBOARD_IDEAS_PAGE = 10`; the dashboard loads up to 500 ideas per kind.
+
 ## [0.177.0] - 2026-10-27
 
 ### Changed
