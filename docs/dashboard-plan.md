@@ -50,15 +50,21 @@ six most recent projects, songs and sessions side by side with "All …"
 links, so a person jumps straight to one; the sessions link to their own
 pages. Two columns from `lg:` (content left, a 20 rem sidebar right,
 `+page.svelte`), one column on a phone with the sidebar after. The
-content column continues with **Your ideas**, **Your loops** and **Your
-multitrack recordings** (one `DashboardIdeas` component for the three
+content column continues with **Your Songs** (every song the person may
+open across their accounts, last changed first, each under its project and,
+with several accounts, its account; `allSongs` in `+page.server.ts`), then
+**Your Ideas**, **Your Multitrack
+Recordings** and **Your Loops** (one `DashboardIdeas` component for the three
 idea kinds, `recentUserIdeas(userId, kind, n)`; each empty state is the
 call to action: Record an idea, Record a loop, Record a multitrack; Dawn
 songs open by `?song=<id>`, ideas and loops have no address of their own
-yet). The sidebar holds **New for you**, then the **Tools**,
-**Instruments** and **More** widgets (`DashboardWidget`, lists in
-`constants/dashboardLinks.ts`; Session Recorder needs the current
-account's slug, `utils/dashboardTools.ts`; "Report a bug" opens the
+yet). The sidebar holds **Latest** (what is new for you), then the **Tools**,
+**Instruments** and **More** widgets (`DashboardWidget`, headings
+`marketing-section-heading`, lists in `constants/dashboardLinks.ts`;
+Session Recorder needs the current account's slug,
+`utils/dashboardTools.ts`; More opens with the inbox, the current
+account's settings (`utils/dashboardMore.ts`), the notification settings
+and the short links; "Report a bug" opens the
 footer's form, "Share Stem Shovel" uses the share sheet or copies the
 address, `utils/shareSite.ts`). Quick actions are gone; the start card
 for a person with no account stays. Later the same day: the three idea
@@ -75,7 +81,7 @@ project songs.
   `+page.svelte`, title "Dashboard" (`app-page-heading`), noindex (the
   route is not in `isIndexablePath`, and `scripts/lib/siteRoutes.mjs`
   lists it with `/inbox`'s expectations).
-- **New for you**: the unread notifications (`listInbox`), as counts per
+- **Latest**: the unread notifications (`listInbox`), as counts per
   kind in a line ("3 comments · 2 chat messages · 1 session") and the
   newest five with their links, opening each marks it read as the inbox
   does (`markNotificationRead`); a link to the inbox. Nothing unread:
@@ -93,7 +99,7 @@ project songs.
   updated, linking to their pages). New `data.ts` helpers:
   `latestRecordingSession(accountId)`, `recentProjects(accountId, n)`,
   `recentSongs(accountId, n)`, each one query.
-- **Your ideas**: the three newest of the person's own ideas
+- **Your Ideas**: the three newest of the person's own ideas
   (`listUserIdeas`), linking to the Idea Recorder.
 - **Empty tiers** as decided: no membership → the start card (Create an
   account → `/accounts`, the tools row); an account with no projects,

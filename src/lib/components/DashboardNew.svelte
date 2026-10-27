@@ -15,13 +15,13 @@
 		updatedAt: Date;
 	};
 
-	/** The dashboard's "New for you": unread inbox items counted per kind, and the newest of them. */
+	/** The dashboard's "Latest": unread inbox items counted per kind, and the newest of them. */
 	let { digest }: { digest: InboxDigest<Item> } = $props();
 	let line = $derived(digest.byKind.map((k) => kindLabel(k.kind, k.count)).join(" · "));
 </script>
 
 <section aria-labelledby="dashboard-new">
-	<h2 class="heading-2" id="dashboard-new">New for you</h2>
+	<h2 class="marketing-section-heading" id="dashboard-new">Latest</h2>
 	{#if digest.unread > 0}
 		<p class="mb-3 text-15px opacity-90">{line}</p>
 		<ul class="surface divide-y divide-white/10 text-15px" aria-label="Unread notifications">

@@ -5,7 +5,7 @@ const items = [
 	{ id: "a", title: "Morning Riff" },
 	{ id: "b", title: "" },
 	{ id: "c", title: "riff two" },
-	{ id: "d", title: "Bridge" },
+	{ id: "d", title: "Bridge", meta: "Badverbs" },
 ];
 const ids = (list: { id: string }[]) => list.map((i) => i.id);
 
@@ -21,6 +21,10 @@ describe("filterByTitle", () => {
 
 	it("matches an empty title as Untitled", () => {
 		expect(ids(filterByTitle(items, "untit"))).toEqual(["b"]);
+	});
+
+	it("matches the meta line (a song's project) as well as the title", () => {
+		expect(ids(filterByTitle(items, "badverbs"))).toEqual(["d"]);
 	});
 
 	it("returns nothing when nothing matches", () => {

@@ -441,7 +441,20 @@
 							{/if}
 						</div>
 						<a
-							class="mt-1 flex items-center px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="mt-1 block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								'/dashboard',
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/dashboard"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-squares-four mr-2 inline-block align-[-2px]" aria-hidden="true"
+							></span>User Dashboard
+						</a>
+						<a
+							class="flex items-center px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 								'/inbox',
 							)
 								? 'text-accent'

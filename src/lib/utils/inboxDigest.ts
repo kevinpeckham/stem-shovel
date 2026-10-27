@@ -25,7 +25,7 @@ function countByKind(items: DigestItem[]): { kind: string; count: number }[] {
 	return [...counts].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count);
 }
 
-/** What the dashboard's "New for you" shows from the inbox: the unread, counted per kind, and the newest of them. */
+/** What the dashboard's "Latest" shows from the inbox: the unread, counted per kind, and the newest of them. */
 export function inboxDigest<T extends DigestItem>(items: T[]): InboxDigest<T> {
 	const unread = items.filter((i) => !i.readAt);
 	return {

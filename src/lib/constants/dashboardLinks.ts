@@ -38,8 +38,11 @@ export const DASHBOARD_INSTRUMENTS: DashboardLink[] = [
 	{ label: "Palette", href: "/chord-player" },
 ];
 
-/** The sidebar's More: the footer's links, the bug report and sharing the site. */
+/** The sidebar's More: the person's own pages (the inbox, the notification settings, their short links; the current account's settings join after the inbox through `dashboardMore`), then the footer's links, the bug report and sharing the site. */
 export const DASHBOARD_MORE: (DashboardLink | DashboardAction)[] = [
+	{ label: "Inbox", href: "/inbox" },
+	{ label: "Notifications", href: "/settings/notifications" },
+	{ label: "Links", href: "/settings/links" },
 	{ label: "Docs", href: "/docs" },
 	{ label: "Feature Requests", href: "/feature-requests" },
 	{ label: "Report a bug", action: "report" },
@@ -47,6 +50,15 @@ export const DASHBOARD_MORE: (DashboardLink | DashboardAction)[] = [
 	{ label: "Share Stem Shovel", action: "share" },
 	{ label: "Stem Shovel Blog", href: "/blog" },
 ];
+
+/** An entry in a dashboard list (Your Songs, Your Ideas, Your Multitrack Recordings, Your Loops): a title linking somewhere, when it was made or last changed, and a line under the title (a song's project). */
+export interface DashboardEntry {
+	id: string;
+	title: string;
+	href: string;
+	when: Date;
+	meta?: string;
+}
 
 /** Ideas, loops or multitracks a dashboard section shows at first, and how many more each "Show more" reveals. */
 export const DASHBOARD_IDEAS_PAGE = 10;

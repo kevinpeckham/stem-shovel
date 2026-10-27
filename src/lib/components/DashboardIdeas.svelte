@@ -1,25 +1,24 @@
 <script lang="ts">
-	import { DASHBOARD_IDEAS_PAGE } from "#lib/constants/dashboardLinks.js";
+	import { DASHBOARD_IDEAS_PAGE, type DashboardEntry } from "#lib/constants/dashboardLinks.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
 	import DashboardIdeaList from "./DashboardIdeaList.svelte";
 
 	/**
-	 * The person's ideas of one kind on the dashboard (Your ideas, Your
-	 * loops, Your multitrack recordings), newest first, each a link into the
-	 * tool that made it, with a link to the tool and a search by title;
-	 * with none, a card that sends them there.
+	 * A list of the person's own things on the dashboard (Your Songs, Your
+	 * Ideas, Your Multitrack Recordings, Your Loops), newest first, each a
+	 * link to it, with a link to all of them and a search; with none, a card
+	 * that sends them where to start.
 	 */
 	interface Props {
 		id: string;
 		heading: string;
-		ideas: { id: string; title: string; createdAt: Date }[];
-		href: (id: string) => string;
+		ideas: DashboardEntry[];
 		empty: string;
 		action: { label: string; href: string };
 		all: { label: string; href: string };
 		search: string;
 	}
-	let { id, heading, ideas, href, empty, action, all, search }: Props = $props();
+	let { id, heading, ideas, empty, action, all, search }: Props = $props();
 
 	let query = $state("");
 	/** Pages of DASHBOARD_IDEAS_PAGE shown; back to one whenever the query changes. */
@@ -29,7 +28,7 @@
 
 <section class="grid gap-3" aria-labelledby={id}>
 	<div class="flex items-baseline justify-between gap-4">
-		<h2 class="heading-2 mb-0" {id}>{heading}</h2>
+		<h2 class="marketing-topic-heading mb-0" {id}>{heading}</h2>
 		{#if ideas.length > 0}
 			<a class="link-dim text-14px" href={all.href}>{all.label}</a>
 		{/if}
@@ -57,7 +56,6 @@
 		<DashboardIdeaList
 			{heading}
 			ideas={matches}
-			{href}
 			shown={pages * DASHBOARD_IDEAS_PAGE}
 			onmore={() => (pages += 1)}
 		/>

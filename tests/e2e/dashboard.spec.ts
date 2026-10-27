@@ -8,7 +8,7 @@ import { expect, open, test } from "./fixtures";
  */
 test("the dashboard shows what is new and each account's recent work", async ({ page, errors }) => {
 	await open(page, "/dashboard");
-	await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
+	await expect(page.getByRole("heading", { level: 1, name: "User Dashboard" })).toBeVisible();
 	// The account tile: projects, songs and sessions to jump to.
 	const account = page.locator('[data-dashboard-account="mmkk"]');
 	await expect(account).toBeVisible();
@@ -23,11 +23,19 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 		"/mmkk/sessions",
 	);
 	// The person's own work, each with a way to start when empty.
-	for (const name of ["Your ideas", "Your loops", "Your multitrack recordings"])
+	for (const name of [
+		"Your Projects & Songs",
+		"Your Songs",
+		"Your Ideas",
+		"Your Multitrack Recordings",
+		"Your Loops",
+	])
 		await expect(page.getByRole("heading", { name })).toBeVisible();
+	// Your Songs: each song under its project.
+	await expect(page.getByRole("list", { name: "Your Songs" })).toContainText("Badverbs");
 	// The sidebar: what is new, then the tools, instruments and more.
 	const sidebar = page.getByRole("complementary", { name: "Dashboard sidebar" });
-	await expect(sidebar.getByRole("heading", { name: "New for you" })).toBeVisible();
+	await expect(sidebar.getByRole("heading", { name: "Latest" })).toBeVisible();
 	await expect(sidebar.getByRole("link", { name: "Whirl Looper" })).toHaveAttribute(
 		"href",
 		"/looper",
@@ -39,6 +47,11 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 	await expect(sidebar.getByRole("link", { name: "Piano" })).toHaveAttribute("href", "/piano");
 	await expect(sidebar.getByRole("button", { name: "Report a bug" })).toBeVisible();
 	await expect(sidebar.getByRole("button", { name: "Share Stem Shovel" })).toBeVisible();
+	await expect(sidebar.getByRole("link", { name: "Inbox" })).toHaveAttribute("href", "/inbox");
+	await expect(sidebar.getByRole("link", { name: "Account settings" })).toHaveAttribute(
+		"href",
+		"/mmkk/settings",
+	);
 	await expect(sidebar.getByRole("link", { name: "Stem Shovel Blog" })).toHaveAttribute(
 		"href",
 		"/blog",

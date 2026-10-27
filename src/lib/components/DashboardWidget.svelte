@@ -8,16 +8,16 @@
 </script>
 
 <section class="surface grid gap-2 p-5" aria-label={heading}>
-	<h2 class="heading-3 mb-0">{heading}</h2>
+	<h2 class="marketing-section-heading mb-0">{heading}</h2>
 	<ul class="grid gap-1 text-15px">
 		{#each items as item (item.label)}
 			<li>
 				{#if "href" in item}
-					<a class="link-dim" href={item.href}>{item.label}</a>
+					<a class="link" href={item.href}>{item.label}</a>
 				{:else if item.action === "report"}
-					<button type="button" class="link-dim" popovertarget="bug-report">{item.label}</button>
+					<button type="button" class="link" popovertarget="bug-report">{item.label}</button>
 				{:else}
-					<button type="button" class="link-dim" onclick={shareSite}>{item.label}</button>
+					<button type="button" class="link" onclick={shareSite}>{item.label}</button>
 				{/if}
 			</li>
 		{/each}

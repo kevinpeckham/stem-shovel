@@ -8,6 +8,22 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.179.0] - 2026-10-27
+
+### Added
+
+- **Your Songs on the dashboard.** Between the account tiles and Your Ideas: every song you may open across your accounts, last changed first, each under its project (and its account, when you belong to several), with the same search, ten-at-a-time paging and "All songs" link as the ideas; the search matches the project too. With no songs, a card points to your projects.
+- **More in the sidebar.** The More widget opens with Inbox, Account settings (the current account's), Notifications and Links before the docs, feature requests and the rest.
+- **User Dashboard in the account menu.** The first item of the account menu goes to the dashboard.
+
+### Changed
+
+- **Dashboard headings.** The page is titled "User Dashboard"; a "Your Projects & Songs" heading sits over the account tiles; Your Songs, Your Ideas, Your Multitrack Recordings and Your Loops carry the serif topic heading in Title Case, with Your Multitrack Recordings ahead of Your Loops; "New for you" is now "Latest" and, with Tools, Instruments and More, uses the small monospace section label. The widgets' links are plain links rather than dimmed ones (`link-dim` is deprecated).
+
+### Technical
+
+- `DashboardEntry` (`constants/dashboardLinks.ts`) is the shape of every dashboard list entry (id, title, href, when, meta); the loader builds the entries, so `DashboardIdeas`/`DashboardIdeaList` no longer take an `href` function. `filterByTitle` matches `meta` as well. `utils/dashboardMore.ts` adds the account's settings to More. The account tile fetches all of an account's songs once (cap 500) and shares them with Your Songs.
+
 ## [0.178.0] - 2026-10-27
 
 ### Changed
