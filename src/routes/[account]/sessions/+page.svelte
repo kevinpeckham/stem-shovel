@@ -753,7 +753,7 @@
 										disabled={chatLoading}
 										onclick={() => void openChat(s)}
 									>
-										<span class="i-ph-chat-circle-dots" aria-hidden="true"></span>
+										<span class="i-ph-chat-circle-dots" aria-hidden="true"></span> Chat
 										{#if chatCountOf(s)}<span class="tabular-nums">{chatCountOf(s)}</span>{/if}
 										{#if unread}
 											<span
