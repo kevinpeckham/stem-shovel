@@ -734,6 +734,31 @@ export async function markRead(userId: string, id: string) {
 		);
 }
 
+/**
+ * The person has seen a subject itself (a chat they opened, say), so its
+ * unread notifications of those kinds are read too; the dashboard's Latest
+ * and Conversations then agree. Returns how many it marked.
+ */
+export async function markSubjectRead(
+	userId: string,
+	kinds: NotificationKind[],
+	subjectId: string,
+): Promise<number> {
+	const rows = await db
+		.update(notification)
+		.set({ readAt: new Date() })
+		.where(
+			and(
+				eq(notification.userId, userId),
+				inArray(notification.kind, kinds),
+				eq(notification.subjectId, subjectId),
+				isNull(notification.readAt),
+			),
+		)
+		.returning({ id: notification.id });
+	return rows.length;
+}
+
 export async function markAllRead(userId: string) {
 	await db
 		.update(notification)

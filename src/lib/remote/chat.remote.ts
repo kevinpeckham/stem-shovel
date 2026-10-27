@@ -6,7 +6,12 @@ import {
 	requireUser,
 } from "#lib/server/access.js";
 import { background } from "#lib/server/background.js";
-import { notifyChat, notifyMention, notifySessionChat } from "#lib/server/notifications.js";
+import {
+	markSubjectRead,
+	notifyChat,
+	notifyMention,
+	notifySessionChat,
+} from "#lib/server/notifications.js";
 import {
 	chatAudience,
 	chatMessageOwnership,
@@ -132,16 +137,22 @@ export const deleteMessage = form(IdSchema, async ({ id }) => {
 	return { deleted: true };
 });
 
-/** The person has seen the chat as it stands: the mark the tab's dot and the "New" line read. */
+/** The person has seen the chat as it stands: the mark the tab's dot and the "New" line read, and the chat's own notifications (new messages, mentions in it) read with it. */
 export const markChatRead = command(ChatScopeSchema, async (scope) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	await chatAccess(locals, scope);
-	return {
-		readAt: scope.sessionId
-			? await markSessionChatRead(scope.sessionId, user.id)
-			: await markRead(scope.songId, user.id),
-	};
+	const [readAt] = await Promise.all([
+		scope.sessionId
+			? markSessionChatRead(scope.sessionId, user.id)
+			: markRead(scope.songId, user.id),
+		markSubjectRead(
+			user.id,
+			["chat", "mention"],
+			scope.sessionId ? `session:${scope.sessionId}` : scope.songId,
+		),
+	]);
+	return { readAt };
 });
 
 /** A tap on a reaction (docs/chat.md, "Reactions"): on or off for the signed-in person, for anyone who reads the chat; the message comes back as they now see it. */

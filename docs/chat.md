@@ -46,6 +46,11 @@ pinned to a spot in the song, visible to anyone who can view it.
 - The header's chat button carries a small dot (and "n new" in its
   label) while there are messages newer than the person's read mark; the
   list draws a "New" line above the first unread one.
+- Marking the chat read also marks the person's unread `chat` and
+  `mention` notifications on it read (`markSubjectRead`, by the
+  notification's subject: the song id, or `session:<id>`), so the inbox
+  and the dashboard's Latest stop counting a chat they have already seen
+  (v0.186.0).
 
 ### Keeping up
 

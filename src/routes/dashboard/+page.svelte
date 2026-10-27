@@ -38,9 +38,9 @@
 <main class="page">
 	<h1 class="app-page-heading">User Dashboard</h1>
 
-	<!-- Three grid children: Latest, the content, the widgets. One column on a phone in that order, so what is new comes first; from lg the content takes the left column over two rows and Latest sits above the widgets on the right. -->
+	<!-- Three grid children: Latest, the content, the widgets. One column on a phone in that order, so what is new comes first; from lg the content takes the left column over two rows and Latest sits above the widgets on the right. The rows are auto then 1fr: the content's height goes to the second row alone, so the widgets sit right under Latest instead of halfway down (the spanning column would otherwise be shared into both rows). -->
 	<div
-		class="grid gap-8 lg-gap-x-12 xl-gap-x-16 2xl-gap-x-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-y-6 lg:items-start"
+		class="grid gap-8 lg-gap-x-12 xl-gap-x-16 2xl-gap-x-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_1fr] lg:gap-y-6 lg:items-start"
 	>
 		<aside aria-label="Latest" class="grid gap-6 lg:col-start-2 lg:row-start-1">
 			<DashboardNew digest={data.digest} />

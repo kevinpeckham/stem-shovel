@@ -29,6 +29,7 @@ const {
 	listInbox,
 	markAllRead,
 	markRead,
+	markSubjectRead,
 	notifyChat,
 	notifyComment,
 	notifyDemo,
@@ -850,6 +851,16 @@ describe("the inbox", () => {
 		await markRead("u3", "n2");
 		expect(notificationById("n2")?.readAt).toBeNull();
 		await markRead("u2", "n3");
+		expect(notificationById("n3")?.readAt).toEqual(at(NOW - HOUR));
+		expect(notificationById("n4")?.readAt).toBeNull();
+	});
+	test("markSubjectRead marks the person's unread items of those kinds on the subject and nothing else", async () => {
+		// n1: comment on s1 (not a chat kind); n2: stems on s1; n3 already read; n4 is u3's.
+		expect(await markSubjectRead("u2", ["chat", "mention"], "s1")).toBe(0);
+		expect(await markSubjectRead("u2", ["comment"], "s2")).toBe(0);
+		expect(await markSubjectRead("u2", ["comment", "stems"], "s1")).toBe(2);
+		expect(notificationById("n1")?.readAt).toEqual(at(NOW));
+		expect(notificationById("n2")?.readAt).toEqual(at(NOW));
 		expect(notificationById("n3")?.readAt).toEqual(at(NOW - HOUR));
 		expect(notificationById("n4")?.readAt).toBeNull();
 	});

@@ -181,10 +181,11 @@ describe("markChatRead and chatSince", () => {
 		);
 		expect(data.listChatMessages).not.toHaveBeenCalled();
 	});
-	it("a viewer marks the chat read and polls for what changed since", async () => {
+	it("a viewer marks the chat read, with its chat and mention notifications, and polls for what changed since", async () => {
 		asViewerOf(ACCOUNT);
 		await expect(call(chat.markChatRead, { songId: SONG })).resolves.toEqual({ readAt: 1234 });
 		expect(data.markChatRead).toHaveBeenCalledWith(SONG, USER);
+		expect(notifications.markSubjectRead).toHaveBeenCalledWith(USER, ["chat", "mention"], SONG);
 		await expect(call(chat.chatSince, { songId: SONG, after: 5 })).resolves.toEqual([ROW]);
 		expect(data.listChatMessages).toHaveBeenCalledWith(SONG, 5, USER);
 	});

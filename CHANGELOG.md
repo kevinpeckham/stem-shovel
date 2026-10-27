@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.186.0] - 2026-10-27
+
+### Fixed
+
+- **No gap under Conversations.** On a wide screen the dashboard's Tools, Instruments and More widgets sat far below Conversations when the content column was tall (Kevin, on production); they now follow it directly.
+- **Opening a chat reads its notifications.** Once you have seen a song's or a session's chat, its "New message in the chat" and mention notifications are read too, so the inbox and the dashboard's Latest no longer count a chat you have already caught up on.
+
+### Technical
+
+- `markSubjectRead(userId, kinds, subjectId)` in `notifications.ts`; the `markChatRead` command calls it for `chat` and `mention` on the chat's subject (the song id, or `session:<id>`).
+
 ## [0.185.0] - 2026-10-27
 
 ### Added
