@@ -18,6 +18,7 @@ const {
 	deleteAccountRows,
 	deleteArtistRows,
 	deleteBugReportRows,
+	deleteEventRows,
 	deleteIdeaRows,
 	deleteProjectRows,
 	deleteSessionReviewRows,
@@ -135,8 +136,8 @@ describe("deleteSongRows", () => {
 	beforeEach(() =>
 		fake.reset({
 			song: [
-				{ id: "s1", accountId: "a1", projectId: "p1" },
-				{ id: "s2", accountId: "a1", projectId: "p1" },
+				{ id: "s1", accountId: "a1", projectId: "p1", title: "One" },
+				{ id: "s2", accountId: "a1", projectId: "p1", title: "Two" },
 			],
 			comment: [
 				{ id: "c1", songId: "s1", accountId: "a1", userId: "u1" },
@@ -176,6 +177,7 @@ describe("deleteSongRows", () => {
 			"song",
 		]);
 		expect(updates().map((u) => [u.table, u.values])).toEqual([
+			["set_list_item", { title: "One" }],
 			["set_list_item", { songId: null }],
 			["ai_request", { songId: null }],
 			["session_recording", { songId: null }],
@@ -190,18 +192,25 @@ describe("deleteSongRows", () => {
 		expect(fake.rows("slugAlias")).toEqual([]);
 		expect(fake.rows("song").map((s) => s.id)).toEqual(["s2"]);
 	});
-	test("a set list keeps its row for the song as free text, with the title it was added under", async () => {
+	test("a set list keeps its row for the song as free text: its custom title, else the song's", async () => {
 		fake.reset({
-			song: [{ id: "s1", accountId: "a1" }],
+			song: [
+				{ id: "s1", accountId: "a1", title: "Song One" },
+				{ id: "s3", accountId: "a1", title: "Song Three" },
+			],
 			setListItem: [
-				{ id: "li1", setListId: "l1", songId: "s1", title: "Old Title" },
-				{ id: "li2", setListId: "l1", songId: "s2", title: "Other" },
+				{ id: "li1", setListId: "l1", songId: "s1", title: "Old Title (acoustic)" },
+				{ id: "li2", setListId: "l1", songId: "s2", title: "" },
+				{ id: "li3", setListId: "l1", songId: "s1", title: "" },
+				{ id: "li4", setListId: "l1", songId: "s3", title: "" },
 			],
 		});
-		await deleteSongRows(["s1"]);
+		await deleteSongRows(["s1", "s3"]);
 		expect(fake.rows("setListItem")).toEqual([
-			{ id: "li1", setListId: "l1", songId: null, title: "Old Title" },
-			{ id: "li2", setListId: "l1", songId: "s2", title: "Other" },
+			{ id: "li1", setListId: "l1", songId: null, title: "Old Title (acoustic)" },
+			{ id: "li2", setListId: "l1", songId: "s2", title: "" },
+			{ id: "li3", setListId: "l1", songId: null, title: "Song One" },
+			{ id: "li4", setListId: "l1", songId: null, title: "Song Three" },
 		]);
 		expect(deletes()).not.toContain("set_list_item");
 	});
@@ -338,7 +347,13 @@ describe("deleteSetListRows", () => {
 	);
 	test("the rows, the links and the pins go before the set list; other set lists stay", async () => {
 		await deleteSetListRows(["l1"]);
-		expect(deletes()).toEqual(["set_list_item", "share_link", "dashboard_pin", "set_list"]);
+		expect(deletes()).toEqual([
+			"event_set",
+			"set_list_item",
+			"share_link",
+			"dashboard_pin",
+			"set_list",
+		]);
 		expect(fake.rows("dashboardPin").map((p) => [p.kind, p.targetId].join(":"))).toEqual([
 			"setList:l2",
 			"song:l1",
@@ -354,6 +369,68 @@ describe("deleteSetListRows", () => {
 	test("covers every table with a foreign key to set_list", async () => {
 		await deleteSetListRows(["l1"]);
 		expect(missingFor(schema.setList)).toEqual([]);
+	});
+});
+
+describe("deleteSetListRows and events", () => {
+	test("the set list's sets on events go; the events and their other sets stay", async () => {
+		fake.reset({
+			setList: [
+				{ id: "l1", accountId: "a1" },
+				{ id: "l2", accountId: "a1" },
+			],
+			event: [{ id: "e1", accountId: "a1" }],
+			eventSet: [
+				{ id: "es1", eventId: "e1", setListId: "l1" },
+				{ id: "es2", eventId: "e1", setListId: "l2" },
+				{ id: "es3", eventId: "e1", setListId: "l1" },
+			],
+		});
+		await deleteSetListRows(["l1"]);
+		expect(fake.rows("eventSet").map((r) => r.id)).toEqual(["es2"]);
+		expect(fake.rows("event").map((r) => r.id)).toEqual(["e1"]);
+	});
+});
+
+describe("deleteEventRows", () => {
+	beforeEach(() =>
+		fake.reset({
+			event: [
+				{ id: "e1", accountId: "a1" },
+				{ id: "e2", accountId: "a1" },
+			],
+			eventSet: [
+				{ id: "es1", eventId: "e1", setListId: "l1" },
+				{ id: "es2", eventId: "e2", setListId: "l1" },
+			],
+			setList: [{ id: "l1", accountId: "a1" }],
+			recordingSession: [
+				{ id: "rs1", accountId: "a1", eventId: "e1" },
+				{ id: "rs2", accountId: "a1", eventId: "e2" },
+				{ id: "rs3", accountId: "a1", eventId: null },
+			],
+		}),
+	);
+	test("the sets go and the sessions are untied before the event; the set lists and sessions stay", async () => {
+		await deleteEventRows(["e1"]);
+		expect(deletes()).toEqual(["event_set", "event"]);
+		expect(updates().map((u) => u.table)).toEqual(["recording_session"]);
+		expect(fake.rows("event").map((r) => r.id)).toEqual(["e2"]);
+		expect(fake.rows("eventSet").map((r) => r.id)).toEqual(["es2"]);
+		expect(fake.rows("setList").map((r) => r.id)).toEqual(["l1"]);
+		expect(fake.rows("recordingSession").map((r) => [r.id, r.eventId])).toEqual([
+			["rs1", null],
+			["rs2", "e2"],
+			["rs3", null],
+		]);
+	});
+	test("nothing to delete, no queries", async () => {
+		await deleteEventRows([]);
+		expect(fake.calls).toEqual([]);
+	});
+	test("covers every table with a foreign key to event", async () => {
+		await deleteEventRows(["e1"]);
+		expect(missingFor(schema.event)).toEqual([]);
 	});
 });
 
@@ -415,8 +492,23 @@ describe("deleteAccountRows", () => {
 				{ id: "li1", setListId: "l1" },
 				{ id: "li2", setListId: "l2" },
 			],
+			event: [
+				{ id: "e1", accountId: "a1" },
+				{ id: "e2", accountId: "a2" },
+			],
+			eventSet: [
+				{ id: "es1", eventId: "e1", setListId: "l1" },
+				{ id: "es2", eventId: "e2", setListId: "l2" },
+			],
 		}),
 	);
+	test("the account's events go with their sets, before the set lists; another account's stay", async () => {
+		await deleteAccountRows("a1");
+		expect(fake.rows("event").map((r) => r.id)).toEqual(["e2"]);
+		expect(fake.rows("eventSet").map((r) => r.id)).toEqual(["es2"]);
+		expect(position("event")).toBeLessThan(position("set_list"));
+		expect(position("event")).toBeGreaterThan(position("event_set"));
+	});
 	test("the account's set lists go with their rows; another account's stay", async () => {
 		await deleteAccountRows("a1");
 		expect(fake.rows("setList").map((l) => l.id)).toEqual(["l2"]);
@@ -488,6 +580,10 @@ describe("deleteUserRows", () => {
 				{ id: "s2", createdBy: "u2" },
 			],
 			studioRevision: [{ id: "v1", savedBy: "u1" }],
+			event: [
+				{ id: "e1", createdBy: "u1" },
+				{ id: "e2", createdBy: "u2" },
+			],
 			songDocVersion: [
 				{ id: "dv1", userId: "u1", createdBy: "u1" },
 				{ id: "dv2", userId: null, createdBy: "u1" },
@@ -505,6 +601,10 @@ describe("deleteUserRows", () => {
 			{ id: "s2", createdBy: "u2" },
 		]);
 		expect(fake.rows("studioRevision")).toEqual([{ id: "v1", savedBy: null }]);
+		expect(fake.rows("event")).toEqual([
+			{ id: "e1", createdBy: null },
+			{ id: "e2", createdBy: "u2" },
+		]);
 		// Private-note revisions go; shared-document revisions keep the text and lose the author.
 		expect(fake.rows("songDocVersion")).toEqual([{ id: "dv2", userId: null, createdBy: null }]);
 	});

@@ -200,6 +200,11 @@ its people, with emails). The plan adds:
    attached, sessions linked, the ICS feed, notifications and reminders,
    the dashboard's Upcoming block. Migration: `event`, `event_set`,
    `event_payout`, `recording_session.event_id`, `account.currency`.
+   **v0.194.0 (in progress)**: `event` without the money, house and
+   public columns, `event_set`, `recording_session.event_id`; the Shows
+   and Practices pages (Upcoming and Past), the event page with When and
+   where, Sets, Tapes and Notes; the Manage menu. `event_payout` and
+   `account.currency` move to phase 4 with the books.
 3. **Posters, pictures and video, and the public show page** (v0.197–
    0.198). `event_file`, uploads and playback, the posters page, the
    public page with its indexability.
@@ -218,10 +223,10 @@ its people, with emails). The plan adds:
    one or more set lists rather than owning its songs.
 3. **Times are local wall-clock strings with no time zone.**
 4. **The public show page is indexable.**
-5. **Navigation**: a **Band** menu in the header beside Music (Shows,
-   Practices, Set lists, Posters, Members), with Artists moving there
-   from Music, or everything under Music. The dashboard's Tools and More
-   widgets gain the pages either way.
+5. **Navigation**: **decided 2026-10-28, a Manage menu** in the header
+   between Music and Instruments, holding Shows, Practices and Set lists
+   (Set lists left the Music menu with it); Posters and Members join it
+   in their phases. The footer has a matching Manage row.
 6. **Phase order**: set lists first, as Kevin proposed; or shows first if
    the calendar is the more pressing need.
 7. **Money as cents in one currency per account**, USD by default.

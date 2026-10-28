@@ -17,7 +17,7 @@ const NotesSchema = v.pipe(
 	v.trim(),
 	v.maxLength(4000, "Keep the notes under 4,000 characters."),
 );
-/** A row's words: a free-text row's title (a cover, "break", "encore"), or the note beside a song. */
+/** A row's words: a free-text row's title (a cover, "break", "encore"), a song row's own title, or the note beside a song. */
 const ItemTitleSchema = v.pipe(
 	v.string(),
 	v.trim(),
@@ -47,7 +47,7 @@ export type SetListUpdate = v.InferOutput<typeof SetListUpdateSchema>;
 export const SetListIdSchema = v.object({ id: NanoIdSchema });
 export type SetListId = v.InferOutput<typeof SetListIdSchema>;
 
-/** A row to add at the end: a song of the account (`songId`) or free text (`title`); one of the two. */
+/** A row to add at the end: a song of the account (`songId`, with `title` its optional custom title) or free text (`title`); at least one of the two. */
 export const SetListItemAddSchema = v.pipe(
 	v.object({
 		setListId: NanoIdSchema,
@@ -55,11 +55,11 @@ export const SetListItemAddSchema = v.pipe(
 		title: v.optional(ItemTitleSchema, ""),
 		note: v.optional(ItemNoteSchema, ""),
 	}),
-	v.check((o) => (o.songId !== "") !== (o.title !== ""), "Pick a song or type a title."),
+	v.check((o) => o.songId !== "" || o.title !== "", "Pick a song or type a title."),
 );
 export type SetListItemAdd = v.InferOutput<typeof SetListItemAddSchema>;
 
-/** A row's words changed: a free-text row's title (ignored for a song row) and the note. */
+/** A row's words changed: the title (a song row's custom title, '' to follow the song's; a free-text row's text, kept when empty) and the note. */
 export const SetListItemUpdateSchema = v.object({
 	id: NanoIdSchema,
 	title: v.optional(ItemTitleSchema, ""),

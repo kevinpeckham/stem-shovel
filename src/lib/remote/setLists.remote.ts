@@ -21,7 +21,7 @@ import {
 	updateSetListItem as updateItem,
 } from "#lib/server/data.js";
 import { canViewSong } from "#lib/server/viewAccess.js";
-import { matchSongTitle } from "#lib/utils/matchSongTitle.js";
+import { matchSongTitle, sameTitle } from "#lib/utils/matchSongTitle.js";
 import { parseSetListPaste } from "#lib/utils/parseSetListPaste.js";
 import {
 	SetListCreateSchema,
@@ -74,7 +74,7 @@ export const duplicateSetList = command(SetListIdSchema, async ({ id }) => {
 	return { id: row.id };
 });
 
-/** A row at the end: a song of the account or free text. */
+/** A row at the end: a song of the account (with its own title when `title` is set) or free text. */
 export const addSetListItem = command(
 	SetListItemAddSchema,
 	async ({ setListId, songId, title, note }) => {
@@ -91,7 +91,9 @@ export const addSetListItem = command(
 /**
  * A pasted list (the editor's "Paste a list"): one row per line at the end,
  * a line that names one of the account's songs the person may open by its
- * title (`matchSongTitle`) as that song's row, the rest as text.
+ * title (`matchSongTitle`) as that song's row, the rest as text. A song
+ * row follows the song's title when the line is that title, and keeps the
+ * line as its own title otherwise ("Interbellum (acoustic)").
  */
 export const importSetListItems = command(SetListPasteSchema, async ({ setListId, text }) => {
 	const { locals } = getRequestEvent();
@@ -105,18 +107,20 @@ export const importSetListItems = command(SetListPasteSchema, async ({ setListId
 	]);
 	const who = viewerOf(locals, accountId, roles);
 	const songs = choices.filter((s) => canViewSong(s, who, []));
-	const items = lines.map((line) => ({
-		songId: matchSongTitle(line, songs),
-		title: line,
-		note: "",
-	}));
+	const titles = new Map(songs.map((s) => [s.id, s.title]));
+	const items = lines.map((line) => {
+		const songId = matchSongTitle(line, songs);
+		const songTitle = songId ? titles.get(songId) : undefined;
+		const title = songTitle !== undefined && sameTitle(line, songTitle) ? "" : line;
+		return { songId, title, note: "", line };
+	});
 	const rows = await addItems(accountId, setListId, items);
 	if (rows === "full") error(409, `That would be more than ${MAX_SET_LIST_ITEMS} rows.`);
 	if (!rows) error(404, "Not found");
 	return { rows, matched: rows.filter((r) => r.songId !== null).length };
 });
 
-/** A row's note, and a free-text row's title. */
+/** A row's note and title: a song row's own title ('' follows the song's), a free-text row's text. */
 export const updateSetListItem = command(SetListItemUpdateSchema, async ({ id, title, note }) => {
 	const { locals } = getRequestEvent();
 	requireUser(locals);

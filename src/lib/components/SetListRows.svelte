@@ -10,9 +10,9 @@
 
 	/**
 	 * A set list's rows in the editor (docs/band-plan.md, "Set list"): each
-	 * numbered, a song's title linking to the song (plain text when the
-	 * person may not open it), a free-text row's title editable, a note per
-	 * row saved on change, a remove button, and the order changed by
+	 * numbered, its title editable (a song row's own title, empty to follow
+	 * the song's, with the song linked under it), a note per row saved on
+	 * change, a remove button, and the order changed by
 	 * dragging the grip (pointer events, so touch works), its arrow keys or
 	 * the up and down buttons, saved once the move is done.
 	 */

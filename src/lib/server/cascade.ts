@@ -30,6 +30,8 @@ const {
 	comment,
 	commentVersion,
 	demo,
+	event,
+	eventSet,
 	sessionRecording,
 	recordingSession,
 	sessionComment,
@@ -127,7 +129,16 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(chatRead).where(inArray(chatRead.songId, songIds));
 	await db.delete(songMix).where(inArray(songMix.songId, songIds));
 	await db.delete(shareLink).where(inArray(shareLink.songId, songIds));
-	// A set list keeps its row for a deleted song as free text: the title was the song's when it was added.
+	// A set list keeps its row for a deleted song as free text: a row that followed the song's title ('') takes it now.
+	const titled = await db
+		.select({ id: song.id, title: song.title })
+		.from(song)
+		.where(inArray(song.id, songIds));
+	for (const t of titled)
+		await db
+			.update(setListItem)
+			.set({ title: t.title })
+			.where(and(eq(setListItem.songId, t.id), eq(setListItem.title, "")));
 	await db.update(setListItem).set({ songId: null }).where(inArray(setListItem.songId, songIds));
 	await db.delete(demo).where(inArray(demo.songId, songIds));
 	await db.delete(songFile).where(inArray(songFile.songId, songIds));
@@ -167,9 +178,21 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 }
 
 /** Ideas with their takes, and a Studio song's sources and revisions (docs/multitrack-recorder.md). */
-/** A set list's rows, the links that opened its show view (docs/band-plan.md) and the dashboard pins on it, then the set list. */
+/** An event's sets (the set lists themselves stay), its sessions untied, then the event (docs/band-plan.md, "Event"). */
+export async function deleteEventRows(eventIds: string[]): Promise<void> {
+	if (eventIds.length === 0) return;
+	await db.delete(eventSet).where(inArray(eventSet.eventId, eventIds));
+	await db
+		.update(recordingSession)
+		.set({ eventId: null })
+		.where(inArray(recordingSession.eventId, eventIds));
+	await db.delete(event).where(inArray(event.id, eventIds));
+}
+
+/** A set list's sets on events, its rows, the links that opened its show view (docs/band-plan.md) and the dashboard pins on it, then the set list. */
 export async function deleteSetListRows(setListIds: string[]): Promise<void> {
 	if (setListIds.length === 0) return;
+	await db.delete(eventSet).where(inArray(eventSet.setListId, setListIds));
 	await db.delete(setListItem).where(inArray(setListItem.setListId, setListIds));
 	await db.delete(shareLink).where(inArray(shareLink.setListId, setListIds));
 	await db
@@ -278,6 +301,11 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(recordingSession).where(eq(recordingSession.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
 	await db.delete(shareLink).where(eq(shareLink.accountId, accountId));
+	await deleteEventRows(
+		(await db.select({ id: event.id }).from(event).where(eq(event.accountId, accountId))).map(
+			(r) => r.id,
+		),
+	);
 	await deleteSetListRows(
 		(await db.select({ id: setList.id }).from(setList).where(eq(setList.accountId, accountId))).map(
 			(r) => r.id,
@@ -372,6 +400,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(studioComment).where(eq(studioComment.userId, userId));
 	await db.update(shareLink).set({ createdBy: null }).where(eq(shareLink.createdBy, userId));
 	await db.update(setList).set({ createdBy: null }).where(eq(setList.createdBy, userId));
+	await db.update(event).set({ createdBy: null }).where(eq(event.createdBy, userId));
 	await db.update(shortLink).set({ createdBy: null }).where(eq(shortLink.createdBy, userId));
 	await db.update(song).set({ createdBy: null }).where(eq(song.createdBy, userId));
 	await db

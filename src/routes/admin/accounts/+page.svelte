@@ -26,6 +26,13 @@
 					<span class="flex items-center gap-2">
 						<a class="link-dim" href="/{a.slug}/projects">{a.name}</a>
 						<PlanBadge plan={a.plan} lifetimeFree={a.lifetimeFree} isFounder={a.isFounder} />
+						{#if a.canViewDashboard}
+							<a
+								class="link text-13px"
+								href="/dashboard?account={a.slug}"
+								title="This account's dashboard, as its acting owner">Dashboard</a
+							>
+						{/if}
 					</span>
 					<span class="flex flex-wrap items-center gap-x-4 gap-y-1">
 						<span class="text-13px text-dim">

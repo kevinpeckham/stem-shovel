@@ -421,17 +421,18 @@ starts on a calendar day and may run into the next (a show past midnight),
 never further. Not `session`: Better Auth's sign-in sessions have that
 table. Members only, at `/[account]/sessions`.
 
-| column                 | type                        | notes                             |
-| ---------------------- | --------------------------- | --------------------------------- |
-| id                     | text PK                     |                                   |
-| account_id             | text FK → account (cascade) | indexed, and with starts_on       |
-| kind                   | text not null               | practice / show (`SESSION_KINDS`) |
-| name                   | text not null default ''    | '' means "place · day"            |
-| starts_on              | text not null               | `YYYY-MM-DD`                      |
-| place                  | text not null default ''    | the rehearsal room, the venue     |
-| notes                  | text not null default ''    |                                   |
-| created_by             | text FK → user (set null)   | indexed                           |
-| created_at, updated_at | timestamp_ms                |                                   |
+| column                 | type                        | notes                                                               |
+| ---------------------- | --------------------------- | ------------------------------------------------------------------- |
+| id                     | text PK                     |                                                                     |
+| account_id             | text FK → account (cascade) | indexed, and with starts_on                                         |
+| kind                   | text not null               | practice / show (`SESSION_KINDS`)                                   |
+| name                   | text not null default ''    | '' means "place · day"                                              |
+| starts_on              | text not null               | `YYYY-MM-DD`                                                        |
+| place                  | text not null default ''    | the rehearsal room, the venue                                       |
+| notes                  | text not null default ''    |                                                                     |
+| event_id               | text FK → event (set null)  | indexed; the show or practice it is the tape of (docs/band-plan.md) |
+| created_by             | text FK → user (set null)   | indexed                                                             |
+| created_at, updated_at | timestamp_ms                |                                                                     |
 
 ### session_recording (`sessionRecording`, `recordingSession.recordings`)
 
@@ -617,6 +618,54 @@ A song's row shows the song's current title while the song is active and
 keeps `title` for when the song is gone: the song's deletion clears
 `song_id` and leaves the row as free text (`cascade.ts`). At most
 `MAX_SET_LIST_ITEMS` (200) rows a set list.
+
+### event (`event`, `account.events`)
+
+A show or a practice on the band's calendar (docs/band-plan.md, phase 2):
+separate from `recording_session`, which is the tape of an evening and
+points at its event through `recording_session.event_id`. Times are local
+wall-clock strings with no time zone: a band plays where it is, and a time
+on a poster is the venue's. Members only, at `/[account]/shows`,
+`/[account]/practices` and `/[account]/events/[id]`. The money, house,
+promotion and public columns (tickets, attendance, the deal, the promoter,
+the public blurb, `is_public`, `slug`) and `event_payout` come with later
+phases.
+
+| column                     | type                            | notes                                                      |
+| -------------------------- | ------------------------------- | ---------------------------------------------------------- |
+| id                         | text PK                         |                                                            |
+| account_id                 | text FK → account (cascade)     | indexed, and with starts_on                                |
+| kind                       | text not null                   | show / practice (`EVENT_KINDS`)                            |
+| title                      | text not null default ''        | the billing; '' means the venue and day                    |
+| status                     | text not null default 'planned' | planned / confirmed / played / canceled (`EVENT_STATUSES`) |
+| starts_on                  | text not null                   | `YYYY-MM-DD`                                               |
+| starts_at, ends_at         | text not null default ''        | `HH:MM` or ''                                              |
+| load_in_at, sound_check_at | text not null default ''        | `HH:MM` or ''                                              |
+| venue, address, city       | text not null default ''        |                                                            |
+| map_url                    | text not null default ''        | '' means a Maps search of the address, built at render     |
+| venue_notes                | text not null default ''        | parking, the back door, the house engineer                 |
+| notes                      | text not null default ''        | markdown, members only: the plan, then how it went         |
+| created_by                 | text FK → user (set null)       | indexed                                                    |
+| created_at, updated_at     | timestamp_ms                    |                                                            |
+
+Deleting an event removes its `event_set` rows and clears
+`recording_session.event_id` on its tapes (`cascade.ts`); the sessions
+stay. At most `MAX_EVENTS_PER_ACCOUNT` (2000) an account.
+
+### event_set (`eventSet`, `event.sets`)
+
+| column                 | type                         | notes             |
+| ---------------------- | ---------------------------- | ----------------- |
+| id                     | text PK                      |                   |
+| event_id               | text FK → event (cascade)    | indexed           |
+| set_list_id            | text FK → set_list (cascade) | indexed           |
+| label                  | text not null default ''     | "Set 1", "Encore" |
+| sort_order             | integer not null default 0   |                   |
+| created_at, updated_at | timestamp_ms                 |                   |
+
+The sets an event plays, in order: a set list attached to the show (the
+same set list may be attached twice under two labels). A set list's
+deletion removes its rows here; at most `MAX_EVENT_SETS` (20) an event.
 
 ### share_link
 

@@ -8,6 +8,21 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.194.0] - 2026-10-28
+
+### Added
+
+- **Shows and practices** (band plan phase 2, first release): the band's calendar under the new Manage menu. A show or practice has a day, times as the venue's clock reads them (showtime, end, load-in, sound check), a venue with address, city and a map link, notes on the place, a status (planned, confirmed, played, canceled), the set lists it plays in order with a label each, the sessions recorded that night, and notes for posterity. The Shows and Practices pages list what is upcoming and what has been played.
+- **The Manage menu** (Kevin's decision): Shows, Practices and Set lists in the header between Music and Instruments, and a matching footer row. Set lists moved there from the Music menu.
+- **A super admin views an account's dashboard** (Kevin's request): `/dashboard?account=<slug>` narrows the dashboard to one account the person acts as owner of (linked from the admin accounts page), under a notice; the view is logged like every acting use and leaves the person's own "since your last visit" marker alone. Admin-only: not for the releases page.
+- **A set-list row's own title** (Kevin's request): a row linked to a song can carry a title of its own ("Interbellum (acoustic)") that the editor and the show view use instead of the song's; cleared, it follows the song again. A pasted line that matched a song but reads differently keeps its own wording.
+
+### Technical
+
+- Migration 0107: `event`, `event_set`, `recording_session.event_id`; and `set_list_item.title` emptied on song rows (a song row's `title` is now its custom title, '' meaning "follow the song"; the song's deletion snapshots the title into it).
+- `events.remote.ts` (createEvent form, updateEvent form, deleteEvent, addEventSet, updateEventSetLabel, removeEventSet, reorderEventSets, linkEventSession), `EventSchema.ts` (wall-clock `HH:MM` times, https map links), the data layer's "events" section (`listEvents`, `eventPage`, …), `accountOfEvent`/`accountOfEventSet`, `deleteEventRows` in the cascade; pages at `/[account]/shows`, `/[account]/practices`, `/[account]/events/[id]` built from `EventList`, `EventNew`, `EventWhenWhere`, `EventSets`/`EventSetRow`, `EventSessions`/`EventSessionRow`; the session page's query carries its event for the "Part of" line.
+- Fallow pass: the three reorder functions share `sortOrderMoves`, members-only loaders share `memberPageAccount`, GlobalNav's menu handling is table-driven with an `accent()` helper (template complexity 74 → 57), `setListItemRow` split, `setListPasteNotice`/`eventLabel`/`sessionChoiceLabel` utils carry the wording.
+
 ## [0.193.0] - 2026-10-28
 
 ### Added

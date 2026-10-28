@@ -8,6 +8,7 @@
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { SESSION_KIND_LABELS } from "#lib/constants/sessionRecordings.js";
+	import { eventLabel } from "#lib/utils/eventLabel.js";
 	import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 
 	/**
@@ -21,6 +22,15 @@
 	const session = $derived(data.session);
 	const recordings = $derived(data.recordings);
 	const name = $derived(sessionDisplayName(session));
+	/** The show or practice this is the tape of, for the "Part of" line: members only, since the event pages are. */
+	const eventLink = $derived(
+		session.event && data.member
+			? {
+					href: `/${data.account.slug}/events/${session.event.id}`,
+					label: eventLabel(session.event),
+				}
+			: null,
+	);
 	type Recording = (typeof data.recordings)[number];
 	const queue = $derived<SessionTrack[]>(
 		recordings.map((r) => ({
@@ -34,6 +44,11 @@
 		})),
 	);
 	const mp3sReady = $derived(recordings.filter((r) => r.playbackStatus === "ready").length);
+	const zipTitle = $derived(
+		mp3sReady
+			? `${mp3sReady} of ${recordings.length} MP3s ready, in one zip`
+			: "The MP3s are still rendering",
+	);
 	const totalBytes = $derived(recordings.reduce((n, r) => n + r.sizeBytes, 0));
 	let player = $state<SessionPlayer | null>(null);
 	let current = $state<string | null>(null);
@@ -94,6 +109,14 @@
 		{/if}
 		<h1 class="heading-2 mb-1" data-session-title>{name}</h1>
 		<p class="text-14px text-dim">{headerLine}</p>
+		{#if eventLink}
+			<!-- The show or practice this is the tape of (docs/band-plan.md); members only, since the event pages are. -->
+			<p class="mt-1 text-14px">
+				<span class="i-ph-calendar-check mr-1 align-[-2px] text-dim" aria-hidden="true"></span>Part
+				of
+				<a class="link" href={eventLink.href}>{eventLink.label}</a>
+			</p>
+		{/if}
 		{#if session.notes}
 			<p class="mt-2 whitespace-pre-wrap text-14px opacity-85">{session.notes}</p>
 		{/if}
@@ -149,9 +172,7 @@
 			<button
 				class="button button-sm"
 				type="button"
-				title={mp3sReady
-					? `${mp3sReady} of ${recordings.length} MP3s ready, in one zip`
-					: "The MP3s are still rendering"}
+				title={zipTitle}
 				disabled={mp3sReady === 0}
 				onclick={() =>
 					downloadBuilt(

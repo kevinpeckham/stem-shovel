@@ -9,7 +9,12 @@ import {
 	fakeUser,
 	type FakeMembership,
 } from "../../../tests/helpers/fakeRequestEvent";
-import { data, notifications, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
+import {
+	background,
+	data,
+	notifications,
+	resetRemoteMocks,
+} from "../../../tests/helpers/fakeServerModules";
 import { DASHBOARD_NUDGE_CAP } from "#lib/constants/dashboardLinks.js";
 
 /** The dashboard's loader (docs/dashboard-plan.md): what a signed-in person sees across their accounts, filtered by what they may open. */
@@ -130,10 +135,10 @@ const inboxItem = (id: string, kind: string, updatedAt: Date, readAt: Date | nul
 
 // ---- calling the loader --------------------------------------------------
 
-async function run(memberships: FakeMembership[], user = fakeUser()): Promise<Result> {
+async function run(memberships: FakeMembership[], user = fakeUser(), search = ""): Promise<Result> {
 	return (await load({
 		locals: { user, memberships },
-		url: new URL("http://localhost/dashboard"),
+		url: new URL(`http://localhost/dashboard${search}`),
 	} as never)) as Result;
 }
 
@@ -244,6 +249,47 @@ describe("dashboard load: who", () => {
 		expect(data.projectRolesOf.mock.invocationCallOrder[0]).toBeLessThan(
 			data.accountCounts.mock.invocationCallOrder[0],
 		);
+	});
+});
+
+describe("dashboard load: one account (?account=)", () => {
+	const acting = member(OTHER_ACCOUNT, "owner", { actingAs: true });
+
+	it("without the parameter, viewing is null", async () => {
+		expect((await run([member(ACCOUNT)])).viewing).toBeNull();
+	});
+
+	it("an acting slug narrows to that account, logs the use and leaves the seen marker alone", async () => {
+		data.touchDashboardSeen.mockResolvedValue(day(20));
+		const r = await run([member(ACCOUNT), acting], fakeUser(), `?account=${acting.slug}`);
+		expect(r.accounts.map((a: Row) => a.slug)).toEqual([acting.slug]);
+		expect(r.viewing).toEqual({ slug: acting.slug, name: "Two", actingAs: true });
+		expect(data.projectRolesOf).toHaveBeenCalledTimes(1);
+		expect(data.projectRolesOf).toHaveBeenCalledWith(OTHER_ACCOUNT, USER);
+		expect(data.touchDashboardSeen).not.toHaveBeenCalled();
+		expect(r.seenAt).toBeNull();
+		// requireMember's audit line, written in the background
+		expect(background).toHaveBeenCalledTimes(1);
+		await background.mock.calls[0][0]();
+		expect(data.logAudit).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: USER, accountId: OTHER_ACCOUNT }),
+		);
+	});
+
+	it("a real slug narrows to that account and still records the visit", async () => {
+		const own = member(ACCOUNT, "admin");
+		const r = await run([own, member(OTHER_ACCOUNT)], fakeUser(), `?account=${own.slug}`);
+		expect(r.accounts.map((a: Row) => a.slug)).toEqual([own.slug]);
+		expect(r.viewing).toEqual({ slug: own.slug, name: "One", actingAs: false });
+		expect(data.touchDashboardSeen).toHaveBeenCalledWith(USER);
+		expect(background).not.toHaveBeenCalled();
+	});
+
+	it("an unknown slug is a 404", async () => {
+		await expect(run([member(ACCOUNT)], fakeUser(), "?account=nobody")).rejects.toMatchObject({
+			status: 404,
+		});
+		expect(data.touchDashboardSeen).not.toHaveBeenCalled();
 	});
 });
 

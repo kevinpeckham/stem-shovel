@@ -116,7 +116,7 @@ describe("setListPage", () => {
 			],
 			setList: [list("l1", A), list("l2", B)],
 			setListItem: [
-				item("i1", "l1", { songId: "s1", title: "Was Called", sortOrder: 1, note: "in G" }),
+				item("i1", "l1", { songId: "s1", title: "", sortOrder: 1, note: "in G" }),
 				item("i2", "l1", { title: "Break", sortOrder: 0, createdAt: at("2026-10-02T00:00:00Z") }),
 				item("i3", "l1", {
 					title: "Tune down",
@@ -127,6 +127,8 @@ describe("setListPage", () => {
 				item("i5", "l1", { songId: "s3", title: "In Archived Project", sortOrder: 3 }),
 				item("i6", "l1", { songId: "s4", title: "Someone Else's", sortOrder: 4 }),
 				item("i7", "l2", { title: "Other" }),
+				item("i8", "l1", { songId: "s1", title: "Medley: Now Called", sortOrder: 5 }),
+				item("i9", "l1", { songId: "s2", title: "", sortOrder: 6 }),
 			],
 		}),
 	);
@@ -145,11 +147,13 @@ describe("setListPage", () => {
 			updatedAt: at("2026-10-01T00:00:00Z"),
 			createdBy: U,
 		});
-		expect(page?.items.map((r) => r.id)).toEqual(["i3", "i2", "i1", "i4", "i5", "i6"]);
+		expect(page?.items.map((r) => r.id)).toEqual(["i3", "i2", "i1", "i4", "i5", "i6", "i8", "i9"]);
 		expect(page?.items[2]).toEqual({
 			id: "i1",
 			songId: "s1",
 			title: "Now Called",
+			customTitle: "",
+			songTitle: "Now Called",
 			note: "in G",
 			sortOrder: 1,
 			song: {
@@ -164,14 +168,40 @@ describe("setListPage", () => {
 			},
 		});
 	});
+	test("a song row's own title reads instead of the song's; the song's stays beside it", async () => {
+		const page = await setListPage(A, "l1");
+		expect(page?.items[6]).toMatchObject({
+			id: "i8",
+			title: "Medley: Now Called",
+			customTitle: "Medley: Now Called",
+			songTitle: "Now Called",
+			song: { id: "s1", title: "Now Called" },
+		});
+	});
 	test("an archived song, a song of an archived project, or another account's song reads as its stored title", async () => {
 		const page = await setListPage(A, "l1");
-		expect(page?.items.slice(3).map((r) => [r.title, r.song])).toEqual([
-			["Archived Song", null],
-			["In Archived Project", null],
-			["Someone Else's", null],
+		expect(page?.items.slice(3, 6).map((r) => [r.title, r.songTitle, r.song])).toEqual([
+			["Archived Song", null, null],
+			["In Archived Project", null, null],
+			["Someone Else's", null, null],
 		]);
-		expect(page?.items[1]).toMatchObject({ songId: null, title: "Break", song: null });
+		expect(page?.items[1]).toMatchObject({
+			songId: null,
+			title: "Break",
+			customTitle: "",
+			songTitle: null,
+			song: null,
+		});
+	});
+	test("a row following an archived song reads as the song's title, not blank", async () => {
+		const page = await setListPage(A, "l1");
+		expect(page?.items[7]).toMatchObject({
+			id: "i9",
+			title: "Song s2",
+			customTitle: "",
+			songTitle: null,
+			song: null,
+		});
 	});
 });
 
@@ -228,17 +258,29 @@ describe("addSetListItem", () => {
 			setListItem: [item("i1", "l1", { sortOrder: 4 })],
 		}),
 	);
-	test("a song row stores the song's title, goes last and touches the set list", async () => {
+	test("a song row follows the song's title (stored ''), goes last and touches the set list", async () => {
 		const row = await addSetListItem(A, "l1", { songId: "s1", title: "", note: "count in: Bo" });
 		expect(row).toMatchObject({
 			songId: "s1",
 			title: "Real Title",
+			customTitle: "",
+			songTitle: "Real Title",
 			note: "count in: Bo",
 			sortOrder: 5,
 			song: { id: "s1", hasLyrics: true, hasChart: false },
 		});
-		expect(fake.rows("setListItem").at(-1)).toMatchObject({ title: "Real Title", sortOrder: 5 });
+		expect(fake.rows("setListItem").at(-1)).toMatchObject({ title: "", sortOrder: 5 });
 		expect(callsTo("update", "set_list")).toHaveLength(1);
+	});
+	test("a song row may carry its own title", async () => {
+		const row = await addSetListItem(A, "l1", { songId: "s1", title: "Real (acoustic)", note: "" });
+		expect(row).toMatchObject({
+			songId: "s1",
+			title: "Real (acoustic)",
+			customTitle: "Real (acoustic)",
+			songTitle: "Real Title",
+		});
+		expect(fake.rows("setListItem").at(-1)).toMatchObject({ title: "Real (acoustic)" });
 	});
 	test("a free-text row keeps its own title; the first row of an empty list is 0", async () => {
 		reset({ setList: [list("l1", A)] });
@@ -246,6 +288,8 @@ describe("addSetListItem", () => {
 			id: expect.any(String),
 			songId: null,
 			title: "Break",
+			customTitle: "",
+			songTitle: null,
 			note: "",
 			sortOrder: 0,
 			song: null,
@@ -283,27 +327,35 @@ describe("addSetListItems", () => {
 			setListItem: [item("i1", "l1", { sortOrder: 4 })],
 		}),
 	);
-	test("rows go last in the order given, songs with their titles, and the set list is touched once", async () => {
+	test("rows go last in the order given, songs with their own titles or following the song's, and the set list is touched once", async () => {
 		const rows = await addSetListItems(A, "l1", [
 			{ songId: "s1", title: "real title (acoustic)", note: "" },
 			{ songId: null, title: "Break", note: "" },
-			{ songId: "s4", title: "second", note: "in D" },
+			{ songId: "s4", title: "", note: "in D", line: "second" },
 		]);
 		expect(rows).toEqual([
 			expect.objectContaining({
 				songId: "s1",
-				title: "Real Title",
+				title: "real title (acoustic)",
+				customTitle: "real title (acoustic)",
+				songTitle: "Real Title",
 				sortOrder: 5,
 				song: expect.objectContaining({ id: "s1", hasChart: true }),
 			}),
 			expect.objectContaining({ songId: null, title: "Break", sortOrder: 6, song: null }),
-			expect.objectContaining({ songId: "s4", title: "Second", note: "in D", sortOrder: 7 }),
+			expect.objectContaining({
+				songId: "s4",
+				title: "Second",
+				customTitle: "",
+				note: "in D",
+				sortOrder: 7,
+			}),
 		]);
 		expect(fake.rows("setListItem").map((r) => [r.title, r.sortOrder])).toEqual([
 			["Row i1", 4],
-			["Real Title", 5],
+			["real title (acoustic)", 5],
 			["Break", 6],
-			["Second", 7],
+			["", 7],
 		]);
 		expect(callsTo("insert", "set_list_item")).toHaveLength(1);
 		expect(callsTo("update", "set_list")).toHaveLength(1);
@@ -313,7 +365,7 @@ describe("addSetListItems", () => {
 			{ songId: "s2", title: "line two", note: "" },
 			{ songId: "s3", title: "line three", note: "" },
 			{ songId: "s9", title: "line nine", note: "" },
-			{ songId: "nope", title: "line nope", note: "" },
+			{ songId: "nope", title: "", note: "", line: "line nope" },
 		]);
 		expect(rows).toEqual(
 			["line two", "line three", "line nine", "line nope"].map((title) =>
@@ -350,18 +402,26 @@ describe("updateSetListItem, deleteSetListItem", () => {
 			song: [song("s1", A, "p1", { title: "Song Title" })],
 			setList: [list("l1", A), list("l2", B)],
 			setListItem: [
-				item("i1", "l1", { songId: "s1", title: "Song Title" }),
+				item("i1", "l1", { songId: "s1", title: "" }),
 				item("i2", "l1", { title: "Break" }),
 				item("i3", "l2", { title: "Theirs" }),
 			],
 		}),
 	);
-	test("a song row changes only its note", async () => {
+	test("a song row saves its own title, and an empty one follows the song's again", async () => {
 		expect(await updateSetListItem(A, "i1", { title: "Renamed", note: "segue" })).toMatchObject({
-			title: "Song Title",
+			title: "Renamed",
+			customTitle: "Renamed",
+			songTitle: "Song Title",
 			note: "segue",
 		});
-		expect(fake.rows("setListItem")[0]).toMatchObject({ title: "Song Title", note: "segue" });
+		expect(fake.rows("setListItem")[0]).toMatchObject({ title: "Renamed", note: "segue" });
+		expect(await updateSetListItem(A, "i1", { title: "", note: "segue" })).toMatchObject({
+			title: "Song Title",
+			customTitle: "",
+			songTitle: "Song Title",
+		});
+		expect(fake.rows("setListItem")[0]).toMatchObject({ title: "", note: "segue" });
 	});
 	test("a free-text row changes its title and note; an empty title keeps the old one", async () => {
 		expect(await updateSetListItem(A, "i2", { title: "Encore", note: "x" })).toMatchObject({

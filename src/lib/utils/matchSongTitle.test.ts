@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { matchSongTitle } from "./matchSongTitle";
+import { matchSongTitle, sameTitle } from "./matchSongTitle";
 
 const songs = [
 	{ id: "s1", title: "Interbellum" },
@@ -50,5 +50,17 @@ describe("matchSongTitle", () => {
 		expect(matchSongTitle("Break", songs)).toBeNull();
 		expect(matchSongTitle("—", songs)).toBeNull();
 		expect(matchSongTitle("Anything", [])).toBeNull();
+	});
+});
+
+describe("sameTitle", () => {
+	test("titles equal once loosely compared", () => {
+		expect(sameTitle("the clocks", "Clocks")).toBe(true);
+		expect(sameTitle("  Don't Stop!  ", "dont stop")).toBe(true);
+		expect(sameTitle("Café", "cafe")).toBe(true);
+	});
+	test("a line with more than the title is not the title", () => {
+		expect(sameTitle("Interbellum (acoustic)", "Interbellum")).toBe(false);
+		expect(sameTitle("Love", "Love Song")).toBe(false);
 	});
 });

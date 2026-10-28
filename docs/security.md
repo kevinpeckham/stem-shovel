@@ -23,7 +23,11 @@ What protects what, and where each rule lives. The first security pass ran on
   method and path) and listed on `/admin`; the header shows "acting as
   owner" and the account's settings page carries a notice. Acting accounts
   stay out of the account menu, the accounts page and the current-account
-  choice.
+  choice. A super admin views such an account's dashboard at
+  `/dashboard?account=<slug>` (the admin accounts page links there): the
+  dashboard narrows to that one account under a notice, the view is
+  logged like any acting use, and the person's own "since your last
+  visit" marker does not move.
 - **Owners and admins** invite, manage members and account settings;
   **system admins** (`user.is_system_admin`, set only by a script) reach
   `/admin` and the user-doc editor; everyone else gets a 404 there.

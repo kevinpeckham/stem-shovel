@@ -103,14 +103,9 @@ describe("GlobalNav", () => {
 			"Projects",
 			"Songs",
 			"Sessions",
-			"Set lists",
 			"Ideas",
 		]);
 		expect(screen.getByRole("menuitem", { name: /Songs/ })).toHaveAttribute("href", "/songs");
-		expect(screen.getByRole("menuitem", { name: /Set lists/ })).toHaveAttribute(
-			"href",
-			"/mine/set-lists",
-		);
 		expect(screen.getByRole("menuitem", { name: /Sessions/ })).toHaveAttribute(
 			"href",
 			"/mine/sessions",
@@ -123,6 +118,37 @@ describe("GlobalNav", () => {
 		await user.click(screen.getByRole("button", { name: /Tools/ }));
 		expect(screen.getAllByRole("menu")).toHaveLength(1);
 		expect(screen.queryByRole("menuitem", { name: /Sessions/ })).toBeNull();
+	});
+	test("a member gets the Manage menu: shows, practices and set lists", async () => {
+		const user = userEvent.setup();
+		const { unmount } = render(GlobalNav, { props: { user: null, memberships: [] } });
+		expect(screen.queryByRole("button", { name: "Manage" })).toBeNull();
+		unmount();
+		render(GlobalNav, {
+			props: { user: { name: "Kevin" }, memberships, currentSlug: "mine" },
+		});
+		await user.click(screen.getByRole("button", { name: "Manage" }));
+		expect(screen.getByRole("menu")).toHaveAttribute("aria-label", "Manage menu");
+		expect(screen.getAllByRole("menuitem").map((el) => el.textContent?.trim())).toEqual([
+			"Shows",
+			"Practices",
+			"Set lists",
+		]);
+		expect(screen.getByRole("menuitem", { name: /Shows/ })).toHaveAttribute("href", "/mine/shows");
+		expect(screen.getByRole("menuitem", { name: /Practices/ })).toHaveAttribute(
+			"href",
+			"/mine/practices",
+		);
+		expect(screen.getByRole("menuitem", { name: /Set lists/ })).toHaveAttribute(
+			"href",
+			"/mine/set-lists",
+		);
+		// Opening another menu closes it; Escape closes the last.
+		await user.click(screen.getByRole("button", { name: "Music" }));
+		expect(screen.getAllByRole("menu")).toHaveLength(1);
+		expect(screen.getByRole("menu")).toHaveAttribute("aria-label", "Music menu");
+		await user.keyboard("{Escape}");
+		expect(screen.queryByRole("menu")).toBeNull();
 	});
 	test("a system admin gets the Admin item", async () => {
 		const user = userEvent.setup();

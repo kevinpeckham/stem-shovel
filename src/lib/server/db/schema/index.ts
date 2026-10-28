@@ -25,6 +25,8 @@ export * from "./recordingSession";
 export * from "./setList";
 export * from "./setListItem";
 export * from "./drumKit";
+export * from "./event";
+export * from "./eventSet";
 export * from "./drumSample";
 export * from "./beat";
 export * from "./pianoPreset";

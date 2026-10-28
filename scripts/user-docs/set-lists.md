@@ -1,12 +1,12 @@
 # Set lists
 
-A **set list** is what you are going to play, in order: the songs for a show, the running order of a practice, the acoustic set you keep coming back to. Set lists belong to the account, so every member sees them. Find them in the **Music** menu at the top, under Sessions.
+A **set list** is what you are going to play, in order: the songs for a show, the running order of a practice, the acoustic set you keep coming back to. Set lists belong to the account, so every member sees them. Find them in the **Manage** menu at the top, with Shows and Practices.
 
 ## Writing one
 
 Press **New set list** on the Set lists page, give it a title ("Spring tour", "Tuesday rehearsal") and it opens for editing. Add rows two ways:
 
-- **A song from your catalog.** Start typing a title in the **Add a song** box and pick it. The row is tied to the song, so the show view can open its chart and lyrics, and it follows the song's title if that changes.
+- **A song from your catalog.** Start typing a title in the **Add a song** box and pick it. The row is tied to the song, so the show view can open its chart and lyrics, and it follows the song's title if that changes. Type your own title into the row ("Interbellum (acoustic)", "Medley: Clocks / Interbellum") and the set list shows that instead; clear it to follow the song again. The song itself stays named under the row.
 - **Anything else.** Type a title in **Add a line** for a cover that is not in Stem Shovel, a "break", "tune down" or "encore".
 - **A whole list at once.** Press **Paste a list** and paste the set from your notes, one song per line. Numbering and bullets are ignored. A line that matches one of your songs by title becomes that song's row (a trailing "(acoustic)" or "– key of D" does not get in the way), and every other line stays as text, so a list of covers works too.
 

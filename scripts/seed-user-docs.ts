@@ -32,6 +32,7 @@ const ORDER = [
 	"mixes",
 	"sessions",
 	"set-lists",
+	"shows-and-practices",
 	"downloads-and-sharing",
 	"accounts-and-members",
 	"accounts-and-plans",

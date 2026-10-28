@@ -24,7 +24,7 @@
 <footer class="page-x-padding pt-8 pb-12 border-t border-white/10">
 	<!-- <span>Stem Shovel</span> -->
 
-	<!-- The header's menus as rows of links, tappable on a phone (15px, wrapping): a member's music, the instruments, the tools, everything else under them. -->
+	<!-- The header's menus as rows of links, tappable on a phone (15px, wrapping): a member's music and management, the instruments, the tools, everything else under them. -->
 	{#if member}
 		<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Music">
 			<span class="text-11px uppercase tracking-wider opacity-60">Music</span>
@@ -35,10 +35,21 @@
 			<a class="footer-link" href="/{member.slug}/sessions" title="Practice and show recordings"
 				>Sessions</a
 			>
+			<a class="footer-link" href="/idea-recorder" title="Your ideas and takes">Ideas</a>
+		</nav>
+		<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Manage">
+			<span class="text-11px uppercase tracking-wider opacity-60">Manage</span>
+			<a
+				class="footer-link"
+				href="/{member.slug}/shows"
+				title="The show calendar: upcoming and past">Shows</a
+			>
+			<a class="footer-link" href="/{member.slug}/practices" title="Rehearsals, scheduled and past"
+				>Practices</a
+			>
 			<a class="footer-link" href="/{member.slug}/set-lists" title="What to play, in order"
 				>Set lists</a
 			>
-			<a class="footer-link" href="/idea-recorder" title="Your ideas and takes">Ideas</a>
 		</nav>
 	{/if}
 	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Instruments">

@@ -15,6 +15,11 @@ function normalizeTitle(title: string): string {
 		.replace(/^the /u, "");
 }
 
+/** Whether two titles are the same once loosely compared (`normalizeTitle`): "the clocks" is "Clocks", "Interbellum (acoustic)" is not "Interbellum". */
+export function sameTitle(a: string, b: string): boolean {
+	return normalizeTitle(a) === normalizeTitle(b);
+}
+
 /** A trailing "(…)" or "[…]" on a line, as in "Interbellum (acoustic)". */
 const TRAILING_ASIDE = /\s*(?:\([^()]*\)|\[[^[\]]*\])\s*$/u;
 /** A " - …" note after the title, as in "Interbellum – key of D" (a dash with spaces round it). */

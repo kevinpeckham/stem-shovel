@@ -6,11 +6,14 @@
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 
 	/**
-	 * One row in the set list editor (SetListRows): its number, a song's
-	 * title linking to the song (plain text when the person may not open
-	 * it) or a free-text row's title to edit, the note saved on change, the
-	 * up and down buttons and remove. The grip comes from the list, which
-	 * owns the dragging.
+	 * One row in the set list editor (SetListRows): its number, its title
+	 * to edit, the note saved on change, the up and down buttons and remove.
+	 * A song row's title is the band's own for that row ("Interbellum
+	 * (acoustic)"): empty, it follows the song's (shown as the placeholder),
+	 * and clearing it follows the song again; under it the song itself,
+	 * linking to the song (plain text when the person may not open it). A
+	 * free-text row's title cannot be emptied: clearing it restores the old
+	 * one. The grip comes from the list, which owns the dragging.
 	 */
 	interface Props {
 		row: SetListItemRow;
@@ -29,7 +32,9 @@
 		row.song ? `/${accountSlug}/projects/${row.song.project.slug}/${row.song.slug}` : null,
 	);
 
-	/** A song row's title is the song's: the server ignores the one sent. */
+	/** The row's stored title: a song row's own title ('' follows the song's), a free-text row's text. */
+	const storedTitle = $derived(row.songId ? row.customTitle : row.title);
+
 	async function save(title: string, note: string) {
 		try {
 			onchanged(await updateSetListItem({ id: row.id, title, note }));
@@ -46,40 +51,46 @@
 		}
 	}
 	function titleChanged(input: HTMLInputElement) {
-		const title = input.value.trim();
-		if (!title) input.value = row.title;
-		else if (title !== row.title) void save(title, row.note);
+		// Emptied, a song row follows the song again; a free-text row keeps its old text.
+		const title = input.value.trim() || (row.songId ? "" : row.title);
+		input.value = title;
+		if (title !== storedTitle) void save(title, row.note);
 	}
 	function noteChanged(input: HTMLInputElement) {
 		const note = input.value.trim();
-		if (note !== row.note) void save(row.title, note);
+		if (note !== row.note) void save(storedTitle, note);
 	}
 </script>
 
 {@render grip()}
 <span class="w-6 shrink-0 text-right tabular-nums text-dim">{n}</span>
 <div class="grid min-w-0 flex-1 gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-3">
-	{#if songHref}
-		<a
-			class="link min-w-0 truncate self-center"
-			href={songHref}
-			title="Open {row.title} ({row.song?.project.name})">{row.title}</a
-		>
-	{:else if row.songId}
-		<span class="min-w-0 truncate self-center" title="A song you cannot open here">{row.title}</span
-		>
-	{:else}
+	<div class="grid min-w-0 gap-0.5">
 		<input
 			class="field py-1 text-14px"
 			type="text"
 			aria-label="Row {n} title"
 			maxlength="120"
-			value={row.title}
+			value={storedTitle}
+			placeholder={row.songTitle ?? ""}
 			onchange={(e) => titleChanged(e.currentTarget)}
 		/>
-	{/if}
+		{#if row.songId}
+			<span
+				class="flex min-w-0 items-center gap-1 text-12px text-dim"
+				title="The song this row plays"
+			>
+				<span class="i-ph-music-notes shrink-0" aria-hidden="true"></span>
+				{#if songHref}
+					<a class="link min-w-0 truncate" href={songHref}>{row.songTitle}</a>
+				{:else}
+					<span class="min-w-0 truncate">{row.songTitle ?? "Archived song"}</span>
+				{/if}
+			</span>
+		{/if}
+	</div>
 	<input
-		class="field py-1 text-13px"
+		class="field self-start py-1 text-13px"
 		type="text"
 		placeholder="Note: the key tonight, who counts in"
 		aria-label="Row {n} note"

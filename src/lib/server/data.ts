@@ -6,6 +6,7 @@ import {
 import type { ReportKind, ReportVote } from "#lib/val/BugReportSchema.js";
 import { byStatus } from "#lib/utils/byStatus.js";
 import { reorderById } from "#lib/utils/reorderById.js";
+import { sortOrderMoves } from "#lib/utils/sortOrderMoves.js";
 import { sessionDisplayName } from "#lib/utils/sessionName.js";
 import { songChangesToStudio } from "#lib/utils/studioChanges.js";
 import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
@@ -60,6 +61,7 @@ import {
 	deleteBugReportRows,
 	deleteIdeaRows,
 	deleteCommentRows,
+	deleteEventRows,
 	deleteSessionReviewRows,
 	deleteSetListRows,
 	deleteSongRows,
@@ -97,6 +99,13 @@ import {
 import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { MAX_SESSIONS_PER_ACCOUNT, type SessionKind } from "#lib/constants/sessionRecordings.js";
 import { MAX_SET_LIST_ITEMS, MAX_SET_LISTS_PER_ACCOUNT } from "#lib/val/SetListSchema.js";
+import {
+	MAX_EVENT_SETS,
+	MAX_EVENTS_PER_ACCOUNT,
+	type EventFields,
+	type EventKind,
+	type EventStatus,
+} from "#lib/val/EventSchema.js";
 import type { SessionDevice } from "#lib/val/SessionRecordingSchema.js";
 import { PlaybackEqSchema, type PlaybackEqSettings } from "#lib/val/PlaybackEqSchema.js";
 import { normalizePlaybackEq } from "#lib/utils/normalizePlaybackEq.js";
@@ -242,6 +251,8 @@ const {
 	dashboardPin,
 	setList,
 	setListItem,
+	event,
+	eventSet,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -4280,12 +4291,8 @@ export async function reorderSessionRecordings(
 		columns: { id: true, sortOrder: true },
 		orderBy: sessionRecordingOrder(),
 	});
-	const named = new Set(ids);
-	if (rows.length === 0 || named.size !== ids.length || ids.length !== rows.length) return false;
-	if (!rows.every((r) => named.has(r.id))) return false;
-	const moved = reorderById(rows, ids).flatMap((row, i) =>
-		row.sortOrder === i ? [] : [{ id: row.id, sortOrder: i }],
-	);
+	const moved = rows.length === 0 ? null : sortOrderMoves(rows, ids);
+	if (!moved) return false;
 	for (const m of moved)
 		await db
 			.update(sessionRecording)
@@ -4394,6 +4401,10 @@ export async function recordingSessionPage(accountId: string, sessionId: string)
 			notes: true,
 			eq: true,
 		},
+		// The show or practice it is the tape of (docs/band-plan.md), for the page's "Part of" line.
+		with: {
+			event: { columns: { id: true, kind: true, title: true, venue: true, startsOn: true } },
+		},
 	});
 	if (!s) return null;
 	const rows = await db.query.sessionRecording.findMany({
@@ -4406,7 +4417,7 @@ export async function recordingSessionPage(accountId: string, sessionId: string)
 		with: { uploader: { columns: { name: true } } },
 	});
 	return {
-		session: { ...s, eq: parseSessionEq(s.eq) },
+		session: { ...s, eq: parseSessionEq(s.eq), event: s.event ?? null },
 		recordings: rows.map((r) => ({
 			...recordingPageFields(r),
 			uploader: r.uploader?.name ?? null,
@@ -10299,14 +10310,21 @@ export interface SetListSongFacts {
 
 /**
  * One row of a set list: a song of the catalog (`song`, null once the song
- * or its project is gone or archived) or free text. `title` is the song's
- * current title while it has one, else the row's own (the song's title when
- * it was added, or the free text).
+ * or its project is gone or archived) or free text. A song row's stored
+ * title is the band's own title for it ("Interbellum (acoustic)"), or ''
+ * to follow the song's; a free-text row's is its text. `title` is what the
+ * row reads as: the custom title when set, else the song's current title,
+ * else the stored title. `customTitle` is the stored title of a song row
+ * ('' when it follows the song; '' too for a free-text row), and
+ * `songTitle` the song's own current title while it is the account's and
+ * active (null otherwise).
  */
 export interface SetListItemRow {
 	id: string;
 	songId: string | null;
 	title: string;
+	customTitle: string;
+	songTitle: string | null;
 	note: string;
 	sortOrder: number;
 	song: SetListSongFacts | null;
@@ -10360,38 +10378,51 @@ interface LoadedSetListItem {
 	} | null;
 }
 
-/** A loaded row as the pages read it: the song only while it is the account's and active in an active project. */
+/**
+ * A loaded row as the pages read it: the song only while it is the
+ * account's and active in an active project. The display title is the
+ * row's custom title, else the song's current title (an archived song's
+ * too, so a row following it never reads blank), else the stored title.
+ */
 function setListItemRow(accountId: string, r: LoadedSetListItem): SetListItemRow {
-	const s =
-		r.song &&
-		r.song.accountId === accountId &&
-		r.song.status === "active" &&
-		r.song.project.status === "active"
-			? r.song
-			: null;
+	const { own, s } = setListSongOf(accountId, r);
+	const customTitle = r.songId ? r.title : "";
 	return {
 		id: r.id,
 		songId: r.songId,
-		title: s?.title ?? r.title,
+		// The active song's title is the own song's title, so the own one covers both.
+		title: customTitle || own?.title || r.title,
+		customTitle,
+		songTitle: s ? s.title : null,
 		note: r.note,
 		sortOrder: r.sortOrder,
-		song: s
-			? {
-					id: s.id,
-					slug: s.slug,
-					title: s.title,
-					isPrivate: s.isPrivate,
-					projectId: s.projectId,
-					project: {
-						slug: s.project.slug,
-						name: s.project.name,
-						isPrivate: s.project.isPrivate,
-						isRestricted: s.project.isRestricted,
-					},
-					hasChart: s.chartMarkdown.trim() !== "",
-					hasLyrics: s.lyricsMarkdown.trim() !== "",
-				}
-			: null,
+		song: s ? setListSongFactsOf(s) : null,
+	};
+}
+
+/** The row's song while it is the account's (`own`), and that song only while it and its project are active (`s`). */
+function setListSongOf(accountId: string, r: LoadedSetListItem) {
+	const own = r.song && r.song.accountId === accountId ? r.song : null;
+	const s = own && own.status === "active" && own.project.status === "active" ? own : null;
+	return { own, s };
+}
+
+/** What a set list row's page reads of its (own, active) song. */
+function setListSongFactsOf(s: NonNullable<LoadedSetListItem["song"]>) {
+	return {
+		id: s.id,
+		slug: s.slug,
+		title: s.title,
+		isPrivate: s.isPrivate,
+		projectId: s.projectId,
+		project: {
+			slug: s.project.slug,
+			name: s.project.name,
+			isPrivate: s.project.isPrivate,
+			isRestricted: s.project.isRestricted,
+		},
+		hasChart: s.chartMarkdown.trim() !== "",
+		hasLyrics: s.lyricsMarkdown.trim() !== "",
 	};
 }
 
@@ -10521,9 +10552,9 @@ export async function deleteSetList(accountId: string, id: string) {
 }
 
 /**
- * A row at the end of the set list: a song of the account (its current
- * title stored, so the row still reads right once the song is gone) or free
- * text. Null when the set list is not the account's or the song is not one
+ * A row at the end of the set list: a song of the account (`title` its
+ * custom title, '' to follow the song's; the song's title is stored when the
+ * song is deleted, cascade.ts) or free text. Null when the set list is not the account's or the song is not one
  * of its active songs; "full" at `MAX_SET_LIST_ITEMS`.
  */
 export async function addSetListItem(
@@ -10532,7 +10563,6 @@ export async function addSetListItem(
 	input: { songId: string | null; title: string; note: string },
 ): Promise<SetListItemRow | "full" | null> {
 	if (!(await ownSetList(accountId, setListId))) return null;
-	let title = input.title;
 	if (input.songId) {
 		const s = await db.query.song.findFirst({
 			where: and(
@@ -10544,13 +10574,18 @@ export async function addSetListItem(
 			with: { project: { columns: { status: true } } },
 		});
 		if (!s || s.project.status !== "active") return null;
-		title = s.title;
 	}
 	const tail = await setListTail(setListId);
 	if (tail.count >= MAX_SET_LIST_ITEMS) return "full";
 	const [row] = await db
 		.insert(setListItem)
-		.values({ setListId, songId: input.songId, title, note: input.note, sortOrder: tail.next })
+		.values({
+			setListId,
+			songId: input.songId,
+			title: input.title,
+			note: input.note,
+			sortOrder: tail.next,
+		})
 		.returning({ id: setListItem.id });
 	await touchSetList(accountId, setListId);
 	const added = await ownSetListItem(accountId, row!.id);
@@ -10570,14 +10605,15 @@ async function setListTail(setListId: string) {
  * Rows at the end of the set list in one go, in the order given (the
  * editor's "Paste a list"). A row's `songId` is checked against the
  * account's active songs in active projects in one query: a song row stores
- * the song's current title, and a song that is not one of those stays a
- * free-text row with the line's own title. Null when the set list is not
+ * its `title` as the custom title ('' to follow the song), and a song that
+ * is not one of those stays a free-text row titled by its `line` (the pasted
+ * text), else its `title`. Null when the set list is not
  * the account's; "full" when the rows would take it past `MAX_SET_LIST_ITEMS`.
  */
 export async function addSetListItems(
 	accountId: string,
 	setListId: string,
-	items: { songId: string | null; title: string; note: string }[],
+	items: { songId: string | null; title: string; note: string; line?: string }[],
 ): Promise<SetListItemRow[] | "full" | null> {
 	if (!(await ownSetList(accountId, setListId))) return null;
 	if (items.length === 0) return [];
@@ -10588,7 +10624,7 @@ export async function addSetListItems(
 		songIds.length === 0
 			? []
 			: await db
-					.select({ id: song.id, title: song.title })
+					.select({ id: song.id })
 					.from(song)
 					.innerJoin(project, eq(project.id, song.projectId))
 					.where(
@@ -10599,16 +10635,16 @@ export async function addSetListItems(
 							eq(project.status, "active"),
 						),
 					);
-	const titles = new Map(found.map((s) => [s.id, s.title]));
+	const active = new Set(found.map((s) => s.id));
 	const inserted = await db
 		.insert(setListItem)
 		.values(
 			items.map((i, n) => {
-				const songTitle = i.songId ? titles.get(i.songId) : undefined;
+				const isSong = i.songId !== null && active.has(i.songId);
 				return {
 					setListId,
-					songId: songTitle === undefined ? null : i.songId,
-					title: songTitle ?? i.title,
+					songId: isSong ? i.songId : null,
+					title: isSong ? i.title : i.line || i.title,
 					note: i.note,
 					sortOrder: tail.next + n,
 				};
@@ -10627,7 +10663,7 @@ export async function addSetListItems(
 	return rows.map((r) => setListItemRow(accountId, r));
 }
 
-/** A row's note, and a free-text row's title (kept when sent empty); a song row's title stays the song's. */
+/** A row's note and title: a song row's custom title ('' follows the song's again), a free-text row's text (kept when sent empty). */
 export async function updateSetListItem(
 	accountId: string,
 	itemId: string,
@@ -10635,7 +10671,7 @@ export async function updateSetListItem(
 ): Promise<SetListItemRow | null> {
 	const r = await ownSetListItem(accountId, itemId);
 	if (!r) return null;
-	const patch = r.songId || input.title === "" ? { note: input.note } : input;
+	const patch = !r.songId && input.title === "" ? { note: input.note } : input;
 	await db.update(setListItem).set(patch).where(eq(setListItem.id, itemId));
 	await touchSetList(accountId, r.setList.id);
 	return setListItemRow(accountId, { ...r, ...patch });
@@ -10657,12 +10693,8 @@ export async function reorderSetListItems(accountId: string, setListId: string, 
 		columns: { id: true, sortOrder: true },
 		orderBy: [asc(setListItem.sortOrder), asc(setListItem.createdAt)],
 	});
-	const named = new Set(ids);
-	if (named.size !== ids.length || ids.length !== rows.length) return false;
-	if (!rows.every((r) => named.has(r.id))) return false;
-	const moved = reorderById(rows, ids).flatMap((row, i) =>
-		row.sortOrder === i ? [] : [{ id: row.id, sortOrder: i }],
-	);
+	const moved = sortOrderMoves(rows, ids);
+	if (!moved) return false;
 	await Promise.all(
 		moved.map((m) =>
 			db
@@ -10751,4 +10783,305 @@ export async function setListSongDocs(accountId: string, songIds: string[]) {
 		where: and(eq(song.accountId, accountId), inArray(song.id, songIds)),
 		columns: { id: true, chartMarkdown: true, lyricsMarkdown: true },
 	});
+}
+
+// ---- events: shows and practices (docs/band-plan.md, "Event") ---------------
+
+/** A row of the calendar page: one show or practice with how many sets and sessions it has. */
+export type EventListRow = {
+	id: string;
+	kind: EventKind;
+	title: string;
+	status: EventStatus;
+	startsOn: string;
+	startsAt: string;
+	venue: string;
+	city: string;
+	setCount: number;
+	sessionCount: number;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+/** One set of an event: the set list attached, its title and how many rows it holds. */
+export type EventSetRow = {
+	id: string;
+	setListId: string;
+	label: string;
+	sortOrder: number;
+	title: string;
+	itemCount: number;
+};
+
+/** The account's shows or practices, by day then creation (the page splits upcoming from past itself). */
+export async function listEvents(accountId: string, kind: EventKind): Promise<EventListRow[]> {
+	const rows = await db.query.event.findMany({
+		where: and(eq(event.accountId, accountId), eq(event.kind, kind)),
+		orderBy: [asc(event.startsOn), asc(event.createdAt)],
+		columns: {
+			id: true,
+			kind: true,
+			title: true,
+			status: true,
+			startsOn: true,
+			startsAt: true,
+			venue: true,
+			city: true,
+			createdAt: true,
+			updatedAt: true,
+		},
+		with: { sets: { columns: { id: true } }, sessions: { columns: { id: true } } },
+	});
+	return rows.map(({ sets, sessions, ...r }) => ({
+		...r,
+		setCount: sets.length,
+		sessionCount: sessions.length,
+	}));
+}
+
+/** The event when it is the account's, else null. */
+async function ownEvent(accountId: string, id: string) {
+	return (
+		(await db.query.event.findFirst({
+			where: and(eq(event.accountId, accountId), eq(event.id, id)),
+			columns: { id: true },
+		})) ?? null
+	);
+}
+
+/** A set changed: the event moves up in "last updated". */
+async function touchEvent(accountId: string, id: string) {
+	await db
+		.update(event)
+		.set({ updatedAt: new Date() })
+		.where(and(eq(event.accountId, accountId), eq(event.id, id)));
+}
+
+const eventSetWith = {
+	setList: {
+		columns: { accountId: true, title: true },
+		with: { items: { columns: { id: true } } },
+	},
+} as const;
+
+function eventSetRow(r: {
+	id: string;
+	setListId: string;
+	label: string;
+	sortOrder: number;
+	setList: { title: string; items: { id: string }[] } | null;
+}): EventSetRow {
+	return {
+		id: r.id,
+		setListId: r.setListId,
+		label: r.label,
+		sortOrder: r.sortOrder,
+		title: r.setList?.title ?? "",
+		itemCount: r.setList?.items.length ?? 0,
+	};
+}
+
+/** A set with its event's account, or null when it is not this account's. */
+async function ownEventSet(accountId: string, id: string) {
+	const r = await db.query.eventSet.findFirst({
+		where: eq(eventSet.id, id),
+		with: { event: { columns: { id: true, accountId: true } }, ...eventSetWith },
+	});
+	return r && r.event.accountId === accountId ? r : null;
+}
+
+/**
+ * A show or practice for its page: every column, its sets in order (each
+ * with its set list's title and row count), the sessions that taped it,
+ * and the choices for attaching more (the account's set lists by title, its
+ * sessions newest first, at most 200, with the event each already points
+ * at). Null when it is not the account's.
+ */
+export async function eventPage(accountId: string, id: string) {
+	const e = await db.query.event.findFirst({
+		where: and(eq(event.accountId, accountId), eq(event.id, id)),
+	});
+	if (!e) return null;
+	const [sets, sessions, lists, choices] = await Promise.all([
+		db.query.eventSet.findMany({
+			where: eq(eventSet.eventId, id),
+			orderBy: [asc(eventSet.sortOrder), asc(eventSet.createdAt)],
+			with: eventSetWith,
+		}),
+		db.query.recordingSession.findMany({
+			where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.eventId, id)),
+			orderBy: [asc(recordingSession.startsOn), asc(recordingSession.createdAt)],
+			columns: { id: true, name: true, kind: true, place: true, startsOn: true },
+			with: {
+				recordings: { columns: { id: true }, where: eq(sessionRecording.status, "ready") },
+			},
+		}),
+		db.query.setList.findMany({
+			where: eq(setList.accountId, accountId),
+			orderBy: [asc(setList.title), asc(setList.createdAt)],
+			columns: { id: true, title: true },
+			with: { items: { columns: { id: true } } },
+		}),
+		db.query.recordingSession.findMany({
+			where: eq(recordingSession.accountId, accountId),
+			orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
+			columns: { id: true, name: true, kind: true, place: true, startsOn: true, eventId: true },
+			limit: 200,
+		}),
+	]);
+	return {
+		event: e,
+		sets: sets.filter((s) => s.setList?.accountId === accountId).map(eventSetRow),
+		sessions: sessions.map(({ recordings, ...s }) => ({
+			...s,
+			recordingCount: recordings.length,
+		})),
+		setListChoices: lists.map((l) => ({ id: l.id, title: l.title, itemCount: l.items.length })),
+		sessionChoices: choices,
+	};
+}
+
+/** A new show or practice; null when the account already holds `MAX_EVENTS_PER_ACCOUNT`. */
+export async function createEvent(
+	accountId: string,
+	createdBy: string,
+	input: { kind: EventKind; title: string; startsOn: string; venue: string },
+) {
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(event)
+		.where(eq(event.accountId, accountId));
+	if (n >= MAX_EVENTS_PER_ACCOUNT) return null;
+	const [row] = await db
+		.insert(event)
+		.values({
+			accountId,
+			kind: input.kind,
+			title: input.title,
+			startsOn: input.startsOn,
+			venue: input.venue,
+			createdBy,
+		})
+		.returning();
+	return row!;
+}
+
+/** The event's own words (when, where, the notes); null when it is not the account's. */
+export async function updateEvent(accountId: string, id: string, fields: EventFields) {
+	const [row] = await db
+		.update(event)
+		.set({ ...fields, updatedAt: new Date() })
+		.where(and(eq(event.accountId, accountId), eq(event.id, id)))
+		.returning();
+	return row ?? null;
+}
+
+/** The event, its sets, and its sessions untied (cascade.ts); false when it is not the account's. */
+export async function deleteEvent(accountId: string, id: string) {
+	if (!(await ownEvent(accountId, id))) return false;
+	await deleteEventRows([id]);
+	return true;
+}
+
+/**
+ * A set list of the account attached as the event's last set (the same one
+ * may be attached twice). Null when the event or the set list is not the
+ * account's; "full" at `MAX_EVENT_SETS`.
+ */
+export async function addEventSet(
+	accountId: string,
+	eventId: string,
+	setListId: string,
+): Promise<EventSetRow | "full" | null> {
+	if (!(await ownEvent(accountId, eventId))) return null;
+	if (!(await ownSetList(accountId, setListId))) return null;
+	const [stats] = await db
+		.select({ n: sql<number>`count(*)`, last: sql<number | null>`max(${eventSet.sortOrder})` })
+		.from(eventSet)
+		.where(eq(eventSet.eventId, eventId));
+	if (Number(stats?.n ?? 0) >= MAX_EVENT_SETS) return "full";
+	const [row] = await db
+		.insert(eventSet)
+		.values({ eventId, setListId, sortOrder: (stats?.last ?? -1) + 1 })
+		.returning({ id: eventSet.id });
+	await touchEvent(accountId, eventId);
+	const added = await ownEventSet(accountId, row!.id);
+	return added ? eventSetRow(added) : null;
+}
+
+/** A set's label ("Set 1", "Encore"); null when it is not the account's. */
+export async function updateEventSetLabel(
+	accountId: string,
+	id: string,
+	label: string,
+): Promise<EventSetRow | null> {
+	const r = await ownEventSet(accountId, id);
+	if (!r) return null;
+	await db.update(eventSet).set({ label }).where(eq(eventSet.id, id));
+	await touchEvent(accountId, r.event.id);
+	return eventSetRow({ ...r, label });
+}
+
+/** The set off the event (the set list stays); false when it is not the account's. */
+export async function removeEventSet(accountId: string, id: string) {
+	const r = await ownEventSet(accountId, id);
+	if (!r) return false;
+	await db.delete(eventSet).where(eq(eventSet.id, id));
+	await touchEvent(accountId, r.event.id);
+	return true;
+}
+
+/** The event's sets in the given order; false unless `ids` names every set of it exactly once. */
+export async function reorderEventSets(accountId: string, eventId: string, ids: string[]) {
+	if (!(await ownEvent(accountId, eventId))) return false;
+	const rows = await db.query.eventSet.findMany({
+		where: eq(eventSet.eventId, eventId),
+		columns: { id: true, sortOrder: true },
+		orderBy: [asc(eventSet.sortOrder), asc(eventSet.createdAt)],
+	});
+	const moved = sortOrderMoves(rows, ids);
+	if (!moved) return false;
+	await Promise.all(
+		moved.map((m) =>
+			db
+				.update(eventSet)
+				.set({ sortOrder: m.sortOrder })
+				.where(and(eq(eventSet.eventId, eventId), eq(eventSet.id, m.id))),
+		),
+	);
+	await touchEvent(accountId, eventId);
+	return true;
+}
+
+/**
+ * A session of the account tied to the event (`linked`: a session belongs
+ * to one event, so tying it moves it from any other) or untied (only when
+ * it points at this event). False when the event or the session is not the
+ * account's.
+ */
+export async function linkEventSession(
+	accountId: string,
+	eventId: string,
+	sessionId: string,
+	linked: boolean,
+) {
+	if (!(await ownEvent(accountId, eventId))) return false;
+	const s = await db.query.recordingSession.findFirst({
+		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
+		columns: { id: true },
+	});
+	if (!s) return false;
+	await db
+		.update(recordingSession)
+		.set({ eventId: linked ? eventId : null })
+		.where(
+			linked
+				? and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId))
+				: and(
+						eq(recordingSession.accountId, accountId),
+						eq(recordingSession.id, sessionId),
+						eq(recordingSession.eventId, eventId),
+					),
+		);
+	return true;
 }

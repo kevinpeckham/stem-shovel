@@ -22,7 +22,16 @@ const OTHER_LIST = fakeId("list-two");
 const ITEM = fakeId("item-one");
 const OTHER_ITEM = fakeId("item-two");
 const SONG = fakeId("song-one");
-const ROW = { id: ITEM, songId: null, title: "Break", note: "", sortOrder: 0, song: null };
+const ROW = {
+	id: ITEM,
+	songId: null,
+	title: "Break",
+	customTitle: "",
+	songTitle: null,
+	note: "",
+	sortOrder: 0,
+	song: null,
+};
 
 beforeEach(() => {
 	resetRemoteMocks();
@@ -226,12 +235,30 @@ describe("addSetListItem", () => {
 			call(setLists.addSetListItem, { setListId: LIST, songId: SONG }),
 		).rejects.toMatchObject(httpError(404));
 	});
-	it("refuses a row with both a song and a title, or neither", async () => {
-		await expect(
-			call(setLists.addSetListItem, { setListId: LIST, songId: SONG, title: "Both" }),
-		).rejects.toBeTruthy();
+	it("a song row may carry its own title", async () => {
+		data.addSetListItem.mockResolvedValue(ROW);
+		await call(setLists.addSetListItem, { setListId: LIST, songId: SONG, title: "Medley" });
+		expect(data.addSetListItem).toHaveBeenCalledWith(ACCOUNT, LIST, {
+			songId: SONG,
+			title: "Medley",
+			note: "",
+		});
+	});
+	it("refuses a row with neither a song nor a title", async () => {
 		await expect(call(setLists.addSetListItem, { setListId: LIST })).rejects.toBeTruthy();
+		await expect(
+			call(setLists.addSetListItem, { setListId: LIST, title: "   " }),
+		).rejects.toBeTruthy();
 		expect(data.addSetListItem).not.toHaveBeenCalled();
+	});
+});
+
+describe("updateSetListItem", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("passes an empty title through: a song row follows the song's title again", async () => {
+		data.updateSetListItem.mockResolvedValue(ROW);
+		await call(setLists.updateSetListItem, { id: ITEM, title: "  ", note: "slow" });
+		expect(data.updateSetListItem).toHaveBeenCalledWith(ACCOUNT, ITEM, { title: "", note: "slow" });
 	});
 });
 
@@ -319,19 +346,32 @@ describe("importSetListItems", () => {
 		expect(data.accountSongChoices).toHaveBeenCalledWith(ACCOUNT);
 		expect(data.projectRolesOf).toHaveBeenCalledWith(ACCOUNT, USER);
 		expect(data.addSetListItems).toHaveBeenCalledWith(ACCOUNT, LIST, [
-			{ songId: OPEN, title: "interbellum (acoustic)", note: "" },
-			{ songId: null, title: "Break", note: "" },
-			{ songId: null, title: "Hidden Song", note: "" },
+			{
+				songId: OPEN,
+				title: "interbellum (acoustic)",
+				note: "",
+				line: "interbellum (acoustic)",
+			},
+			{ songId: null, title: "Break", note: "", line: "Break" },
+			{ songId: null, title: "Hidden Song", note: "", line: "Hidden Song" },
 		]);
 		expect(out.matched).toBe(1);
 		expect(out.rows).toHaveLength(3);
+	});
+	it("a line that is the song's title follows the song's title ('')", async () => {
+		asEditorOf(ACCOUNT);
+		await paste("1. the interbellum!\n2. Interbellum");
+		expect(data.addSetListItems).toHaveBeenCalledWith(ACCOUNT, LIST, [
+			{ songId: OPEN, title: "", note: "", line: "the interbellum!" },
+			{ songId: OPEN, title: "", note: "", line: "Interbellum" },
+		]);
 	});
 	it("a song on a restricted project matches for a member of that project", async () => {
 		asEditorOf(ACCOUNT);
 		data.projectRolesOf.mockResolvedValue({ [fakeId(`proj-${SHUT}`)]: "member" });
 		const out = (await paste("Hidden Song")) as { matched: number };
 		expect(data.addSetListItems).toHaveBeenCalledWith(ACCOUNT, LIST, [
-			{ songId: SHUT, title: "Hidden Song", note: "" },
+			{ songId: SHUT, title: "", note: "", line: "Hidden Song" },
 		]);
 		expect(out.matched).toBe(1);
 	});

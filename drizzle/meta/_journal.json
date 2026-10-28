@@ -750,6 +750,13 @@
       "when": 1793151748134,
       "tag": "0106_tearful_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "6",
+      "when": 1793189738513,
+      "tag": "0107_spicy_thunderbolt_ross",
+      "breakpoints": true
     }
   ]
 }

@@ -12,7 +12,8 @@ import { SESSION_KIND_LABELS } from "#lib/constants/sessionRecordings.js";
 import { STAGE_LABEL } from "#lib/constants/songStages.js";
 import type { Nudge } from "#lib/constants/dashboardActivity.js";
 import type { DashboardPinRow } from "#lib/server/data.js";
-import { requireSignedIn } from "#lib/server/access.js";
+import { error } from "@sveltejs/kit";
+import { requireMember, requireSignedIn } from "#lib/server/access.js";
 import {
 	accountActivity,
 	accountBand,
@@ -357,10 +358,20 @@ function ideaEntries(
  * waiting for them; what happened in their accounts this week; what the
  * server has not finished; and, on each tile, who has been active lately
  * and (for an admin) the invitations still open.
+ *
+ * `?account=<slug>` narrows the account parts to that one account, real or
+ * acting: a super admin opens an account's dashboard from /admin/accounts
+ * that way. An acting view goes through requireMember (which logs it) and
+ * leaves the person's "since your last visit" marker where it was.
  */
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const user = requireSignedIn(locals, url);
-	const memberships = realMemberships(locals.memberships);
+	const slug = url.searchParams.get("account");
+	const chosen = slug ? locals.memberships.find((m) => m.slug === slug) : undefined;
+	if (slug && !chosen) error(404, "Not found");
+	if (chosen) requireMember(locals, chosen.accountId);
+	const acting = !!chosen?.actingAs;
+	const memberships = chosen ? [chosen] : realMemberships(locals.memberships);
 	const since = new Date(Date.now() - DASHBOARD_ACTIVITY_DAYS * DAY);
 	const [inbox, ideaRows, loopRows, multitrackRows, tiles, ideaNudges, pins, seenAt] =
 		await Promise.all([
@@ -371,8 +382,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			Promise.all(memberships.map((m) => dashboardAccount(m, user.id, since))),
 			userIdeaNudges(user.id),
 			listDashboardPins(user.id),
-			// The visit before this one is what "since your last visit" means; this one is recorded now.
-			touchDashboardSeen(user.id),
+			// The visit before this one is what "since your last visit" means; this one is recorded now. Someone else's account (acting) neither moves the marker nor uses it.
+			acting ? null : touchDashboardSeen(user.id),
 		]);
 	return {
 		accounts: tiles.map(({ slug, name, role, counts, quota, band, invites }) => ({
@@ -391,6 +402,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		nudges: nudgeEntries(tiles, ideaNudges),
 		pinned: pinnedEntries(tiles, pins),
 		seenAt,
+		viewing: chosen ? { slug: chosen.slug, name: chosen.name, actingAs: acting } : null,
 		comments: inbox
 			.filter((i) => !i.readAt && COMMENT_KINDS.has(i.kind))
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),

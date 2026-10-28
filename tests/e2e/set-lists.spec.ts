@@ -4,7 +4,8 @@ import { expect, open, test } from "./fixtures";
  * Set lists (docs/band-plan.md, phase 1) as the bot in its account: a set
  * list is made, a song and a free-text line added, a note written, the
  * line moved up and the order kept across a reload, a pasted list added
- * (one line matched to a song, one kept as text), the show view opened,
+ * (one line matched to a song, one kept as text), a song row given its
+ * own title, the show view opened,
  * the set list pinned and unpinned on the dashboard, and the set list
  * deleted at the end.
  */
@@ -67,6 +68,16 @@ test("writes, orders, shows and deletes a set list", async ({ page, errors }) =>
 	await expect(rows.getByRole("listitem").nth(2)).toContainText("Interbellum");
 	await expect(page.getByLabel("Row 4 title")).toHaveValue("Wagon Wheel");
 
+	// A song row's own title: typed over the song's (shown as the placeholder), kept across a reload, the song still named under it.
+	await expect(page.getByLabel("Row 3 title")).toHaveAttribute("placeholder", "Interbellum");
+	await page.getByLabel("Row 3 title").fill("Interbellum (acoustic)");
+	await page.getByLabel("Row 3 title").press("Tab");
+	await page.reload();
+	await expect(page.getByLabel("Row 3 title")).toHaveValue("Interbellum (acoustic)");
+	await expect(
+		rows.getByRole("listitem").nth(2).getByRole("link", { name: "Interbellum" }),
+	).toBeVisible();
+
 	// The show view lists the set in order.
 	const editor = page.url();
 	await page.getByRole("link", { name: "Show view" }).click();
@@ -76,6 +87,7 @@ test("writes, orders, shows and deletes a set list", async ({ page, errors }) =>
 	await expect(set.getByRole("listitem")).toHaveCount(4);
 	await expect(set.getByRole("listitem").first()).toContainText("Break");
 	await expect(set.getByRole("listitem").nth(1)).toContainText("Key of D");
+	await expect(set.getByRole("listitem").nth(2)).toContainText("Interbellum (acoustic)");
 	await expect(set.getByRole("listitem").nth(3)).toContainText("Wagon Wheel");
 
 	// On the dashboard the set list is in Your Set Lists, and its pin puts it in Pinned.

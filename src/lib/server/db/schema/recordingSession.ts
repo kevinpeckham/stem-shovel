@@ -3,6 +3,7 @@ import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type { SessionKind } from "../../../constants/sessionRecordings";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
+import { event } from "./event";
 import { user } from "./user";
 
 /**
@@ -32,6 +33,8 @@ export const recordingSession = table(
 		notes: t.text("notes").notNull().default(""),
 		/** The playback EQ a member saved for everyone in the account, as JSON (`PlaybackEqSchema`); null for none. */
 		eq: t.text("eq"),
+		/** The show or practice it taped (docs/band-plan.md, "Event"); null for none. One event per session. */
+		eventId: t.text("event_id").references(() => event.id, { onDelete: "set null" }),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},
@@ -39,5 +42,6 @@ export const recordingSession = table(
 		t.index("recording_session_account_idx").on(table.accountId),
 		t.index("recording_session_day_idx").on(table.accountId, table.startsOn),
 		t.index("recording_session_created_by_idx").on(table.createdBy),
+		t.index("recording_session_event_idx").on(table.eventId),
 	],
 );

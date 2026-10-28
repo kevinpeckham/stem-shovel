@@ -24,6 +24,8 @@ import { sessionChatRead } from "./sessionChatRead";
 import { recordingSession } from "./recordingSession";
 import { setList } from "./setList";
 import { setListItem } from "./setListItem";
+import { event } from "./event";
+import { eventSet } from "./eventSet";
 import { beat } from "./beat";
 import { chordStyle } from "./chordStyle";
 import { progression } from "./progression";
@@ -274,6 +276,7 @@ export const recordingStemRelations = relations(recordingStem, ({ one }) => ({
 export const recordingSessionRelations = relations(recordingSession, ({ one, many }) => ({
 	account: one(account, { fields: [recordingSession.accountId], references: [account.id] }),
 	creator: one(user, { fields: [recordingSession.createdBy], references: [user.id] }),
+	event: one(event, { fields: [recordingSession.eventId], references: [event.id] }),
 	recordings: many(sessionRecording),
 	chatMessages: many(sessionChatMessage),
 }));
@@ -348,11 +351,24 @@ export const setListRelations = relations(setList, ({ one, many }) => ({
 	creator: one(user, { fields: [setList.createdBy], references: [user.id] }),
 	items: many(setListItem),
 	shareLinks: many(shareLink),
+	eventSets: many(eventSet),
 }));
 
 export const setListItemRelations = relations(setListItem, ({ one }) => ({
 	setList: one(setList, { fields: [setListItem.setListId], references: [setList.id] }),
 	song: one(song, { fields: [setListItem.songId], references: [song.id] }),
+}));
+
+export const eventRelations = relations(event, ({ one, many }) => ({
+	account: one(account, { fields: [event.accountId], references: [account.id] }),
+	creator: one(user, { fields: [event.createdBy], references: [user.id] }),
+	sets: many(eventSet),
+	sessions: many(recordingSession),
+}));
+
+export const eventSetRelations = relations(eventSet, ({ one }) => ({
+	event: one(event, { fields: [eventSet.eventId], references: [event.id] }),
+	setList: one(setList, { fields: [eventSet.setListId], references: [setList.id] }),
 }));
 
 export const shortLinkRelations = relations(shortLink, ({ one }) => ({

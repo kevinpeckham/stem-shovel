@@ -29,8 +29,8 @@
 			return { ...a, steps, onboarding: showOnboarding(steps, counts) };
 		}),
 	);
-	/** The Session Recorder, Account settings and the sections' calls to action go to the current account (the root layout's), when there is one. */
-	let current = $derived(accounts.length > 0 ? data.currentSlug : null);
+	/** The Session Recorder, Account settings and the sections' calls to action go to the current account (the root layout's), when there is one; to the one account shown when the dashboard is narrowed to it. */
+	let current = $derived(accounts.length > 0 ? (data.viewing?.slug ?? data.currentSlug) : null);
 	/** A path inside the current account, or the accounts page when there is none to go to. */
 	const at = (path: string) => (current ? `/${current}${path}` : "/accounts");
 	let tools = $derived(dashboardTools(current));
@@ -80,6 +80,26 @@
 
 <main class="page">
 	<h1 class="app-page-heading">User Dashboard</h1>
+	{#if data.viewing}
+		<p
+			class="surface mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-15px"
+			role="status"
+		>
+			{#if data.viewing.actingAs}
+				<span
+					class="rounded bg-red-400/20 px-1.5 py-0.5 text-10px uppercase tracking-wider text-red-300"
+					>acting as owner</span
+				>
+				<span
+					>You are viewing the dashboard of {data.viewing.name} as its owner. You are not a member here,
+					and every action is logged.</span
+				>
+			{:else}
+				<span>Showing {data.viewing.name} alone.</span>
+			{/if}
+			<a class="link" href="/dashboard">Back to your dashboard</a>
+		</p>
+	{/if}
 
 	<!-- Three grid children: Latest, the content, the widgets. One column on a phone in that order, so what is new comes first; from lg the content takes the left column over two rows and Latest sits above the widgets on the right. The rows are auto then 1fr: the content's height goes to the second row alone, so the widgets sit right under Latest instead of halfway down (the spanning column would otherwise be shared into both rows). -->
 	<div

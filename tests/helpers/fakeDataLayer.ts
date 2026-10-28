@@ -64,6 +64,7 @@ const h = await vi.hoisted(async () => {
 			deleteArtistRows: vi.fn(async (_ids: string[]) => {}),
 			deleteBugReportRows: vi.fn(async (_ids: string[]) => {}),
 			deleteCommentRows: vi.fn(async (_where: unknown) => {}),
+			deleteEventRows: vi.fn(async (_ids: string[]) => {}),
 			deleteIdeaRows: vi.fn(async (_ids: string[]) => {}),
 			deleteSessionReviewRows: vi.fn(async (_sessionIds: string[], _recordingIds: string[]) => {}),
 			deleteSetListRows: vi.fn(async (_ids: string[]) => {}),

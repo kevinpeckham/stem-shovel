@@ -37,33 +37,41 @@
 	// A visitor sees the name of the account they are viewing.
 	let viewedName = $derived((page.data.account?.name as string | undefined) ?? "");
 
-	// Four menus: Music (a member's own: projects, songs, sessions, ideas; Kevin,
-	// 2026-10-19, in place of the Projects link), Instruments (the drum
+	// Five menus: Music (a member's own: projects, songs, sessions, ideas; Kevin,
+	// 2026-10-19, in place of the Projects link), Manage (a member's shows,
+	// practices and set lists; Kevin, 2026-10-28), Instruments (the drum
 	// machine and the piano), Tools (everyone, every width: the Idea Recorder
 	// for a member, the tuner and the metronome) and the account menu,
 	// everything a signed-in user can reach behind one button instead of a
 	// row of links. One open at a time; outside click or Escape closes it.
-	let openMenu = $state<"music" | "instruments" | "tools" | "account" | null>(null);
+	let openMenu = $state<"music" | "manage" | "instruments" | "tools" | "account" | null>(null);
 	let open = $derived(openMenu === "account");
 	let toolsOpen = $derived(openMenu === "tools");
 	let instrumentsOpen = $derived(openMenu === "instruments");
 	let musicOpen = $derived(openMenu === "music");
+	let manageOpen = $derived(openMenu === "manage");
 	let menu = $state<HTMLDivElement | null>(null);
 	let toolsMenu = $state<HTMLDivElement | null>(null);
 	let instrumentsMenu = $state<HTMLDivElement | null>(null);
 	let musicMenu = $state<HTMLDivElement | null>(null);
+	let manageMenu = $state<HTMLDivElement | null>(null);
 	function onwindowpointerdown(e: PointerEvent) {
-		const t = e.target as Node;
-		if (openMenu === "account" && menu && !menu.contains(t)) openMenu = null;
-		if (openMenu === "music" && musicMenu && !musicMenu.contains(t)) openMenu = null;
-		if (openMenu === "tools" && toolsMenu && !toolsMenu.contains(t)) openMenu = null;
-		if (openMenu === "instruments" && instrumentsMenu && !instrumentsMenu.contains(t))
-			openMenu = null;
+		const menus = {
+			account: menu,
+			music: musicMenu,
+			manage: manageMenu,
+			tools: toolsMenu,
+			instruments: instrumentsMenu,
+		};
+		const el = openMenu && menus[openMenu];
+		if (el && !el.contains(e.target as Node)) openMenu = null;
 	}
 	function onwindowkeydown(e: KeyboardEvent) {
 		if (e.key === "Escape") openMenu = null;
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
+	/** A menu item's class on its own page. */
+	const accent = (href: string) => (active(href) ? "text-accent" : "");
 	const TOOL_PAGES = ["/tuner", "/metronome", "/practice-amp", "/convert"];
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
@@ -71,7 +79,13 @@
 		!!member &&
 			(active(`/${member.slug}/projects`) ||
 				active("/songs") ||
-				active(`/${member.slug}/sessions`) ||
+				active(`/${member.slug}/sessions`)),
+	);
+	let onManagePage = $derived(
+		!!member &&
+			(active(`/${member.slug}/shows`) ||
+				active(`/${member.slug}/practices`) ||
+				active(`/${member.slug}/events`) ||
 				active(`/${member.slug}/set-lists`)),
 	);
 	let onToolPage = $derived(
@@ -141,11 +155,9 @@
 						aria-label="Music menu"
 					>
 						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								`/${member.slug}/projects`,
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/{member.slug}/projects"
 							title="Albums and songs, with their stems, demos and mixes"
@@ -154,11 +166,9 @@
 							<span class="i-ph-folders w-1em" aria-hidden="true"></span>Projects
 						</a>
 						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								'/songs',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/songs"
 							title="Every song you can open, across your accounts"
@@ -167,11 +177,9 @@
 							<span class="i-ph-music-notes w-1em" aria-hidden="true"></span>Songs
 						</a>
 						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								`/${member.slug}/sessions`,
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/{member.slug}/sessions"
 							title="Practice and show recordings"
@@ -180,30 +188,80 @@
 							<span class="i-ph-cassette-tape w-1em" aria-hidden="true"></span>Sessions
 						</a>
 						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-								`/${member.slug}/set-lists`,
-							)
-								? 'text-accent'
-								: ''}"
-							role="menuitem"
-							href="/{member.slug}/set-lists"
-							title="What to play, in order"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-list-numbers w-1em" aria-hidden="true"></span>Set lists
-						</a>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								'/idea-recorder',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/idea-recorder"
 							title="Your ideas and takes (Lark, the idea recorder)"
 							onclick={() => (openMenu = null)}
 						>
 							<span class="i-ph-lightbulb w-1em" aria-hidden="true"></span>Ideas
+						</a>
+					</div>
+				{/if}
+			</div>
+			<!-- The band's calendar and what to play: shows, practices and set lists (Kevin, 2026-10-28). -->
+			<div class="relative" bind:this={manageMenu}>
+				<button
+					type="button"
+					class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {manageOpen
+						? 'bg-white/10 opacity-100'
+						: ''} {onManagePage ? 'text-accent' : ''}"
+					aria-haspopup="menu"
+					aria-expanded={manageOpen}
+					aria-controls="manage-menu"
+					aria-label="Manage"
+					onclick={() => (openMenu = manageOpen ? null : "manage")}
+				>
+					<span class="i-ph-calendar-check text-18px" aria-hidden="true"></span>
+					<span class="hidden md-inline">Manage</span>
+					<span
+						class="hidden sm-inline i-ph-caret-down text-12px transition-transform {manageOpen
+							? 'rotate-180'
+							: ''}"
+						aria-hidden="true"
+					></span>
+				</button>
+				{#if manageOpen}
+					<div
+						id="manage-menu"
+						class="absolute left-0 top-full z-40 mt-2 w-56 rounded-md border border-white/15 bg-oxford-800 py-1 text-15px shadow-lg shadow-black/50"
+						role="menu"
+						aria-label="Manage menu"
+					>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
+								`/${member.slug}/shows`,
+							)}"
+							role="menuitem"
+							href="/{member.slug}/shows"
+							title="The show calendar: upcoming and past"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-ticket w-1em" aria-hidden="true"></span>Shows
+						</a>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
+								`/${member.slug}/practices`,
+							)}"
+							role="menuitem"
+							href="/{member.slug}/practices"
+							title="Rehearsals, scheduled and past"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-calendar-dots w-1em" aria-hidden="true"></span>Practices
+						</a>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
+								`/${member.slug}/set-lists`,
+							)}"
+							role="menuitem"
+							href="/{member.slug}/set-lists"
+							title="What to play, in order"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-list-numbers w-1em" aria-hidden="true"></span>Set lists
 						</a>
 					</div>
 				{/if}
@@ -240,11 +298,9 @@
 					aria-label="Instruments menu"
 				>
 					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/drum-machine',
-						)
-							? 'text-accent'
-							: ''}"
+						)}"
 						role="menuitem"
 						href="/drum-machine"
 						onclick={() => (openMenu = null)}
@@ -252,11 +308,9 @@
 						<IconDrumKit />Drum Machine
 					</a>
 					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/piano',
-						)
-							? 'text-accent'
-							: ''}"
+						)}"
 						role="menuitem"
 						href="/piano"
 						onclick={() => (openMenu = null)}
@@ -264,11 +318,9 @@
 						<span class="i-ph-piano-keys w-1em" aria-hidden="true"></span>Piano
 					</a>
 					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/chord-player',
-						)
-							? 'text-accent'
-							: ''}"
+						)}"
 						role="menuitem"
 						href="/chord-player"
 						title="Palette, the chord player"
@@ -312,11 +364,9 @@
 				>
 					{#if member}
 						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								'/idea-recorder',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/idea-recorder"
 							title="Lark, the idea recorder"
@@ -327,11 +377,9 @@
 					{/if}
 					{#if member}
 						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								'/multitrack-recorder',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/multitrack-recorder"
 							title="Dawn, the multitrack recorder"
@@ -341,11 +389,9 @@
 							Recorder
 						</a>
 						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								`/${member.slug}/sessions/record`,
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/{member.slug}/sessions/record"
 							title="The room, in stereo, straight into the band's sessions"
@@ -356,11 +402,9 @@
 					{/if}
 					<!-- The looper works signed out (a loop stays in the browser; saving it needs an account), so everyone sees it. -->
 					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/looper',
-						)
-							? 'text-accent'
-							: ''}"
+						)}"
 						role="menuitem"
 						href="/looper"
 						title="Whirl, the looper"
@@ -369,11 +413,9 @@
 						<span class="i-ph-repeat w-1em" aria-hidden="true"></span>Looper
 					</a>
 					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/practice-amp',
-						)
-							? 'text-accent'
-							: ''}"
+						)}"
 						role="menuitem"
 						href="/practice-amp"
 						title="Ember, the practice amp"
@@ -382,11 +424,9 @@
 						<span class="i-ph-speaker-high w-1em" aria-hidden="true"></span>Practice Amp
 					</a>
 					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/tuner',
-						)
-							? 'text-accent'
-							: ''}"
+						)}"
 						role="menuitem"
 						href="/tuner"
 						onclick={() => (openMenu = null)}
@@ -394,11 +434,9 @@
 						<TuningForkIcon />Tuner
 					</a>
 					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/metronome',
-						)
-							? 'text-accent'
-							: ''}"
+						)}"
 						role="menuitem"
 						href="/metronome"
 						onclick={() => (openMenu = null)}
@@ -406,11 +444,9 @@
 						<span class="i-ph-metronome w-1em" aria-hidden="true"></span>Metronome
 					</a>
 					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/convert',
-						)
-							? 'text-accent'
-							: ''}"
+						)}"
 						role="menuitem"
 						href="/convert"
 						title="DAW project converter"
@@ -471,11 +507,9 @@
 							{/if}
 						</div>
 						<a
-							class="mt-1 block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="mt-1 block px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								'/dashboard',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/dashboard"
 							onclick={() => (openMenu = null)}
@@ -484,11 +518,9 @@
 							></span>User Dashboard
 						</a>
 						<a
-							class="flex items-center px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="flex items-center px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								'/inbox',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/inbox"
 							onclick={() => (openMenu = null)}
@@ -507,11 +539,9 @@
 							</div>
 							<!-- Projects and Sessions live in the Music menu (Kevin, 2026-10-20); the account menu keeps the account's own. -->
 							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 									`/${member.slug}/settings`,
-								)
-									? 'text-accent'
-									: ''}"
+								)}"
 								role="menuitem"
 								href="/{member.slug}/settings"
 								onclick={() => (openMenu = null)}
@@ -542,11 +572,9 @@
 							{/each}
 						{/if}
 						<a
-							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-accent {active(
+							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-accent {accent(
 								'/accounts',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/accounts"
 							onclick={() => (openMenu = null)}
@@ -566,11 +594,9 @@
 							</a>
 						{/if}
 						<a
-							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-accent {active(
+							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-accent {accent(
 								'/settings/security',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/settings/security"
 							onclick={() => (openMenu = null)}
@@ -579,11 +605,9 @@
 							></span>Security
 						</a>
 						<a
-							class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								'/settings/notifications',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/settings/notifications"
 							onclick={() => (openMenu = null)}
@@ -592,11 +616,9 @@
 							></span>Notifications
 						</a>
 						<a
-							class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 								'/settings/links',
-							)
-								? 'text-accent'
-								: ''}"
+							)}"
 							role="menuitem"
 							href="/settings/links"
 							onclick={() => (openMenu = null)}
@@ -605,9 +627,7 @@
 						</a>
 						{#if user.isSystemAdmin}
 							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active('/admin')
-									? 'text-accent'
-									: ''}"
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent('/admin')}"
 								role="menuitem"
 								href="/admin"
 								onclick={() => (openMenu = null)}

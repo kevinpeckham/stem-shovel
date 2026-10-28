@@ -158,6 +158,8 @@ const {
 	recordingSession,
 	setList,
 	setListItem,
+	event,
+	eventSet,
 } = schema;
 
 /**
@@ -292,6 +294,25 @@ export async function accountOfSetListItem(itemId: string) {
 		with: { setList: { columns: { accountId: true } } },
 	});
 	return row?.setList?.accountId ?? null;
+}
+
+/** A show's or practice's account (docs/band-plan.md, "Event"). */
+export async function accountOfEvent(eventId: string) {
+	const row = await db.query.event.findFirst({
+		where: eq(event.id, eventId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+/** An event set's account, through its event. */
+export async function accountOfEventSet(setId: string) {
+	const row = await db.query.eventSet.findFirst({
+		where: eq(eventSet.id, setId),
+		columns: { id: true },
+		with: { event: { columns: { accountId: true } } },
+	});
+	return row?.event?.accountId ?? null;
 }
 
 export async function accountOfDemo(demoId: string) {
