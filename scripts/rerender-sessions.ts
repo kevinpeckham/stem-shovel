@@ -1,16 +1,19 @@
 /**
- * Lists a stage's session recordings with the state of their MP3 and, with
- * --apply, clears the rendition of the ones named (or of every ready one
- * with --all) so they render again on the current code: leveled and
- * declipped since v0.171.0 (docs/uploads-and-blob.md, "Leveling"). The
- * sources stay as uploaded. A script cannot post to the jobs function from
+ * Lists a stage's session recordings with the state and size of their MP3
+ * and, with --apply, clears the rendition of the ones named (or of every
+ * one with --all) so they render again on the current code: leveled and
+ * declipped since v0.171.0 (docs/uploads-and-blob.md, "Leveling"). A
+ * failed rendition is cleared too, with its attempt time, so the next
+ * visit retries at once instead of waiting out the hourly retry
+ * (`PLAYBACK_RETRY_MS`; Kevin, 2026-10-28, a 650 MB FLAC that failed before
+ * v0.195.0 streamed big sources). The sources stay as uploaded. A script cannot post to the jobs function from
  * outside the site (the firewall answers 429; FINDINGS.md 2026-10-26), so
  * the cleared rows are rendered when the account's Sessions page is next
  * opened (`sessionsWantingPlayback`); open it after this.
  *
  *   bun run db:rerender-sessions                       # list
  *   bun run db:rerender-sessions -- --apply <id> <id>  # clear those
- *   bun run db:rerender-sessions -- --apply --all      # clear every ready one
+ *   bun run db:rerender-sessions -- --apply --all      # clear every one, failed included
  *
  * Run against the stage whose database the environment resolves: on a
  * machine without that stage's secrets, varlock falls back to another
@@ -36,6 +39,7 @@ interface Row {
 	title: string;
 	filename: string;
 	playback_status: string | null;
+	size_bytes: number | null;
 	duration_seconds: number | null;
 	created_at: number;
 	session_name: string | null;
@@ -45,7 +49,7 @@ interface Row {
 }
 const rows = (
 	await db.execute(
-		`select r.id, r.title, r.filename, r.playback_status, r.duration_seconds, r.created_at,
+		`select r.id, r.title, r.filename, r.playback_status, r.size_bytes, r.duration_seconds, r.created_at,
 		        s.name as session_name, s.starts_on, s.place, a.slug as account
 		 from session_recording r
 		 left join recording_session s on s.id = r.session_id
@@ -59,11 +63,12 @@ if (rows.length === 0) {
 	process.exit(0);
 }
 const minutes = (s: number | null) => (s === null ? "?" : `${Math.round(s / 60)} min`);
+const megabytes = (b: number | null) => (b === null ? "?" : `${Math.round(b / 1048576)} MB`);
 for (const r of rows) {
 	const session =
 		r.session_name || [r.place, r.starts_on].filter(Boolean).join(" · ") || "(no session)";
 	console.log(
-		`${r.id}  /${r.account ?? "?"}  ${session}  —  ${r.title || r.filename}  ${minutes(r.duration_seconds)}  mp3: ${r.playback_status ?? "none"}`,
+		`${r.id}  /${r.account ?? "?"}  ${session}  —  ${r.title || r.filename}  ${minutes(r.duration_seconds)}  ${megabytes(r.size_bytes)}  mp3: ${r.playback_status ?? "none"}`,
 	);
 }
 if (!apply) {
@@ -82,7 +87,8 @@ if (chosen.length === 0) {
 let cleared = 0;
 for (const r of chosen) {
 	const res = await db.execute({
-		sql: `update session_recording set playback_status = null where id = ? and playback_status = 'ready'`,
+		sql: `update session_recording set playback_status = null, playback_started_at = null
+		      where id = ? and playback_status in ('ready', 'failed')`,
 		args: [r.id],
 	});
 	cleared += res.rowsAffected;

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- `db:rerender-sessions` clears a failed rendition too (status and attempt time), so the next visit to the account's Sessions page retries at once instead of waiting out the hourly retry, and lists each source's size. The smoke route table gained the event-file API routes.
+
 ## [0.197.0] - 2026-10-28
 
 ### Added
