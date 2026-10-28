@@ -119,7 +119,7 @@ describe("GlobalNav", () => {
 		expect(screen.getAllByRole("menu")).toHaveLength(1);
 		expect(screen.queryByRole("menuitem", { name: /Sessions/ })).toBeNull();
 	});
-	test("a member gets the Manage menu: shows, practices and set lists", async () => {
+	test("a member gets the Manage menu: shows, practices, venues and set lists", async () => {
 		const user = userEvent.setup();
 		const { unmount } = render(GlobalNav, { props: { user: null, memberships: [] } });
 		expect(screen.queryByRole("button", { name: "Manage" })).toBeNull();
@@ -132,6 +132,7 @@ describe("GlobalNav", () => {
 		expect(screen.getAllByRole("menuitem").map((el) => el.textContent?.trim())).toEqual([
 			"Shows",
 			"Practices",
+			"Venues",
 			"Set lists",
 		]);
 		expect(screen.getByRole("menuitem", { name: /Shows/ })).toHaveAttribute("href", "/mine/shows");

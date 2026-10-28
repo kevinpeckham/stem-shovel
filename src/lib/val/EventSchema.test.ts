@@ -4,7 +4,6 @@ import {
 	EventCreateSchema,
 	EventSetReorderSchema,
 	EventUpdateSchema,
-	MapUrlSchema,
 	TimeSchema,
 } from "./EventSchema";
 
@@ -26,29 +25,19 @@ describe("TimeSchema", () => {
 	});
 });
 
-describe("MapUrlSchema", () => {
-	test("an https address or nothing", () => {
-		expect(v.parse(MapUrlSchema, "https://maps.app.goo.gl/abc")).toBe(
-			"https://maps.app.goo.gl/abc",
-		);
-		expect(v.parse(MapUrlSchema, "")).toBe("");
-		expect(v.parse(MapUrlSchema, undefined)).toBe("");
-	});
-	test("refuses http, other schemes, words and overlong links", () => {
-		for (const u of [
-			"http://maps.example.com",
-			"javascript:alert(1)",
-			"the bar on 5th",
-			`https://x.com/${"a".repeat(500)}`,
-		])
-			expect(ok(MapUrlSchema, u)).toBe(false);
-	});
-});
-
 describe("EventCreateSchema", () => {
 	const base = { accountId: ID, kind: "show", startsOn: "2026-11-14" };
-	test("the kind and the day; title and venue default empty", () => {
-		expect(v.parse(EventCreateSchema, base)).toEqual({ ...base, title: "", venue: "" });
+	test("the kind and the day; title, venue and venueId default empty", () => {
+		expect(v.parse(EventCreateSchema, base)).toEqual({
+			...base,
+			title: "",
+			venue: "",
+			venueId: "",
+		});
+	});
+	test("venueId is an id or empty", () => {
+		expect(ok(EventCreateSchema, { ...base, venueId: ID })).toBe(true);
+		expect(ok(EventCreateSchema, { ...base, venueId: "The Hall!" })).toBe(false);
 	});
 	test("refuses a day that is not YYYY-MM-DD and an unknown kind", () => {
 		expect(ok(EventCreateSchema, { ...base, startsOn: "11/14/2026" })).toBe(false);
@@ -62,7 +51,7 @@ describe("EventCreateSchema", () => {
 });
 
 describe("EventUpdateSchema", () => {
-	test("every text defaults to empty", () => {
+	test("every text defaults to empty; the venue and the legacy place fields stay out when not sent", () => {
 		expect(
 			v.parse(EventUpdateSchema, {
 				id: ID,
@@ -80,13 +69,20 @@ describe("EventUpdateSchema", () => {
 			endsAt: "",
 			loadInAt: "",
 			soundCheckAt: "",
-			venue: "",
-			address: "",
-			city: "",
-			mapUrl: "",
-			venueNotes: "",
 			notes: "",
 		});
+	});
+	test("venueId: an id, or empty for none", () => {
+		const base = { id: ID, kind: "show", status: "planned", startsOn: "2026-11-14" };
+		expect(v.parse(EventUpdateSchema, { ...base, venueId: "" }).venueId).toBe("");
+		expect(v.parse(EventUpdateSchema, { ...base, venueId: ID }).venueId).toBe(ID);
+		expect(ok(EventUpdateSchema, { ...base, venueId: "not an id!" })).toBe(false);
+	});
+	test("the legacy place fields keep their bounds when sent", () => {
+		const base = { id: ID, kind: "show", status: "planned", startsOn: "2026-11-14" };
+		expect(v.parse(EventUpdateSchema, { ...base, venue: " The Hall " }).venue).toBe("The Hall");
+		expect(ok(EventUpdateSchema, { ...base, mapUrl: "http://x.com" })).toBe(false);
+		expect(ok(EventUpdateSchema, { ...base, venueNotes: "x".repeat(2001) })).toBe(false);
 	});
 	test("refuses an unknown status and a bad time", () => {
 		const base = { id: ID, kind: "show", status: "played", startsOn: "2026-11-14" };

@@ -39,7 +39,7 @@
 
 	// Five menus: Music (a member's own: projects, songs, sessions, ideas; Kevin,
 	// 2026-10-19, in place of the Projects link), Manage (a member's shows,
-	// practices and set lists; Kevin, 2026-10-28), Instruments (the drum
+	// practices, venues and set lists; Kevin, 2026-10-28), Instruments (the drum
 	// machine and the piano), Tools (everyone, every width: the Idea Recorder
 	// for a member, the tuner and the metronome) and the account menu,
 	// everything a signed-in user can reach behind one button instead of a
@@ -86,6 +86,7 @@
 			(active(`/${member.slug}/shows`) ||
 				active(`/${member.slug}/practices`) ||
 				active(`/${member.slug}/events`) ||
+				active(`/${member.slug}/venues`) ||
 				active(`/${member.slug}/set-lists`)),
 	);
 	let onToolPage = $derived(
@@ -96,6 +97,19 @@
 			(!!member && active(`/${member.slug}/sessions/record`)),
 	);
 </script>
+
+<!-- One item of the Music and Manage menus. -->
+{#snippet menuItem(href: string, title: string, icon: string, label: string)}
+	<a
+		class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(href)}"
+		role="menuitem"
+		{href}
+		{title}
+		onclick={() => (openMenu = null)}
+	>
+		<span class="{icon} w-1em" aria-hidden="true"></span>{label}
+	</a>
+{/snippet}
 
 <svelte:window onpointerdown={onwindowpointerdown} onkeydown={onwindowkeydown} />
 
@@ -154,50 +168,30 @@
 						role="menu"
 						aria-label="Music menu"
 					>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
-								`/${member.slug}/projects`,
-							)}"
-							role="menuitem"
-							href="/{member.slug}/projects"
-							title="Albums and songs, with their stems, demos and mixes"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-folders w-1em" aria-hidden="true"></span>Projects
-						</a>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
-								'/songs',
-							)}"
-							role="menuitem"
-							href="/songs"
-							title="Every song you can open, across your accounts"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-music-notes w-1em" aria-hidden="true"></span>Songs
-						</a>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
-								`/${member.slug}/sessions`,
-							)}"
-							role="menuitem"
-							href="/{member.slug}/sessions"
-							title="Practice and show recordings"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-cassette-tape w-1em" aria-hidden="true"></span>Sessions
-						</a>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
-								'/idea-recorder',
-							)}"
-							role="menuitem"
-							href="/idea-recorder"
-							title="Your ideas and takes (Lark, the idea recorder)"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-lightbulb w-1em" aria-hidden="true"></span>Ideas
-						</a>
+						{@render menuItem(
+							`/${member.slug}/projects`,
+							"Albums and songs, with their stems, demos and mixes",
+							"i-ph-folders",
+							"Projects",
+						)}
+						{@render menuItem(
+							"/songs",
+							"Every song you can open, across your accounts",
+							"i-ph-music-notes",
+							"Songs",
+						)}
+						{@render menuItem(
+							`/${member.slug}/sessions`,
+							"Practice and show recordings",
+							"i-ph-cassette-tape",
+							"Sessions",
+						)}
+						{@render menuItem(
+							"/idea-recorder",
+							"Your ideas and takes (Lark, the idea recorder)",
+							"i-ph-lightbulb",
+							"Ideas",
+						)}
 					</div>
 				{/if}
 			</div>
@@ -230,39 +224,30 @@
 						role="menu"
 						aria-label="Manage menu"
 					>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
-								`/${member.slug}/shows`,
-							)}"
-							role="menuitem"
-							href="/{member.slug}/shows"
-							title="The show calendar: upcoming and past"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-ticket w-1em" aria-hidden="true"></span>Shows
-						</a>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
-								`/${member.slug}/practices`,
-							)}"
-							role="menuitem"
-							href="/{member.slug}/practices"
-							title="Rehearsals, scheduled and past"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-calendar-dots w-1em" aria-hidden="true"></span>Practices
-						</a>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
-								`/${member.slug}/set-lists`,
-							)}"
-							role="menuitem"
-							href="/{member.slug}/set-lists"
-							title="What to play, in order"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-list-numbers w-1em" aria-hidden="true"></span>Set lists
-						</a>
+						{@render menuItem(
+							`/${member.slug}/shows`,
+							"The show calendar: upcoming and past",
+							"i-ph-ticket",
+							"Shows",
+						)}
+						{@render menuItem(
+							`/${member.slug}/practices`,
+							"Rehearsals, scheduled and past",
+							"i-ph-calendar-dots",
+							"Practices",
+						)}
+						{@render menuItem(
+							`/${member.slug}/venues`,
+							"Where you play and rehearse",
+							"i-ph-map-pin",
+							"Venues",
+						)}
+						{@render menuItem(
+							`/${member.slug}/set-lists`,
+							"What to play, in order",
+							"i-ph-list-numbers",
+							"Set lists",
+						)}
 					</div>
 				{/if}
 			</div>

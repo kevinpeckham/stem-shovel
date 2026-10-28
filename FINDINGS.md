@@ -7,6 +7,14 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## SvelteKit remote forms refuse a field they did not make: `form_field_unbound` (2026-10-28)
+
+A plain `<input type="hidden" name="venueId">` inside a remote `form` (the venue picker's, posted with the New show form) made the submit throw `SvelteKit error: form_field_unbound: Form contained a field that wasn't created with form.fields.as(...)` in the browser, and the page showed its 500 error view without any request reaching the server. Every field a remote form posts has to come from `form.fields.<name>.as(type, value)`, hidden ones included (`<input {...form.fields.venueId.as("hidden", venueId)} />`, re-evaluated as the state changes), so a reusable picker component leaves the hidden field to the form that owns it. Surfaced by the events browser test; the dev server log was silent, the Playwright trace's console had the error.
+
+## Vite watches Playwright's output folder and reloads the page under test (2026-10-28)
+
+Playwright's `outputDir` (`.screenshots/e2e`) is inside the project, and when a test fails it writes the trace's resource files (`.playwright-artifacts-*/traces/resources/*.html`) there; the dev server saw new `.html` files and triggered a full page reload (`[vite+] (client) page reload .screenshots/e2e/...` in the journal, `hmr_reload_after_error` in the browser console), so a failure in one test could disturb the next. `server.watch.ignored: ["**/.screenshots/**"]` in vite.config.ts stops it.
+
 ## Playwright: `setInputFiles` right after `page.reload()` lands before hydration (2026-10-28)
 
 The events spec reloaded the page, asserted a server-rendered input's

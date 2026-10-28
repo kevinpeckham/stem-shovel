@@ -76,6 +76,9 @@ export default defineConfig({
 	// is bundled for speed: loaded file by file from node_modules it costs
 	// about 0.2 s at a cold start, bundled about 18 kB (docs/effect-adoption.md).
 	ssr: { noExternal: [/^better-auth(\/|$)/, /^effect(\/|$)/] },
+	// Playwright writes its traces and screenshots under .screenshots/ (playwright.config.ts
+	// outputDir); the dev server watching them reloaded the page under test (FINDINGS, 2026-10-28).
+	server: { watch: { ignored: ["**/.screenshots/**"] } },
 	plugins: [
 		// Sentry (docs/environment.md): instruments load functions and, on Vercel
 		// builds only, uploads source maps with SENTRY_AUTH_TOKEN. Before SvelteKit.

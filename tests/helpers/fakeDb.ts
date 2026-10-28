@@ -145,7 +145,7 @@ const COMPARISONS: Record<string, (value: unknown, operand: unknown, list: unkno
 		like: (value, operand) => typeof value === "string" && likePattern(String(operand)).test(value),
 	};
 
-/** SQL's `like` pattern as a regular expression: `%` any run, `_` one character, the rest literal. */
+/** SQL's `like` pattern as a regular expression: `%` any run, `_` one character, the rest literal; case-insensitive, as SQLite's `like` is for ASCII. */
 function likePattern(pattern: string): RegExp {
 	const source = pattern
 		.split(/([%_])/)
@@ -153,7 +153,7 @@ function likePattern(pattern: string): RegExp {
 			i % 2 === 0 ? part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : part === "%" ? "[^]*" : "[^]",
 		)
 		.join("");
-	return new RegExp(`^${source}$`);
+	return new RegExp(`^${source}$`, "i");
 }
 
 /** A select builder's hidden runner for `exists ${subquery}`: the rows it finds with the outer row's tables in view (a correlated where). */

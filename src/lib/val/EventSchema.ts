@@ -1,6 +1,13 @@
 import * as v from "valibot";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { IsoDaySchema } from "./SessionRecordingSchema";
+import {
+	VenueAddressSchema,
+	VenueCitySchema,
+	VenueMapUrlSchema,
+	VenueNotesSchema as VenueOwnNotesSchema,
+	VenueRefSchema,
+} from "./VenueSchema";
 
 /** What an event is (docs/band-plan.md, "Event"): a show or a practice. */
 export const EVENT_KINDS = ["show", "practice"] as const;
@@ -52,42 +59,32 @@ const text = (max: number, what: string) =>
 	);
 
 const TitleSchema = text(160, "title");
-const VenueSchema = text(160, "venue");
-const AddressSchema = text(300, "address");
-const CitySchema = text(120, "city");
-const VenueNotesSchema = text(2000, "venue notes");
 const NotesSchema = text(20000, "notes");
 const LabelSchema = text(60, "label");
 
-/** A map link, https only (it is rendered as a link), or "" for a search of the address built at render time. */
-export const MapUrlSchema = v.optional(
-	v.pipe(
-		v.string(),
-		v.trim(),
-		v.union([
-			v.literal(""),
-			v.pipe(
-				v.string(),
-				v.url("Enter a full address, like https://maps.example.com/…"),
-				v.startsWith("https://", "Use an https:// address."),
-			),
-		]),
-		v.maxLength(500, "Keep the map link under 500 characters."),
-	),
-	"",
+/** The free-text venue name from before venues were their own rows (legacy, still accepted). */
+const VenueTextSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.maxLength(160, "Keep the venue under 160 characters."),
 );
 
-/** A new show or practice (docs/band-plan.md, "Event"): its account, kind and day, and a title and venue to start with. */
+/** A new show or practice (docs/band-plan.md, "Event"): its account, kind and day, and a title and venue (`venueId`, "" for none) to start with; `venue` is the legacy free text, still accepted. */
 export const EventCreateSchema = v.object({
 	accountId: NanoIdSchema,
 	kind: EventKindSchema,
 	title: TitleSchema,
 	startsOn: IsoDaySchema,
-	venue: VenueSchema,
+	venueId: v.optional(VenueRefSchema, ""),
+	venue: v.optional(VenueTextSchema, ""),
 });
 export type EventCreate = v.InferOutput<typeof EventCreateSchema>;
 
-/** The event's own words: when, where and the notes. */
+/**
+ * The event's own words: when, where (`venueId`, "" for none, left out to
+ * keep it) and the notes. The legacy free-text place fields are optional
+ * and left alone when not sent (the venue's own row holds them now).
+ */
 export const EventUpdateSchema = v.object({
 	id: NanoIdSchema,
 	kind: EventKindSchema,
@@ -98,11 +95,12 @@ export const EventUpdateSchema = v.object({
 	endsAt: TimeSchema,
 	loadInAt: TimeSchema,
 	soundCheckAt: TimeSchema,
-	venue: VenueSchema,
-	address: AddressSchema,
-	city: CitySchema,
-	mapUrl: MapUrlSchema,
-	venueNotes: VenueNotesSchema,
+	venueId: v.optional(VenueRefSchema),
+	venue: v.optional(VenueTextSchema),
+	address: v.optional(VenueAddressSchema),
+	city: v.optional(VenueCitySchema),
+	mapUrl: v.optional(VenueMapUrlSchema),
+	venueNotes: v.optional(VenueOwnNotesSchema),
 	notes: NotesSchema,
 });
 export type EventUpdate = v.InferOutput<typeof EventUpdateSchema>;

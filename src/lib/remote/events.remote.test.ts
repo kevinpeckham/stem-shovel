@@ -55,7 +55,11 @@ const cases = [
 		input: { accountId: ACCOUNT, kind: "show", startsOn: "2026-11-20", venue: "The Hall" },
 		arrange: () => data.createEvent.mockResolvedValue({ id: EVENT }),
 		dataFn: "createEvent",
-		args: [ACCOUNT, USER, { kind: "show", title: "", startsOn: "2026-11-20", venue: "The Hall" }],
+		args: [
+			ACCOUNT,
+			USER,
+			{ kind: "show", title: "", startsOn: "2026-11-20", venue: "The Hall", venueId: "" },
+		],
 		redirect: `/slug-acct-one/events/${EVENT}`,
 		missing: null,
 	},
@@ -211,6 +215,47 @@ describe("createEvent", () => {
 			call(events.createEvent, { accountId: ACCOUNT, kind: "show", startsOn: "Nov 20" }),
 		).rejects.toBeTruthy();
 		expect(data.createEvent).not.toHaveBeenCalled();
+	});
+});
+
+describe("venues", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	const VENUE = fakeId("venue-one");
+	it("createEvent passes the venue picked", async () => {
+		data.createEvent.mockResolvedValue({ id: EVENT });
+		await expect(
+			call(events.createEvent, {
+				accountId: ACCOUNT,
+				kind: "show",
+				startsOn: "2026-11-20",
+				venueId: VENUE,
+			}),
+		).rejects.toMatchObject(redirected(`/slug-acct-one/events/${EVENT}`));
+		expect(data.createEvent).toHaveBeenCalledWith(ACCOUNT, USER, {
+			kind: "show",
+			title: "",
+			startsOn: "2026-11-20",
+			venue: "",
+			venueId: VENUE,
+		});
+	});
+	it("updateEvent passes the venue, or leaves it out (and the legacy text) when not sent", async () => {
+		data.updateEvent.mockResolvedValue({ id: EVENT });
+		const rest = {
+			kind: "show",
+			title: "Release show",
+			status: "confirmed",
+			startsOn: "2026-11-20",
+			startsAt: "21:00",
+			endsAt: "",
+			loadInAt: "",
+			soundCheckAt: "",
+			notes: "",
+		};
+		await call(events.updateEvent, { id: EVENT, ...rest, venueId: VENUE });
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, { ...rest, venueId: VENUE });
+		await call(events.updateEvent, { id: EVENT, ...rest });
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, rest);
 	});
 });
 

@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.197.0] - 2026-10-28
+
+### Added
+
+- **Venues** (Kevin's request): a venue is now its own object, entered once and picked for every show or practice there. Venues are shared by every band on Stem Shovel (a physical place: name, address, city, map link, website), while the notes and the band's contact at the venue are the account's own. The Manage menu gains **Venues**: the account's list with search, a page per venue (the shared facts, your notes and contact, and every show and practice there), and "Find or add a venue" that searches the site before creating a new one. The Shows and Practices pages filter by venue, and the event page's When and where section picks a venue instead of typing an address each time.
+
+### Technical
+
+- `venue` (global: name, address, city, map_url, website_url, created_by, updated_by), `account_venue` (account_id, venue_id, notes, contact; unique per pair), `event.venue_id` (migration 0109). The migration backfills venues from the events' text (one per name and city, case-insensitive), links each account to the venues its events use (the latest venue notes become the account's notes) and sets `event.venue_id`; the event's text columns stay as legacy and are no longer written. `venues.remote.ts`: createVenue (reuses a same-named venue in that city), searchVenues, linkVenue, unlinkVenue (refused while in use), updateVenue (the shared facts, any signed-in user, `updated_by`), updateVenueNotes (notes + contact). No venue delete yet. The field-issues snippet became `FieldIssues.svelte`; the dev server ignores `.screenshots/` (Playwright's traces reloaded the page under test; FINDINGS), and a remote form's hidden field must come from `fields.<name>.as("hidden", …)` (FINDINGS).
+
 ## [0.196.0] - 2026-10-28
 
 ### Added

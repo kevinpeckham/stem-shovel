@@ -1,15 +1,23 @@
 <script lang="ts">
+	import VenuePicker from "#lib/components/VenuePicker.svelte";
 	import { createEvent } from "#lib/remote/events.remote.js";
+	import type { VenueChoice } from "#lib/server/data.js";
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { localDay } from "#lib/utils/isoDay.js";
 	import type { EventKind } from "#lib/val/EventSchema.js";
 
-	/** The New show / New practice popover (`#new-event`): a day, a title and a venue, then the event's page (the form redirects there). */
-	let { accountId, kind }: { accountId: string; kind: EventKind } = $props();
+	/** The New show / New practice popover (`#new-event`): a day, a title and a venue (VenuePicker), then the event's page (the form redirects there). */
+	let {
+		accountId,
+		kind,
+		venueChoices,
+	}: { accountId: string; kind: EventKind; venueChoices: VenueChoice[] } = $props();
 
 	const show = $derived(kind === "show");
 	/** The default day: today where the browser is, read again each time the popover opens. */
 	let today = $state(localDay(new Date()));
+	/** The venue picked, '' for none; cleared each time the popover opens. */
+	let venueId = $state("");
 </script>
 
 <div
@@ -18,6 +26,7 @@
 	onbeforetoggle={(e) => {
 		if (e.newState !== "open") return;
 		today = localDay(new Date());
+		venueId = "";
 		clearForm(createEvent);
 	}}
 	class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
@@ -55,16 +64,12 @@
 		{#each createEvent.fields.title.issues() ?? [] as issue (issue.message)}
 			<p class="text-sm text-red-400">{issue.message}</p>
 		{/each}
-		<label class="grid gap-1 text-13px text-dim">
-			Venue
-			<input
-				class="field text-15px"
-				{...createEvent.fields.venue.as("text")}
-				placeholder={show ? "The Echo" : "The practice space"}
-				maxlength="160"
-			/>
-		</label>
-		{#each createEvent.fields.venue.issues() ?? [] as issue (issue.message)}
+		<div class="grid gap-1 text-13px text-dim">
+			<span aria-hidden="true">Venue</span>
+			<VenuePicker choices={venueChoices} bind:value={venueId} {accountId} canCreate />
+			<input {...createEvent.fields.venueId.as("hidden", venueId)} />
+		</div>
+		{#each createEvent.fields.venueId.issues() ?? [] as issue (issue.message)}
 			<p class="text-sm text-red-400">{issue.message}</p>
 		{/each}
 		<button

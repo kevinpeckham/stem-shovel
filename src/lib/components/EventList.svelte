@@ -1,19 +1,21 @@
 <script lang="ts">
+	import { goto } from "$app/navigation";
+	import { page } from "$app/state";
 	import { onMount } from "svelte";
 	import EventNew from "#lib/components/EventNew.svelte";
+	import EventTile from "#lib/components/EventTile.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
-	import type { EventListRow } from "#lib/server/data.js";
+	import type { EventListRow, VenueChoice } from "#lib/server/data.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
 	import { localDay } from "#lib/utils/isoDay.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
-	import { plural } from "#lib/utils/plural.js";
-	import { dayText } from "#lib/utils/sessionName.js";
-	import { EVENT_STATUS_LABELS, type EventKind } from "#lib/val/EventSchema.js";
+	import type { EventKind } from "#lib/val/EventSchema.js";
 
 	/**
 	 * The Shows or the Practices page (docs/band-plan.md, "Event"): a search
-	 * by title and venue, the upcoming ones soonest first and the past ones
-	 * newest first, a tile each linking to the event's page, and New.
+	 * by title and venue, a venue filter (`?venue=<id>`, applied by the
+	 * loader), the upcoming ones soonest first and the past ones newest
+	 * first, a tile each (EventTile) linking to the event's page, and New.
 	 * "Today" is the browser's own day (read again once mounted, since the
 	 * server's may differ).
 	 */
@@ -22,8 +24,12 @@
 		events: EventListRow[];
 		account: { id: string; slug: string; name: string };
 		canEdit: boolean;
+		/** The account's venues, for the filter and the New popover's picker. */
+		venueChoices: VenueChoice[];
+		/** The venue the list is filtered to, '' for all. */
+		venueId: string;
 	}
-	let { kind, events, account, canEdit }: Props = $props();
+	let { kind, events, account, canEdit, venueChoices, venueId }: Props = $props();
 
 	const show = $derived(kind === "show");
 	const noun = $derived(show ? "show" : "practice");
@@ -35,35 +41,22 @@
 	let query = $state("");
 	const shown = $derived(
 		filterByTitle(
-			events.map((e) => ({ ...e, meta: `${e.venue} ${e.city}` })),
+			events.map((e) => ({
+				...e,
+				meta: `${e.venue?.name ?? e.venueText} ${e.venue?.city ?? e.cityText}`,
+			})),
 			query,
 		),
 	);
 	const upcoming = $derived(shown.filter((e) => e.startsOn >= today));
 	const past = $derived(shown.filter((e) => e.startsOn < today).reverse());
 
-	/** The poster on the tile: its thumbnail, else the poster itself when it is an image (a PDF without a thumbnail shows none). */
-	const posterOf = (e: EventListRow): string | null =>
-		e.posterThumbnailUrl ??
-		(e.posterUrl && /\.(png|jpe?g|webp|gif|avif)$/i.test(new URL(e.posterUrl, "http://x").pathname)
-			? e.posterUrl
-			: null);
-	const tileTitle = (e: EventListRow) => e.title.trim() || e.venue.trim() || `Untitled ${noun}`;
-	function tileLine(e: EventListRow): string {
-		const place = [e.venue, e.city]
-			.map((s) => s.trim())
-			.filter(Boolean)
-			.join(", ");
-		return [
-			dayText(e.startsOn),
-			e.startsAt,
-			place,
-			e.setCount ? plural(e.setCount, "set") : "",
-			e.sessionCount ? plural(e.sessionCount, "session") : "",
-			e.status === "planned" ? "" : EVENT_STATUS_LABELS[e.status],
-		]
-			.filter(Boolean)
-			.join(" · ");
+	function filterVenue(id: string) {
+		const params = new URLSearchParams(page.url.search);
+		if (id) params.set("venue", id);
+		else params.delete("venue");
+		const search = params.toString();
+		void goto(`${page.url.pathname}${search ? `?${search}` : ""}`, { reset: false });
 	}
 </script>
 
@@ -75,30 +68,27 @@
 		{:else}
 			<ul class="grid gap-3" aria-label="{label} {heading.toLowerCase()}">
 				{#each rows as e (e.id)}
-					{@const thumb = posterOf(e)}
-					<li class={e.status === "canceled" ? "opacity-60" : ""}>
-						<a
-							class="app-list-tile {thumb ? 'flex items-center gap-3' : 'block'}"
-							href="/{account.slug}/events/{e.id}"
-						>
-							{#if thumb}
-								<img
-									class="h-14 w-10 shrink-0 rounded object-cover"
-									src={thumb}
-									alt=""
-									loading="lazy"
-								/>
-							{/if}
-							<span class="block min-w-0">
-								<span class="app-tile-heading">{tileTitle(e)}</span>
-								<span class="mt-1 block text-13px text-dim">{tileLine(e)}</span>
-							</span>
-						</a>
-					</li>
+					<li><EventTile {e} accountSlug={account.slug} /></li>
 				{/each}
 			</ul>
 		{/if}
 	</section>
+{/snippet}
+
+{#snippet venueFilter()}
+	{#if venueChoices.length || venueId}
+		<select
+			class="field w-full py-1 text-13px sm-w-56"
+			aria-label="Filter by venue"
+			value={venueId}
+			onchange={(ev) => filterVenue(ev.currentTarget.value)}
+		>
+			<option value="">All venues</option>
+			{#each venueChoices as v (v.id)}
+				<option value={v.id}>{v.city ? `${v.name} · ${v.city}` : v.name}</option>
+			{/each}
+		</select>
+	{/if}
 {/snippet}
 
 <svelte:head>
@@ -140,27 +130,35 @@
 		</p>
 	</header>
 
-	{#if events.length === 0}
+	{#if events.length === 0 && venueId}
+		<div class="max-w-article grid gap-4">
+			{@render venueFilter()}
+			<p class="text-14px text-dim">No {noun}s at this venue.</p>
+		</div>
+	{:else if events.length === 0}
 		<div class="max-w-article surface p-6">
 			<p class="mb-2 font-700">No {noun}s yet.</p>
 			<p class="text-14px text-dim">Press New {noun} to put one on the calendar.</p>
 		</div>
 	{:else}
 		<div class="max-w-article grid gap-6">
-			<label class="relative block w-full sm-w-72">
-				<span class="sr-only">Search {heading.toLowerCase()}</span>
-				<span
-					class="i-ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-dim"
-					aria-hidden="true"
-				></span>
-				<input
-					class="field w-full py-1 pl-7 text-13px"
-					type="search"
-					placeholder="Search by title or venue"
-					aria-label="Search {heading.toLowerCase()}"
-					bind:value={query}
-				/>
-			</label>
+			<div class="flex flex-wrap items-center gap-3">
+				<label class="relative block w-full sm-w-72">
+					<span class="sr-only">Search {heading.toLowerCase()}</span>
+					<span
+						class="i-ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-dim"
+						aria-hidden="true"
+					></span>
+					<input
+						class="field w-full py-1 pl-7 text-13px"
+						type="search"
+						placeholder="Search by title or venue"
+						aria-label="Search {heading.toLowerCase()}"
+						bind:value={query}
+					/>
+				</label>
+				{@render venueFilter()}
+			</div>
 			{#if shown.length === 0}
 				<p class="text-14px text-dim">No {noun} matches "{query.trim()}".</p>
 			{:else}
@@ -172,5 +170,5 @@
 </main>
 
 {#if canEdit}
-	<EventNew accountId={account.id} {kind} />
+	<EventNew accountId={account.id} {kind} {venueChoices} />
 {/if}

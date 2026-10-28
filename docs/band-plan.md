@@ -189,9 +189,15 @@ its people, with emails). The plan adds:
   `instruments`, `notes`), set by the member or an admin, shown on a
   members page at `/[account]/members` (today members are managed on
   the settings page). Members only; nothing of it is public.
-- **Contacts** (`contact`): venues, promoters, booking agents, sound
+- **Venues** became their own object on 2026-10-28 (v0.197.0), ahead of
+  this phase and GLOBAL rather than the account's: a physical place is
+  shared by every band on Stem Shovel (`venue`: name, address, city, map
+  link, website), and what is the band's own sits on `account_venue` (notes, the
+  band's contact at the venue). A show picks a venue from the account's
+  list or finds one across the site; the Shows page filters by venue.
+- **Contacts** (`contact`): promoters, booking agents, sound
   engineers, with name, role, phone, email, address, notes. An event's
-  venue and promoter become contact references once this exists, with
+  promoter becomes a contact reference once this exists, with
   the text columns kept as the fallback for a one-off.
 - The artist directory stays what it is (credits), and an account's
   `default_artist_id` is the band the public show page names.

@@ -4,6 +4,7 @@ import type { EventKind, EventStatus } from "../../../val/EventSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { user } from "./user";
+import { venue as venueTable } from "./venue";
 
 /**
  * A show or a practice (docs/band-plan.md, "Event", phase 2): the
@@ -33,12 +34,15 @@ export const event = table(
 		endsAt: t.text("ends_at").notNull().default(""),
 		loadInAt: t.text("load_in_at").notNull().default(""),
 		soundCheckAt: t.text("sound_check_at").notNull().default(""),
+		/** Where it is: the account's venue (docs/band-plan.md, "Event"); null for none. */
+		venueId: t.text("venue_id").references(() => venueTable.id, { onDelete: "set null" }),
+		/** Legacy free text from before venues were their own rows: no longer written, shown only when `venueId` is null. */
 		venue: t.text("venue").notNull().default(""),
 		address: t.text("address").notNull().default(""),
 		city: t.text("city").notNull().default(""),
 		/** Empty means a map search of the address, built at render time. */
 		mapUrl: t.text("map_url").notNull().default(""),
-		/** Parking, the back door, the house engineer's name. */
+		/** Parking, the back door, the house engineer's name (legacy: now `venue.notes`). */
 		venueNotes: t.text("venue_notes").notNull().default(""),
 		/** Markdown, members only: the plan for the night, then how it went. */
 		notes: t.text("notes").notNull().default(""),
@@ -49,5 +53,6 @@ export const event = table(
 		t.index("event_account_idx").on(table.accountId),
 		t.index("event_day_idx").on(table.accountId, table.startsOn),
 		t.index("event_created_by_idx").on(table.createdBy),
+		t.index("event_venue_idx").on(table.venueId),
 	],
 );

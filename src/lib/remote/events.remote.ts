@@ -36,17 +36,17 @@ import { error, redirect } from "@sveltejs/kit";
 /** A new show or practice (docs/band-plan.md, "Event") in the account; an editor of it. Lands on its page. */
 export const createEvent = form(
 	EventCreateSchema,
-	async ({ accountId, kind, title, startsOn, venue }) => {
+	async ({ accountId, kind, title, startsOn, venue, venueId }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		const m = requireEditor(locals, accountId);
-		const row = await create(accountId, user.id, { kind, title, startsOn, venue });
+		const row = await create(accountId, user.id, { kind, title, startsOn, venue, venueId });
 		if (!row) error(409, "This account holds as many shows and practices as it may.");
 		redirect(303, `/${m.slug}/events/${row.id}`);
 	},
 );
 
-/** The event's own words: when, where and the notes; an editor of its account. */
+/** The event's own words: when, where (`venueId`, "" for none) and the notes; an editor of its account. */
 export const updateEvent = form(EventUpdateSchema, async ({ id, ...fields }) => {
 	const { locals } = getRequestEvent();
 	requireUser(locals);

@@ -5,12 +5,18 @@ import { expect, open, test } from "./fixtures";
  * account: a show is put on the calendar from the Shows page, its venue
  * and showtime saved, a set list made and attached as its first set with a
  * label, the Practices page reached from the Manage menu, and the show
- * and the set list deleted at the end.
+ * and the set list deleted at the end. The venue is a shared object
+ * (Kevin, 2026-10-28): found or added from the New show popover, its
+ * notes and contact saved on its page, the Shows page filtered by it, and
+ * removed from the account at the end (the place stays on the site).
  */
 const SHOWS = process.env.E2E_SHOWS ?? "/mmkk/shows";
 const SET_LISTS = "/mmkk/set-lists";
+const VENUES = "/mmkk/venues";
 const TITLE = "E2E Show";
 const SET = "E2E Show Set";
+const VENUE = "E2E Echo";
+const CITY = "Los Angeles";
 /** A one-pixel PNG, enough for the signature check and the browser's thumbnail. */
 const PNG = Buffer.from(
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
@@ -25,6 +31,45 @@ async function deleteStaleShows(page: import("@playwright/test").Page) {
 		await page.getByRole("button", { name: "Delete" }).click();
 		await page.waitForURL(/\/shows$/);
 	}
+}
+/** Unlinks the venue from the account (after its shows are gone); the shared venue itself stays. */
+async function removeVenue(page: import("@playwright/test").Page) {
+	await open(page, VENUES);
+	const list = page.getByRole("list", { name: "Venues" });
+	while (await list.getByRole("link", { name: VENUE }).count()) {
+		await list.getByRole("link", { name: VENUE }).first().click();
+		await page.waitForURL(/\/venues\/[^/]+$/);
+		const remove = page.getByRole("button", { name: "Remove from this account" });
+		// Still in use (a show from another test): leave it.
+		if (!(await remove.count())) return;
+		await remove.click();
+		await page.waitForURL(/\/venues$/);
+	}
+}
+/** Picks the venue in the picker: found on the site when an earlier run made it, else created. */
+async function pickVenue(page: import("@playwright/test").Page) {
+	await page.getByRole("combobox", { name: "Venue", exact: true }).selectOption({
+		label: "Find or add a venue…",
+	});
+	await page.getByLabel("Search venues").fill(VENUE);
+	const found = page.getByRole("list", { name: "Venues found" }).getByRole("button", {
+		name: `${VENUE} · ${CITY}`,
+	});
+	const none = page.getByText(`No venue matches "${VENUE}".`);
+	await expect(found.or(none)).toBeVisible();
+	if (await found.count()) {
+		await found.click();
+	} else {
+		await page.getByRole("button", { name: "New venue" }).click();
+		const form = page.getByRole("group", { name: "New venue" });
+		await expect(form.getByLabel("Name")).toHaveValue(VENUE);
+		await form.getByLabel("City").fill(CITY);
+		await form.getByRole("button", { name: "Create" }).click();
+	}
+	await expect(page.getByText("Venue added")).toBeVisible();
+	await expect(page.getByRole("combobox", { name: "Venue", exact: true })).toContainText(
+		`${VENUE} · ${CITY}`,
+	);
 }
 async function deleteStaleSets(page: import("@playwright/test").Page) {
 	await open(page, SET_LISTS);
@@ -41,6 +86,7 @@ test("puts a show on the calendar, attaches a set and deletes it", async ({ page
 	test.setTimeout(120_000);
 	page.on("dialog", (d) => void d.accept());
 	await deleteStaleShows(page);
+	await removeVenue(page);
 	await deleteStaleSets(page);
 
 	// A set list to attach.
@@ -57,18 +103,42 @@ test("puts a show on the calendar, attaches a set and deletes it", async ({ page
 	await expect(page.getByRole("heading", { level: 1 })).toContainText("Shows");
 	await page.getByRole("button", { name: "New show" }).click();
 	await page.getByLabel("Title").fill(TITLE);
-	await page.getByLabel("Venue").fill("The Echo");
+	await pickVenue(page);
 	await page.getByRole("button", { name: "Create" }).click();
 	await page.waitForURL(/\/events\/[^/]+$/);
 	await expect(page.getByLabel("Title")).toHaveValue(TITLE);
 	await page.getByLabel("Showtime").fill("20:30");
-	await page.getByLabel("City").fill("Los Angeles");
 	await page.getByRole("button", { name: "Save" }).click();
 	await expect(page.getByText("Show saved")).toBeVisible();
-	await expect(page.getByRole("link", { name: /Directions/ })).toHaveAttribute(
+	const details = page.getByRole("group", { name: "Venue details" });
+	await expect(details.getByRole("link", { name: /Directions/ })).toHaveAttribute(
 		"href",
-		/The%20Echo/,
+		/E2E%20Echo/,
 	);
+
+	// The venue's page: the account's notes and contact, and the show listed there (Kevin, 2026-10-28).
+	await details.getByRole("link", { name: "Edit venue" }).click();
+	await page.waitForURL(/\/venues\/[^/]+$/);
+	await expect(page.getByRole("heading", { level: 1 })).toContainText(VENUE);
+	await page.getByRole("textbox", { name: "Contact", exact: true }).fill("Sam, 555-0100");
+	await page
+		.getByRole("textbox", { name: "Your notes", exact: true })
+		.fill("Load in through the alley.");
+	await page
+		.locator("section", { has: page.getByRole("heading", { name: "Your notes and contact" }) })
+		.getByRole("button", { name: "Save" })
+		.click();
+	await expect(page.getByText("Notes saved")).toBeVisible();
+	await expect(page.getByRole("link", { name: TITLE })).toBeVisible();
+	await expect(page.getByText(/In use by 1 show/)).toBeVisible();
+	await page.getByRole("link", { name: "All shows here" }).click();
+	await page.waitForURL(/\/shows\?venue=/);
+	await expect(page.getByRole("combobox", { name: "Filter by venue" })).toContainText(VENUE);
+	await expect(page.getByRole("link", { name: TITLE })).toBeVisible();
+	await page.getByRole("link", { name: TITLE }).click();
+	await page.waitForURL(/\/events\/[^/]+$/);
+	await expect(page.getByText("Contact: Sam, 555-0100")).toBeVisible();
+	await expect(page.getByText("Load in through the alley.")).toBeVisible();
 
 	// The set, attached and labeled.
 	// Choosing a set list attaches it at once (no button, Kevin 2026-10-28).
@@ -122,7 +192,7 @@ test("puts a show on the calendar, attaches a set and deletes it", async ({ page
 	const upcoming = page.getByRole("list", { name: "Upcoming shows" });
 	await expect(upcoming.getByRole("link", { name: TITLE })).toBeVisible();
 	await expect(upcoming.getByRole("link", { name: TITLE }).locator("img")).toHaveCount(1);
-	await expect(upcoming).toContainText("20:30 · The Echo, Los Angeles · 1 set");
+	await expect(upcoming).toContainText(`20:30 · ${VENUE}, ${CITY} · 1 set`);
 	await page.getByRole("button", { name: "Manage" }).click();
 	await page.getByRole("menuitem", { name: "Practices" }).click();
 	await page.waitForURL(/\/practices$/);
@@ -138,6 +208,8 @@ test("puts a show on the calendar, attaches a set and deletes it", async ({ page
 	await page.getByRole("button", { name: "Delete" }).click();
 	await page.waitForURL(/\/shows$/);
 	await expect(page.getByRole("link", { name: TITLE })).toHaveCount(0);
+	await removeVenue(page);
+	await expect(page.getByText("No venues yet.")).toBeVisible();
 	await deleteStaleSets(page);
 	await expect(page.getByText(SET)).toHaveCount(0);
 	expect(errors).toEqual([]);

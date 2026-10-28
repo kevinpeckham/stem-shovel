@@ -8,13 +8,32 @@
 		type EventFields,
 		type EventKind,
 	} from "#lib/val/EventSchema.js";
+	import VenuePicker from "#lib/components/VenuePicker.svelte";
+	import type { VenueChoice, VenueRow } from "#lib/server/data.js";
+	import VenueDetails from "#lib/components/VenueDetails.svelte";
+	import { venueDetailsOf } from "#lib/utils/venueDetailsOf.js";
 	import type { Snippet } from "svelte";
+
+	/** The event's fields this section reads: the form's, and the free-text place from before venues. */
+	type WhenWhereFields = Pick<
+		EventFields,
+		"kind" | "status" | "startsOn" | "startsAt" | "endsAt" | "loadInAt" | "soundCheckAt"
+	> & {
+		venue?: string | null;
+		address?: string | null;
+		city?: string | null;
+		mapUrl?: string | null;
+		venueNotes?: string | null;
+	};
 
 	/**
 	 * The "When and where" fields of a show or practice's form (the event
 	 * page): kind, status, the day and its times (a practice has no load-in
-	 * or sound check), the venue and its address with a Directions link (the
-	 * map link, else a map search of the address), and the venue notes.
+	 * or sound check), and the venue (VenuePicker, posted as `venueId`) with
+	 * its details read-only: address and city, a Directions link (the map
+	 * link, else a map search of the address), the account's contact and
+	 * notes, and a link to the venue's page. With no venue, the free text
+	 * from before venues reads the same way, with a hint to replace it.
 	 * `kind` follows the select before the form is saved.
 	 */
 	let {
@@ -22,21 +41,34 @@
 		e,
 		kind = $bindable(),
 		issues,
+		venue,
+		venueChoices,
+		accountId,
+		accountSlug,
+		canEdit,
 	}: {
 		form: ReturnType<typeof updateEvent.for>;
-		e: EventFields;
+		e: WhenWhereFields;
 		kind: EventKind;
 		issues: Snippet<[{ message: string }[] | undefined]>;
+		venue: VenueRow | null;
+		venueChoices: VenueChoice[];
+		accountId: string;
+		accountSlug: string;
+		canEdit: boolean;
 	} = $props();
 
 	const show = $derived(kind === "show");
-	const place = $derived([e.venue, e.address, e.city].map((s) => s.trim()).filter(Boolean));
-	const directions = $derived(
-		e.mapUrl ||
-			(place.length
-				? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.join(", "))}`
-				: ""),
+	/** The chosen venue's id ('' for none), starting from the saved one. */
+	let venueId = $derived(venue?.id ?? "");
+	/** Venues added from the picker on this page, with their details. */
+	let added = $state<Record<string, VenueRow>>({});
+	/** The chosen venue's full row when this page has it (the saved one, or one just added). */
+	const chosen = $derived(
+		venueId ? (venue?.id === venueId ? venue : (added[venueId] ?? null)) : null,
 	);
+	/** What the details show: the chosen venue's, else (no venue at all) the free text from before venues. */
+	const shown = $derived(venueDetailsOf(chosen, venueId, e));
 </script>
 
 <section class="grid gap-3" aria-labelledby="event-when">
@@ -92,67 +124,23 @@
 		...(form.fields.loadInAt.issues() ?? []),
 		...(form.fields.soundCheckAt.issues() ?? []),
 	])}
-	<label class="grid gap-1 text-13px text-dim">
-		Venue
-		<input
-			class="field text-14px"
-			{...form.fields.venue.as("text", e.venue)}
-			placeholder={show ? "The Echo" : "The practice space"}
-			maxlength="160"
+	<div class="grid gap-1 text-13px text-dim">
+		<span aria-hidden="true">Venue</span>
+		<VenuePicker
+			choices={venueChoices}
+			bind:value={venueId}
+			{accountId}
+			canCreate={canEdit}
+			onadded={(row) => (added[row.id] = row)}
 		/>
-	</label>
-	{@render issues(form.fields.venue.issues())}
-	<div class="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-		<label class="grid gap-1 text-13px text-dim">
-			Address
-			<input
-				class="field text-14px"
-				{...form.fields.address.as("text", e.address)}
-				placeholder="1822 W Sunset Blvd"
-				maxlength="300"
-			/>
-		</label>
-		<label class="grid gap-1 text-13px text-dim">
-			City
-			<input
-				class="field text-14px"
-				{...form.fields.city.as("text", e.city)}
-				placeholder="Los Angeles"
-				maxlength="120"
-			/>
-		</label>
+		<input {...form.fields.venueId.as("hidden", venueId)} />
 	</div>
-	{@render issues([...(form.fields.address.issues() ?? []), ...(form.fields.city.issues() ?? [])])}
-	{#if directions}
-		<p class="text-14px">
-			<a
-				class="link inline-flex items-center gap-1"
-				href={directions}
-				target="_blank"
-				rel="noopener"
-			>
-				<span class="i-ph-map-pin" aria-hidden="true"></span> Directions
-			</a>
-		</p>
-	{/if}
-	<label class="grid gap-1 text-13px text-dim">
-		Map link
-		<input
-			class="field text-14px"
-			{...form.fields.mapUrl.as("url", e.mapUrl)}
-			placeholder="https://maps.app.goo.gl/…"
-			maxlength="500"
+	{@render issues(form.fields.venueId.issues())}
+	{#if shown}
+		<VenueDetails
+			{...shown}
+			editHref={chosen ? `/${accountSlug}/venues/${chosen.id}` : null}
+			legacy={!chosen}
 		/>
-		<span class="text-12px">Leave it blank and the address is looked up on a map.</span>
-	</label>
-	{@render issues(form.fields.mapUrl.issues())}
-	<label class="grid gap-1 text-13px text-dim">
-		Venue notes
-		<textarea
-			class="field min-h-16 text-14px"
-			placeholder="Parking, the back door, the house engineer's name"
-			maxlength="2000"
-			{...form.fields.venueNotes.as("text", e.venueNotes)}></textarea>
-	</label>
-	{@render issues(form.fields.venueNotes.issues())}
+	{/if}
 </section>

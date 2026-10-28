@@ -102,8 +102,9 @@ describe("listEvents", () => {
 			status: "planned",
 			startsOn: "2026-12-01",
 			startsAt: "",
-			venue: "The Hall",
-			city: "Austin",
+			venue: null,
+			venueText: "The Hall",
+			cityText: "Austin",
 			setCount: 2,
 			sessionCount: 1,
 			posterThumbnailUrl: null,
@@ -233,7 +234,11 @@ describe("createEvent, updateEvent, deleteEvent", () => {
 		};
 		expect(await updateEvent(B, "e1", fields)).toBeNull();
 		expect(await updateEvent(A, "e1", fields)).toMatchObject({ id: "e1", ...fields });
-		expect(callsTo("update", "event")[1]?.values).toMatchObject({ updatedAt: expect.any(Date) });
+		// Another account's event is not written at all.
+		expect(callsTo("update", "event")).toHaveLength(1);
+		expect(callsTo("update", "event")[0]?.values).toMatchObject({ updatedAt: expect.any(Date) });
+		// No `venueId` given: the venue is left as it is.
+		expect(callsTo("update", "event")[0]?.values).not.toHaveProperty("venueId");
 	});
 	test("delete hands the event to the cascade, only for its own account", async () => {
 		reset({ event: [ev("e1", A)] });

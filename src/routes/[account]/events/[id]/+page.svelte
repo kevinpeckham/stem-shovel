@@ -31,7 +31,9 @@
 	const show = $derived(kind === "show");
 	const noun = $derived(data.event.kind === "show" ? "show" : "practice");
 	const listHref = $derived(`/${data.account.slug}/${data.event.kind}s`);
-	const name = $derived(e.title.trim() || e.venue.trim() || `Untitled ${noun}`);
+	/** The legacy free-text venue name, from before venues (the server may drop it). */
+	const legacyVenue = $derived((e as { venue?: string | null }).venue?.trim() ?? "");
+	const name = $derived(e.title.trim() || data.venue?.name || legacyVenue || `Untitled ${noun}`);
 
 	let sets = $derived(data.sets);
 	let sessions = $derived(data.sessions);
@@ -118,7 +120,17 @@
 			</section>
 
 			<fieldset class="m-0 grid min-w-0 gap-6 border-0 p-0" disabled={!data.canEdit}>
-				<EventWhenWhere {form} {e} bind:kind {issues} />
+				<EventWhenWhere
+					{form}
+					{e}
+					bind:kind
+					{issues}
+					venue={data.venue}
+					venueChoices={data.venueChoices}
+					accountId={data.account.id}
+					accountSlug={data.account.slug}
+					canEdit={data.canEdit}
+				/>
 
 				<section class="grid gap-3" aria-labelledby="event-notes">
 					<h2 class="heading-2 mb-0" id="event-notes">Notes</h2>

@@ -5,4 +5,11 @@
 	let { data } = $props();
 </script>
 
-<EventList kind="show" events={data.events} account={data.account} canEdit={data.canEdit} />
+<EventList
+	kind="show"
+	events={data.events}
+	account={data.account}
+	canEdit={data.canEdit}
+	venueChoices={data.venueChoices}
+	venueId={data.venueId}
+/>

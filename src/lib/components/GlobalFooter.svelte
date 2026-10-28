@@ -47,6 +47,9 @@
 			<a class="footer-link" href="/{member.slug}/practices" title="Rehearsals, scheduled and past"
 				>Practices</a
 			>
+			<a class="footer-link" href="/{member.slug}/venues" title="Where you play and rehearse"
+				>Venues</a
+			>
 			<a class="footer-link" href="/{member.slug}/set-lists" title="What to play, in order"
 				>Set lists</a
 			>

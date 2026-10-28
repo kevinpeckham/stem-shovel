@@ -161,6 +161,7 @@ import type {
 	PendingWork,
 } from "#lib/constants/dashboardActivity.js";
 import {
+	type SQL,
 	like,
 	and,
 	asc,
@@ -188,6 +189,8 @@ import type { StemStreaming } from "#lib/val/StemStreamingSchema.js";
 import { accountLimits, storageFits } from "#lib/utils/accountLimits.js";
 import type { BlobAccess } from "#lib/utils/blobAccess.js";
 import { MAX_EVENT_PHOTOS, type EventFileKind } from "#lib/constants/eventFiles.js";
+import { MAX_ACCOUNT_VENUES, VENUE_SEARCH_LIMIT } from "#lib/constants/venues.js";
+import type { VenueFields } from "#lib/val/VenueSchema.js";
 import type { StemStatus } from "#lib/val/StemStatusSchema.js";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -258,6 +261,8 @@ const {
 	event,
 	eventFile,
 	eventSet,
+	venue,
+	accountVenue,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -10860,8 +10865,11 @@ export type EventListRow = {
 	status: EventStatus;
 	startsOn: string;
 	startsAt: string;
-	venue: string;
-	city: string;
+	/** Where it is (docs/band-plan.md, "Event"), null for none. */
+	venue: VenueChoice | null;
+	/** The legacy free-text venue and city (`event.venue`, `event.city`), from before venues were their own rows. */
+	venueText: string;
+	cityText: string;
 	setCount: number;
 	sessionCount: number;
 	/** The ready poster's thumbnail (its first page or a smaller copy), null without one or without a poster. */
@@ -10918,11 +10926,27 @@ export type EventSetRow = {
 	itemCount: number;
 };
 
-/** The account's shows or practices, by day then creation (the page splits upcoming from past itself). */
-export async function listEvents(accountId: string, kind: EventKind): Promise<EventListRow[]> {
+/** The account's shows or practices, by day then creation (the page splits upcoming from past itself); `filter.venueId` keeps those at one venue. */
+export async function listEvents(
+	accountId: string,
+	kind: EventKind,
+	filter: { venueId?: string } = {},
+): Promise<EventListRow[]> {
+	return eventListRows(
+		and(
+			eq(event.accountId, accountId),
+			eq(event.kind, kind),
+			filter.venueId ? eq(event.venueId, filter.venueId) : undefined,
+		),
+		[asc(event.startsOn), asc(event.createdAt)],
+	);
+}
+
+/** The calendar rows `where` finds, in `orderBy`, each with its venue, counts and ready poster. */
+async function eventListRows(where: SQL | undefined, orderBy: SQL[]): Promise<EventListRow[]> {
 	const rows = await db.query.event.findMany({
-		where: and(eq(event.accountId, accountId), eq(event.kind, kind)),
-		orderBy: [asc(event.startsOn), asc(event.createdAt)],
+		where,
+		orderBy,
 		columns: {
 			id: true,
 			kind: true,
@@ -10936,6 +10960,7 @@ export async function listEvents(accountId: string, kind: EventKind): Promise<Ev
 			updatedAt: true,
 		},
 		with: {
+			place: { columns: { id: true, name: true, city: true } },
 			sets: { columns: { id: true } },
 			sessions: { columns: { id: true } },
 			// The ready poster, newest first: one query with the rest, not one per event.
@@ -10947,8 +10972,11 @@ export async function listEvents(accountId: string, kind: EventKind): Promise<Ev
 			},
 		},
 	});
-	return rows.map(({ sets, sessions, files, ...r }) => ({
+	return rows.map(({ sets, sessions, files, place, venue: venueText, city, ...r }) => ({
 		...r,
+		venue: place ?? null,
+		venueText,
+		cityText: city,
 		setCount: sets.length,
 		sessionCount: sessions.length,
 		posterThumbnailUrl: files[0]?.thumbnailUrl ?? null,
@@ -11013,14 +11041,15 @@ async function ownEventSet(accountId: string, id: string) {
  * and the choices for attaching more (the account's set lists by title, its
  * sessions newest first, at most 200, with the event each already points
  * at), its ready poster (the newest) and its ready photos in gallery
- * order. Null when it is not the account's.
+ * order, its venue (with this account's notes and contact) and the
+ * account's venues to pick from. Null when it is not the account's.
  */
 export async function eventPage(accountId: string, id: string) {
 	const e = await db.query.event.findFirst({
 		where: and(eq(event.accountId, accountId), eq(event.id, id)),
 	});
 	if (!e) return null;
-	const [sets, sessions, lists, choices, files] = await Promise.all([
+	const [sets, sessions, lists, choices, files, place, places] = await Promise.all([
 		db.query.eventSet.findMany({
 			where: eq(eventSet.eventId, id),
 			orderBy: [asc(eventSet.sortOrder), asc(eventSet.createdAt)],
@@ -11055,6 +11084,8 @@ export async function eventPage(accountId: string, id: string) {
 			orderBy: [asc(eventFile.sortOrder), asc(eventFile.createdAt)],
 			columns: eventFileColumns,
 		}),
+		e.venueId ? venueRowFor(accountId, e.venueId) : Promise.resolve(null),
+		venueChoices(accountId),
 	]);
 	const posters = files.filter((f) => f.kind === "poster");
 	return {
@@ -11072,20 +11103,34 @@ export async function eventPage(accountId: string, id: string) {
 			null,
 		),
 		photos: files.filter((f) => f.kind === "photo") as EventFileRow[],
+		venue: place,
+		venueChoices: places,
 	};
 }
 
-/** A new show or practice; null when the account already holds `MAX_EVENTS_PER_ACCOUNT`. */
+/**
+ * A new show or practice; null when the account already holds
+ * `MAX_EVENTS_PER_ACCOUNT`. `venueId` ("" or null for none) is kept only
+ * when the venue exists, and puts it on the account's list; `venue` is the
+ * legacy free text.
+ */
 export async function createEvent(
 	accountId: string,
 	createdBy: string,
-	input: { kind: EventKind; title: string; startsOn: string; venue: string },
+	input: {
+		kind: EventKind;
+		title: string;
+		startsOn: string;
+		venue?: string;
+		venueId?: string | null;
+	},
 ) {
 	const [{ n }] = await db
 		.select({ n: sql<number>`count(*)` })
 		.from(event)
 		.where(eq(event.accountId, accountId));
 	if (n >= MAX_EVENTS_PER_ACCOUNT) return null;
+	const venueId = (await eventVenueId(accountId, input.venueId)) ?? null;
 	const [row] = await db
 		.insert(event)
 		.values({
@@ -11093,21 +11138,47 @@ export async function createEvent(
 			kind: input.kind,
 			title: input.title,
 			startsOn: input.startsOn,
-			venue: input.venue,
+			venue: input.venue ?? "",
+			venueId,
 			createdBy,
 		})
 		.returning();
 	return row!;
 }
 
+/** What an event update writes: `venueId` "" or null for none, left out (or an unknown venue) to keep the one it has. */
+export type EventUpdateFields = Omit<EventFields, "venueId"> & { venueId?: string | null };
+
 /** The event's own words (when, where, the notes); null when it is not the account's. */
-export async function updateEvent(accountId: string, id: string, fields: EventFields) {
+export async function updateEvent(
+	accountId: string,
+	id: string,
+	{ venueId: wanted, ...fields }: EventUpdateFields,
+) {
+	if (!(await ownEvent(accountId, id))) return null;
+	const venueId = await eventVenueId(accountId, wanted);
 	const [row] = await db
 		.update(event)
-		.set({ ...fields, updatedAt: new Date() })
+		.set({ ...fields, ...(venueId === undefined ? {} : { venueId }), updatedAt: new Date() })
 		.where(and(eq(event.accountId, accountId), eq(event.id, id)))
 		.returning();
 	return row ?? null;
+}
+
+/**
+ * The venue an event write stores: null for "" or null, undefined (keep
+ * what is there) when left out or when no such venue exists; a venue that
+ * exists goes on the account's list (unless the list is full).
+ */
+async function eventVenueId(
+	accountId: string,
+	venueId: string | null | undefined,
+): Promise<string | null | undefined> {
+	if (venueId === undefined) return undefined;
+	if (!venueId) return null;
+	if (!(await venueExists(venueId))) return undefined;
+	await ensureVenueLink(accountId, venueId);
+	return venueId;
 }
 
 /** The event, its sets, its poster and photos (rows and blobs), and its sessions untied (cascade.ts); false when it is not the account's. */
@@ -11119,6 +11190,267 @@ export async function deleteEvent(accountId: string, id: string) {
 		.where(and(eq(eventFile.accountId, accountId), eq(eventFile.eventId, id)));
 	await deleteBlobs(files.flatMap((f) => [f.url, f.thumbnailUrl ?? ""]));
 	await deleteEventRows([id]);
+	return true;
+}
+
+// ---- venues: the shared directory and each account's list (docs/band-plan.md, "Event") ----
+
+/** A venue as an account sees it: the shared facts, with this account's notes, contact and how many of its shows and practices are there. */
+export interface VenueRow {
+	id: string;
+	name: string;
+	address: string;
+	city: string;
+	mapUrl: string;
+	websiteUrl: string;
+	/** This account's. */
+	notes: string;
+	/** This account's contact at the venue. */
+	contact: string;
+	/** This account's events at the venue. */
+	eventCount: number;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+/** A venue in a picker or on a calendar tile. */
+export interface VenueChoice {
+	id: string;
+	name: string;
+	city: string;
+}
+
+/** The shared columns a `VenueRow` reads. */
+const venueColumns = {
+	id: true,
+	name: true,
+	address: true,
+	city: true,
+	mapUrl: true,
+	websiteUrl: true,
+	createdAt: true,
+	updatedAt: true,
+} as const;
+
+/** Name order for venues: case-insensitive, then by city. */
+function byVenueName(a: VenueChoice, b: VenueChoice) {
+	return (
+		a.name.localeCompare(b.name, "en", { sensitivity: "base" }) ||
+		a.city.localeCompare(b.city, "en", { sensitivity: "base" })
+	);
+}
+
+/** The `with` that counts one account's events at a venue. */
+const venueEventsOf = (accountId: string) =>
+	({ events: { where: eq(event.accountId, accountId), columns: { id: true } } }) as const;
+
+/** The account's venues (the ones on its list), by name, each with the account's notes, contact and events there. */
+export async function listVenues(accountId: string): Promise<VenueRow[]> {
+	const links = await db.query.accountVenue.findMany({
+		where: eq(accountVenue.accountId, accountId),
+		columns: { notes: true, contact: true },
+		with: { venue: { columns: venueColumns, with: venueEventsOf(accountId) } },
+	});
+	return links
+		.filter((l) => l.venue)
+		.map(({ venue: { events, ...v }, notes, contact }) => ({
+			...v,
+			notes,
+			contact,
+			eventCount: events.length,
+		}))
+		.sort(byVenueName);
+}
+
+/** The account's venues for a picker, by name. */
+export async function venueChoices(accountId: string): Promise<VenueChoice[]> {
+	const links = await db.query.accountVenue.findMany({
+		where: eq(accountVenue.accountId, accountId),
+		columns: { id: true },
+		with: { venue: { columns: { id: true, name: true, city: true } } },
+	});
+	return links.flatMap((l) => (l.venue ? [l.venue] : [])).sort(byVenueName);
+}
+
+/** The shared directory searched by name or city (case-insensitive, anywhere in either), by name; "" finds nothing. */
+export async function searchVenues(q: string, limit = VENUE_SEARCH_LIMIT): Promise<VenueChoice[]> {
+	// `%` and `_` are LIKE's wildcards; a search means the words, so they go.
+	const words = q.trim().replace(/[%_\\]/g, "");
+	if (!words) return [];
+	const pattern = `%${words}%`;
+	return db.query.venue.findMany({
+		where: or(like(venue.name, pattern), like(venue.city, pattern)),
+		orderBy: [asc(venue.name), asc(venue.city)],
+		columns: { id: true, name: true, city: true },
+		limit,
+	});
+}
+
+/** One venue as `accountId` sees it, whether or not it is on the account's list (notes and contact "" then); null when no such venue. */
+async function venueRowFor(accountId: string, venueId: string): Promise<VenueRow | null> {
+	const [v, link] = await Promise.all([
+		db.query.venue.findFirst({
+			where: eq(venue.id, venueId),
+			columns: venueColumns,
+			with: venueEventsOf(accountId),
+		}),
+		venueLink(accountId, venueId),
+	]);
+	if (!v) return null;
+	const { events, ...facts } = v;
+	return {
+		...facts,
+		notes: link?.notes ?? "",
+		contact: link?.contact ?? "",
+		eventCount: events.length,
+	};
+}
+
+/** The account's row for the venue (its list entry), or null. */
+async function venueLink(accountId: string, venueId: string) {
+	return (
+		(await db.query.accountVenue.findFirst({
+			where: and(eq(accountVenue.accountId, accountId), eq(accountVenue.venueId, venueId)),
+			columns: { id: true, notes: true, contact: true },
+		})) ?? null
+	);
+}
+
+async function venueExists(venueId: string) {
+	return !!(await db.query.venue.findFirst({
+		where: eq(venue.id, venueId),
+		columns: { id: true },
+	}));
+}
+
+/** The venue put on the account's list; "full" at `MAX_ACCOUNT_VENUES`, true when it is there (already or now). */
+async function ensureVenueLink(accountId: string, venueId: string): Promise<true | "full"> {
+	if (await venueLink(accountId, venueId)) return true;
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(accountVenue)
+		.where(eq(accountVenue.accountId, accountId));
+	if (n >= MAX_ACCOUNT_VENUES) return "full";
+	await db
+		.insert(accountVenue)
+		.values({ accountId, venueId })
+		.onConflictDoNothing({ target: [accountVenue.accountId, accountVenue.venueId] });
+	return true;
+}
+
+/** A venue of the same name in the same city (case-insensitive), anywhere in the directory, other than `exceptId`. */
+async function sameVenue(name: string, city: string, exceptId?: string) {
+	return (
+		(await db.query.venue.findFirst({
+			where: and(
+				sql`lower(${venue.name}) = lower(${name.trim()})`,
+				sql`lower(${venue.city}) = lower(${city.trim()})`,
+				exceptId ? ne(venue.id, exceptId) : undefined,
+			),
+			columns: { id: true },
+		})) ?? null
+	);
+}
+
+/**
+ * A venue for the account's list, page and shows. Null unless the venue is
+ * on the account's list; its events are the account's there, every kind,
+ * newest day first.
+ */
+export async function venuePage(
+	accountId: string,
+	venueId: string,
+): Promise<{ venue: VenueRow; events: EventListRow[] } | null> {
+	if (!(await venueLink(accountId, venueId))) return null;
+	const [row, events] = await Promise.all([
+		venueRowFor(accountId, venueId),
+		eventListRows(and(eq(event.accountId, accountId), eq(event.venueId, venueId)), [
+			desc(event.startsOn),
+			desc(event.createdAt),
+		]),
+	]);
+	return row ? { venue: row, events } : null;
+}
+
+/**
+ * A venue put on the account's list: a new one in the shared directory
+ * (`created` true), or the one already there with that name and city
+ * (`created` false, its facts unchanged). "full" when the account's list
+ * holds `MAX_ACCOUNT_VENUES`.
+ */
+export async function createVenue(
+	accountId: string,
+	userId: string,
+	input: VenueFields,
+): Promise<{ venue: VenueRow; created: boolean } | "full"> {
+	const match = await sameVenue(input.name, input.city);
+	if (match) {
+		if ((await ensureVenueLink(accountId, match.id)) === "full") return "full";
+		return { venue: (await venueRowFor(accountId, match.id))!, created: false };
+	}
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(accountVenue)
+		.where(eq(accountVenue.accountId, accountId));
+	if (n >= MAX_ACCOUNT_VENUES) return "full";
+	const [row] = await db
+		.insert(venue)
+		.values({ ...input, createdBy: userId, updatedBy: userId })
+		.returning({ id: venue.id });
+	await db.insert(accountVenue).values({ accountId, venueId: row!.id });
+	return { venue: (await venueRowFor(accountId, row!.id))!, created: true };
+}
+
+/** A venue's shared facts corrected by anyone signed in; "duplicate" when another venue has that name in that city, false when no such venue. */
+export async function updateVenue(
+	userId: string,
+	id: string,
+	input: VenueFields,
+): Promise<"duplicate" | boolean> {
+	if (!(await venueExists(id))) return false;
+	if (await sameVenue(input.name, input.city, id)) return "duplicate";
+	await db
+		.update(venue)
+		.set({ ...input, updatedBy: userId, updatedAt: new Date() })
+		.where(eq(venue.id, id));
+	return true;
+}
+
+/** An existing venue put on the account's list; null when no such venue, "full" at `MAX_ACCOUNT_VENUES`. */
+export async function linkVenue(
+	accountId: string,
+	venueId: string,
+): Promise<VenueRow | "full" | null> {
+	if (!(await venueExists(venueId))) return null;
+	if ((await ensureVenueLink(accountId, venueId)) === "full") return "full";
+	return venueRowFor(accountId, venueId);
+}
+
+/** The venue off the account's list (the venue itself stays in the directory); "used" while the account's events are there, false when it was not on the list. */
+export async function unlinkVenue(accountId: string, venueId: string): Promise<"used" | boolean> {
+	const link = await venueLink(accountId, venueId);
+	if (!link) return false;
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(event)
+		.where(and(eq(event.accountId, accountId), eq(event.venueId, venueId)));
+	if (n > 0) return "used";
+	await db.delete(accountVenue).where(eq(accountVenue.id, link.id));
+	return true;
+}
+
+/** The account's own notes and contact at the venue, putting it on the list when it is not; false when no such venue or the list is full. */
+export async function updateVenueNotes(
+	accountId: string,
+	venueId: string,
+	input: { notes: string; contact: string },
+): Promise<boolean> {
+	if (!(await venueExists(venueId))) return false;
+	if ((await ensureVenueLink(accountId, venueId)) === "full") return false;
+	await db
+		.update(accountVenue)
+		.set({ notes: input.notes, contact: input.contact, updatedAt: new Date() })
+		.where(and(eq(accountVenue.accountId, accountId), eq(accountVenue.venueId, venueId)));
 	return true;
 }
 

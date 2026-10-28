@@ -514,6 +514,18 @@ describe("deleteAccountRows", () => {
 		expect(position("event")).toBeLessThan(position("set_list"));
 		expect(position("event")).toBeGreaterThan(position("event_set"));
 	});
+	test("the account's venue list goes; the shared venues and another account's list stay", async () => {
+		fake.reset({
+			venue: [{ id: "v1" }],
+			accountVenue: [
+				{ id: "av1", accountId: "a1", venueId: "v1" },
+				{ id: "av2", accountId: "a2", venueId: "v1" },
+			],
+		});
+		await deleteAccountRows("a1");
+		expect(fake.rows("accountVenue").map((r) => r.id)).toEqual(["av2"]);
+		expect(fake.rows("venue")).toEqual([{ id: "v1" }]);
+	});
 	test("the account's set lists go with their rows; another account's stay", async () => {
 		await deleteAccountRows("a1");
 		expect(fake.rows("setList").map((l) => l.id)).toEqual(["l2"]);
@@ -612,6 +624,20 @@ describe("deleteUserRows", () => {
 		]);
 		// Private-note revisions go; shared-document revisions keep the text and lose the author.
 		expect(fake.rows("songDocVersion")).toEqual([{ id: "dv2", userId: null, createdBy: null }]);
+	});
+	test("the venues they added or corrected stay without an author", async () => {
+		fake.reset({
+			user: [{ id: "u1" }, { id: "u2" }],
+			venue: [
+				{ id: "v1", createdBy: "u1", updatedBy: "u2" },
+				{ id: "v2", createdBy: "u2", updatedBy: "u1" },
+			],
+		});
+		await deleteUserRows("u1");
+		expect(fake.rows("venue")).toEqual([
+			{ id: "v1", createdBy: null, updatedBy: "u2" },
+			{ id: "v2", createdBy: "u2", updatedBy: null },
+		]);
 	});
 	test("the user's dashboard pins go, nobody else's", async () => {
 		fake.reset({

@@ -764,6 +764,13 @@
       "when": 1793199341831,
       "tag": "0108_illegal_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "6",
+      "when": 1793201882009,
+      "tag": "0109_nosy_sandman",
+      "breakpoints": true
     }
   ]
 }

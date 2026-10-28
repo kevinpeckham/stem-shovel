@@ -33,6 +33,8 @@ const {
 	event,
 	eventFile,
 	eventSet,
+	accountVenue,
+	venue,
 	sessionRecording,
 	recordingSession,
 	sessionComment,
@@ -310,6 +312,8 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	);
 	// A poster kept without its event.
 	await db.delete(eventFile).where(eq(eventFile.accountId, accountId));
+	// Its venue list; the venues themselves are shared (docs/band-plan.md, "Event").
+	await db.delete(accountVenue).where(eq(accountVenue.accountId, accountId));
 	await deleteSetListRows(
 		(await db.select({ id: setList.id }).from(setList).where(eq(setList.accountId, accountId))).map(
 			(r) => r.id,
@@ -406,6 +410,8 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(shareLink).set({ createdBy: null }).where(eq(shareLink.createdBy, userId));
 	await db.update(setList).set({ createdBy: null }).where(eq(setList.createdBy, userId));
 	await db.update(event).set({ createdBy: null }).where(eq(event.createdBy, userId));
+	await db.update(venue).set({ createdBy: null }).where(eq(venue.createdBy, userId));
+	await db.update(venue).set({ updatedBy: null }).where(eq(venue.updatedBy, userId));
 	await db.update(shortLink).set({ createdBy: null }).where(eq(shortLink.createdBy, userId));
 	await db.update(song).set({ createdBy: null }).where(eq(song.createdBy, userId));
 	await db
