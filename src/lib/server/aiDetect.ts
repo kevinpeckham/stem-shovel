@@ -3,6 +3,7 @@ import { logAiRequest, saveChartRead } from "#lib/server/data.js";
 import { createGateway } from "@ai-sdk/gateway";
 import { chartStatedAnswer } from "#lib/utils/chartStatedAnswer.js";
 import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
+import { settingsChartDisagreement } from "#lib/utils/settingsChartDisagreement.js";
 import { generateText } from "ai";
 import {
 	type BarNotesInput,
@@ -268,10 +269,10 @@ const AnswerSchema = v.object({
 	),
 	notes: v.optional(v.pipe(v.string(), v.maxLength(400)), ""),
 });
-/** The answer after `chartStatedAnswer`: tempo and meter null where the chart states neither. */
+/** The answer after `chartStatedAnswer`: tempo and meter the chart's own, null where it states neither. */
 export type AiAnswer = Omit<v.InferOutput<typeof AnswerSchema>, "meter"> & {
 	meter: string | null;
-	/** What looked wrong in the chart read (utils/chartReadWarnings.ts): the page shows them and does not apply the answer unasked. */
+	/** What looked wrong in the chart read (utils/chartReadWarnings.ts) or in the settings against it (utils/settingsChartDisagreement.ts): the page shows them and does not apply the answer unasked. */
 	warnings?: string[];
 };
 
@@ -401,8 +402,9 @@ export interface SongSettings {
  * The song-check (docs/audio-engine.md, "The song-check reads the chart"):
  * the model reads the chart beside the mix and reports the keys and where
  * they change, the time signature and the tempo marks, placed in the
- * recording. The answer keeps tempo and meter only where the chart states
- * them (`chartStatedAnswer`). Throws when the chart cannot be read or the
+ * recording. The answer's tempo and meter are the chart's own, parsed from
+ * its text (`chartStatedAnswer`), with a warning when the settings the
+ * model followed the bars by disagree with them. Throws when the chart cannot be read or the
  * model does not answer.
  */
 export async function askAiAboutMix(
@@ -439,7 +441,11 @@ Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [], "met
 	});
 	// A read score is checked for the signs of a bad read (docs/audio-engine.md "The chart read is checked"); the band's own chart is not a read.
 	const warnings = chart.text && !chart.chord ? chartReadWarnings(chart.text) : [];
-	return { ...chartStatedAnswer(answer, chart.text), ...(warnings.length ? { warnings } : {}) };
+	const gated = chartStatedAnswer(answer, chart.text);
+	// Settings that disagree with the chart misplace the key changes the model counts bars for (stem-bench Study 7).
+	const disagreement = settingsChartDisagreement(settings, gated);
+	if (disagreement) warnings.push(disagreement);
+	return { ...gated, ...(warnings.length ? { warnings } : {}) };
 }
 
 const SectionsAnswerSchema = v.object({

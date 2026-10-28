@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The song-check takes tempo and meter from the chart itself** (stem-bench Study 7): the chart's tempo marks and time signature are read straight from its text, and the listening model's tempo and meter are no longer used at all; the model only names the keys from the chords and places the changes in seconds. Where the song's settings disagree with what the chart marks, the answer warns that the key changes are placed approximately.
+- **The chart-read warning judges each chord against the key in force at its measure** (stem-bench Study 6): an honest D-major chart whose chords carry no accidentals, or a chart that modulates, no longer trips it, and the warning names both causes (a file that lost its accidentals, or a misread).
+
 ## [0.199.0] - 2026-10-28
 
 ### Added

@@ -248,7 +248,7 @@ describe('the chart read (docs/audio-engine.md, "The chart read is stored")', ()
 			body: { message: "A read has one line per measure, starting m1, m2, …" },
 		});
 		expect(data.saveChartRead).not.toHaveBeenCalled();
-		const warned = "m1 key E major 4/4: E\nm2: A\nm3: B\nm4: E\nm5: A\nm6: B\nm7: E\nm8: A\nm9: B";
+		const warned = "m1 key E major 4/4: E\nm2: A\nm3: B\nm4: C\nm5: A\nm6: G\nm7: E\nm8: A\nm9: B";
 		await expect(
 			call(files.saveChartReadOfFile, { id: FILE, text: warned }),
 		).resolves.toMatchObject({ text: warned, edited: true, warnings: [expect.any(String)] });

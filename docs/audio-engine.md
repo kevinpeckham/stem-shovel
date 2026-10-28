@@ -506,15 +506,28 @@ tool wearing a second opinion's clothes, so the app now says so:
   tempo and time signature "to follow the bars"; the key is not sent,
   since a handed key was echoed 10 of 11 times even by the better model.
   The prompt no longer asks the model to confirm or correct anything.
-- **Tempo and meter only where the chart states them.**
-  `chartStatedAnswer` (`src/lib/utils/chartStatedAnswer.ts`) nulls the
-  answer's tempo (and empties `tempoChanges`) unless the chart's summary
-  carries a `tempo <bpm>` mark, and nulls the meter unless it carries a
-  time signature; without a summary (a PDF the reader could not write
-  out) only the keys survive. `AiAnswer.meter` is therefore nullable.
-  On the page a null writes no row and, for tempo, leaves the song's
-  later tempo rows alone; the card and the notification print only what
-  the chart said.
+- **Tempo and meter from the chart's text, never the model** (since
+  2026-10-28, stem-bench Study 7; before that `chartStatedAnswer` kept
+  the model's values wherever the chart merely mentioned one, and the
+  model echoed the settings' tempo verbatim on chord charts, 47 of 47
+  cells, once even under a chart that stated the truth).
+  `utils/chartStatedValues.ts` parses the summary's `tempo <bpm>` marks
+  and its first time signature (and a band chart's "120 bpm", "♩ = 120"
+  or "3/4"), and `chartStatedAnswer` (`src/lib/utils/chartStatedAnswer.ts`)
+  substitutes them: the answer's tempo and meter are the chart's, null
+  where it states none, whatever the model said; `tempoChanges` keep only
+  the model's placements in seconds, as many as the chart has later
+  marks, each with the chart's bpm. The model is left with what measured
+  perfect: the keys from the chords and where each change falls. Without
+  a summary (a PDF the reader could not write out) only the keys survive.
+  `AiAnswer.meter` is therefore nullable. On the page a null writes no row
+  and, for tempo, leaves the song's later tempo rows alone; the card and
+  the notification print only what the chart said. When the song's
+  settings disagree with the chart's marks (a tempo more than 2 % off, or
+  another meter), `utils/settingsChartDisagreement.ts` adds a warning that
+  the key changes are placed approximately: the model follows the bars at
+  the settings' tempo, and Study 7 saw placement fall from 3/3 to 1/3
+  under a wrong one.
 - **The close-call meter check is gone.** The detector's 3/4-or-4/4
   lean under 0.15 used to send the song to the model with the detector's
   meter as a candidate, and the page said "The AI agrees" or "hears 3/4
@@ -546,11 +559,21 @@ rasterized PDFs and now does not plan to; instead the read is checked:
 
 - `utils/chartReadWarnings.ts` reads `readChartWithAi`'s summary for the
   reader's own "Note:" lines (an unreadable page, a doubt it voiced
-  unprompted) and for the dropped-accidentals signature: a key signature
-  of two or more sharps or flats while none of eight or more chord symbols
-  carries any (one accidental is no evidence: a song in G major can go
-  pages without an F♯; a flat on a slash bass counts).
-  `keySignatureSharps` maps majors and minors to their signatures.
+  unprompted) and for the dropped-accidentals signature, judged against
+  the key in force at each measure (since 2026-10-28, stem-bench Study 6):
+  two or more chords rooted on a letter their own key signature alters
+  (the first n of F C G D A E B for sharps, B E A D G C F for flats, n ≥ 2)
+  yet written bare, while no chord symbol in the chart carries an
+  accidental at all, among eight or more chords (one accidental is no
+  evidence: a song in G major can go pages without an F♯; a flat on a
+  slash bass counts). Study 6 measured the earlier pooled rule (the
+  chart's largest signature against every chord) on 148 saved reads: it
+  caught every detectable corrupted read but flagged 4 of 42 clean ones,
+  honest sharp-key charts whose chords legitimately carry none; scoping
+  to the key in force kept 10 of 10 and flagged 1 of 42, a read that had
+  placed a modulation late. The warning names both causes, a file that
+  lost its accidentals or a misread. `keySignatureSharps` maps majors and
+  minors to their signatures.
 - `askAiAboutMix` runs it on a read score (never on the band's own chart,
   which is not a read) and returns the lines as `AiAnswer.warnings`.
 - The song page shows them in amber on the AI card, and `askAiWithScore`
