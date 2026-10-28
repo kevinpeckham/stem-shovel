@@ -101,9 +101,16 @@ describe("GlobalNav", () => {
 		await user.click(screen.getByRole("button", { name: "Music" }));
 		expect(screen.getAllByRole("menuitem").map((el) => el.textContent?.trim())).toEqual([
 			"Projects",
+			"Songs",
 			"Sessions",
+			"Set lists",
 			"Ideas",
 		]);
+		expect(screen.getByRole("menuitem", { name: /Songs/ })).toHaveAttribute("href", "/songs");
+		expect(screen.getByRole("menuitem", { name: /Set lists/ })).toHaveAttribute(
+			"href",
+			"/mine/set-lists",
+		);
 		expect(screen.getByRole("menuitem", { name: /Sessions/ })).toHaveAttribute(
 			"href",
 			"/mine/sessions",

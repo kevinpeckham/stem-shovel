@@ -31,6 +31,8 @@ export const sessionRecording = table(
 		title: t.text("title").notNull().default(""),
 		/** The day it was recorded, `YYYY-MM-DD`. */
 		recordedOn: t.text("recorded_on").notNull(),
+		/** The band's own order within the session (migration 0106), dragged on the Sessions page as songs are on a project; ties fall back to the recording's day and upload time. */
+		sortOrder: t.integer("sort_order").notNull().default(0),
 		notes: t.text("notes").notNull().default(""),
 		/** Where it was captured ("Kevin's phone", "Room mic"): tells apart recordings of one performance from several devices; empty for unknown. */
 		source: t.text("source").notNull().default(""),

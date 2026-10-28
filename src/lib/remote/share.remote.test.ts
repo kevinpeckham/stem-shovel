@@ -151,6 +151,36 @@ describe("createShareLink", () => {
 			call(share.createShareLink, { sessionId: SESSION, recordingId: fakeId("rec-one") }),
 		).rejects.toBeDefined();
 	});
+	it("a link for a set list (docs/band-plan.md): the set list's account, the set list recorded", async () => {
+		const SET_LIST = fakeId("setlist-one");
+		givenRow("setList", { accountId: ACCOUNT });
+		asOutsider();
+		await expect(call(share.createShareLink, { setListId: SET_LIST })).rejects.toMatchObject(
+			httpError(404),
+		);
+		asViewerOf(ACCOUNT);
+		await expect(call(share.createShareLink, { setListId: SET_LIST })).rejects.toMatchObject(
+			httpError(404),
+		);
+		expect(data.createShareLink).not.toHaveBeenCalled();
+		asEditorOf(ACCOUNT);
+		await expect(call(share.createShareLink, { setListId: SET_LIST })).resolves.toEqual({
+			code: "abc",
+		});
+		expect(data.createShareLink).toHaveBeenLastCalledWith(
+			ACCOUNT,
+			USER,
+			{ setListId: SET_LIST },
+			{ note: "", maxUses: null, expiresDays: 0 },
+		);
+		givenRow("setList", null);
+		await expect(call(share.createShareLink, { setListId: SET_LIST })).rejects.toMatchObject(
+			httpError(404),
+		);
+		await expect(
+			call(share.createShareLink, { setListId: SET_LIST, songId: SONG }),
+		).rejects.toBeDefined();
+	});
 	it("an editor makes one for a song, or a project, under the account and as themselves", async () => {
 		asEditorOf(ACCOUNT);
 		await expect(call(share.createShareLink, { songId: SONG })).resolves.toEqual({ code: "abc" });

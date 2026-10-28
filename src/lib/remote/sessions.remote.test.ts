@@ -110,6 +110,16 @@ const cases = [
 		outcome: { deleted: true },
 		missing: "sessionRecording",
 	},
+	{
+		name: "reorderRecordings",
+		fn: sessions.reorderRecordings,
+		input: { sessionId: SESSION, ids: [RECORDING, fakeId("rec-two")] },
+		arrange: () => data.reorderSessionRecordings.mockResolvedValue(true),
+		dataFn: "reorderSessionRecordings",
+		args: [ACCOUNT, SESSION, [RECORDING, fakeId("rec-two")]],
+		outcome: { ids: [RECORDING, fakeId("rec-two")] },
+		missing: "recordingSession",
+	},
 ];
 
 for (const c of cases) {
@@ -153,6 +163,14 @@ it("updateRecording says so when the day does not fit the session", async () => 
 	await expect(
 		call(sessions.updateRecording, { id: RECORDING, ...RECORDING_WORDS }),
 	).rejects.toMatchObject(httpError(409));
+});
+
+it("reorderRecordings: 400 when the ids are not the session's recordings", async () => {
+	asEditorOf(ACCOUNT);
+	data.reorderSessionRecordings.mockResolvedValue(false);
+	await expect(
+		call(sessions.reorderRecordings, { sessionId: SESSION, ids: [RECORDING] }),
+	).rejects.toMatchObject(httpError(400));
 });
 
 it("refuses a date that is not a day", async () => {

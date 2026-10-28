@@ -61,6 +61,7 @@ import {
 	deleteIdeaRows,
 	deleteCommentRows,
 	deleteSessionReviewRows,
+	deleteSetListRows,
 	deleteSongRows,
 	deleteUserDocRows,
 	deleteUserRows,
@@ -95,6 +96,7 @@ import {
 } from "#lib/constants/notationFormats.js";
 import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { MAX_SESSIONS_PER_ACCOUNT, type SessionKind } from "#lib/constants/sessionRecordings.js";
+import { MAX_SET_LIST_ITEMS, MAX_SET_LISTS_PER_ACCOUNT } from "#lib/val/SetListSchema.js";
 import type { SessionDevice } from "#lib/val/SessionRecordingSchema.js";
 import { PlaybackEqSchema, type PlaybackEqSettings } from "#lib/val/PlaybackEqSchema.js";
 import { normalizePlaybackEq } from "#lib/utils/normalizePlaybackEq.js";
@@ -238,6 +240,8 @@ const {
 	studioComment,
 	user,
 	dashboardPin,
+	setList,
+	setListItem,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -3113,6 +3117,7 @@ export async function createShareLink(
 		mixId?: string;
 		recordingId?: string;
 		sessionId?: string;
+		setListId?: string;
 	},
 	opts: { note: string; maxUses: number | null; expiresDays: number },
 ) {
@@ -3125,6 +3130,7 @@ export async function createShareLink(
 			mixId: target.mixId ?? null,
 			recordingId: target.recordingId ?? null,
 			sessionId: target.sessionId ?? null,
+			setListId: target.setListId ?? null,
 			code: newCode(),
 			note: opts.note,
 			createdBy,
@@ -3148,16 +3154,18 @@ type ShareLinkTarget =
 	| { songId: string }
 	| { projectId: string }
 	| { recordingId: string }
-	| { sessionId: string };
+	| { sessionId: string }
+	| { setListId: string };
 
 function shareLinkWhere(target: ShareLinkTarget) {
 	if ("songId" in target) return eq(shareLink.songId, target.songId);
 	if ("recordingId" in target) return eq(shareLink.recordingId, target.recordingId);
 	if ("sessionId" in target) return eq(shareLink.sessionId, target.sessionId);
+	if ("setListId" in target) return eq(shareLink.setListId, target.setListId);
 	return eq(shareLink.projectId, target.projectId);
 }
 
-/** The links made for one song, one project, one session or one session recording, newest first, with whether each still works. */
+/** The links made for one song, one project, one session, one session recording or one set list, newest first, with whether each still works. */
 export async function listShareLinks(target: ShareLinkTarget) {
 	const rows = await db.query.shareLink.findMany({
 		where: shareLinkWhere(target),
@@ -3216,6 +3224,7 @@ export async function openShareLinks(codes: string[]): Promise<ShareGrant[]> {
 			songId: r.songId,
 			recordingId: r.recordingId,
 			sessionId: r.sessionId,
+			setListId: r.setListId,
 		}));
 }
 
@@ -3268,14 +3277,29 @@ async function sessionShareTarget(link: {
 	return s ? `/${s.account.slug}/sessions/s/${s.id}` : null;
 }
 
-/** The page a share link opens (`/s/<code>`): the song's or the project's current address, a mix's page (docs/mixes.md), a session's or a session recording's; null when no such code. */
+/** The page a share link opens (`/s/<code>`): the song's or the project's current address, a mix's page (docs/mixes.md), a session's or a session recording's, a set list's show view (docs/band-plan.md); null when no such code. */
 export async function shareLinkTarget(code: string): Promise<string | null> {
 	const link = await db.query.shareLink.findFirst({
 		where: eq(shareLink.code, code),
-		columns: { songId: true, projectId: true, mixId: true, recordingId: true, sessionId: true },
+		columns: {
+			songId: true,
+			projectId: true,
+			mixId: true,
+			recordingId: true,
+			sessionId: true,
+			setListId: true,
+		},
 	});
 	if (!link) return null;
 	if (link.recordingId || link.sessionId) return sessionShareTarget(link);
+	if (link.setListId) {
+		const l = await db.query.setList.findFirst({
+			where: eq(setList.id, link.setListId),
+			columns: { id: true },
+			with: { account: { columns: { slug: true } } },
+		});
+		return l ? `/${l.account.slug}/set-lists/${l.id}/show` : null;
+	}
 	if (link.songId) {
 		const s = await db.query.song.findFirst({
 			where: eq(song.id, link.songId),
@@ -4043,6 +4067,13 @@ export async function createSessionRecording(
 				place: input.place,
 			}));
 	}
+	// A session the band has put in order takes the new one last; one never reordered (all 0) keeps the day order.
+	const [{ last } = { last: null }] = await db
+		.select({ last: sql<number | null>`max(${sessionRecording.sortOrder})` })
+		.from(sessionRecording)
+		.where(
+			and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.sessionId, session.id)),
+		);
 	const id = nanoid();
 	const [row] = await db
 		.insert(sessionRecording)
@@ -4050,6 +4081,7 @@ export async function createSessionRecording(
 			id,
 			accountId,
 			sessionId: session.id,
+			sortOrder: last ? last + 1 : 0,
 			title: input.title || labelFromFilename(input.filename),
 			source: input.source ?? "",
 			device: input.device ?? "",
@@ -4105,9 +4137,16 @@ export async function failSessionRecording(accountId: string, recordingId: strin
 	if (row) await deleteBlobs([url]);
 }
 
+/** A session's recordings in the band's order (reorderSessionRecordings), then the order they were made (day, then upload). */
+const sessionRecordingOrder = () => [
+	asc(sessionRecording.sortOrder),
+	asc(sessionRecording.recordedOn),
+	asc(sessionRecording.createdAt),
+];
+
 /**
  * The account's sessions, newest first, each with its ready recordings in
- * the order they were made (day, then upload), and who uploaded each.
+ * the band's order, else the order they were made (day, then upload), and who uploaded each.
  * Sessions with nothing ready yet are listed too (a name given before the
  * upload finished).
  */
@@ -4119,7 +4158,7 @@ export async function listRecordingSessions(accountId: string) {
 		}),
 		db.query.sessionRecording.findMany({
 			where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.status, "ready")),
-			orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
+			orderBy: sessionRecordingOrder(),
 			with: {
 				uploader: { columns: { id: true, name: true } },
 				song: {
@@ -4226,6 +4265,35 @@ export async function deleteSessionRecording(accountId: string, recordingId: str
 	return true;
 }
 
+/** The session's ready recordings in the given order, top first; false unless `ids` names every one of them exactly once. */
+export async function reorderSessionRecordings(
+	accountId: string,
+	sessionId: string,
+	ids: string[],
+) {
+	const rows = await db.query.sessionRecording.findMany({
+		where: and(
+			eq(sessionRecording.accountId, accountId),
+			eq(sessionRecording.sessionId, sessionId),
+			eq(sessionRecording.status, "ready"),
+		),
+		columns: { id: true, sortOrder: true },
+		orderBy: sessionRecordingOrder(),
+	});
+	const named = new Set(ids);
+	if (rows.length === 0 || named.size !== ids.length || ids.length !== rows.length) return false;
+	if (!rows.every((r) => named.has(r.id))) return false;
+	const moved = reorderById(rows, ids).flatMap((row, i) =>
+		row.sortOrder === i ? [] : [{ id: row.id, sortOrder: i }],
+	);
+	for (const m of moved)
+		await db
+			.update(sessionRecording)
+			.set({ sortOrder: m.sortOrder })
+			.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, m.id)));
+	return true;
+}
+
 /** A session with the recordings whose MP3 is ready, for the download (api/recording-sessions/[id]/mp3.zip). */
 export async function sessionMp3s(accountId: string, sessionId: string) {
 	const session = await db.query.recordingSession.findFirst({
@@ -4239,7 +4307,7 @@ export async function sessionMp3s(accountId: string, sessionId: string) {
 			eq(sessionRecording.status, "ready"),
 			eq(sessionRecording.playbackStatus, "ready"),
 		),
-		orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
+		orderBy: sessionRecordingOrder(),
 		columns: {
 			id: true,
 			title: true,
@@ -4334,7 +4402,7 @@ export async function recordingSessionPage(accountId: string, sessionId: string)
 			eq(sessionRecording.sessionId, sessionId),
 			eq(sessionRecording.status, "ready"),
 		),
-		orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
+		orderBy: sessionRecordingOrder(),
 		with: { uploader: { columns: { name: true } } },
 	});
 	return {
@@ -10084,15 +10152,6 @@ export async function setDashboardPin(
 		);
 }
 
-/** The account a recording session belongs to, or null when there is no such session. */
-export async function accountOfRecordingSession(sessionId: string): Promise<string | null> {
-	const row = await db.query.recordingSession.findFirst({
-		where: eq(recordingSession.id, sessionId),
-		columns: { accountId: true },
-	});
-	return row?.accountId ?? null;
-}
-
 /** The account's storage used against its plan, for the dashboard tile of an owner or admin: bytes stored (`accountStorageBytes`) and the plan's limits (null = unlimited, a founder account). */
 export async function accountQuota(accountId: string) {
 	const [bytes, row] = await Promise.all([
@@ -10172,5 +10231,414 @@ export function recentUserIdeas(userId: string, kind: IdeaKind, n: number) {
 		orderBy: [desc(idea.createdAt)],
 		limit: n,
 		columns: { id: true, title: true, kind: true, createdAt: true },
+	});
+}
+
+// ---- set lists (docs/band-plan.md, phase 1) ---------------------------------
+
+/** What a set list row knows of its song: where it lives, what `canViewSong` reads, and whether the show view has a chart or lyrics to open. */
+export interface SetListSongFacts {
+	id: string;
+	slug: string;
+	title: string;
+	isPrivate: boolean;
+	projectId: string;
+	project: { slug: string; name: string; isPrivate: boolean; isRestricted: boolean };
+	hasChart: boolean;
+	hasLyrics: boolean;
+}
+
+/**
+ * One row of a set list: a song of the catalog (`song`, null once the song
+ * or its project is gone or archived) or free text. `title` is the song's
+ * current title while it has one, else the row's own (the song's title when
+ * it was added, or the free text).
+ */
+export interface SetListItemRow {
+	id: string;
+	songId: string | null;
+	title: string;
+	note: string;
+	sortOrder: number;
+	song: SetListSongFacts | null;
+}
+
+/** The `with` that loads a row's song with the facts `SetListSongFacts` needs. */
+const setListItemWith = {
+	song: {
+		columns: {
+			id: true,
+			accountId: true,
+			slug: true,
+			title: true,
+			isPrivate: true,
+			projectId: true,
+			status: true,
+			chartMarkdown: true,
+			lyricsMarkdown: true,
+		},
+		with: {
+			project: {
+				columns: { slug: true, name: true, isPrivate: true, isRestricted: true, status: true },
+			},
+		},
+	},
+} as const;
+
+interface LoadedSetListItem {
+	id: string;
+	songId: string | null;
+	title: string;
+	note: string;
+	sortOrder: number;
+	song?: {
+		id: string;
+		accountId: string;
+		slug: string;
+		title: string;
+		isPrivate: boolean;
+		projectId: string;
+		status: string;
+		chartMarkdown: string;
+		lyricsMarkdown: string;
+		project: {
+			slug: string;
+			name: string;
+			isPrivate: boolean;
+			isRestricted: boolean;
+			status: string;
+		};
+	} | null;
+}
+
+/** A loaded row as the pages read it: the song only while it is the account's and active in an active project. */
+function setListItemRow(accountId: string, r: LoadedSetListItem): SetListItemRow {
+	const s =
+		r.song &&
+		r.song.accountId === accountId &&
+		r.song.status === "active" &&
+		r.song.project.status === "active"
+			? r.song
+			: null;
+	return {
+		id: r.id,
+		songId: r.songId,
+		title: s?.title ?? r.title,
+		note: r.note,
+		sortOrder: r.sortOrder,
+		song: s
+			? {
+					id: s.id,
+					slug: s.slug,
+					title: s.title,
+					isPrivate: s.isPrivate,
+					projectId: s.projectId,
+					project: {
+						slug: s.project.slug,
+						name: s.project.name,
+						isPrivate: s.project.isPrivate,
+						isRestricted: s.project.isRestricted,
+					},
+					hasChart: s.chartMarkdown.trim() !== "",
+					hasLyrics: s.lyricsMarkdown.trim() !== "",
+				}
+			: null,
+	};
+}
+
+/** The set list when it is the account's, else null. */
+async function ownSetList(accountId: string, id: string) {
+	return (
+		(await db.query.setList.findFirst({
+			where: and(eq(setList.accountId, accountId), eq(setList.id, id)),
+			columns: { id: true },
+		})) ?? null
+	);
+}
+
+/** A row of the set list changed: the list moves to the top of "last updated". */
+async function touchSetList(accountId: string, id: string) {
+	await db
+		.update(setList)
+		.set({ updatedAt: new Date() })
+		.where(and(eq(setList.accountId, accountId), eq(setList.id, id)));
+}
+
+/** A row with its set list's account, or null when it is not this account's. */
+async function ownSetListItem(accountId: string, itemId: string) {
+	const r = await db.query.setListItem.findFirst({
+		where: eq(setListItem.id, itemId),
+		with: { setList: { columns: { id: true, accountId: true } }, ...setListItemWith },
+	});
+	return r && r.setList.accountId === accountId ? r : null;
+}
+
+/** The account's set lists, last updated first, with how many rows each holds and who made it. */
+export async function listSetLists(accountId: string) {
+	const rows = await db.query.setList.findMany({
+		where: eq(setList.accountId, accountId),
+		orderBy: [desc(setList.updatedAt), desc(setList.createdAt)],
+		columns: { id: true, title: true, notes: true, createdAt: true, updatedAt: true },
+		with: { creator: { columns: { name: true } }, items: { columns: { id: true } } },
+	});
+	return rows.map((r) => ({
+		id: r.id,
+		title: r.title,
+		notes: r.notes,
+		createdAt: r.createdAt,
+		updatedAt: r.updatedAt,
+		itemCount: r.items.length,
+		creator: r.creator ? { name: r.creator.name } : null,
+	}));
+}
+
+/**
+ * A set list for its editor and its show view: the list and its rows in
+ * order, each with its song's facts (the page leaves out the songs the
+ * person may not open, `canViewSong`). Null when it is not the account's.
+ */
+export async function setListPage(
+	accountId: string,
+	id: string,
+): Promise<{
+	setList: {
+		id: string;
+		accountId: string;
+		title: string;
+		notes: string;
+		createdAt: Date;
+		updatedAt: Date;
+		createdBy: string | null;
+	};
+	items: SetListItemRow[];
+} | null> {
+	const l = await db.query.setList.findFirst({
+		where: and(eq(setList.accountId, accountId), eq(setList.id, id)),
+		columns: {
+			id: true,
+			accountId: true,
+			title: true,
+			notes: true,
+			createdAt: true,
+			updatedAt: true,
+			createdBy: true,
+		},
+	});
+	if (!l) return null;
+	const rows = await db.query.setListItem.findMany({
+		where: eq(setListItem.setListId, id),
+		orderBy: [asc(setListItem.sortOrder), asc(setListItem.createdAt)],
+		with: setListItemWith,
+	});
+	return { setList: l, items: rows.map((r) => setListItemRow(accountId, r)) };
+}
+
+/** A new set list; null when the account already holds `MAX_SET_LISTS_PER_ACCOUNT`. */
+export async function createSetList(
+	accountId: string,
+	createdBy: string,
+	input: { title: string; notes: string },
+) {
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(setList)
+		.where(eq(setList.accountId, accountId));
+	if (n >= MAX_SET_LISTS_PER_ACCOUNT) return null;
+	const [row] = await db
+		.insert(setList)
+		.values({ accountId, title: input.title, notes: input.notes, createdBy })
+		.returning();
+	return row!;
+}
+
+export async function updateSetList(
+	accountId: string,
+	id: string,
+	input: { title: string; notes: string },
+) {
+	const [row] = await db
+		.update(setList)
+		.set({ title: input.title, notes: input.notes })
+		.where(and(eq(setList.accountId, accountId), eq(setList.id, id)))
+		.returning();
+	return row ?? null;
+}
+
+/** The set list, its rows and the links that opened it (cascade.ts). */
+export async function deleteSetList(accountId: string, id: string) {
+	if (!(await ownSetList(accountId, id))) return false;
+	await deleteSetListRows([id]);
+	return true;
+}
+
+/**
+ * A row at the end of the set list: a song of the account (its current
+ * title stored, so the row still reads right once the song is gone) or free
+ * text. Null when the set list is not the account's or the song is not one
+ * of its active songs; "full" at `MAX_SET_LIST_ITEMS`.
+ */
+export async function addSetListItem(
+	accountId: string,
+	setListId: string,
+	input: { songId: string | null; title: string; note: string },
+): Promise<SetListItemRow | "full" | null> {
+	if (!(await ownSetList(accountId, setListId))) return null;
+	let title = input.title;
+	if (input.songId) {
+		const s = await db.query.song.findFirst({
+			where: and(
+				eq(song.accountId, accountId),
+				eq(song.id, input.songId),
+				eq(song.status, "active"),
+			),
+			columns: { title: true },
+			with: { project: { columns: { status: true } } },
+		});
+		if (!s || s.project.status !== "active") return null;
+		title = s.title;
+	}
+	const [stats] = await db
+		.select({ n: sql<number>`count(*)`, last: sql<number | null>`max(${setListItem.sortOrder})` })
+		.from(setListItem)
+		.where(eq(setListItem.setListId, setListId));
+	if (Number(stats?.n ?? 0) >= MAX_SET_LIST_ITEMS) return "full";
+	const [row] = await db
+		.insert(setListItem)
+		.values({
+			setListId,
+			songId: input.songId,
+			title,
+			note: input.note,
+			sortOrder: (stats?.last ?? -1) + 1,
+		})
+		.returning({ id: setListItem.id });
+	await touchSetList(accountId, setListId);
+	const added = await ownSetListItem(accountId, row!.id);
+	return added ? setListItemRow(accountId, added) : null;
+}
+
+/** A row's note, and a free-text row's title (kept when sent empty); a song row's title stays the song's. */
+export async function updateSetListItem(
+	accountId: string,
+	itemId: string,
+	input: { title: string; note: string },
+): Promise<SetListItemRow | null> {
+	const r = await ownSetListItem(accountId, itemId);
+	if (!r) return null;
+	const patch = r.songId || input.title === "" ? { note: input.note } : input;
+	await db.update(setListItem).set(patch).where(eq(setListItem.id, itemId));
+	await touchSetList(accountId, r.setList.id);
+	return setListItemRow(accountId, { ...r, ...patch });
+}
+
+export async function deleteSetListItem(accountId: string, itemId: string) {
+	const r = await ownSetListItem(accountId, itemId);
+	if (!r) return false;
+	await db.delete(setListItem).where(eq(setListItem.id, itemId));
+	await touchSetList(accountId, r.setList.id);
+	return true;
+}
+
+/** The set list's rows in the given order; false unless `ids` names every row of it exactly once. */
+export async function reorderSetListItems(accountId: string, setListId: string, ids: string[]) {
+	if (!(await ownSetList(accountId, setListId))) return false;
+	const rows = await db.query.setListItem.findMany({
+		where: eq(setListItem.setListId, setListId),
+		columns: { id: true, sortOrder: true },
+		orderBy: [asc(setListItem.sortOrder), asc(setListItem.createdAt)],
+	});
+	const named = new Set(ids);
+	if (named.size !== ids.length || ids.length !== rows.length) return false;
+	if (!rows.every((r) => named.has(r.id))) return false;
+	const moved = reorderById(rows, ids).flatMap((row, i) =>
+		row.sortOrder === i ? [] : [{ id: row.id, sortOrder: i }],
+	);
+	await Promise.all(
+		moved.map((m) =>
+			db
+				.update(setListItem)
+				.set({ sortOrder: m.sortOrder })
+				.where(and(eq(setListItem.setListId, setListId), eq(setListItem.id, m.id))),
+		),
+	);
+	await touchSetList(accountId, setListId);
+	return true;
+}
+
+/** The account's active songs in active projects for the set list editor's picker, by title (at most 1000), with what `canViewSong` reads. */
+export async function accountSongChoices(accountId: string) {
+	const rows = await db
+		.select({
+			id: song.id,
+			title: song.title,
+			isPrivate: song.isPrivate,
+			projectId: song.projectId,
+			projectName: project.name,
+			projectSlug: project.slug,
+			projectIsPrivate: project.isPrivate,
+			projectIsRestricted: project.isRestricted,
+		})
+		.from(song)
+		.innerJoin(project, eq(project.id, song.projectId))
+		.where(
+			and(eq(song.accountId, accountId), eq(song.status, "active"), eq(project.status, "active")),
+		)
+		.orderBy(asc(song.title))
+		.limit(1000);
+	return rows.map((r) => ({
+		id: r.id,
+		title: r.title,
+		isPrivate: r.isPrivate,
+		projectId: r.projectId,
+		project: {
+			name: r.projectName,
+			slug: r.projectSlug,
+			isPrivate: r.projectIsPrivate,
+			isRestricted: r.projectIsRestricted,
+		},
+	}));
+}
+
+/**
+ * A copy of the set list to change (docs/band-plan.md, "Duplicate as a new
+ * set list"): its title with " (copy)", its notes and every row in order,
+ * made by `createdBy`. Null when the set list is not the account's or the
+ * account already holds `MAX_SET_LISTS_PER_ACCOUNT`.
+ */
+export async function duplicateSetList(accountId: string, id: string, createdBy: string) {
+	const l = await db.query.setList.findFirst({
+		where: and(eq(setList.accountId, accountId), eq(setList.id, id)),
+		columns: { title: true, notes: true },
+	});
+	if (!l) return null;
+	const copy = await createSetList(accountId, createdBy, {
+		title: `${l.title} (copy)`.slice(0, 120),
+		notes: l.notes,
+	});
+	if (!copy) return null;
+	const rows = await db.query.setListItem.findMany({
+		where: eq(setListItem.setListId, id),
+		columns: { songId: true, title: true, note: true },
+		orderBy: [asc(setListItem.sortOrder), asc(setListItem.createdAt)],
+	});
+	if (rows.length > 0)
+		await db.insert(setListItem).values(
+			rows.map((r, i) => ({
+				setListId: copy.id,
+				songId: r.songId,
+				title: r.title,
+				note: r.note,
+				sortOrder: i,
+			})),
+		);
+	return copy;
+}
+
+/** The chart and lyrics of the account's songs among `songIds`, for a set list's show view (which decides who may read them). */
+export async function setListSongDocs(accountId: string, songIds: string[]) {
+	if (songIds.length === 0) return [];
+	return db.query.song.findMany({
+		where: and(eq(song.accountId, accountId), inArray(song.id, songIds)),
+		columns: { id: true, chartMarkdown: true, lyricsMarkdown: true },
 	});
 }

@@ -3,6 +3,7 @@ import {
 	accountOfProject,
 	accountOfRecordingSession,
 	accountOfSessionRecording,
+	accountOfSetList,
 	accountOfSong,
 	memberOf,
 	isEditor,
@@ -49,13 +50,17 @@ export const setSongPrivate = form(PrivacySchema, async ({ id, isPrivate }) => {
 	return { isPrivate: isPrivate === "true" };
 });
 
-type ShareTarget = Pick<ShareLinkCreate, "songId" | "projectId" | "recordingId" | "sessionId">;
+type ShareTarget = Pick<
+	ShareLinkCreate,
+	"songId" | "projectId" | "recordingId" | "sessionId" | "setListId"
+>;
 
 /** The account the link's target belongs to, as a member of it (a 404 otherwise). */
 function memberForTarget(locals: App.Locals, t: ShareTarget) {
 	if (t.songId) return memberOf(locals, accountOfSong, t.songId);
 	if (t.recordingId) return memberOf(locals, accountOfSessionRecording, t.recordingId);
 	if (t.sessionId) return memberOf(locals, accountOfRecordingSession, t.sessionId);
+	if (t.setListId) return memberOf(locals, accountOfSetList, t.setListId);
 	return memberOf(locals, accountOfProject, t.projectId);
 }
 
@@ -64,10 +69,11 @@ function targetOf(t: ShareTarget, mixId: string) {
 	if (t.songId) return { songId: t.songId, mixId: mixId || undefined };
 	if (t.recordingId) return { recordingId: t.recordingId };
 	if (t.sessionId) return { sessionId: t.sessionId };
+	if (t.setListId) return { setListId: t.setListId };
 	return { projectId: t.projectId };
 }
 
-/** Any member makes a viewing link for a song, a project, a session or a session recording of their account. */
+/** Any member makes a viewing link for a song, a project, a session, a session recording or a set list of their account. */
 export const createShareLink = form(
 	ShareLinkCreateSchema,
 	async ({ mixId, note, maxUses, expiresDays, ...target }) => {

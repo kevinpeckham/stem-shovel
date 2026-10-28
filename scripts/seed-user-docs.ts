@@ -31,6 +31,7 @@ const ORDER = [
 	"chat",
 	"mixes",
 	"sessions",
+	"set-lists",
 	"downloads-and-sharing",
 	"accounts-and-members",
 	"accounts-and-plans",

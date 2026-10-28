@@ -156,6 +156,8 @@ const {
 	songNotation,
 	sessionRecording,
 	recordingSession,
+	setList,
+	setListItem,
 } = schema;
 
 /**
@@ -271,6 +273,25 @@ export async function accountOfRecordingSession(sessionId: string) {
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;
+}
+
+/** A set list's account (docs/band-plan.md). */
+export async function accountOfSetList(setListId: string) {
+	const row = await db.query.setList.findFirst({
+		where: eq(setList.id, setListId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+/** A set list row's account, through its set list. */
+export async function accountOfSetListItem(itemId: string) {
+	const row = await db.query.setListItem.findFirst({
+		where: eq(setListItem.id, itemId),
+		columns: { id: true },
+		with: { setList: { columns: { accountId: true } } },
+	});
+	return row?.setList?.accountId ?? null;
 }
 
 export async function accountOfDemo(demoId: string) {

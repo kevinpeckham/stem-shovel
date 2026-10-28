@@ -9,6 +9,7 @@ import {
 	createRecordingSession,
 	deleteRecordingSession,
 	deleteSessionRecording as removeRecording,
+	reorderSessionRecordings,
 	updateRecordingSession,
 	updateRecordingSessionEq,
 	updateSessionRecording as saveRecording,
@@ -19,6 +20,7 @@ import {
 	RecordingSessionEqSchema,
 	RecordingSessionUpdateSchema,
 	SessionRecordingDeleteSchema,
+	SessionRecordingReorderSchema,
 	SessionRecordingUpdateSchema,
 } from "#lib/val/SessionRecordingSchema.js";
 import { normalizePlaybackEq } from "#lib/utils/normalizePlaybackEq.js";
@@ -106,3 +108,15 @@ export const deleteRecording = command(SessionRecordingDeleteSchema, async ({ id
 	if (!(await removeRecording(accountId, id))) error(404, "Recording not found");
 	return { deleted: true };
 });
+
+/** The session's recordings in the order a member dragged them; 400 unless the ids are every ready recording of it, once each. */
+export const reorderRecordings = command(
+	SessionRecordingReorderSchema,
+	async ({ sessionId, ids }) => {
+		const { locals } = getRequestEvent();
+		const { accountId } = await memberOf(locals, accountOfRecordingSession, sessionId);
+		if (!(await reorderSessionRecordings(accountId, sessionId, ids)))
+			error(400, "The recordings changed; reload the page and try again.");
+		return { ids };
+	},
+);

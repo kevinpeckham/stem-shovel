@@ -54,6 +54,8 @@ const {
 	recording,
 	recordingStem,
 	session,
+	setList,
+	setListItem,
 	shareLink,
 	shortLink,
 	song,
@@ -125,6 +127,8 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(chatRead).where(inArray(chatRead.songId, songIds));
 	await db.delete(songMix).where(inArray(songMix.songId, songIds));
 	await db.delete(shareLink).where(inArray(shareLink.songId, songIds));
+	// A set list keeps its row for a deleted song as free text: the title was the song's when it was added.
+	await db.update(setListItem).set({ songId: null }).where(inArray(setListItem.songId, songIds));
 	await db.delete(demo).where(inArray(demo.songId, songIds));
 	await db.delete(songFile).where(inArray(songFile.songId, songIds));
 	await db.delete(songNotation).where(inArray(songNotation.songId, songIds));
@@ -163,6 +167,14 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 }
 
 /** Ideas with their takes, and a Studio song's sources and revisions (docs/multitrack-recorder.md). */
+/** A set list's rows and the links that opened its show view (docs/band-plan.md), then the set list. */
+export async function deleteSetListRows(setListIds: string[]): Promise<void> {
+	if (setListIds.length === 0) return;
+	await db.delete(setListItem).where(inArray(setListItem.setListId, setListIds));
+	await db.delete(shareLink).where(inArray(shareLink.setListId, setListIds));
+	await db.delete(setList).where(inArray(setList.id, setListIds));
+}
+
 export async function deleteIdeaRows(ideaIds: string[]): Promise<void> {
 	if (ideaIds.length === 0) return;
 	await db.delete(studioComment).where(inArray(studioComment.ideaId, ideaIds));
@@ -263,6 +275,11 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(recordingSession).where(eq(recordingSession.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
 	await db.delete(shareLink).where(eq(shareLink.accountId, accountId));
+	await deleteSetListRows(
+		(await db.select({ id: setList.id }).from(setList).where(eq(setList.accountId, accountId))).map(
+			(r) => r.id,
+		),
+	);
 	await db.update(shortLink).set({ accountId: null }).where(eq(shortLink.accountId, accountId));
 	await db.delete(invitation).where(eq(invitation.accountId, accountId));
 	await db.delete(notification).where(eq(notification.accountId, accountId));
@@ -351,6 +368,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(studioRevision).set({ savedBy: null }).where(eq(studioRevision.savedBy, userId));
 	await db.delete(studioComment).where(eq(studioComment.userId, userId));
 	await db.update(shareLink).set({ createdBy: null }).where(eq(shareLink.createdBy, userId));
+	await db.update(setList).set({ createdBy: null }).where(eq(setList.createdBy, userId));
 	await db.update(shortLink).set({ createdBy: null }).where(eq(shortLink.createdBy, userId));
 	await db.update(song).set({ createdBy: null }).where(eq(song.createdBy, userId));
 	await db

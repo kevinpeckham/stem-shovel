@@ -59,6 +59,9 @@ without a show on the calendar.
 
 ### Set list (`set_list`, `set_list_item`)
 
+**Built 2026-10-28 (v0.192.0)** as below, with the paste import and the
+dashboard section left for v0.193.0; the schema is in docs/data-model.md.
+
 An ordered list of what to play, the account's, named ("Spring tour",
 "Acoustic set", "Tuesday rehearsal"), with notes. Items are either a
 **song from the catalog** (`song_id`, so the item carries the song's

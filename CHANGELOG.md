@@ -8,6 +8,24 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.192.0] - 2026-10-28
+
+### Added
+
+- **Set lists** (docs/band-plan.md, phase 1): an ordered list of what to play, the account's, under Music → Set lists. A set list has a title and notes; its rows are songs from the catalog (tied to the song, following its title, opening its chart and lyrics) or free text (a cover, "break", "encore"), each with a note for the night, dragged or stepped into order. The page lists the account's set lists last changed first with a search; the editor adds songs by title, adds lines, edits notes in place, duplicates and deletes.
+- **Recordings drag into order** on the Sessions page (Kevin's request): the grip at the left of a recording's row lifts it and the others shift, as songs do on a project page; the order holds for every member, the session's page and its zip, and untouched sessions keep the order the recordings were made in.
+- **Show view**: the set list as a phone wants it on stage, big type and high contrast, one row a song with its note, a tap opening the song's chart or lyrics in place; the screen stays awake; it prints. A **viewing link** on the set list (the same links songs and sessions have) opens the show view without signing in, nothing else of the account.
+
+### Changed
+
+- **Songs in the Music menu** (Kevin's request): the header's Music menu lists Projects, Songs, Sessions, Set lists and Ideas, and the footer's Music row matches it.
+- **Long titles on the Sessions page truncate** (Kevin's request): a recording's title and its song's title cut off with an ellipsis when they do not fit, the full title on hover.
+
+### Technical
+
+- `session_recording.sort_order` (migration 0106), `reorderSessionRecordings` and the `reorderRecordings` command.
+- Tables `set_list` and `set_list_item`, `share_link.set_list_id` (migration 0105); `deleteSetListRows` in the cascade; a song's deletion leaves its set-list rows as free text with the title it had. `canViewSetList` in viewAccess; `/s/<code>` resolves a set-list link to its show view. Remote functions in `setLists.remote.ts`; user doc `set-lists` seeded (`bun run db:seed-docs`).
+
 ## [0.191.0] - 2026-10-27
 
 ### Fixed

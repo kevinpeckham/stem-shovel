@@ -21,6 +21,7 @@ const {
 	deleteIdeaRows,
 	deleteProjectRows,
 	deleteSessionReviewRows,
+	deleteSetListRows,
 	deleteSongRows,
 	deleteUserDocRows,
 	deleteUserRows,
@@ -175,6 +176,7 @@ describe("deleteSongRows", () => {
 			"song",
 		]);
 		expect(updates().map((u) => [u.table, u.values])).toEqual([
+			["set_list_item", { songId: null }],
 			["ai_request", { songId: null }],
 			["session_recording", { songId: null }],
 			["beat", { songId: null }],
@@ -187,6 +189,21 @@ describe("deleteSongRows", () => {
 		expect(fake.rows("comment").map((c) => c.id)).toEqual(["c2"]);
 		expect(fake.rows("slugAlias")).toEqual([]);
 		expect(fake.rows("song").map((s) => s.id)).toEqual(["s2"]);
+	});
+	test("a set list keeps its row for the song as free text, with the title it was added under", async () => {
+		fake.reset({
+			song: [{ id: "s1", accountId: "a1" }],
+			setListItem: [
+				{ id: "li1", setListId: "l1", songId: "s1", title: "Old Title" },
+				{ id: "li2", setListId: "l1", songId: "s2", title: "Other" },
+			],
+		});
+		await deleteSongRows(["s1"]);
+		expect(fake.rows("setListItem")).toEqual([
+			{ id: "li1", setListId: "l1", songId: null, title: "Old Title" },
+			{ id: "li2", setListId: "l1", songId: "s2", title: "Other" },
+		]);
+		expect(deletes()).not.toContain("set_list_item");
 	});
 	test("without comments the versions' delete is skipped", async () => {
 		fake.reset({ song: [{ id: "s1", accountId: "a1" }] });
@@ -296,6 +313,41 @@ describe("deleteSessionReviewRows", () => {
 	});
 });
 
+describe("deleteSetListRows", () => {
+	beforeEach(() =>
+		fake.reset({
+			setList: [
+				{ id: "l1", accountId: "a1" },
+				{ id: "l2", accountId: "a1" },
+			],
+			setListItem: [
+				{ id: "li1", setListId: "l1" },
+				{ id: "li2", setListId: "l2" },
+			],
+			shareLink: [
+				{ id: "sh1", setListId: "l1", code: "c1" },
+				{ id: "sh2", setListId: "l2", code: "c2" },
+				{ id: "sh3", songId: "s1", code: "c3" },
+			],
+		}),
+	);
+	test("the rows and the links go before the set list; other set lists stay", async () => {
+		await deleteSetListRows(["l1"]);
+		expect(deletes()).toEqual(["set_list_item", "share_link", "set_list"]);
+		expect(fake.rows("setList").map((l) => l.id)).toEqual(["l2"]);
+		expect(fake.rows("setListItem").map((i) => i.id)).toEqual(["li2"]);
+		expect(fake.rows("shareLink").map((l) => l.id)).toEqual(["sh2", "sh3"]);
+	});
+	test("nothing to delete, no queries", async () => {
+		await deleteSetListRows([]);
+		expect(fake.calls).toEqual([]);
+	});
+	test("covers every table with a foreign key to set_list", async () => {
+		await deleteSetListRows(["l1"]);
+		expect(missingFor(schema.setList)).toEqual([]);
+	});
+});
+
 describe("deleteArtistRows, deleteBugReportRows, deleteUserDocRows", () => {
 	test("credits and members go before the artist", async () => {
 		await deleteArtistRows(["ar1"]);
@@ -346,8 +398,22 @@ describe("deleteAccountRows", () => {
 			],
 			auditLog: [{ id: "au1", accountId: "a1" }],
 			supportRequest: [{ id: "sr1", accountId: "a1" }],
+			setList: [
+				{ id: "l1", accountId: "a1" },
+				{ id: "l2", accountId: "a2" },
+			],
+			setListItem: [
+				{ id: "li1", setListId: "l1" },
+				{ id: "li2", setListId: "l2" },
+			],
 		}),
 	);
+	test("the account's set lists go with their rows; another account's stay", async () => {
+		await deleteAccountRows("a1");
+		expect(fake.rows("setList").map((l) => l.id)).toEqual(["l2"]);
+		expect(fake.rows("setListItem").map((i) => i.id)).toEqual(["li2"]);
+		expect(position("set_list")).toBeGreaterThan(position("set_list_item"));
+	});
 	test("the account goes last, after its projects, artists, ideas and the songs and takes filed outside them", async () => {
 		await deleteAccountRows("a1");
 		const d = deletes();

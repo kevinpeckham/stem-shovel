@@ -1006,6 +1006,18 @@ From building the Studio's streaming voice (static/worklets/stream-voice.js, aud
 - **The singleton engine opens its context once per module**, so a test of the "worklet refused" fallback re-imports it with `vi.resetModules()`.
 - **A 16-tap Kaiser-windowed sinc (β 7, cutoff 0.9 of the lower Nyquist, 512 tabulated phases)** resamples 48 to 44.1 kHz at -72 dB error at 1 kHz and -65 dB at 10 kHz, about 3 ms per second of stereo; 44.1 to 48 at 15 kHz is only -39 dB, the short kernel's roll-off.
 
+## Fallow's audit JSON keeps the new-only verdict under `attribution` (2026-10-28)
+
+From the v0.192.0 release gates (fallow 3.36.0, `bunx fallow audit --format json`):
+
+- **There is no top-level `findings` array.** The document is `{ verdict, summary, attribution, gate_outcomes, dead_code, duplication, complexity, … }`: the per-finding `introduced: true` and `attribution: "introduced" | "worsened" | "inherited"` flags sit on `complexity.findings[]` (with `worsened_metrics`), and the verdict's own tally is `attribution` at the top (`gate: "new-only"`, `worsened`, the counts `dead_code_introduced`, `complexity_introduced`, `complexity_worsened`, `duplication_introduced`, `styling_introduced`). A filter written for a flat `findings[].introduced` reads nothing and reports "0 introduced", which is what the release gate did for several releases: a duplicate export (`accountOfRecordingSession` in both `access.ts` and `data.ts`, from v0.190.0) went unseen until the text output was read. The gate check is now `jq '.attribution'` plus `jq '.complexity.findings[] | select(.introduced or .attribution == "worsened") | {path, name, cyclomatic}'`, with the text output (`bunx fallow audit`) read when the verdict is not pass.
+
+## A module-level Drizzle column reference in data.ts breaks a test that mocks the schema (2026-10-28)
+
+From `src/routes/api/warm/long/server.test.ts` failing after `sessionRecordingOrder` was added to `src/lib/server/data.ts`:
+
+- **`const order = [asc(sessionRecording.sortOrder), …]` at module level runs when data.ts is imported**, and a test that mocks `#lib/server/db/index.js` with a partial `schema` (the warm-function test does, to see which route config a page declares) has no `sessionRecording` there, so the import itself throws `Cannot read properties of undefined (reading 'sortOrder')` from a test about something else. Column references belong inside functions (`const order = () => [...]`), evaluated when a query runs; a shared order is a function, not a constant.
+
 ## OPFS from a Studio page: fast in Chromium, closed in Playwright's Linux WebKit (2026-10-24)
 
 From a spike for the Studio's disk cache of decoded sources (docs/multitrack-recorder.md "Scale and structure"; docs/dawn-daw-plan.md D8), a Playwright page on the dev server's origin writing and reading a four-minute stereo file (46 MB at 16-bit) in the Origin Private File System.

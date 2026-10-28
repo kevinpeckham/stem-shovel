@@ -37,7 +37,7 @@
 	// A visitor sees the name of the account they are viewing.
 	let viewedName = $derived((page.data.account?.name as string | undefined) ?? "");
 
-	// Four menus: Music (a member's own: projects, sessions, ideas; Kevin,
+	// Four menus: Music (a member's own: projects, songs, sessions, ideas; Kevin,
 	// 2026-10-19, in place of the Projects link), Instruments (the drum
 	// machine and the piano), Tools (everyone, every width: the Idea Recorder
 	// for a member, the tuner and the metronome) and the account menu,
@@ -68,7 +68,11 @@
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onMusicPage = $derived(
-		!!member && (active(`/${member.slug}/projects`) || active(`/${member.slug}/sessions`)),
+		!!member &&
+			(active(`/${member.slug}/projects`) ||
+				active("/songs") ||
+				active(`/${member.slug}/sessions`) ||
+				active(`/${member.slug}/set-lists`)),
 	);
 	let onToolPage = $derived(
 		TOOL_PAGES.some(active) ||
@@ -151,6 +155,19 @@
 						</a>
 						<a
 							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								'/songs',
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/songs"
+							title="Every song you can open, across your accounts"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-music-notes w-1em" aria-hidden="true"></span>Songs
+						</a>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 								`/${member.slug}/sessions`,
 							)
 								? 'text-accent'
@@ -161,6 +178,19 @@
 							onclick={() => (openMenu = null)}
 						>
 							<span class="i-ph-cassette-tape w-1em" aria-hidden="true"></span>Sessions
+						</a>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								`/${member.slug}/set-lists`,
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/{member.slug}/set-lists"
+							title="What to play, in order"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-list-numbers w-1em" aria-hidden="true"></span>Set lists
 						</a>
 						<a
 							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(

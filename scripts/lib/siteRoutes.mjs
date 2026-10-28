@@ -59,6 +59,10 @@ export const ROUTES = [
 	["[account]/sessions/r/[recording]", "/{account}/sessions/r/x", [404], [404]],
 	// A whole session's own page: a member's, or the session's share link's; nobody else (an id nobody has: 404 either way).
 	["[account]/sessions/s/[session]", "/{account}/sessions/s/x", [404], [404]],
+	["[account]/set-lists", "/{account}/set-lists", [303], [200]],
+	// A set list's editor (members) and its show view (members, or its viewing link's); an id nobody has: 404 either way.
+	["[account]/set-lists/[id]", "/{account}/set-lists/x", [404], [404]],
+	["[account]/set-lists/[id]/show", "/{account}/set-lists/x/show", [404], [404]],
 	["[account]/artists/[id]", "/{account}/artists/x", [303], [404]],
 	["admin/accounts", "/admin/accounts", [404], [200]],
 	["admin/ai-requests", "/admin/ai-requests", [404], [200]],

@@ -22,6 +22,8 @@ import { sessionComment } from "./sessionComment";
 import { sessionChatMessage } from "./sessionChatMessage";
 import { sessionChatRead } from "./sessionChatRead";
 import { recordingSession } from "./recordingSession";
+import { setList } from "./setList";
+import { setListItem } from "./setListItem";
 import { beat } from "./beat";
 import { chordStyle } from "./chordStyle";
 import { progression } from "./progression";
@@ -337,7 +339,20 @@ export const shareLinkRelations = relations(shareLink, ({ one }) => ({
 		fields: [shareLink.sessionId],
 		references: [recordingSession.id],
 	}),
+	setList: one(setList, { fields: [shareLink.setListId], references: [setList.id] }),
 	creator: one(user, { fields: [shareLink.createdBy], references: [user.id] }),
+}));
+
+export const setListRelations = relations(setList, ({ one, many }) => ({
+	account: one(account, { fields: [setList.accountId], references: [account.id] }),
+	creator: one(user, { fields: [setList.createdBy], references: [user.id] }),
+	items: many(setListItem),
+	shareLinks: many(shareLink),
+}));
+
+export const setListItemRelations = relations(setListItem, ({ one }) => ({
+	setList: one(setList, { fields: [setListItem.setListId], references: [setList.id] }),
+	song: one(song, { fields: [setListItem.songId], references: [song.id] }),
 }));
 
 export const shortLinkRelations = relations(shortLink, ({ one }) => ({

@@ -22,6 +22,8 @@ export * from "./sessionComment";
 export * from "./sessionChatMessage";
 export * from "./sessionChatRead";
 export * from "./recordingSession";
+export * from "./setList";
+export * from "./setListItem";
 export * from "./drumKit";
 export * from "./drumSample";
 export * from "./beat";

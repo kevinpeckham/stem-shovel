@@ -2,18 +2,13 @@ import { error } from "@sveltejs/kit";
 import { command, getRequestEvent } from "$app/server";
 import {
 	accountOfProject,
+	accountOfRecordingSession,
 	accountOfSong,
 	requireMember,
 	requireUser,
 	viewerOf,
 } from "#lib/server/access.js";
-import {
-	accountOfRecordingSession,
-	projectRolesOf,
-	projectViewRow,
-	setDashboardPin,
-	songViewRow,
-} from "#lib/server/data.js";
+import { projectRolesOf, projectViewRow, setDashboardPin, songViewRow } from "#lib/server/data.js";
 import { canViewProject, canViewSong } from "#lib/server/viewAccess.js";
 import { DashboardPinSchema, type DashboardPinKind } from "#lib/val/DashboardPinSchema.js";
 

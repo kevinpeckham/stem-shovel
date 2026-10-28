@@ -94,3 +94,10 @@ export type SessionRecordingUpdate = v.InferOutput<typeof SessionRecordingUpdate
 
 export const SessionRecordingDeleteSchema = v.object({ id: NanoIdSchema });
 export type SessionRecordingDelete = v.InferOutput<typeof SessionRecordingDeleteSchema>;
+
+/** The session's ready recordings in the order a member dragged them, top first; every one of them, once each. */
+export const SessionRecordingReorderSchema = v.object({
+	sessionId: NanoIdSchema,
+	ids: v.pipe(v.array(NanoIdSchema), v.maxLength(500)),
+});
+export type SessionRecordingReorder = v.InferOutput<typeof SessionRecordingReorderSchema>;

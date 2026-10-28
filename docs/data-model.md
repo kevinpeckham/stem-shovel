@@ -450,6 +450,7 @@ table's rows into sessions (one per account, kind, day and place) and
 | session_id             | text → recording_session              | indexed                                                       |
 | title                  | text not null default ''              | the filename minus its extension to begin with                |
 | recorded_on            | text not null                         | `YYYY-MM-DD`                                                  |
+| sort_order             | integer not null default 0            | the band's order within the session (0106); ties by day, time |
 | notes                  | text not null default ''              |                                                               |
 | source                 | text not null default ''              | the input source ("Room mic"), 0093                           |
 | song_id                | text FK → song (set null) null        | the song it records, when one; indexed (0094)                 |
@@ -583,15 +584,50 @@ Primary key `(user_id, kind, target_id)`; indexes on `target_id` and
 rows (`cascade.ts`); a pin of something the person may no longer open
 stays as a row and is left out of the page.
 
+### set_list (`setList`, `account.setLists`)
+
+| column                 | type                        | notes                                   |
+| ---------------------- | --------------------------- | --------------------------------------- |
+| id                     | text PK                     |                                         |
+| account_id             | text FK → account (cascade) |                                         |
+| title                  | text not null               |                                         |
+| notes                  | text not null default ''    | markdown: the plan as a whole           |
+| created_by             | text FK → user (set null)   |                                         |
+| created_at, updated_at | timestamp_ms                | updated_at moves when a row changes too |
+
+A set list (docs/band-plan.md, phase 1, migration 0105): an ordered list
+of what to play, the account's, one body (a show with two sets attaches
+two). Deleted with its rows and its share links (`deleteSetListRows`), and
+with the account. Members see every set list of the account; a share link
+(`share_link.set_list_id`) opens its show view to a visitor.
+
+### set_list_item (`setListItem`, `setList.items`)
+
+| column                 | type                           | notes                                                |
+| ---------------------- | ------------------------------ | ---------------------------------------------------- |
+| id                     | text PK                        |                                                      |
+| set_list_id            | text FK → set_list (cascade)   |                                                      |
+| song_id                | text FK → song (set null) null | a song of the account, or null for free text         |
+| title                  | text not null default ''       | the song's title when added; the row's own otherwise |
+| note                   | text not null default ''       | tonight's key, who counts in, the segue              |
+| sort_order             | integer not null default 0     |                                                      |
+| created_at, updated_at | timestamp_ms                   |                                                      |
+
+A song's row shows the song's current title while the song is active and
+keeps `title` for when the song is gone: the song's deletion clears
+`song_id` and leaves the row as free text (`cascade.ts`). At most
+`MAX_SET_LIST_ITEMS` (200) rows a set list.
+
 ### share_link
 
 | column       | type                          | notes                               |
 | ------------ | ----------------------------- | ----------------------------------- |
 | id           | text PK                       |                                     |
-| song_id      | text FK → song (cascade)      | exactly one of the four targets     |
+| song_id      | text FK → song (cascade)      | exactly one of the five targets     |
 | project_id   | text FK → project             | opens every song in it              |
 | recording_id | text FK → session_recording   | one session recording's page        |
 | session_id   | text FK → recording_session   | a whole session's page (0103)       |
+| set_list_id  | text FK → set_list (cascade)  | a set list's show view (0105)       |
 | mix_id       | text FK → song_mix (set null) | a song link that opens on a mix     |
 | token        | text not null unique          | nanoid(32); the URL is `/s/<token>` |
 | expires_at   | timestamp_ms null             | null = never                        |

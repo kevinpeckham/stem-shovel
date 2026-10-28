@@ -12,6 +12,7 @@ describe("ShareLinkCreateSchema", () => {
 			projectId: "",
 			recordingId: "",
 			sessionId: "",
+			setListId: "",
 			note: "",
 			maxUses: null,
 			expiresDays: 0,
@@ -25,6 +26,12 @@ describe("ShareLinkCreateSchema", () => {
 			false,
 		);
 		expect(v.safeParse(ShareLinkCreateSchema, { sessionId: "not an id!" }).success).toBe(false);
+		// A set list's link (docs/band-plan.md) opens its show view; still one target at a time.
+		expect(v.parse(ShareLinkCreateSchema, { setListId: id })).toMatchObject({ setListId: id });
+		expect(v.safeParse(ShareLinkCreateSchema, { setListId: id, songId: id }).success).toBe(false);
+		expect(v.safeParse(ShareLinkCreateSchema, { setListId: id, sessionId: id }).success).toBe(
+			false,
+		);
 		expect(
 			v.parse(ShareLinkCreateSchema, { projectId: id, maxUses: "3", expiresDays: "30" }),
 		).toMatchObject({ projectId: id, maxUses: 3, expiresDays: 30 });

@@ -4,6 +4,7 @@ import {
 	canEditProject,
 	canViewRecording,
 	canViewSession,
+	canViewSetList,
 	canViewProject,
 	canViewSong,
 	NOBODY,
@@ -154,6 +155,23 @@ describe("canViewSession", () => {
 			canViewSession(session, NOBODY, [
 				{ code: "z", projectId: null, songId: null, recordingId: "r1" },
 			]),
+		).toBe(false);
+	});
+});
+
+describe("canViewSetList", () => {
+	const list = { id: "l1" };
+	const grantL1 = [{ code: "l", projectId: null, songId: null, setListId: "l1" }];
+	test("the account's members, a viewer-role member included", () => {
+		expect(canViewSetList(list, member, [])).toBe(true);
+		expect(canViewSetList(list, { accountRole: "viewer", projectRoles: {} }, [])).toBe(true);
+		expect(canViewSetList(list, NOBODY, [])).toBe(false);
+	});
+	test("a visitor holding the set list's link, not another's or a session's", () => {
+		expect(canViewSetList(list, NOBODY, grantL1)).toBe(true);
+		expect(canViewSetList({ id: "l2" }, NOBODY, grantL1)).toBe(false);
+		expect(
+			canViewSetList(list, NOBODY, [{ code: "s", projectId: null, songId: null, sessionId: "l1" }]),
 		).toBe(false);
 	});
 });

@@ -47,6 +47,27 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	await expect(sessions.first().locator("h2")).toContainText("The Elbow Room ·");
 	await expect(page.locator("[data-recording]").first()).toContainText("Phone · Kevin's phone");
 
+	// The band's own order: the grip moves a recording by the arrow keys too (the pointer drag shares
+	// the code), the order holds across a reload, and it is put back so the rest reads as uploaded.
+	const rows = page.locator("[data-recording]");
+	const uploadedFirst = await rows.first().getAttribute("data-recording");
+	await rows
+		.first()
+		.getByRole("button", { name: /^Move / })
+		.focus();
+	await page.keyboard.press("ArrowDown");
+	await expect(page.getByText("Recording order saved")).toBeVisible();
+	await page.reload({ waitUntil: "networkidle" });
+	await expect(rows.nth(1)).toHaveAttribute("data-recording", uploadedFirst!);
+	await rows
+		.nth(1)
+		.getByRole("button", { name: /^Move / })
+		.focus();
+	await page.keyboard.press("ArrowUp");
+	await expect(page.getByText("Recording order saved")).toBeVisible();
+	await page.reload({ waitUntil: "networkidle" });
+	await expect(rows.first()).toHaveAttribute("data-recording", uploadedFirst!);
+
 	// The player: Play all starts the first, Next moves on, the row's button pauses.
 	await sessions.first().getByRole("button", { name: "Play all" }).click();
 	const player = page.locator("[data-session-player]");

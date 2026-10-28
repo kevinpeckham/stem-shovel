@@ -22,6 +22,8 @@ export interface ShareGrant {
 	recordingId?: string | null;
 	/** A link for a whole session: every recording of it, and its own page. */
 	sessionId?: string | null;
+	/** A link for a set list (docs/band-plan.md): its show view. */
+	setListId?: string | null;
 }
 
 export interface Viewer {
@@ -119,6 +121,19 @@ export function canViewSession(
 ): boolean {
 	if (who.accountRole !== null) return true;
 	return grants.some((g) => g.sessionId === session.id);
+}
+
+/**
+ * A set list (docs/band-plan.md, phase 1): the account's members on its
+ * pages; a visitor holding its link sees the show view alone.
+ */
+export function canViewSetList(
+	setList: { id: string },
+	who: Viewer,
+	grants: ShareGrant[],
+): boolean {
+	if (who.accountRole !== null) return true;
+	return grants.some((g) => g.setListId === setList.id);
 }
 
 /** Who may change a project and what is in it. */

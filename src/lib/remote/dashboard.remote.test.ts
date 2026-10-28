@@ -40,7 +40,7 @@ beforeEach(() => {
 	resetRemoteMocks();
 	givenRow("song", { accountId: ACCOUNT });
 	givenRow("project", { accountId: ACCOUNT });
-	data.accountOfRecordingSession.mockResolvedValue(ACCOUNT);
+	givenRow("recordingSession", { accountId: ACCOUNT });
 	data.songViewRow.mockResolvedValue(songRow());
 	data.projectViewRow.mockResolvedValue(projectRow());
 });
@@ -56,7 +56,7 @@ describe("setPin", () => {
 		asMemberOf(ACCOUNT);
 		givenRow("song", null);
 		await expect(call(dashboard.setPin, input)).rejects.toMatchObject(httpError(404));
-		data.accountOfRecordingSession.mockResolvedValue(null);
+		givenRow("recordingSession", null);
 		await expect(
 			call(dashboard.setPin, { kind: "session", id: SESSION, pinned: true }),
 		).rejects.toMatchObject(httpError(404));
@@ -78,7 +78,6 @@ describe("setPin", () => {
 		await expect(
 			call(dashboard.setPin, { kind: "session", id: SESSION, pinned: true }),
 		).resolves.toEqual({ pinned: true });
-		expect(data.accountOfRecordingSession).toHaveBeenCalledWith(SESSION);
 		expect(data.setDashboardPin).toHaveBeenLastCalledWith(USER, "session", SESSION, ACCOUNT, true);
 	});
 	it("404 for a restricted project, or a song in one, the member is not on", async () => {

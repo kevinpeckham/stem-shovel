@@ -1,7 +1,7 @@
 import { MAX_SESSIONS_PER_ACCOUNT } from "#lib/constants/sessionRecordings.js";
 import { DEFAULT_PLAYBACK_EQ } from "#lib/val/PlaybackEqSchema.js";
 import { beforeEach, describe, expect, test } from "vite-plus/test";
-import { blob, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
+import { blob, callsTo, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
 const {
 	claimSessionPlayback,
@@ -17,6 +17,7 @@ const {
 	parseSessionEq,
 	recordingSessionPage,
 	recordSessionUrl,
+	reorderSessionRecordings,
 	reservedPathname,
 	sessionMp3s,
 	sessionRecordingFile,
@@ -72,6 +73,7 @@ const recording = (
 	playbackBytes: null,
 	playbackStartedAt: null,
 	isPublic: false,
+	sortOrder: 0,
 	uploadedBy: U,
 	createdAt: at("2026-10-17T20:00:00Z"),
 	updatedAt: at("2026-10-17T20:00:00Z"),
@@ -424,6 +426,62 @@ describe("recordingSessionPage", () => {
 	});
 	test("the recording page names its session, for the session's link", async () => {
 		expect(await sessionRecordingPage(A, "r1")).toMatchObject({ sessionId: "p1" });
+	});
+});
+
+describe("reorderSessionRecordings", () => {
+	const order = (sessionId: string) =>
+		recordings()
+			.filter((r) => r.sessionId === sessionId && r.status === "ready")
+			.sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder))
+			.map((r) => r.id);
+	test("the ready recordings take the order given, and every list follows it", async () => {
+		expect(await reorderSessionRecordings(A, "p1", ["r1", "r2"])).toBe(true);
+		expect(order("p1")).toEqual(["r1", "r2"]);
+		// r1 already holds 0; only r2 is written.
+		expect(callsTo("update", "session_recording")).toHaveLength(1);
+		expect((await listRecordingSessions(A))[1]!.recordings.map((r) => r.id)).toEqual(["r1", "r2"]);
+		expect((await recordingSessionPage(A, "p1"))?.recordings.map((r) => r.id)).toEqual([
+			"r1",
+			"r2",
+		]);
+	});
+	test("the same order again writes nothing", async () => {
+		expect(await reorderSessionRecordings(A, "p1", ["r1", "r2"])).toBe(true);
+		expect(await reorderSessionRecordings(A, "p1", ["r1", "r2"])).toBe(true);
+		expect(callsTo("update", "session_recording")).toHaveLength(1);
+	});
+	test("false unless the ids are exactly the session's ready recordings, once each", async () => {
+		for (const ids of [["r1"], ["r1", "r2", "r0"], ["r1", "r1"], ["r1", "r3"]])
+			expect(await reorderSessionRecordings(A, "p1", ids)).toBe(false);
+		// The uploading r4 is not one of them.
+		expect(await reorderSessionRecordings(A, "sh1", ["r4", "r3"])).toBe(false);
+		expect(await reorderSessionRecordings(A, "sh1", ["r3"])).toBe(true);
+		expect(callsTo("update", "session_recording")).toHaveLength(0);
+	});
+	test("another account's session is not found", async () => {
+		expect(await reorderSessionRecordings(B, "p1", ["r1", "r2"])).toBe(false);
+		expect(recordings().every((r) => r.sortOrder === 0)).toBe(true);
+	});
+	test("a new recording goes last in a reordered session, and by day in one never reordered", async () => {
+		await reorderSessionRecordings(A, "p1", ["r1", "r2"]);
+		const file = { filename: "late.wav", contentType: "audio/wav", sizeBytes: 1 };
+		const late = await createSessionRecording(A, U, {
+			sessionId: "p1",
+			kind: "practice",
+			recordedOn: "2026-10-17",
+			place: "",
+			...file,
+		});
+		expect(late).toMatchObject({ sortOrder: 2 });
+		const first = await createSessionRecording(A, U, {
+			sessionId: "p0",
+			kind: "practice",
+			recordedOn: "2026-10-10",
+			place: "",
+			...file,
+		});
+		expect(first).toMatchObject({ sortOrder: 0 });
 	});
 });
 

@@ -28,6 +28,7 @@
 		createSession,
 		deleteRecording,
 		deleteSession,
+		reorderRecordings,
 		saveSessionEq,
 		updateRecording,
 		updateSession,
@@ -36,15 +37,18 @@
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { postJson, saveAs, uploadSessionFile, type SessionReservation } from "#lib/upload.js";
 	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
+	import { dropIndexAt } from "#lib/utils/dropIndexAt.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { unreadCount } from "#lib/utils/groupChat.js";
 	import { dayFitsSession, localDay } from "#lib/utils/isoDay.js";
+	import { moveId } from "#lib/utils/moveId.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { recordingDownloadName } from "#lib/utils/recordingDownloadName.js";
 	import { recordingInputText } from "#lib/utils/recordingInputText.js";
+	import { reorderById } from "#lib/utils/reorderById.js";
 	import type { SessionDevice } from "#lib/val/SessionRecordingSchema.js";
 	import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 	import { onMount, tick } from "svelte";
@@ -117,6 +121,75 @@
 			paused = true;
 			playerOpen = false;
 		}
+	}
+
+	// ── Reordering a session's recordings (as the project page's songs): a grip is dragged
+	// (pointer events, so touch works and the page does not scroll under it) or moved with
+	// the arrow keys; the list follows live, and the order is saved once the move is done ──
+	let recordingOrder = $state<{ sessionId: string; ids: string[] } | null>(null);
+	let draggingRecording = $state<{ id: string; sessionId: string } | null>(null);
+	let recordingOrderAtStart: string[] = [];
+	/** A session's recordings in the order shown: the saved one, or the one a member is dragging into shape. */
+	const recordingsOf = (s: Session) =>
+		recordingOrder?.sessionId === s.id
+			? reorderById(s.recordings, recordingOrder.ids)
+			: s.recordings;
+	const recordingIds = (s: Session) => recordingsOf(s).map((r) => r.id);
+	function moveRecording(s: Session, r: Recording, index: number) {
+		recordingOrder = { sessionId: s.id, ids: moveId(recordingIds(s), r.id, index) };
+	}
+	async function commitRecordingOrder(s: Session) {
+		const ids = recordingIds(s);
+		if (ids.some((id, i) => id !== recordingOrderAtStart[i])) await saveRecordingOrder(s, ids);
+		recordingOrder = null;
+	}
+	async function saveRecordingOrder(s: Session, ids: string[]) {
+		try {
+			await reorderRecordings({ sessionId: s.id, ids });
+			await invalidateAll();
+			queueFollows(s.id);
+			notify("Recording order saved");
+		} catch (e) {
+			notify(`Could not save the recording order: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	/** A queue playing the session follows its new order. */
+	function queueFollows(sessionId: string) {
+		const saved = data.sessions.find((x) => x.id === sessionId);
+		if (saved && queue.some((t) => t.sessionId === sessionId)) queue = tracksOf(saved);
+	}
+	function recordingGripDown(e: PointerEvent, s: Session, r: Recording) {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		draggingRecording = { id: r.id, sessionId: s.id };
+		recordingOrderAtStart = recordingIds(s);
+	}
+	function recordingGripMove(e: PointerEvent, s: Session, r: Recording) {
+		if (draggingRecording?.id !== r.id) return;
+		const rows = [
+			...document.querySelectorAll<HTMLElement>(
+				`[data-recording-list="${s.id}"] > [data-recording]`,
+			),
+		];
+		const index = dropIndexAt(
+			rows.map((row) => row.getBoundingClientRect()),
+			e.clientY,
+		);
+		if (recordingIds(s).indexOf(r.id) !== index) moveRecording(s, r, index);
+	}
+	function recordingGripUp(s: Session) {
+		if (!draggingRecording) return;
+		draggingRecording = null;
+		void commitRecordingOrder(s);
+	}
+	function recordingGripKey(e: KeyboardEvent, s: Session, r: Recording) {
+		if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+		e.preventDefault();
+		recordingOrderAtStart = recordingIds(s);
+		const from = recordingOrderAtStart.indexOf(r.id);
+		moveRecording(s, r, from + (e.key === "ArrowUp" ? -1 : 1));
+		void commitRecordingOrder(s);
 	}
 
 	// ── Upload ──
@@ -209,7 +282,14 @@
 		let ticks = 0;
 		const timer = setInterval(() => {
 			if (++ticks > 120) return;
-			if (pending && !busy && !editingSession && !editingRecording && !document.hidden)
+			if (
+				pending &&
+				!busy &&
+				!editingSession &&
+				!editingRecording &&
+				!draggingRecording &&
+				!document.hidden
+			)
 				void invalidateAll();
 		}, 5000);
 		return () => clearInterval(timer);
@@ -243,7 +323,7 @@
 	);
 	/** A session found by its own words shows every recording; one found through a recording shows the ones that matched. */
 	const recordingsShown = (s: Session) =>
-		query && !sessionMatches(s) ? s.recordings.filter(recordingMatches) : s.recordings;
+		query && !sessionMatches(s) ? s.recordings.filter(recordingMatches) : recordingsOf(s);
 
 	// ── The review: comments on a recording, under its row (docs/uploads-and-blob.md, "Sessions" review) ──
 	let membership = $derived(data.memberships?.find((m) => m.accountId === data.account.id));
@@ -826,17 +906,26 @@
 						{/if}
 					{/if}
 				</div>
-				<!-- the recordings, in the order they were made -->
+				<!-- the recordings, in the band's order (members drag them), else the order they were made -->
 				{#if s.recordings.length === 0}
 					<p class="px-5 py-3 text-13px text-dim">No recordings yet.</p>
 				{:else}
-					<ul class="divide-y divide-white/10 text-15px" aria-label="{nameOf(s)} recordings">
+					{@const canReorder = data.canEdit && !query && s.recordings.length > 1}
+					<ul
+						class="divide-y divide-white/10 text-15px {draggingRecording?.sessionId === s.id
+							? 'select-none'
+							: ''}"
+						aria-label="{nameOf(s)} recordings"
+						data-recording-list={s.id}
+					>
 						{#each recordingsShown(s) as r (r.id)}
-							{@const i = s.recordings.indexOf(r)}
+							{@const i = recordingsOf(s).indexOf(r)}
 							{@const playing = current === r.id && !paused}
 							{@const comments = commentsOf(r)}
 							<li
-								class="grid gap-2 px-5 py-2 {current === r.id ? 'bg-white/5' : ''}"
+								class="grid gap-2 px-5 py-2 {current === r.id
+									? 'bg-white/5'
+									: ''} {draggingRecording?.id === r.id ? 'opacity-50' : ''}"
 								data-recording={r.id}
 							>
 								{#if editingRecording === r.id}
@@ -942,6 +1031,25 @@
 									</form>
 								{:else}
 									<div class="flex items-center gap-x-3">
+										{#if canReorder}
+											<button
+												class="shrink-0 self-center cursor-grab touch-none rounded px-0.5 py-2 opacity-50 hover-opacity-100 focus-visible-opacity-100 {draggingRecording?.id ===
+												r.id
+													? 'cursor-grabbing opacity-100'
+													: ''}"
+												type="button"
+												aria-label="Move {titleOf(r)}"
+												title="Drag to reorder, or use the arrow keys"
+												onpointerdown={(e) => recordingGripDown(e, s, r)}
+												onpointermove={(e) => recordingGripMove(e, s, r)}
+												onpointerup={() => recordingGripUp(s)}
+												onpointercancel={() => recordingGripUp(s)}
+												onkeydown={(e) => recordingGripKey(e, s, r)}
+											>
+												<span class="i-ph-dots-six-vertical block text-18px" aria-hidden="true"
+												></span>
+											</button>
+										{/if}
 										<button
 											type="button"
 											class="grid h-9 w-9 shrink-0 place-items-center rounded border border-current/40 bg-transparent text-white active:scale-95 hover-text-accent hover-bg-white/5"
@@ -957,24 +1065,29 @@
 											>{i + 1}</span
 										>
 										<span class="min-w-0 grow">
-											<span class="block truncate font-500" title={r.filename}
-												>{titleOf(r)}{#if r.source || r.device}
+											<span class="flex min-w-0 items-center gap-x-1.5">
+												<span
+													class="min-w-0 truncate font-500"
+													title={r.title && r.title !== r.filename
+														? `${r.title} (${r.filename})`
+														: r.filename}>{titleOf(r)}</span
+												>{#if r.source || r.device}
 													<span
-														class="ml-1.5 rounded border border-white/20 px-1 text-10px font-400 align-middle opacity-85"
+														class="shrink-0 rounded border border-white/20 px-1 text-10px font-400 opacity-85"
 														title="Input device and name"
 														>{recordingInputText(r.device, r.source)}</span
 													>{/if}{#if r.song}
 													<a
-														class="ml-1.5 text-12px font-400 link-dim"
+														class="min-w-0 truncate text-12px font-400 link-dim"
 														href={songHref(r)}
-														title="The song this records">♪ {r.song.title}</a
+														title="The song this records: {r.song.title}">♪ {r.song.title}</a
 													>{/if}{#if r.isPublic}
 													<span
-														class="ml-1.5 rounded-full bg-blue-100/10 px-2 py-0.5 text-xs font-400 text-dim align-middle"
+														class="shrink-0 rounded-full bg-blue-100/10 px-2 py-0.5 text-xs font-400 text-dim"
 														title="Anyone with its page's address can listen and download"
 														>Public</span
-													>{/if}</span
-											>
+													>{/if}
+											</span>
 											<span class="block text-12px text-dim">
 												{#if r.recordedOn !== s.startsOn}{dayText(r.recordedOn)} ·
 												{/if}{r.uploader?.name ?? "someone"} · {formatBytes(

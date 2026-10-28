@@ -2,7 +2,7 @@ import * as v from "valibot";
 import { INVITE_CODE_EXPIRY_DAYS } from "./InviteCodeSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 
-/** A viewing link for one song, one project, one session or one session recording (the form sends exactly one id). */
+/** A viewing link for one song, one project, one session, one session recording or one set list (the form sends exactly one id). */
 export const ShareLinkCreateSchema = v.pipe(
 	v.object({
 		songId: v.optional(v.pipe(v.string(), v.trim()), ""),
@@ -13,6 +13,8 @@ export const ShareLinkCreateSchema = v.pipe(
 		recordingId: v.optional(v.pipe(v.string(), v.trim()), ""),
 		/** A whole session (docs/uploads-and-blob.md, "Sessions"): the link opens its page with every recording. */
 		sessionId: v.optional(v.pipe(v.string(), v.trim()), ""),
+		/** A set list (docs/band-plan.md): the link opens its show view. */
+		setListId: v.optional(v.pipe(v.string(), v.trim()), ""),
 		note: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(80)), ""),
 		/** Empty = unlimited. */
 		maxUses: v.optional(
@@ -36,8 +38,9 @@ export const ShareLinkCreateSchema = v.pipe(
 	}),
 	v.check(
 		(o) =>
-			[o.songId, o.projectId, o.sessionId, o.recordingId].filter((id) => id !== "").length === 1,
-		"A share link is for one song, one project, one session or one recording.",
+			[o.songId, o.projectId, o.sessionId, o.recordingId, o.setListId].filter((id) => id !== "")
+				.length === 1,
+		"A share link is for one song, one project, one session, one recording or one set list.",
 	),
 	v.check((o) => o.songId === "" || v.is(NanoIdSchema, o.songId), "Not a valid id."),
 	v.check((o) => o.projectId === "" || v.is(NanoIdSchema, o.projectId), "Not a valid id."),

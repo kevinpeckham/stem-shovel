@@ -29,8 +29,14 @@
 		<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Music">
 			<span class="text-11px uppercase tracking-wider opacity-60">Music</span>
 			<a class="footer-link" href="/{member.slug}/projects">Projects</a>
+			<a class="footer-link" href="/songs" title="Every song you can open, across your accounts"
+				>Songs</a
+			>
 			<a class="footer-link" href="/{member.slug}/sessions" title="Practice and show recordings"
 				>Sessions</a
+			>
+			<a class="footer-link" href="/{member.slug}/set-lists" title="What to play, in order"
+				>Set lists</a
 			>
 			<a class="footer-link" href="/idea-recorder" title="Your ideas and takes">Ideas</a>
 		</nav>
