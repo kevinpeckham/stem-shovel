@@ -1076,11 +1076,6 @@
 														class="shrink-0 rounded border border-white/20 px-1 text-10px font-400 opacity-85"
 														title="Input device and name"
 														>{recordingInputText(r.device, r.source)}</span
-													>{/if}{#if r.song}
-													<a
-														class="min-w-0 truncate text-12px font-400 link-dim"
-														href={songHref(r)}
-														title="The song this records: {r.song.title}">♪ {r.song.title}</a
 													>{/if}{#if r.isPublic}
 													<span
 														class="shrink-0 rounded-full bg-blue-100/10 px-2 py-0.5 text-xs font-400 text-dim"
@@ -1088,11 +1083,16 @@
 														>Public</span
 													>{/if}
 											</span>
+											{#if r.song}
+												<a
+													class="block max-w-full truncate text-12px link"
+													href={songHref(r)}
+													title="The song this records: {r.song.title}">♪ {r.song.title}</a
+												>
+											{/if}
 											<span class="block text-12px text-dim">
 												{#if r.recordedOn !== s.startsOn}{dayText(r.recordedOn)} ·
-												{/if}{r.uploader?.name ?? "someone"} · {formatBytes(
-													r.sizeBytes,
-												)}{#if r.playbackStatus !== "ready"}
+												{/if}{formatBytes(r.sizeBytes)}{#if r.playbackStatus !== "ready"}
 													· <span class="opacity-80"
 														>{r.playbackStatus === "failed" ? "MP3 failed" : "MP3 rendering…"}</span
 													>{/if}

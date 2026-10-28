@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Sessions page tiles** (Kevin): a recording's linked song sits on its own line under the title, and the tile no longer names who uploaded the recording (the day, when it differs from the session's, the size and the MP3 state remain).
+
 ### Technical
 
 - `db:rerender-sessions` clears a failed rendition too (status and attempt time), so the next visit to the account's Sessions page retries at once instead of waiting out the hourly retry, and lists each source's size. The smoke route table gained the event-file API routes.
