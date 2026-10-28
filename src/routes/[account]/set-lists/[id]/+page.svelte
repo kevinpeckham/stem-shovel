@@ -138,6 +138,7 @@
 				setListId={data.setList.id}
 				choices={data.choices}
 				onadded={(row) => (rows = [...rows, row])}
+				onaddedmany={(added) => (rows = [...rows, ...added])}
 			/>
 		</section>
 	</div>

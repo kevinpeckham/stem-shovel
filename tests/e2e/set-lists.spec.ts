@@ -3,8 +3,10 @@ import { expect, open, test } from "./fixtures";
 /**
  * Set lists (docs/band-plan.md, phase 1) as the bot in its account: a set
  * list is made, a song and a free-text line added, a note written, the
- * line moved up and the order kept across a reload, the show view opened,
- * and the set list deleted at the end.
+ * line moved up and the order kept across a reload, a pasted list added
+ * (one line matched to a song, one kept as text), the show view opened,
+ * the set list pinned and unpinned on the dashboard, and the set list
+ * deleted at the end.
  */
 const PAGE = process.env.E2E_SET_LISTS ?? "/mmkk/set-lists";
 const TITLE = "E2E Set List";
@@ -57,15 +59,34 @@ test("writes, orders, shows and deletes a set list", async ({ page, errors }) =>
 	await expect(rows.getByRole("listitem").nth(1)).toContainText("Eat All the Clocks");
 	await expect(page.getByLabel("Row 2 note")).toHaveValue("Key of D");
 
+	// A pasted list: numbering dropped, "Interbellum" matched to the song, the cover kept as text.
+	await page.getByRole("button", { name: "Paste a list" }).click();
+	await page.getByLabel("Songs, one per line").fill("1. Interbellum\n2. Wagon Wheel\n\n");
+	await page.getByRole("button", { name: "Add rows" }).click();
+	await expect(rows.getByRole("listitem")).toHaveCount(4);
+	await expect(rows.getByRole("listitem").nth(2)).toContainText("Interbellum");
+	await expect(page.getByLabel("Row 4 title")).toHaveValue("Wagon Wheel");
+
 	// The show view lists the set in order.
 	const editor = page.url();
 	await page.getByRole("link", { name: "Show view" }).click();
 	await page.waitForURL(/\/show$/);
 	await expect(page.getByRole("heading", { level: 1 })).toContainText(TITLE);
 	const set = page.getByRole("list", { name: "The set" });
-	await expect(set.getByRole("listitem")).toHaveCount(2);
+	await expect(set.getByRole("listitem")).toHaveCount(4);
 	await expect(set.getByRole("listitem").first()).toContainText("Break");
 	await expect(set.getByRole("listitem").nth(1)).toContainText("Key of D");
+	await expect(set.getByRole("listitem").nth(3)).toContainText("Wagon Wheel");
+
+	// On the dashboard the set list is in Your Set Lists, and its pin puts it in Pinned.
+	await open(page, "/dashboard");
+	const setListsRegion = page.getByRole("region", { name: "Your Set Lists" });
+	await expect(setListsRegion.getByRole("link", { name: TITLE })).toBeVisible();
+	await setListsRegion.getByRole("button", { name: `Pin ${TITLE}` }).click();
+	const pinnedRegion = page.getByRole("region", { name: "Pinned" });
+	await expect(pinnedRegion.getByRole("link", { name: TITLE })).toBeVisible();
+	await pinnedRegion.getByRole("button", { name: `Unpin ${TITLE}` }).click();
+	await expect(setListsRegion.getByRole("button", { name: `Pin ${TITLE}` })).toBeVisible();
 
 	// (networkidle: a click before the dev server's modules have hydrated the page is lost.)
 	await page.goto(editor, { waitUntil: "networkidle" });

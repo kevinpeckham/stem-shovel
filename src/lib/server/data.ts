@@ -9812,6 +9812,25 @@ export async function recentRecordingSessions(accountId: string, n: number) {
 	}));
 }
 
+/** The account's `n` most recently updated set lists, for the dashboard's "Your Set Lists": how many rows each holds and who made it (as `listSetLists`). */
+export async function recentSetLists(accountId: string, n: number) {
+	const rows = await db.query.setList.findMany({
+		where: eq(setList.accountId, accountId),
+		orderBy: [desc(setList.updatedAt), desc(setList.createdAt)],
+		limit: n,
+		columns: { id: true, title: true, createdAt: true, updatedAt: true },
+		with: { creator: { columns: { name: true } }, items: { columns: { id: true } } },
+	});
+	return rows.map((r) => ({
+		id: r.id,
+		title: r.title,
+		createdAt: r.createdAt,
+		updatedAt: r.updatedAt,
+		itemCount: r.items.length,
+		creator: r.creator ? { name: r.creator.name } : null,
+	}));
+}
+
 /** The account's `n` most recently updated active projects, with their song counts and the fields the view rules read. */
 export async function recentProjects(accountId: string, n: number) {
 	const rows = await db.query.project.findMany({
@@ -10002,9 +10021,9 @@ export interface DashboardPinRow {
 	kind: DashboardPinKind;
 	targetId: string;
 	accountId: string;
-	/** The song's title, the project's name, or the session's display name (`sessionDisplayName`). */
+	/** The song's title, the project's name, the session's display name (`sessionDisplayName`), or the set list's title. */
 	title: string;
-	/** `/<accountSlug>/projects/<project>/<song>`, `/<accountSlug>/projects/<project>`, `/<accountSlug>/sessions/s/<id>`. */
+	/** `/<accountSlug>/projects/<project>/<song>`, `/<accountSlug>/projects/<project>`, `/<accountSlug>/sessions/s/<id>`, `/<accountSlug>/set-lists/<id>`. */
 	href: string;
 	/** The target's updatedAt. */
 	at: Date;
@@ -10029,8 +10048,13 @@ export async function listDashboardPins(userId: string): Promise<DashboardPinRow
 	if (pins.length === 0) return [];
 	const idsOf = (kind: DashboardPinKind) =>
 		pins.filter((p) => p.kind === kind).map((p) => p.targetId);
-	const [songIds, projectIds, sessionIds] = [idsOf("song"), idsOf("project"), idsOf("session")];
-	const [songs, projects, sessions] = await Promise.all([
+	const [songIds, projectIds, sessionIds, setListIds] = [
+		idsOf("song"),
+		idsOf("project"),
+		idsOf("session"),
+		idsOf("setList"),
+	];
+	const [songs, projects, sessions, setLists] = await Promise.all([
 		songIds.length === 0
 			? []
 			: db.query.song.findMany({
@@ -10086,45 +10110,70 @@ export async function listDashboardPins(userId: string): Promise<DashboardPinRow
 					},
 					with: { account: { columns: { slug: true } } },
 				}),
+		setListIds.length === 0
+			? []
+			: db.query.setList.findMany({
+					where: inArray(setList.id, setListIds),
+					columns: { id: true, title: true, updatedAt: true },
+					with: { account: { columns: { slug: true } } },
+				}),
 	]);
 	const songsById = new Map(songs.map((s) => [s.id, s]));
 	const projectsById = new Map(projects.map((p) => [p.id, p]));
 	const sessionsById = new Map(sessions.map((s) => [s.id, s]));
-	const rows: DashboardPinRow[] = [];
-	for (const pin of pins) {
-		const base = {
-			kind: pin.kind,
-			targetId: pin.targetId,
-			accountId: pin.accountId,
-			pinnedAt: pin.createdAt,
-		};
-		if (pin.kind === "song") {
-			const s = songsById.get(pin.targetId);
+	const setListsById = new Map(setLists.map((l) => [l.id, l]));
+	type Target = Omit<DashboardPinRow, "kind" | "targetId" | "accountId" | "pinnedAt">;
+	// Each kind's target as the row's own fields, or null when it is gone or archived.
+	const targetOf: Record<DashboardPinKind, (id: string) => Target | null> = {
+		song: (id) => {
+			const s = songsById.get(id);
 			const place = s?.account ? songPlace(s.account.slug, s) : null;
-			if (!s || !place) continue;
-			rows.push({ ...base, ...place, at: s.updatedAt, project: null });
-		} else if (pin.kind === "project") {
-			const p = projectsById.get(pin.targetId);
-			if (!p?.account || p.status !== "active") continue;
-			rows.push({
-				...base,
+			return s && place ? { ...place, at: s.updatedAt, project: null } : null;
+		},
+		project: (id) => {
+			const p = projectsById.get(id);
+			if (!p?.account || p.status !== "active") return null;
+			return {
 				title: p.name,
 				href: `/${p.account.slug}/projects/${p.slug}`,
 				at: p.updatedAt,
 				song: null,
 				project: { id: p.id, isPrivate: p.isPrivate, isRestricted: p.isRestricted },
-			});
-		} else {
-			const s = sessionsById.get(pin.targetId);
+			};
+		},
+		session: (id) => {
+			const s = sessionsById.get(id);
 			const place = s?.account ? sessionPlace(s.account.slug, s) : null;
-			if (!s || !place) continue;
-			rows.push({ ...base, ...place, at: s.updatedAt, project: null });
-		}
+			return s && place ? { ...place, at: s.updatedAt, project: null } : null;
+		},
+		setList: (id) => {
+			const l = setListsById.get(id);
+			if (!l?.account) return null;
+			return {
+				title: l.title,
+				href: `/${l.account.slug}/set-lists/${l.id}`,
+				at: l.updatedAt,
+				song: null,
+				project: null,
+			};
+		},
+	};
+	const rows: DashboardPinRow[] = [];
+	for (const pin of pins) {
+		const target = targetOf[pin.kind](pin.targetId);
+		if (!target) continue;
+		rows.push({
+			kind: pin.kind,
+			targetId: pin.targetId,
+			accountId: pin.accountId,
+			pinnedAt: pin.createdAt,
+			...target,
+		});
 	}
 	return rows;
 }
 
-/** Pins (or unpins) a song, project or session on the person's own dashboard; pinning twice keeps one row. */
+/** Pins (or unpins) a song, project, session or set list on the person's own dashboard; pinning twice keeps one row. */
 export async function setDashboardPin(
 	userId: string,
 	kind: DashboardPinKind,
@@ -10497,24 +10546,85 @@ export async function addSetListItem(
 		if (!s || s.project.status !== "active") return null;
 		title = s.title;
 	}
-	const [stats] = await db
-		.select({ n: sql<number>`count(*)`, last: sql<number | null>`max(${setListItem.sortOrder})` })
-		.from(setListItem)
-		.where(eq(setListItem.setListId, setListId));
-	if (Number(stats?.n ?? 0) >= MAX_SET_LIST_ITEMS) return "full";
+	const tail = await setListTail(setListId);
+	if (tail.count >= MAX_SET_LIST_ITEMS) return "full";
 	const [row] = await db
 		.insert(setListItem)
-		.values({
-			setListId,
-			songId: input.songId,
-			title,
-			note: input.note,
-			sortOrder: (stats?.last ?? -1) + 1,
-		})
+		.values({ setListId, songId: input.songId, title, note: input.note, sortOrder: tail.next })
 		.returning({ id: setListItem.id });
 	await touchSetList(accountId, setListId);
 	const added = await ownSetListItem(accountId, row!.id);
 	return added ? setListItemRow(accountId, added) : null;
+}
+
+/** How many rows the set list holds, and the sort order a row added at the end takes. */
+async function setListTail(setListId: string) {
+	const [stats] = await db
+		.select({ n: sql<number>`count(*)`, last: sql<number | null>`max(${setListItem.sortOrder})` })
+		.from(setListItem)
+		.where(eq(setListItem.setListId, setListId));
+	return { count: Number(stats?.n ?? 0), next: (stats?.last ?? -1) + 1 };
+}
+
+/**
+ * Rows at the end of the set list in one go, in the order given (the
+ * editor's "Paste a list"). A row's `songId` is checked against the
+ * account's active songs in active projects in one query: a song row stores
+ * the song's current title, and a song that is not one of those stays a
+ * free-text row with the line's own title. Null when the set list is not
+ * the account's; "full" when the rows would take it past `MAX_SET_LIST_ITEMS`.
+ */
+export async function addSetListItems(
+	accountId: string,
+	setListId: string,
+	items: { songId: string | null; title: string; note: string }[],
+): Promise<SetListItemRow[] | "full" | null> {
+	if (!(await ownSetList(accountId, setListId))) return null;
+	if (items.length === 0) return [];
+	const tail = await setListTail(setListId);
+	if (tail.count + items.length > MAX_SET_LIST_ITEMS) return "full";
+	const songIds = [...new Set(items.flatMap((i) => (i.songId ? [i.songId] : [])))];
+	const found =
+		songIds.length === 0
+			? []
+			: await db
+					.select({ id: song.id, title: song.title })
+					.from(song)
+					.innerJoin(project, eq(project.id, song.projectId))
+					.where(
+						and(
+							eq(song.accountId, accountId),
+							inArray(song.id, songIds),
+							eq(song.status, "active"),
+							eq(project.status, "active"),
+						),
+					);
+	const titles = new Map(found.map((s) => [s.id, s.title]));
+	const inserted = await db
+		.insert(setListItem)
+		.values(
+			items.map((i, n) => {
+				const songTitle = i.songId ? titles.get(i.songId) : undefined;
+				return {
+					setListId,
+					songId: songTitle === undefined ? null : i.songId,
+					title: songTitle ?? i.title,
+					note: i.note,
+					sortOrder: tail.next + n,
+				};
+			}),
+		)
+		.returning({ id: setListItem.id });
+	await touchSetList(accountId, setListId);
+	const rows = await db.query.setListItem.findMany({
+		where: inArray(
+			setListItem.id,
+			inserted.map((r) => r.id),
+		),
+		orderBy: [asc(setListItem.sortOrder)],
+		with: setListItemWith,
+	});
+	return rows.map((r) => setListItemRow(accountId, r));
 }
 
 /** A row's note, and a free-text row's title (kept when sent empty); a song row's title stays the song's. */

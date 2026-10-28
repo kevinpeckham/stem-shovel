@@ -5,6 +5,7 @@ import { callsTo, cascade, fake, reset } from "../../../tests/helpers/fakeDataLa
 const {
 	accountSongChoices,
 	addSetListItem,
+	addSetListItems,
 	createSetList,
 	createShareLink,
 	deleteSetList,
@@ -264,6 +265,81 @@ describe("addSetListItem", () => {
 			),
 		});
 		expect(await addSetListItem(A, "l1", { songId: null, title: "More", note: "" })).toBe("full");
+	});
+});
+
+describe("addSetListItems", () => {
+	beforeEach(() =>
+		reset({
+			project: [project("p1", A), project("p2", A, { status: "archived" }), project("p9", B)],
+			song: [
+				song("s1", A, "p1", { title: "Real Title", chartMarkdown: "| C |" }),
+				song("s2", A, "p2", { title: "In Archived Project" }),
+				song("s3", A, "p1", { status: "archived" }),
+				song("s4", A, "p1", { title: "Second" }),
+				song("s9", B, "p9"),
+			],
+			setList: [list("l1", A), list("l2", B)],
+			setListItem: [item("i1", "l1", { sortOrder: 4 })],
+		}),
+	);
+	test("rows go last in the order given, songs with their titles, and the set list is touched once", async () => {
+		const rows = await addSetListItems(A, "l1", [
+			{ songId: "s1", title: "real title (acoustic)", note: "" },
+			{ songId: null, title: "Break", note: "" },
+			{ songId: "s4", title: "second", note: "in D" },
+		]);
+		expect(rows).toEqual([
+			expect.objectContaining({
+				songId: "s1",
+				title: "Real Title",
+				sortOrder: 5,
+				song: expect.objectContaining({ id: "s1", hasChart: true }),
+			}),
+			expect.objectContaining({ songId: null, title: "Break", sortOrder: 6, song: null }),
+			expect.objectContaining({ songId: "s4", title: "Second", note: "in D", sortOrder: 7 }),
+		]);
+		expect(fake.rows("setListItem").map((r) => [r.title, r.sortOrder])).toEqual([
+			["Row i1", 4],
+			["Real Title", 5],
+			["Break", 6],
+			["Second", 7],
+		]);
+		expect(callsTo("insert", "set_list_item")).toHaveLength(1);
+		expect(callsTo("update", "set_list")).toHaveLength(1);
+	});
+	test("a song that is not the account's active song in an active project stays text", async () => {
+		const rows = await addSetListItems(A, "l1", [
+			{ songId: "s2", title: "line two", note: "" },
+			{ songId: "s3", title: "line three", note: "" },
+			{ songId: "s9", title: "line nine", note: "" },
+			{ songId: "nope", title: "line nope", note: "" },
+		]);
+		expect(rows).toEqual(
+			["line two", "line three", "line nine", "line nope"].map((title) =>
+				expect.objectContaining({ songId: null, title, song: null }),
+			),
+		);
+	});
+	test("an empty list of rows adds nothing", async () => {
+		expect(await addSetListItems(A, "l1", [])).toEqual([]);
+		expect(fake.rows("setListItem")).toHaveLength(1);
+	});
+	test("null for another account's set list", async () => {
+		expect(await addSetListItems(A, "l2", [{ songId: null, title: "X", note: "" }])).toBeNull();
+		expect(fake.rows("setListItem")).toHaveLength(1);
+	});
+	test('"full" when the rows would pass the cap, and nothing is added', async () => {
+		reset({
+			setList: [list("l1", A)],
+			setListItem: Array.from({ length: MAX_SET_LIST_ITEMS - 2 }, (_, i) =>
+				item(`i${i}`, "l1", { sortOrder: i }),
+			),
+		});
+		const three = ["a", "b", "c"].map((title) => ({ songId: null, title, note: "" }));
+		expect(await addSetListItems(A, "l1", three)).toBe("full");
+		expect(fake.rows("setListItem")).toHaveLength(MAX_SET_LIST_ITEMS - 2);
+		expect(await addSetListItems(A, "l1", three.slice(0, 2))).toHaveLength(2);
 	});
 });
 

@@ -3,6 +3,7 @@ import { command, getRequestEvent } from "$app/server";
 import {
 	accountOfProject,
 	accountOfRecordingSession,
+	accountOfSetList,
 	accountOfSong,
 	requireMember,
 	requireUser,
@@ -16,11 +17,12 @@ const accountOf: Record<DashboardPinKind, (id: string) => Promise<string | null>
 	song: accountOfSong,
 	project: accountOfProject,
 	session: accountOfRecordingSession,
+	setList: accountOfSetList,
 };
 
-/** Whether a member may open the target (viewAccess.ts): a restricted project, or a song in one, needs a role on the project; every member may open a session. */
+/** Whether a member may open the target (viewAccess.ts): a restricted project, or a song in one, needs a role on the project; every member may open a session or a set list. */
 async function mayOpen(locals: App.Locals, kind: DashboardPinKind, id: string, accountId: string) {
-	if (kind === "session") return true;
+	if (kind === "session" || kind === "setList") return true;
 	const roles = await projectRolesOf(accountId, requireUser(locals).id);
 	const who = viewerOf(locals, accountId, roles);
 	if (kind === "song") {
@@ -31,7 +33,7 @@ async function mayOpen(locals: App.Locals, kind: DashboardPinKind, id: string, a
 	return row !== null && canViewProject(row, who, []);
 }
 
-/** A person's own dashboard (docs/dashboard-plan.md, step 5): pinning a song, project or session they may open. A target they may not is "not found", like its page. */
+/** A person's own dashboard (docs/dashboard-plan.md, step 5): pinning a song, project, session or set list they may open. A target they may not is "not found", like its page. */
 export const setPin = command(DashboardPinSchema, async ({ kind, id, pinned }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);

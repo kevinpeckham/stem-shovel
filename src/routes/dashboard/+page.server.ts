@@ -26,6 +26,7 @@ import {
 	projectRolesOf,
 	recentProjects,
 	recentRecordingSessions,
+	recentSetLists,
 	recentSongs,
 	recentUserIdeas,
 	touchDashboardSeen,
@@ -46,7 +47,7 @@ import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 import { songStage } from "#lib/utils/songStage.js";
 import type { PageServerLoad } from "./$types";
 
-/** One account: its tile's counts and the person's role; the newest projects, songs and sessions they may open, for the Your Projects, Your Songs and Your Sessions sections; its chats with messages they have not seen; what happened in it lately and what is still in progress. */
+/** One account: its tile's counts and the person's role; the newest projects, songs, sessions and set lists they may open, for the Your Projects, Your Songs, Your Sessions and Your Set Lists sections; its chats with messages they have not seen; what happened in it lately and what is still in progress. */
 async function dashboardAccount(m: Membership, userId: string, since: Date) {
 	const admin = m.role === "owner" || m.role === "admin";
 	// The person as viewAccess.ts sees them, first: the counts and the lists both go by what they may open.
@@ -55,6 +56,7 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 	const [
 		counts,
 		sessions,
+		setLists,
 		projectRows,
 		songRows,
 		songChats,
@@ -68,6 +70,8 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 	] = await Promise.all([
 		accountCounts(m.accountId, who),
 		recentRecordingSessions(m.accountId, DASHBOARD_LIST_CAP),
+		// Every member may open a set list (a viewer gets its show view), so there is nothing to filter.
+		recentSetLists(m.accountId, DASHBOARD_LIST_CAP),
 		recentProjects(m.accountId, DASHBOARD_LIST_CAP),
 		recentSongs(m.accountId, DASHBOARD_LIST_CAP),
 		unreadSongChats(m.accountId, m.slug, userId),
@@ -96,6 +100,7 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		projects,
 		songs,
 		sessions,
+		setLists,
 		songChats: songChats.filter((c) => canViewSong(c, who, [])),
 		sessionChats,
 		// A song's event or job shows only when the person may open the song; a session's shows to every member.
@@ -192,6 +197,28 @@ function sessionEntries(tiles: Tile[]): DashboardEntry[] {
 		.sort(newestFirst);
 }
 
+/** Your Set Lists: every set list across the person's accounts, last changed first, under its row count and who wrote it. */
+function setListEntries(tiles: Tile[]): DashboardEntry[] {
+	const several = tiles.length > 1;
+	return tiles
+		.flatMap((t) =>
+			t.setLists.map((s) => ({
+				id: s.id,
+				title: s.title,
+				href: `/${t.slug}/set-lists/${s.id}`,
+				when: s.updatedAt,
+				account: t.slug,
+				pin: { kind: "setList" as const, id: s.id },
+				meta: line([
+					plural(s.itemCount, "row"),
+					s.creator ? `by ${s.creator.name}` : "",
+					several ? t.name : "",
+				]),
+			})),
+		)
+		.sort(newestFirst);
+}
+
 /** Activity: what happened across the person's accounts in the last DASHBOARD_ACTIVITY_DAYS, newest first; the title is the song or session, the line under it who did what (and the account, with several). */
 function activityEntries(tiles: Tile[]): DashboardEntry[] {
 	const several = tiles.length > 1;
@@ -228,7 +255,12 @@ function pendingEntries(tiles: Tile[]): DashboardEntry[] {
 		.sort((a, b) => a.when.getTime() - b.when.getTime());
 }
 
-const PIN_KIND_LABEL = { song: "Song", project: "Project", session: "Session" } as const;
+const PIN_KIND_LABEL = {
+	song: "Song",
+	project: "Project",
+	session: "Session",
+	setList: "Set list",
+} as const;
 
 /** Pinned: what the person pinned, newest pin first, dropping what they may no longer open (a pin outlives a membership or a project role only as a row). */
 function pinnedEntries(tiles: Tile[], pins: DashboardPinRow[]): DashboardEntry[] {
@@ -319,8 +351,8 @@ function ideaEntries(
 /**
  * Where a signed-in person lands (docs/dashboard-plan.md): a tile per
  * account they really belong to (not a super admin's acting ones) with its
- * counts and their role; their projects, songs and sessions across those
- * accounts; their own ideas, loops and multitrack recordings, newest
+ * counts and their role; their projects, songs, sessions and set lists
+ * across those accounts; their own ideas, loops and multitrack recordings, newest
  * first; what is new in their inbox; the chats, comments and mentions
  * waiting for them; what happened in their accounts this week; what the
  * server has not finished; and, on each tile, who has been active lately
@@ -365,6 +397,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		projects: projectEntries(tiles),
 		songs: songEntries(tiles),
 		sessions: sessionEntries(tiles),
+		setLists: setListEntries(tiles),
 		ideas: ideaEntries(ideaRows, () => "/idea-recorder"),
 		loops: ideaEntries(loopRows, () => "/looper"),
 		multitracks: ideaEntries(

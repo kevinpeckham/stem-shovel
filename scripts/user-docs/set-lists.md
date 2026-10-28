@@ -8,6 +8,7 @@ Press **New set list** on the Set lists page, give it a title ("Spring tour", "T
 
 - **A song from your catalog.** Start typing a title in the **Add a song** box and pick it. The row is tied to the song, so the show view can open its chart and lyrics, and it follows the song's title if that changes.
 - **Anything else.** Type a title in **Add a line** for a cover that is not in Stem Shovel, a "break", "tune down" or "encore".
+- **A whole list at once.** Press **Paste a list** and paste the set from your notes, one song per line. Numbering and bullets are ignored. A line that matches one of your songs by title becomes that song's row (a trailing "(acoustic)" or "– key of D" does not get in the way), and every other line stays as text, so a list of covers works too.
 
 Every row has a **note** for the night: the key you play it in tonight, who counts in, a segue into the next song. Drag the handle at the left of a row to reorder, or use the arrow buttons. The **Notes** box above the rows is for the plan as a whole: tunings, who brings what, what the venue said.
 
@@ -21,4 +22,4 @@ To get it onto everyone's phones, make a **viewing link** on the set list's page
 
 ## Keeping them
 
-The Set lists page lists every set list of the account, last changed first, with a search by title. Deleting a set list removes its rows and its viewing links; deleting a song keeps the song's row in every set list as plain text with the title it had.
+The Set lists page lists every set list of the account, last changed first, with a search by title. Your dashboard has a **Your Set Lists** section with the newest across your accounts, and a pin button on each row to keep one at the top. Deleting a set list removes its rows and its viewing links; deleting a song keeps the song's row in every set list as plain text with the title it had.

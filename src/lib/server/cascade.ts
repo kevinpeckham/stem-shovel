@@ -167,11 +167,14 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 }
 
 /** Ideas with their takes, and a Studio song's sources and revisions (docs/multitrack-recorder.md). */
-/** A set list's rows and the links that opened its show view (docs/band-plan.md), then the set list. */
+/** A set list's rows, the links that opened its show view (docs/band-plan.md) and the dashboard pins on it, then the set list. */
 export async function deleteSetListRows(setListIds: string[]): Promise<void> {
 	if (setListIds.length === 0) return;
 	await db.delete(setListItem).where(inArray(setListItem.setListId, setListIds));
 	await db.delete(shareLink).where(inArray(shareLink.setListId, setListIds));
+	await db
+		.delete(dashboardPin)
+		.where(and(eq(dashboardPin.kind, "setList"), inArray(dashboardPin.targetId, setListIds)));
 	await db.delete(setList).where(inArray(setList.id, setListIds));
 }
 

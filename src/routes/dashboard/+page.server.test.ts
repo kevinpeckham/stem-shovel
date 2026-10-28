@@ -143,6 +143,7 @@ const PER_ACCOUNT = [
 	"projectRolesOf",
 	"accountCounts",
 	"recentRecordingSessions",
+	"recentSetLists",
 	"recentProjects",
 	"recentSongs",
 	"unreadSongChats",
@@ -165,6 +166,7 @@ beforeEach(() => {
 	data.touchDashboardSeen.mockResolvedValue(null);
 	data.accountCounts.mockResolvedValue({ projects: 0, songs: 0 });
 	data.recentRecordingSessions.mockResolvedValue([]);
+	data.recentSetLists.mockResolvedValue([]);
 	data.recentProjects.mockResolvedValue([]);
 	data.recentSongs.mockResolvedValue([]);
 	data.unreadSongChats.mockResolvedValue([]);
@@ -205,6 +207,7 @@ describe("dashboard load: who", () => {
 			"projects",
 			"songs",
 			"sessions",
+			"setLists",
 			"ideas",
 			"loops",
 			"multitracks",
@@ -417,6 +420,46 @@ describe("dashboard load: projects, songs and sessions", () => {
 	});
 });
 
+describe("dashboard load: set lists", () => {
+	const setListRow = (id: string, updatedAt: Date, overrides: Row = {}): Row => ({
+		id,
+		title: `Set ${id.replace(/_+$/, "")}`,
+		createdAt: day(1),
+		updatedAt,
+		itemCount: 12,
+		creator: { name: "Kevin" },
+		...overrides,
+	});
+
+	it("newest first across accounts, pinnable, under rows, author and account", async () => {
+		data.recentSetLists.mockImplementation(async (accountId: string) =>
+			accountId === ACCOUNT
+				? [setListRow(fakeId("l-a2"), day(2)), setListRow(fakeId("l-a7"), day(7))]
+				: [setListRow(fakeId("l-b4"), day(4), { itemCount: 1, creator: null })],
+		);
+		const one = member(ACCOUNT);
+		const two = member(OTHER_ACCOUNT);
+		const r = await run([one, two]);
+		expect(data.recentSetLists).toHaveBeenCalledWith(ACCOUNT, expect.any(Number));
+		expect(ids(r.setLists)).toEqual([fakeId("l-a7"), fakeId("l-b4"), fakeId("l-a2")]);
+		expect(r.setLists[0]).toMatchObject({
+			account: one.slug,
+			title: "Set l-a7",
+			href: `/${one.slug}/set-lists/${fakeId("l-a7")}`,
+			when: day(7),
+			pin: { kind: "setList", id: fakeId("l-a7") },
+			meta: "12 rows · by Kevin · One",
+		});
+		expect(r.setLists[1].meta).toBe("1 row · Two");
+	});
+
+	it("with one account, the meta leaves the account name out", async () => {
+		data.recentSetLists.mockResolvedValue([setListRow(fakeId("l-a2"), day(2))]);
+		const r = await run([member(ACCOUNT)]);
+		expect(r.setLists[0].meta).toBe("12 rows · by Kevin");
+	});
+});
+
 describe("dashboard load: pins", () => {
 	const pin = (kind: string, targetId: string, accountId: string, facts: Row = {}): Row => ({
 		kind,
@@ -443,14 +486,21 @@ describe("dashboard load: pins", () => {
 			}),
 			pin("session", fakeId("pin-session"), ACCOUNT),
 			pin("session", fakeId("pin-elsewhere"), OTHER_ACCOUNT),
+			pin("setList", fakeId("pin-set"), ACCOUNT),
+			pin("setList", fakeId("pin-set-elsewhere"), OTHER_ACCOUNT),
 		]);
 		const r = await run([member(ACCOUNT, "member")]);
 		expect(ids(r.pinned)).toEqual([
 			`pin:song:${fakeId("pin-song")}`,
 			`pin:project:${PROJECT}`,
 			`pin:session:${fakeId("pin-session")}`,
+			`pin:setList:${fakeId("pin-set")}`,
 		]);
-		expect(r.pinned.map((p: Row) => p.meta)).toEqual(["Song", "Project", "Session"]);
+		expect(r.pinned.map((p: Row) => p.meta)).toEqual(["Song", "Project", "Session", "Set list"]);
+		expect(r.pinned[3]).toMatchObject({
+			pin: { kind: "setList", id: fakeId("pin-set") },
+			href: `/pin/${fakeId("pin-set")}`,
+		});
 		expect(r.pinned[0]).toMatchObject({
 			account: member().slug,
 			pin: { kind: "song", id: fakeId("pin-song") },

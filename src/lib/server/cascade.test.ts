@@ -329,11 +329,20 @@ describe("deleteSetListRows", () => {
 				{ id: "sh2", setListId: "l2", code: "c2" },
 				{ id: "sh3", songId: "s1", code: "c3" },
 			],
+			dashboardPin: [
+				{ userId: "u1", kind: "setList", targetId: "l1", accountId: "a1" },
+				{ userId: "u1", kind: "setList", targetId: "l2", accountId: "a1" },
+				{ userId: "u1", kind: "song", targetId: "l1", accountId: "a1" },
+			],
 		}),
 	);
-	test("the rows and the links go before the set list; other set lists stay", async () => {
+	test("the rows, the links and the pins go before the set list; other set lists stay", async () => {
 		await deleteSetListRows(["l1"]);
-		expect(deletes()).toEqual(["set_list_item", "share_link", "set_list"]);
+		expect(deletes()).toEqual(["set_list_item", "share_link", "dashboard_pin", "set_list"]);
+		expect(fake.rows("dashboardPin").map((p) => [p.kind, p.targetId].join(":"))).toEqual([
+			"setList:l2",
+			"song:l1",
+		]);
 		expect(fake.rows("setList").map((l) => l.id)).toEqual(["l2"]);
 		expect(fake.rows("setListItem").map((i) => i.id)).toEqual(["li2"]);
 		expect(fake.rows("shareLink").map((l) => l.id)).toEqual(["sh2", "sh3"]);

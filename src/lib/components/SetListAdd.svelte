@@ -1,26 +1,33 @@
 <script lang="ts">
-	import { addSetListItem } from "#lib/remote/setLists.remote.js";
+	import { addSetListItem, importSetListItems } from "#lib/remote/setLists.remote.js";
 	import type { SetListItemRow } from "#lib/server/data.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { parseSetListPaste } from "#lib/utils/parseSetListPaste.js";
+	import { setListPasteNotice } from "#lib/utils/setListPasteNotice.js";
 
 	/**
-	 * The set list editor's two ways to add a row at the end
+	 * The set list editor's ways to add rows at the end
 	 * (docs/band-plan.md, "Set list"): **Add a song**, a search by title
 	 * over the account's songs the person may open (the first eight matches,
-	 * Enter takes the first), and **Add a line**, free text for anything
-	 * not in the catalog.
+	 * Enter takes the first), **Add a line**, free text for anything not in
+	 * the catalog, and **Paste a list**, many lines at once, each matched to
+	 * a song by its title on the server (`importSetListItems`) or kept as text.
 	 */
 	interface Props {
 		setListId: string;
 		choices: { id: string; title: string; project: { name: string } }[];
 		onadded: (row: SetListItemRow) => void;
+		onaddedmany: (rows: SetListItemRow[]) => void;
 	}
-	let { setListId, choices, onadded }: Props = $props();
+	let { setListId, choices, onadded, onaddedmany }: Props = $props();
 
 	let query = $state("");
 	let line = $state("");
 	let busy = $state(false);
+	let pasted = $state("");
+	let pasteBox = $state<HTMLElement>();
+	const pastedLines = $derived(parseSetListPaste(pasted).length);
 	const matches = $derived.by(() => {
 		const q = query.trim().toLowerCase();
 		return q ? choices.filter((s) => s.title.toLowerCase().includes(q)).slice(0, 8) : [];
@@ -40,6 +47,20 @@
 	}
 	async function addSong(id: string) {
 		if (await add({ songId: id })) query = "";
+	}
+	async function addPasted() {
+		busy = true;
+		try {
+			const { rows, matched } = await importSetListItems({ setListId, text: pasted });
+			onaddedmany(rows);
+			notify(setListPasteNotice(rows.length, matched));
+			pasted = "";
+			pasteBox?.hidePopover();
+		} catch (e) {
+			notify(`Could not add the rows: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			busy = false;
+		}
 	}
 	async function addLine() {
 		const title = line.trim();
@@ -106,6 +127,60 @@
 			/>
 			<button class="button button-sm" type="submit" disabled={busy || !line.trim()}>
 				<span class="i-ph-plus" aria-hidden="true"></span> Add
+			</button>
+		</div>
+	</form>
+	<div class="sm:col-span-2">
+		<button class="button button-sm" type="button" popovertarget="set-list-paste-{setListId}">
+			<span class="i-ph-clipboard-text" aria-hidden="true"></span> Paste a list
+		</button>
+	</div>
+</div>
+
+<div
+	id="set-list-paste-{setListId}"
+	popover="auto"
+	bind:this={pasteBox}
+	class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+>
+	<form
+		class="grid gap-3"
+		onsubmit={(e) => {
+			e.preventDefault();
+			void addPasted();
+		}}
+	>
+		<h2 class="heading-2 mb-0">Paste a list</h2>
+		<p class="text-sm text-dim">
+			One song per line. Numbering is ignored. A line that matches a song's title becomes that
+			song's row, and the rest stay as text.
+		</p>
+		<textarea
+			class="field text-14px"
+			rows="10"
+			aria-label="Songs, one per line"
+			maxlength="20000"
+			disabled={busy}
+			bind:value={pasted}></textarea>
+		<div class="flex flex-wrap items-center gap-2">
+			<span class="mr-auto text-13px text-dim">
+				{pastedLines}
+				{pastedLines === 1 ? "line" : "lines"}
+			</span>
+			<button
+				class="button button-sm button-accent"
+				type="submit"
+				disabled={busy || pastedLines === 0}
+			>
+				<span class="i-ph-plus" aria-hidden="true"></span> Add rows
+			</button>
+			<button
+				class="button button-sm"
+				type="button"
+				popovertarget="set-list-paste-{setListId}"
+				popovertargetaction="hide"
+			>
+				Close
 			</button>
 		</div>
 	</form>

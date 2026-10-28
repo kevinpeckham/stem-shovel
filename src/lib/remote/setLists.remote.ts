@@ -5,25 +5,34 @@ import {
 	memberOf,
 	requireEditor,
 	requireUser,
+	viewerOf,
 } from "#lib/server/access.js";
 import {
+	accountSongChoices,
 	addSetListItem as addItem,
+	addSetListItems as addItems,
 	createSetList as create,
 	deleteSetList as remove,
 	deleteSetListItem as removeItem,
 	duplicateSetList as duplicate,
+	projectRolesOf,
 	reorderSetListItems as reorderItems,
 	updateSetList as update,
 	updateSetListItem as updateItem,
 } from "#lib/server/data.js";
+import { canViewSong } from "#lib/server/viewAccess.js";
+import { matchSongTitle } from "#lib/utils/matchSongTitle.js";
+import { parseSetListPaste } from "#lib/utils/parseSetListPaste.js";
 import {
 	SetListCreateSchema,
 	SetListIdSchema,
 	SetListItemAddSchema,
 	SetListItemIdSchema,
 	SetListItemUpdateSchema,
+	SetListPasteSchema,
 	SetListReorderSchema,
 	SetListUpdateSchema,
+	MAX_SET_LIST_ITEMS,
 } from "#lib/val/SetListSchema.js";
 import { error, redirect } from "@sveltejs/kit";
 
@@ -78,6 +87,34 @@ export const addSetListItem = command(
 		return row;
 	},
 );
+
+/**
+ * A pasted list (the editor's "Paste a list"): one row per line at the end,
+ * a line that names one of the account's songs the person may open by its
+ * title (`matchSongTitle`) as that song's row, the rest as text.
+ */
+export const importSetListItems = command(SetListPasteSchema, async ({ setListId, text }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfSetList, setListId);
+	const lines = parseSetListPaste(text);
+	if (lines.length === 0) error(400, "Paste one song per line.");
+	const [choices, roles] = await Promise.all([
+		accountSongChoices(accountId),
+		projectRolesOf(accountId, user.id),
+	]);
+	const who = viewerOf(locals, accountId, roles);
+	const songs = choices.filter((s) => canViewSong(s, who, []));
+	const items = lines.map((line) => ({
+		songId: matchSongTitle(line, songs),
+		title: line,
+		note: "",
+	}));
+	const rows = await addItems(accountId, setListId, items);
+	if (rows === "full") error(409, `That would be more than ${MAX_SET_LIST_ITEMS} rows.`);
+	if (!rows) error(404, "Not found");
+	return { rows, matched: rows.filter((r) => r.songId !== null).length };
+});
 
 /** A row's note, and a free-text row's title. */
 export const updateSetListItem = command(SetListItemUpdateSchema, async ({ id, title, note }) => {

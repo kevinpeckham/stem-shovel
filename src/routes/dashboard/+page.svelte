@@ -57,7 +57,12 @@
 			: pinned.filter((p) => p.pin!.id !== id || p.pin!.kind !== kind);
 		notify(on ? "Pinned to your dashboard" : "Unpinned");
 	}
-	const PIN_KIND_LABEL = { song: "Song", project: "Project", session: "Session" } as const;
+	const PIN_KIND_LABEL = {
+		song: "Song",
+		project: "Project",
+		session: "Session",
+		setList: "Set list",
+	} as const;
 	/** A freshly pinned entry's line: its kind and, with several accounts, its account. */
 	const pinMeta = (entry: DashboardEntry) =>
 		[
@@ -110,7 +115,7 @@
 						id="dashboard-pinned"
 						heading="Pinned"
 						accounts={data.accounts}
-						tip="What you pinned to your dashboard with the pin button on a project, song or session row. Pins are yours alone."
+						tip="What you pinned to your dashboard with the pin button on a project, song, session or set list row. Pins are yours alone."
 						ideas={pinned}
 						empty="Nothing pinned."
 						search="Search pinned"
@@ -166,6 +171,20 @@
 					action={{ label: "Record a session", href: at("/sessions/record") }}
 					all={{ label: "All sessions", href: "/sessions" }}
 					search="Search sessions"
+					since={data.seenAt}
+					{pins}
+					onpin={togglePin}
+				/>
+				<DashboardIdeas
+					id="dashboard-set-lists"
+					heading="Your Set Lists"
+					accounts={data.accounts}
+					tip="A set list is what you are going to play, in order: songs from your catalog or lines of your own, with a note per row and a show view for the stage."
+					ideas={data.setLists}
+					empty="No set lists yet."
+					action={{ label: "Write a set list", href: at("/set-lists") }}
+					all={{ label: "All set lists", href: at("/set-lists") }}
+					search="Search set lists"
 					since={data.seenAt}
 					{pins}
 					onpin={togglePin}

@@ -2,24 +2,13 @@
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import SetListNew from "#lib/components/SetListNew.svelte";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
-	import { formatDate } from "#lib/utils/formatDate.js";
-	import { formatWhen } from "#lib/utils/formatWhen.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 
-	/** The account's set lists (docs/band-plan.md, "Set list"): a search by title, each list's size and last change, and a new one. */
+	/** The account's set lists (docs/band-plan.md, "Set list"): a search by title, a tile per list carrying its title alone (Kevin's call, 2026-10-28), and a new one. */
 	let { data } = $props();
 
 	let query = $state("");
 	const shown = $derived(filterByTitle(data.setLists, query));
-	/** "12 rows · Changed Oct 28, 2026 · by Ann" (rows: songs and free-text lines alike, as the editor counts them) */
-	const lineOf = (l: (typeof data.setLists)[number]) =>
-		[
-			`${l.itemCount} ${l.itemCount === 1 ? "row" : "rows"}`,
-			`Changed ${formatDate(new Date(l.updatedAt))}`,
-			l.creator ? `by ${l.creator.name}` : "",
-		]
-			.filter(Boolean)
-			.join(" · ");
 </script>
 
 <svelte:head>
@@ -85,10 +74,6 @@
 						<li>
 							<a class="app-list-tile block" href="/{data.account.slug}/set-lists/{l.id}">
 								<span class="app-tile-heading">{l.title}</span>
-								<span
-									class="mt-1 block text-13px text-dim"
-									title={formatWhen(new Date(l.updatedAt))}>{lineOf(l)}</span
-								>
 							</a>
 						</li>
 					{/each}

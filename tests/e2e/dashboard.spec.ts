@@ -72,6 +72,11 @@ test("the dashboard shows what is new and each account's recent work", async ({ 
 	await pinnedRegion.getByRole("button", { name: "Unpin Eat All the Clocks" }).click();
 	await expect(pinnedRegion).toBeHidden();
 	await expect(songsRegion.getByRole("button", { name: "Pin Eat All the Clocks" })).toBeVisible();
+	// Your Set Lists: the bot's accounts hold none (set-lists.spec.ts deletes its own), so the card offers to write one.
+	await expect(page.getByRole("link", { name: "Write a set list" })).toHaveAttribute(
+		"href",
+		/\/set-lists$/,
+	);
 	// Your Sessions: the bot's accounts hold none, so the card offers to record one.
 	await expect(page.getByRole("link", { name: "Record a session" })).toHaveAttribute(
 		"href",

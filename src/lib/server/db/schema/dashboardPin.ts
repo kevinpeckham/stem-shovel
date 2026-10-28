@@ -7,9 +7,9 @@ import { user } from "./user";
 
 /**
  * One thing a person pinned to their own dashboard (docs/dashboard-plan.md,
- * step 5): a song, a project or a recording session, by kind and id, with
- * the account it belongs to so a tenant's deletion sweeps it. The pin is
- * the person's, never the band's. Deleted with the user, the target and
+ * step 5): a song, a project, a recording session or a set list, by kind
+ * and id, with the account it belongs to so a tenant's deletion sweeps it.
+ * The pin is the person's, never the band's. Deleted with the user, the target and
  * the account (src/lib/server/cascade.ts).
  */
 export const dashboardPin = table(

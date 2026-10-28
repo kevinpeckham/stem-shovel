@@ -76,3 +76,10 @@ export const SetListReorderSchema = v.object({
 	ids: v.pipe(v.array(NanoIdSchema), v.maxLength(MAX_SET_LIST_ITEMS)),
 });
 export type SetListReorder = v.InferOutput<typeof SetListReorderSchema>;
+
+/** A pasted list (docs/band-plan.md, "Set list"): one row per line, matched to songs by title. */
+export const SetListPasteSchema = v.object({
+	setListId: NanoIdSchema,
+	text: v.pipe(v.string(), v.maxLength(20000, "That is too much text at once.")),
+});
+export type SetListPaste = v.InferOutput<typeof SetListPasteSchema>;

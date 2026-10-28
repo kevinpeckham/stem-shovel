@@ -19,6 +19,7 @@ const dashboard = await import("./dashboard.remote");
 const SONG = fakeId("song-one");
 const PROJECT = fakeId("proj-one");
 const SESSION = fakeId("session-one");
+const SET_LIST = fakeId("setlist-one");
 
 /** What the view rules see of the song and the project (viewAccess.ts): open to the account by default. */
 const songRow = (restricted = false) => ({
@@ -41,6 +42,7 @@ beforeEach(() => {
 	givenRow("song", { accountId: ACCOUNT });
 	givenRow("project", { accountId: ACCOUNT });
 	givenRow("recordingSession", { accountId: ACCOUNT });
+	givenRow("setList", { accountId: ACCOUNT });
 	data.songViewRow.mockResolvedValue(songRow());
 	data.projectViewRow.mockResolvedValue(projectRow());
 });
@@ -60,6 +62,10 @@ describe("setPin", () => {
 		await expect(
 			call(dashboard.setPin, { kind: "session", id: SESSION, pinned: true }),
 		).rejects.toMatchObject(httpError(404));
+		givenRow("setList", null);
+		await expect(
+			call(dashboard.setPin, { kind: "setList", id: SET_LIST, pinned: true }),
+		).rejects.toMatchObject(httpError(404));
 		expect(data.setDashboardPin).not.toHaveBeenCalled();
 	});
 	it("404 for someone outside the target's account", async () => {
@@ -67,7 +73,7 @@ describe("setPin", () => {
 		await expect(call(dashboard.setPin, input)).rejects.toMatchObject(httpError(404));
 		expect(data.setDashboardPin).not.toHaveBeenCalled();
 	});
-	it("a member pins and unpins a song, a project and a session", async () => {
+	it("a member pins and unpins a song, a project, a session and a set list", async () => {
 		asMemberOf(ACCOUNT);
 		await expect(call(dashboard.setPin, input)).resolves.toEqual({ pinned: true });
 		expect(data.setDashboardPin).toHaveBeenLastCalledWith(USER, "song", SONG, ACCOUNT, true);
@@ -79,6 +85,16 @@ describe("setPin", () => {
 			call(dashboard.setPin, { kind: "session", id: SESSION, pinned: true }),
 		).resolves.toEqual({ pinned: true });
 		expect(data.setDashboardPin).toHaveBeenLastCalledWith(USER, "session", SESSION, ACCOUNT, true);
+		await expect(
+			call(dashboard.setPin, { kind: "setList", id: SET_LIST, pinned: false }),
+		).resolves.toEqual({ pinned: false });
+		expect(data.setDashboardPin).toHaveBeenLastCalledWith(
+			USER,
+			"setList",
+			SET_LIST,
+			ACCOUNT,
+			false,
+		);
 	});
 	it("404 for a restricted project, or a song in one, the member is not on", async () => {
 		asMemberOf(ACCOUNT);
@@ -113,10 +129,13 @@ describe("setPin", () => {
 		).rejects.toMatchObject(httpError(404));
 		expect(data.setDashboardPin).not.toHaveBeenCalled();
 	});
-	it("a session needs only membership", async () => {
+	it("a session or a set list needs only membership", async () => {
 		asMemberOf(ACCOUNT);
 		await expect(
 			call(dashboard.setPin, { kind: "session", id: SESSION, pinned: true }),
+		).resolves.toEqual({ pinned: true });
+		await expect(
+			call(dashboard.setPin, { kind: "setList", id: SET_LIST, pinned: true }),
 		).resolves.toEqual({ pinned: true });
 		expect(data.songViewRow).not.toHaveBeenCalled();
 		expect(data.projectViewRow).not.toHaveBeenCalled();

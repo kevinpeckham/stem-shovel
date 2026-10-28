@@ -8,6 +8,22 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.193.0] - 2026-10-28
+
+### Added
+
+- **Paste a list** on the set-list editor: paste a set from your notes, one song per line; numbering and bullets are dropped, a line that matches one of the account's songs by title becomes that song's row (ignoring case, punctuation, a leading "The" and a trailing parenthetical or dash suffix), and every other line stays as text. One command adds them all.
+- **Your Set Lists on the dashboard**: the newest set lists across the person's accounts, with the pin button, after Your Sessions. A set list can be pinned like a song, a project or a session.
+
+### Changed
+
+- **Set-list tiles show the title alone** (Kevin's request): the rows, changed and author line under each title on the Set lists page is gone.
+
+### Technical
+
+- `importSetListItems` command (`SetListPasteSchema`, 20,000 characters) over `parseSetListPaste` and `matchSongTitle` (`src/lib/utils/`), `addSetListItems` inserting the rows in one statement from `setListTail`; the matcher runs server-side against the songs the member may open (`viewerOf` + `canViewSong`).
+- `dashboard_pin.kind` gains `setList` (no migration: the column is text); `listDashboardPins` resolves pins through a per-kind `targetOf` table, `recentSetLists` feeds the section, `deleteSetListRows` removes the pins. `setListPasteNotice` is a util so its branches are covered.
+
 ## [0.192.0] - 2026-10-28
 
 ### Added

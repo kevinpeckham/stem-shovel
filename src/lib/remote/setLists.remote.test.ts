@@ -244,3 +244,95 @@ describe("reorderSetListItems", () => {
 		).rejects.toMatchObject(httpError(400));
 	});
 });
+
+describe("importSetListItems", () => {
+	const choice = (id: string, title: string, over: { isRestricted?: boolean } = {}) => ({
+		id,
+		title,
+		isPrivate: false,
+		projectId: fakeId(`proj-${id}`),
+		project: { name: "P", slug: "p", isPrivate: false, isRestricted: over.isRestricted ?? false },
+	});
+	const OPEN = fakeId("song-open");
+	const SHUT = fakeId("song-shut");
+	const paste = (text: string) => call(setLists.importSetListItems, { setListId: LIST, text });
+	beforeEach(() => {
+		data.accountSongChoices.mockResolvedValue([
+			choice(OPEN, "Interbellum"),
+			choice(SHUT, "Hidden Song", { isRestricted: true }),
+		]);
+		data.addSetListItems.mockImplementation(
+			async (_a: string, _l: string, items: { songId: string | null; title: string }[]) =>
+				items.map((i, n) => ({ ...ROW, id: fakeId(`row-${n}`), ...i })),
+		);
+	});
+	it("401 signed out", async () => {
+		asSignedOut();
+		await expect(paste("Interbellum")).rejects.toMatchObject(httpError(401));
+		expect(data.addSetListItems).not.toHaveBeenCalled();
+	});
+	it("404 for a member of another account, or a viewer of this one", async () => {
+		asOutsider();
+		await expect(paste("Interbellum")).rejects.toMatchObject(httpError(404));
+		asViewerOf(ACCOUNT);
+		await expect(paste("Interbellum")).rejects.toMatchObject(httpError(404));
+		expect(data.addSetListItems).not.toHaveBeenCalled();
+	});
+	it("404 for a set list that does not exist", async () => {
+		asEditorOf(ACCOUNT);
+		givenRow("setList", null);
+		await expect(paste("Interbellum")).rejects.toMatchObject(httpError(404));
+		expect(data.addSetListItems).not.toHaveBeenCalled();
+	});
+	it("400 when no line is left", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(paste(" \n1.\n- \n")).rejects.toMatchObject({
+			status: 400,
+			body: { message: "Paste one song per line." },
+		});
+		expect(data.addSetListItems).not.toHaveBeenCalled();
+	});
+	it("refuses more than 20,000 characters", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(paste("a".repeat(20001))).rejects.toBeTruthy();
+		expect(data.addSetListItems).not.toHaveBeenCalled();
+	});
+	it("409 when the rows would pass the cap", async () => {
+		asEditorOf(ACCOUNT);
+		data.addSetListItems.mockResolvedValue("full");
+		await expect(paste("Interbellum")).rejects.toMatchObject({
+			status: 409,
+			body: { message: "That would be more than 200 rows." },
+		});
+	});
+	it("404 when the data layer finds no set list", async () => {
+		asEditorOf(ACCOUNT);
+		data.addSetListItems.mockResolvedValue(null);
+		await expect(paste("Interbellum")).rejects.toMatchObject(httpError(404));
+	});
+	it("matches lines to songs the member may open, keeps the rest as text, and counts the matches", async () => {
+		asEditorOf(ACCOUNT);
+		const out = (await paste("1. interbellum (acoustic)\n2. Break\n3. Hidden Song")) as {
+			rows: { songId: string | null; title: string }[];
+			matched: number;
+		};
+		expect(data.accountSongChoices).toHaveBeenCalledWith(ACCOUNT);
+		expect(data.projectRolesOf).toHaveBeenCalledWith(ACCOUNT, USER);
+		expect(data.addSetListItems).toHaveBeenCalledWith(ACCOUNT, LIST, [
+			{ songId: OPEN, title: "interbellum (acoustic)", note: "" },
+			{ songId: null, title: "Break", note: "" },
+			{ songId: null, title: "Hidden Song", note: "" },
+		]);
+		expect(out.matched).toBe(1);
+		expect(out.rows).toHaveLength(3);
+	});
+	it("a song on a restricted project matches for a member of that project", async () => {
+		asEditorOf(ACCOUNT);
+		data.projectRolesOf.mockResolvedValue({ [fakeId(`proj-${SHUT}`)]: "member" });
+		const out = (await paste("Hidden Song")) as { matched: number };
+		expect(data.addSetListItems).toHaveBeenCalledWith(ACCOUNT, LIST, [
+			{ songId: SHUT, title: "Hidden Song", note: "" },
+		]);
+		expect(out.matched).toBe(1);
+	});
+});

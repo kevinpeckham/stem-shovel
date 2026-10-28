@@ -59,8 +59,10 @@ without a show on the calendar.
 
 ### Set list (`set_list`, `set_list_item`)
 
-**Built 2026-10-28 (v0.192.0)** as below, with the paste import and the
-dashboard section left for v0.193.0; the schema is in docs/data-model.md.
+**Built 2026-10-28** as below: v0.192.0 the tables, editor, browse page
+and show view; v0.193.0 the paste import and the dashboard section. The
+list page's tiles carry the title alone (Kevin's call). The schema is in
+docs/data-model.md.
 
 An ordered list of what to play, the account's, named ("Spring tour",
 "Acoustic set", "Tuesday rehearsal"), with notes. Items are either a
@@ -90,8 +92,8 @@ A set list is one body: a show with two sets attaches two set lists
 - **Print / PDF**: the show view with a print stylesheet is enough for a
   sheet on the stage floor; a PDF rendition can come later if wanted.
 - **Dashboard**: a "Your Set Lists" section in the content column
-  (newest first, with the pin button), and a set list counts for Worth a look when
-  a show on the calendar has none attached.
+  (newest first, with the pin button; built), and a set list counts for
+  Worth a look when a show on the calendar has none attached (phase 2).
 - Cascade: items go with the set list; a deleted song's items turn into
   free text with the song's title (the set list survives the catalog).
 - Migration: `set_list` (id, account_id, title, notes, created_by,
