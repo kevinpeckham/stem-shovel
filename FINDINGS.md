@@ -196,6 +196,35 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Section detection measured: the model hears texture, not form**
+  (stem-bench Study 8, 2026-10-28; full tables in the repo's
+  REPORT.md). `detectSectionsWithAi` was the last unmeasured AI
+  feature, and it produced the program's first genuine listening
+  result: blind, on mixes whose sections alternate sparse and dense
+  texture, the production model found 7/8 boundaries (3.5-flash 8/8)
+  — arrangement contrast is audible to it. Everything else is not:
+  harmonic/tempo-change boundaries landed 3/6 blind, and uniform
+  single-section loops were subdivided into invented verse/chorus
+  structure at 3-6 false boundaries per item. With the chart's
+  rehearsal marks: 100% of boundaries found and placed within 4
+  seconds, names 8/8 (vs 3/8 or worse without) — but even
+  chart-anchored, uniform loops still picked up ~1 invented boundary
+  per item: a chart that marks ONE section does not stop the form
+  prior from inventing a chorus (the corollary to the Study 7
+  finding — explicit chart text wins, but the chart's silence does
+  not). Ship guidance: (1) gate the feature on a chart like the
+  song-check, and if a blind mode survives, label it honest only for
+  arrangement-contrast boundaries; (2) extend the parse-don't-ask
+  rule — take the section COUNT and NAMES from the chart's rehearsal
+  marks mechanically and ask the model only to place them in
+  seconds, which measured perfect and would zero the loop
+  subdivision by construction. Robustness notes: 3.5-flash is much
+  cleaner blind (1.0 vs 3.3 false/item — pick it if a blind mode
+  ever matters), and the production model rambles on this task (the
+  bench had to raise its output cap; two cells never produced JSON
+  at any budget — worth a glance at sections latency/cost in
+  ai_request).
+
 - **The redesigned song-check, re-measured: the guard works, the
   instruction loses to the settings line** (stem-bench Study 7,
   2026-10-28; full tables in the repo's REPORT.md). The v0.192 call
