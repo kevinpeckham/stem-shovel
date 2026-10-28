@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.198.0] - 2026-10-28
+
 ### Changed
 
 - **Sessions page tiles** (Kevin): a recording's linked song sits on its own line under the title, and the tile no longer names who uploaded the recording (the day, when it differs from the session's, the size and the MP3 state remain).
