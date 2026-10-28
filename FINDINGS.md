@@ -151,6 +151,30 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **`chartReadWarnings` validated, with a measured upgrade path**
+  (stem-bench Study 6, 2026-10-28; zero model spend — the bench holds
+  model reads of the same engraved pages in corrupted and clean form
+  from its Studies 3 and 5; full table in the repo's REPORT.md). The
+  shipped dropped-accidentals rule caught **10/10** detectable
+  corrupted reads on the production reader. Its false-positive class
+  is exactly the one the source comment worries about, now measured:
+  honest sharp-key charts whose diatonic chords carry no accidentals
+  (a D-major song avoiding F♯m) trip the all-or-nothing rule on ~10%
+  of clean reads (4/42). Counting only accidental-less chords on the
+  signature's OWN altered letters (first n of F C G D A E B / B E A D
+  G C F) removes that class but false-fires on MODULATING charts if
+  signatures are pooled across sections; judging each chord against
+  the key in force at its measure fixes both — 10/10 hit, 1/42
+  flagged — and the one residual flag turned out to deserve firing:
+  the read had placed a modulation three bars late, leaving a
+  section's chords under the wrong key. Two suggestions: (1) adopt
+  key-in-force scoping (note: that variant is exploratory on the
+  bench side — the registered instruments were the shipped rule and
+  the altered-letters refinement — so give it a test or two here);
+  (2) soften the warning's stated cause: the evidence says the flag
+  is trustworthy for "this read needs review" generally, whether the
+  fault is the file's glyphs or the reader's key placement.
+
 - **Correction to the chart-read finding, and the composed-pipeline
   result** (stem-bench Study 5 + Study 3 Correction, 2026-10-24; full
   tables in the repo's REPORT.md). Study 5 composed the real path
