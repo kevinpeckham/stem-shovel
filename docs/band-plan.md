@@ -145,6 +145,13 @@ and the day:
 
 ### Posters, pictures and video (`event_file`)
 
+**Built 2026-10-28 (v0.196.0), posters and photos only:** `event_file`
+with kinds `poster` and `photo`, the Poster and Photos sections on the
+event page, the poster's thumbnail on the tiles, `/f/<code>` links; the
+photo gallery is a lightbox with captions. Video, the posters page and
+reusing a poster across shows are still to come. The schema is in
+docs/data-model.md.
+
 Files of the account, each optionally attached to one event, with a
 `kind`: `poster` (PDF or image, promotion, downloadable at full size),
 `photo` (from the night), `video` (MP4/MOV/WebM, played back in the
@@ -206,9 +213,10 @@ its people, with emails). The plan adds:
    where, Set lists, Recordings (named Sets and Tapes until 2026-10-28) and
    Notes; the Manage menu. `event_payout` and
    `account.currency` move to phase 4 with the books.
-3. **Posters, pictures and video, and the public show page** (v0.197–
+3. **Posters, pictures and video, and the public show page** (v0.196–
    0.198). `event_file`, uploads and playback, the posters page, the
-   public page with its indexability.
+   public page with its indexability. **v0.196.0**: posters and photos on
+   the event page (Kevin asked for these before the rest of phase 2).
 4. **The books** (v0.199). Tickets, attendance, the deal, payouts per
    member, and a per-show and per-year summary on the calendar page
    (shows played, tickets sold, take). Mostly the event page's fields

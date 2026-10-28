@@ -1,13 +1,11 @@
 import { accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
-import { createDemo, storageRoom } from "#lib/server/data.js";
-import { formatBytes } from "#lib/utils/formatBytes.js";
-import { background } from "#lib/server/background.js";
-import { checkStorage } from "#lib/server/notifications.js";
+import { createDemo } from "#lib/server/data.js";
 import { DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -28,15 +26,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
-	const room = await storageRoom(accountId, sizeBytes);
-	if (!room.ok) {
-		error(
-			409,
-			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-		);
-	}
-	// The reservation may have crossed a warning line; the account's admins hear after the response.
-	background(() => checkStorage(accountId));
+	await requireStorageRoom(accountId, sizeBytes);
 	const row = await createDemo(accountId, requireUser(locals).id, songId, {
 		filename,
 		contentType,

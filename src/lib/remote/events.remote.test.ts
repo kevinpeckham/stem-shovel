@@ -12,7 +12,7 @@ import {
 	httpError,
 	redirected,
 } from "../../../tests/helpers/fakeRequestEvent";
-import { data, givenRow, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
+import { blob, data, givenRow, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
 
 /** Authorization of the event remote functions (docs/band-plan.md, "Event"): an editor of the event's account. */
 const events = await import("./events.remote");
@@ -22,6 +22,7 @@ const SET = fakeId("set-one");
 const OTHER_SET = fakeId("set-two");
 const LIST = fakeId("list-one");
 const SESSION = fakeId("session-one");
+const FILE = fakeId("evfile-one");
 const SET_ROW = { id: SET, setListId: LIST, label: "", sortOrder: 0, title: "Main", itemCount: 3 };
 const FIELDS = {
 	kind: "show",
@@ -44,6 +45,7 @@ beforeEach(() => {
 	resetRemoteMocks();
 	givenRow("event", { accountId: ACCOUNT });
 	givenRow("eventSet", { id: SET, event: { accountId: ACCOUNT } });
+	givenRow("eventFile", { accountId: ACCOUNT });
 });
 
 const cases = [
@@ -126,6 +128,32 @@ const cases = [
 		args: [ACCOUNT, EVENT, SESSION, true],
 		outcome: { linked: true },
 		missing: "event",
+	},
+	{
+		name: "updateEventFileCaption",
+		fn: events.updateEventFileCaption,
+		input: { id: FILE, caption: "  Load-in at six " },
+		arrange: () => data.updateEventFileCaption.mockResolvedValue({ id: FILE }),
+		dataFn: "updateEventFileCaption",
+		args: [ACCOUNT, FILE, "Load-in at six"],
+		outcome: { ok: true },
+		missing: "eventFile",
+	},
+	{
+		name: "deleteEventFile",
+		fn: events.deleteEventFile,
+		input: { id: FILE },
+		arrange: () =>
+			data.deleteEventFile.mockResolvedValue({
+				url: "https://x/f.png",
+				pathname: "f.png",
+				thumbnailUrl: "https://x/f.thumb.webp",
+				thumbnailPathname: "f.thumb.webp",
+			}),
+		dataFn: "deleteEventFile",
+		args: [ACCOUNT, FILE],
+		outcome: { ok: true },
+		missing: "eventFile",
 	},
 ];
 
@@ -238,5 +266,34 @@ describe("the data layer finding nothing", () => {
 			call(events.linkEventSession, { eventId: EVENT, sessionId: SESSION, linked: false }),
 		).resolves.toEqual({ linked: false });
 		expect(data.linkEventSession).toHaveBeenLastCalledWith(ACCOUNT, EVENT, SESSION, false);
+	});
+});
+
+describe("event files", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("deleteEventFile removes the file and its thumbnail from the store", async () => {
+		data.deleteEventFile.mockResolvedValue({
+			url: "https://x/f.png",
+			pathname: "f.png",
+			thumbnailUrl: null,
+			thumbnailPathname: null,
+		});
+		await expect(call(events.deleteEventFile, { id: FILE })).resolves.toEqual({ ok: true });
+		expect(blob.deleteBlobs).toHaveBeenCalledWith(["https://x/f.png", ""]);
+	});
+	it("deleteEventFile and updateEventFileCaption answer 404 when the data layer finds nothing; no blob is touched", async () => {
+		data.deleteEventFile.mockResolvedValue(null);
+		await expect(call(events.deleteEventFile, { id: FILE })).rejects.toMatchObject(httpError(404));
+		expect(blob.deleteBlobs).not.toHaveBeenCalled();
+		data.updateEventFileCaption.mockResolvedValue(null);
+		await expect(
+			call(events.updateEventFileCaption, { id: FILE, caption: "x" }),
+		).rejects.toMatchObject(httpError(404));
+	});
+	it("a caption over 300 characters is refused before the data layer", async () => {
+		await expect(
+			call(events.updateEventFileCaption, { id: FILE, caption: "x".repeat(301) }),
+		).rejects.toBeTruthy();
+		expect(data.updateEventFileCaption).not.toHaveBeenCalled();
 	});
 });

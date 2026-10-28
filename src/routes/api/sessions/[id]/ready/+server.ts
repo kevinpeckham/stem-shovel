@@ -1,7 +1,8 @@
 import { accountOfSessionRecording, memberOf, requireUser } from "#lib/server/access.js";
 import { background } from "#lib/server/background.js";
-import { isOurBlobUrl, readBlob } from "#lib/server/blob.js";
+import { isOurBlobUrl } from "#lib/server/blob.js";
 import { failSessionRecording, markSessionReady, reservedPathname } from "#lib/server/data.js";
+import { headOfBlob } from "#lib/server/headOfBlob.js";
 import { scheduleSessionPlayback } from "#lib/server/jobs.js";
 import { notifySessionRecording } from "#lib/server/notifications.js";
 import { startsLikeAudio } from "#lib/utils/fileSignatures.js";
@@ -36,18 +37,3 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	background(() => notifySessionRecording(accountId, params.id, uploader));
 	return Response.json({ ok: true, sessionId: row.sessionId });
 };
-
-/** The first bytes of the file as stored (a second try a moment later: the CDN can lag a fresh upload). */
-async function headOfBlob(url: string): Promise<Uint8Array | null> {
-	for (let attempt = 0; attempt < 2; attempt++) {
-		const res = await readBlob(url).catch(() => null);
-		if (res?.ok && res.body) {
-			const reader = res.body.getReader();
-			const { value } = await reader.read();
-			await reader.cancel().catch(() => {});
-			return value ?? null;
-		}
-		await new Promise((r) => setTimeout(r, 1000));
-	}
-	return null;
-}

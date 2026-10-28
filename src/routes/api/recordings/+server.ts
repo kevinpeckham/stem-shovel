@@ -1,13 +1,11 @@
 import { accountOfIdea, requireUser } from "#lib/server/access.js";
-import { createRecording, recordingStore, storageRoom, userOwnsIdea } from "#lib/server/data.js";
-import { formatBytes } from "#lib/utils/formatBytes.js";
-import { background } from "#lib/server/background.js";
-import { checkStorage } from "#lib/server/notifications.js";
+import { createRecording, recordingStore, userOwnsIdea } from "#lib/server/data.js";
 import { DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS } from "#lib/constants/takeLimits.js";
 import { RECORDING_CODECS, type RecordingCodec } from "#lib/constants/recordingCodecs.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -43,15 +41,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	// The idea is the user's own (whichever account holds its files); its account's storage is what the take counts against.
 	const accountId = await accountOfIdea(ideaId);
 	if (!accountId || !(await userOwnsIdea(accountId, user.id, ideaId))) error(404, "Idea not found");
-	const room = await storageRoom(accountId, sizeBytes);
-	if (!room.ok) {
-		error(
-			409,
-			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-		);
-	}
-	// The reservation may have crossed a warning line; the account's admins hear after the response.
-	background(() => checkStorage(accountId));
+	await requireStorageRoom(accountId, sizeBytes);
 	const row = await createRecording(accountId, user.id, ideaId, {
 		title: (title ?? "").trim().slice(0, 120),
 		filename,

@@ -11,6 +11,11 @@ const SHOWS = process.env.E2E_SHOWS ?? "/mmkk/shows";
 const SET_LISTS = "/mmkk/set-lists";
 const TITLE = "E2E Show";
 const SET = "E2E Show Set";
+/** A one-pixel PNG, enough for the signature check and the browser's thumbnail. */
+const PNG = Buffer.from(
+	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+	"base64",
+);
 
 async function deleteStaleShows(page: import("@playwright/test").Page) {
 	await open(page, SHOWS);
@@ -73,14 +78,50 @@ test("puts a show on the calendar, attaches a set and deletes it", async ({ page
 	await expect(sets.getByRole("link", { name: SET })).toBeVisible();
 	await page.getByLabel("Label of set 1").fill("Set 1");
 	await page.getByLabel("Label of set 1").press("Tab");
-	await page.reload();
+	await page.reload({ waitUntil: "networkidle" });
 	await expect(page.getByLabel("Label of set 1")).toHaveValue("Set 1");
 
-	// The list page shows it under its day, time, venue and set count; the Practices page is empty.
+	// The poster (a one-pixel PNG) and a photo with a caption (Kevin, 2026-10-28).
+	await page.getByLabel("Upload a poster").setInputFiles({
+		name: "poster.png",
+		mimeType: "image/png",
+		buffer: PNG,
+	});
+	await expect(page.getByText("Poster uploaded")).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByRole("img", { name: `Poster for ${TITLE}` })).toBeVisible();
+	await page.getByRole("button", { name: "Poster actions" }).click();
+	await expect(page.getByRole("link", { name: "Download" })).toHaveAttribute(
+		"href",
+		/\/f\/[^/?]+\?download=1/,
+	);
+	await page.keyboard.press("Escape");
+	await page.getByLabel("Add photos").setInputFiles({
+		name: "night.png",
+		mimeType: "image/png",
+		buffer: PNG,
+	});
+	const photos = page.getByRole("list", { name: "Photos" });
+	await expect(photos.getByRole("listitem")).toHaveCount(1, { timeout: 30_000 });
+	await page.getByRole("button", { name: "Open photo 1" }).click();
+	const lightbox = page.getByRole("dialog", { name: "Photo" });
+	await expect(lightbox).toBeVisible();
+	await lightbox.getByLabel("Caption").fill("Soundcheck");
+	await lightbox.getByLabel("Caption").press("Tab");
+	await expect(page.getByText("Caption saved")).toBeVisible();
+	await lightbox.getByRole("button", { name: "Close" }).click();
+	await page.reload({ waitUntil: "networkidle" });
+	await page.getByRole("button", { name: "Open photo 1" }).click();
+	await expect(page.getByRole("dialog", { name: "Photo" }).getByLabel("Caption")).toHaveValue(
+		"Soundcheck",
+	);
+	await page.getByRole("dialog", { name: "Photo" }).getByRole("button", { name: "Close" }).click();
+
+	// The list page shows it under its day, time, venue and set count, with the poster; the Practices page is empty.
 	const event = page.url();
 	await open(page, SHOWS);
 	const upcoming = page.getByRole("list", { name: "Upcoming shows" });
 	await expect(upcoming.getByRole("link", { name: TITLE })).toBeVisible();
+	await expect(upcoming.getByRole("link", { name: TITLE }).locator("img")).toHaveCount(1);
 	await expect(upcoming).toContainText("20:30 · The Echo, Los Angeles · 1 set");
 	await page.getByRole("button", { name: "Manage" }).click();
 	await page.getByRole("menuitem", { name: "Practices" }).click();
@@ -88,8 +129,12 @@ test("puts a show on the calendar, attaches a set and deletes it", async ({ page
 	await expect(page.getByRole("heading", { level: 1 })).toContainText("Practices");
 	await expect(page.getByText("No practices yet.")).toBeVisible();
 
-	// Gone: the show, then the set list.
+	// Gone: the poster, the show (its photo with it), then the set list.
 	await page.goto(event, { waitUntil: "networkidle" });
+	await page.getByRole("button", { name: "Poster actions" }).click();
+	await page.getByRole("button", { name: "Remove", exact: true }).click();
+	await expect(page.getByText("Poster removed")).toBeVisible();
+	await expect(page.getByLabel("Upload a poster")).toBeAttached();
 	await page.getByRole("button", { name: "Delete" }).click();
 	await page.waitForURL(/\/shows$/);
 	await expect(page.getByRole("link", { name: TITLE })).toHaveCount(0);

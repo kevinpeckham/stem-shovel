@@ -1,14 +1,10 @@
 import { accountOfFile, memberOf } from "#lib/server/access.js";
-import { fileThumbnailPathname, isOurBlobUrl, putBlob, readBlob } from "#lib/server/blob.js";
+import { isOurBlobUrl } from "#lib/server/blob.js";
 import { failFile, findFileById, markFileReady } from "#lib/server/data.js";
-import { accessOfPathname } from "#lib/server/relocate.js";
+import { headOfBlob } from "#lib/server/headOfBlob.js";
+import { pageCountOf, readyFormOf, storeFileThumbnail } from "#lib/server/readyForm.js";
+import { FILE_KIND_LABELS, type FileKind } from "#lib/constants/fileFormats.js";
 import {
-	FILE_KIND_LABELS,
-	PDF_THUMBNAIL_MAX_BYTES,
-	type FileKind,
-} from "#lib/constants/fileFormats.js";
-import {
-	imageTypeOfBytes,
 	isPdfBytes,
 	looksLikeText,
 	startsLikeAudio,
@@ -32,13 +28,8 @@ import type { RequestHandler } from "./$types";
  * (the page shows the image itself).
  */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
-	const form = await request.formData();
-	const url = form.get("url");
-	if (typeof url !== "string" || !url.startsWith("https://")) error(400, "url is required");
-	const pagesRaw = Number(form.get("pageCount"));
-	const pageCount =
-		Number.isInteger(pagesRaw) && pagesRaw > 0 && pagesRaw < 10_000 ? pagesRaw : null;
-	const thumbnail = form.get("thumbnail");
+	const { form, url, thumbnail } = await readyFormOf(request);
+	const pageCount = pageCountOf(form);
 
 	const { accountId } = await memberOf(locals, accountOfFile, params.id);
 	const file = await findFileById(accountId, params.id);
@@ -66,28 +57,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		);
 	}
 
-	let thumbnailUrl: string | null = null;
-	let thumbnailPathname: string | null = null;
-	if (thumbnail instanceof File && thumbnail.size > 0) {
-		if (thumbnail.size > PDF_THUMBNAIL_MAX_BYTES) error(413, "The thumbnail is too large");
-		const bytes = new Uint8Array(await thumbnail.arrayBuffer());
-		const type = imageTypeOfBytes(bytes);
-		if (type) {
-			thumbnailPathname = fileThumbnailPathname(pathname, type === "image/webp" ? "webp" : "png");
-			const put = await putBlob(
-				thumbnailPathname,
-				Buffer.from(bytes),
-				type,
-				await accessOfPathname(pathname),
-			);
-			thumbnailUrl = put.url;
-		}
-	}
 	const row = await markFileReady(accountId, params.id, {
 		url,
 		pageCount,
-		thumbnailUrl,
-		thumbnailPathname,
+		...(await storeFileThumbnail(thumbnail, pathname)),
 	});
 	if (!row) error(404, "File not found");
 	return Response.json({ ok: true, shareCode: row.shareCode, kind: row.kind });
@@ -116,19 +89,4 @@ async function startsLikeKind(url: string, kind: FileKind): Promise<boolean> {
 		case "other":
 			return head.length > 0;
 	}
-}
-
-/** The first bytes of the file as stored (a second try a moment later: the CDN can lag a fresh upload). */
-async function headOfBlob(url: string): Promise<Uint8Array | null> {
-	for (let attempt = 0; attempt < 2; attempt++) {
-		const res = await readBlob(url).catch(() => null);
-		if (res?.ok && res.body) {
-			const reader = res.body.getReader();
-			const { value } = await reader.read();
-			await reader.cancel().catch(() => {});
-			return value ?? null;
-		}
-		await new Promise((r) => setTimeout(r, 1000));
-	}
-	return null;
 }

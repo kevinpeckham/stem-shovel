@@ -330,6 +330,33 @@ batch went through once the connection had settled. Three layers now:
   left behind. After a reload the files are gone, and the "Stems not
   ready" tiles with their upload link remain the way back.
 
+## Event files (2026-10-28)
+
+A show's or practice's **poster** and **photos** (docs/band-plan.md,
+"Posters, pictures and video"; table `event_file`, docs/data-model.md).
+The attachments' lifecycle with its own two routes: `POST
+/api/events/<id>/files` (`{ kind: "poster" | "photo", filename,
+sizeBytes }`) reserves the row (a poster is a PDF or an image, a photo an
+image, by the filename's extension; the kind's `FILE_MAX_BYTES` ceiling;
+two hundred photos an event, `MAX_EVENT_PHOTOS`; the account's storage
+room, with `checkStorage` in the background) at
+`accounts/<a>/events/<e>/files/<id>.<ext>` in the public store (events
+are never private), the browser puts the bytes there, renders a
+thumbnail (`pdfThumbnail` for a PDF's first page, `imageThumbnail` for an
+image: a WebP at most 640 px on the long edge, with the original pixel
+size), and `POST /api/event-files/<id>/ready` reads the first bytes from
+the store and checks them against the kind before marking the row ready
+(a mismatch removes row and file, 415); a new poster replaces the
+event's earlier one, row and blobs. The permanent address is
+`/f/<code>` as for attachments (`?download=1` streams it under its
+filename with its stored content type). The event page shows the poster
+with a menu of Open, Download, Copy link, Replace and Remove, and the photos as a
+grid with a lightbox (captions through `updateEventFileCaption`, Delete
+through `deleteEventFile`, both members only); the Shows and Practices
+tiles carry the poster's thumbnail. Deleting the event removes the files
+and their blobs (`cascade.ts`); the files count in the account's storage
+sums like attachments.
+
 ## Sessions (2026-10-18)
 
 The band's practice and show recordings (Kevin: an area for members to

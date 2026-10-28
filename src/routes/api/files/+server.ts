@@ -1,8 +1,5 @@
 import { accountOfProject, accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
-import { createFile, projectOfSong, storageRoom } from "#lib/server/data.js";
-import { formatBytes } from "#lib/utils/formatBytes.js";
-import { background } from "#lib/server/background.js";
-import { checkStorage } from "#lib/server/notifications.js";
+import { createFile, projectOfSong } from "#lib/server/data.js";
 import {
 	FILE_KIND_LABELS,
 	FILE_MAX_BYTES,
@@ -11,7 +8,8 @@ import {
 	fileKindOf,
 } from "#lib/constants/fileFormats.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
-import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
+import { sizeCeilingMessage } from "#lib/utils/sizeCeilingMessage.js";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -38,30 +36,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error(400, "songId or projectId, filename and sizeBytes are required");
 	}
 	const kind = fileKindOf(filename);
-	if (!validSizeBytes(sizeBytes, FILE_MAX_BYTES[kind])) {
-		if (sizeBytes > FILE_MAX_BYTES[kind]) {
-			const what = kind === "other" ? "file" : `${FILE_KIND_LABELS[kind]} file`;
-			error(413, `A ${what} can be up to ${formatBytes(FILE_MAX_BYTES[kind])}`);
-		}
-		error(
-			400,
-			sizeBytes <= 0 ? "The file is empty" : "sizeBytes must be the file's size in whole bytes",
-		);
-	}
+	const refused = sizeCeilingMessage(
+		sizeBytes,
+		FILE_MAX_BYTES[kind],
+		`A ${kind === "other" ? "file" : `${FILE_KIND_LABELS[kind]} file`}`,
+	);
+	if (refused) error(refused.status, refused.message);
 
 	const { accountId } = songId
 		? await memberOf(locals, accountOfSong, songId)
 		: await memberOf(locals, accountOfProject, body.projectId!);
 	const projectId = songId ? (await projectOfSong(accountId, songId))?.projectId : body.projectId!;
 	if (!projectId) error(404, "Song not found");
-	const room = await storageRoom(accountId, sizeBytes);
-	if (!room.ok) {
-		error(
-			409,
-			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-		);
-	}
-	background(() => checkStorage(accountId));
+	await requireStorageRoom(accountId, sizeBytes);
 	const row = await createFile({
 		accountId,
 		userId: requireUser(locals).id,

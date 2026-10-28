@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import EventPhotos from "#lib/components/EventPhotos.svelte";
+	import EventPoster from "#lib/components/EventPoster.svelte";
 	import EventSessions from "#lib/components/EventSessions.svelte";
 	import EventSets from "#lib/components/EventSets.svelte";
 	import EventWhenWhere from "#lib/components/EventWhenWhere.svelte";
@@ -14,8 +16,9 @@
 	/**
 	 * A show or practice (docs/band-plan.md, "Event"): when and where and the
 	 * notes in one form (a viewer of the account sees it disabled, the notes
-	 * rendered), the sets (EventSets) and the tapes (EventSessions), and
-	 * Delete. The sets and sessions are local state, kept from what each
+	 * rendered), the poster (EventPoster), the sets (EventSets), the tapes
+	 * (EventSessions) and the photos (EventPhotos), and Delete. The poster,
+	 * photos, sets and sessions are local state, kept from what each
 	 * command returns; a save of the form reloads the page data and starts
 	 * them over from the server.
 	 */
@@ -33,6 +36,8 @@
 	let sets = $derived(data.sets);
 	let sessions = $derived(data.sessions);
 	let sessionChoices = $derived(data.sessionChoices);
+	let poster = $derived(data.poster);
+	let photos = $derived(data.photos);
 	let busy = $state(false);
 
 	async function remove() {
@@ -97,7 +102,22 @@
 					/>
 				</label>
 				{@render issues(form.fields.title.issues())}
+			</fieldset>
 
+			<!-- Outside the fieldsets, so a viewer can still open, download and copy the poster. -->
+			<section class="grid gap-3" aria-labelledby="event-poster">
+				<h2 class="heading-2 mb-0" id="event-poster">Poster</h2>
+				<EventPoster
+					eventId={e.id}
+					{noun}
+					title={name}
+					{poster}
+					canEdit={data.canEdit}
+					onchange={(p) => (poster = p)}
+				/>
+			</section>
+
+			<fieldset class="m-0 grid min-w-0 gap-6 border-0 p-0" disabled={!data.canEdit}>
 				<EventWhenWhere {form} {e} bind:kind {issues} />
 
 				<section class="grid gap-3" aria-labelledby="event-notes">
@@ -149,6 +169,17 @@
 				eventId={e.id}
 				accountSlug={data.account.slug}
 				canEdit={data.canEdit}
+			/>
+		</section>
+
+		<section class="grid gap-3" aria-labelledby="event-photos">
+			<h2 class="heading-2 mb-0" id="event-photos">Photos</h2>
+			<EventPhotos
+				eventId={e.id}
+				{noun}
+				{photos}
+				canEdit={data.canEdit}
+				onchange={(list) => (photos = list)}
 			/>
 		</section>
 	</div>

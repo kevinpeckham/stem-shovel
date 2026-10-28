@@ -57,6 +57,8 @@ const KIT = fakeId("kit-one");
 const SAMPLE = fakeId("sample-one");
 const FILE = fakeId("file-one");
 const NOTATION = fakeId("notation-one");
+const EVENT = fakeId("event-one");
+const EVENT_FILE = fakeId("evfile-one");
 
 const paths = {
 	stem: `accounts/${ACCOUNT}/songs/${SONG}/${STEM}.wav`,
@@ -69,6 +71,7 @@ const paths = {
 	siteKit: `site/kits/${KIT}/${SAMPLE}.wav`,
 	file: `accounts/${ACCOUNT}/songs/${SONG}/files/${FILE}.pdf`,
 	notation: `accounts/${ACCOUNT}/songs/${SONG}/notation/${NOTATION}.mxl`,
+	eventFile: `accounts/${ACCOUNT}/events/${EVENT}/files/${EVENT_FILE}.png`,
 };
 const TOKEN_RESULT = { type: "blob.generate-client-token", clientToken: "tok" };
 
@@ -94,6 +97,7 @@ beforeEach(() => {
 		"isSiteKitPathname",
 		"isStudioPathname",
 		"isFilePathname",
+		"isEventFilePathname",
 		"isNotationPathname",
 	] as const) {
 		blob[name].mockImplementation(realBlob[name]);
@@ -313,6 +317,36 @@ describe("onBeforeGenerateToken: attachments and notation", () => {
 			tokenPayload: JSON.stringify({ id: NOTATION }),
 		});
 	});
+	it("an event's poster or photo allows an attachment's labels, up to the size it reserved under its kind's ceiling", async () => {
+		givenRow("eventFile", { accountId: ACCOUNT });
+		data.findUploadingEventFile.mockResolvedValue({
+			id: EVENT_FILE,
+			filename: "poster.png",
+			sizeBytes: 50_000,
+		});
+		await expect(tokenFor(paths.eventFile)).resolves.toMatchObject({
+			allowedContentTypes: FILE_CONTENT_TYPES,
+			maximumSizeInBytes: 50_000,
+			tokenPayload: JSON.stringify({ id: EVENT_FILE }),
+		});
+		expect(data.findUploadingEventFile).toHaveBeenCalledWith(ACCOUNT, paths.eventFile);
+		expect(data.findUploadingFile).not.toHaveBeenCalled();
+		data.findUploadingEventFile.mockResolvedValue({
+			id: EVENT_FILE,
+			filename: "poster.png",
+			sizeBytes: FILE_MAX_BYTES.image * 2,
+		});
+		await expect(tokenFor(paths.eventFile)).resolves.toMatchObject({
+			maximumSizeInBytes: FILE_MAX_BYTES.image,
+		});
+	});
+	it("an event file nobody reserved is refused, and an outsider's is not found", async () => {
+		givenRow("eventFile", { accountId: ACCOUNT });
+		data.findUploadingEventFile.mockResolvedValue(null);
+		await expect(tokenFor(paths.eventFile)).rejects.toThrow(/No reservation/);
+		givenRow("eventFile", { accountId: OTHER_ACCOUNT });
+		await expect(tokenFor(paths.eventFile)).rejects.toMatchObject(httpError(404));
+	});
 	it("an attachment nobody reserved is refused", async () => {
 		givenRow("songFile", { accountId: ACCOUNT, projectId: PROJECT });
 		data.findUploadingFile.mockResolvedValue(null);
@@ -327,6 +361,7 @@ describe("onUploadCompleted records the URL on the row the pathname names", () =
 		["midi", "recordStemMidiUrl"],
 		["demo", "recordDemoUrl"],
 		["file", "recordFileUrl"],
+		["eventFile", "recordEventFileUrl"],
 		["notation", "recordNotationUrl"],
 		["recording", "recordRecordingUrl"],
 		["studio", "recordStudioSourceUrl"],

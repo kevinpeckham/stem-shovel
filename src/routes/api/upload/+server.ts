@@ -12,6 +12,8 @@ import {
 	findUploadingMix,
 	findUploadingFile,
 	recordFileUrl,
+	findUploadingEventFile,
+	recordEventFileUrl,
 	findUploadingNotation,
 	recordNotationUrl,
 	findUploadingRecording,
@@ -34,6 +36,7 @@ import {
 import {
 	blobAuth,
 	isDrumSamplePathname,
+	isEventFilePathname,
 	isFilePathname,
 	isNotationPathname,
 	isRecordingPathname,
@@ -45,7 +48,7 @@ import {
 import { DRUM_SAMPLE_MAX_BYTES } from "#lib/constants/drumKits.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
 import { MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
-import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "#lib/constants/fileFormats.js";
+import { FILE_CONTENT_TYPES, FILE_MAX_BYTES, fileKindOf } from "#lib/constants/fileFormats.js";
 import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "#lib/constants/notationFormats.js";
 import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 import { SESSION_MAX_BYTES } from "#lib/constants/sessionRecordings.js";
@@ -78,6 +81,19 @@ async function studioUploadToken(locals: App.Locals, pathname: string) {
 		addRandomSuffix: false,
 		allowOverwrite: true,
 		tokenPayload: JSON.stringify({ id: row.id }),
+	};
+}
+
+/** The token for a show's or practice's poster or photo (docs/band-plan.md, "Posters, pictures and video"): an attachment's types, the size the reservation claimed under its kind's ceiling; the bytes are checked at ready. */
+async function eventFileUploadToken(accountId: string, pathname: string) {
+	const file = await findUploadingEventFile(accountId, pathname);
+	if (!file) throw new Error(`No reservation for "${pathname}"`);
+	return {
+		allowedContentTypes: FILE_CONTENT_TYPES,
+		maximumSizeInBytes: Math.min(file.sizeBytes, FILE_MAX_BYTES[fileKindOf(file.filename)]),
+		addRandomSuffix: false,
+		allowOverwrite: true,
+		tokenPayload: JSON.stringify({ id: file.id }),
 	};
 }
 
@@ -134,6 +150,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				const accountId = isRecordingPathname(pathname)
 					? await ownRecordingAccount(locals, pathname)
 					: (await memberOf(locals, accountOfUploadPathname, pathname)).accountId;
+				if (isEventFilePathname(pathname)) return eventFileUploadToken(accountId, pathname);
 				// A file attached to a song (docs/uploads-and-blob.md, "Attachments"): the types browsers label these files with, the ceiling of the reserved row's kind; the bytes are checked at ready.
 				if (isFilePathname(pathname)) {
 					const file = await findUploadingFile(accountId, pathname);
@@ -204,6 +221,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				else if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
 				else if (isMix(blob.pathname)) await recordMixUrl(blob.pathname, blob.url);
 				else if (isSessionPathname(blob.pathname)) await recordSessionUrl(blob.pathname, blob.url);
+				else if (isEventFilePathname(blob.pathname))
+					await recordEventFileUrl(blob.pathname, blob.url);
 				else if (isFilePathname(blob.pathname)) await recordFileUrl(blob.pathname, blob.url);
 				else if (isNotationPathname(blob.pathname))
 					await recordNotationUrl(blob.pathname, blob.url);

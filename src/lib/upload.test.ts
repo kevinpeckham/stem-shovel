@@ -10,10 +10,12 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 const h = vi.hoisted(() => ({
 	upload: vi.fn(),
 	pdfThumbnail: vi.fn(),
+	imageThumbnail: vi.fn(),
 	fetch: vi.fn(),
 }));
 vi.mock("@vercel/blob/client", () => ({ upload: h.upload }));
 vi.mock("#lib/utils/pdfThumbnail.js", () => ({ pdfThumbnail: h.pdfThumbnail }));
+vi.mock("#lib/utils/imageThumbnail.js", () => ({ imageThumbnail: h.imageThumbnail }));
 vi.mock("#lib/audio/mono.js", () => ({ collapseDualMono: (b: unknown) => b }));
 vi.mock("#lib/audio/peaks.js", () => ({
 	PEAK_BINS: 4,
@@ -24,6 +26,7 @@ vi.stubGlobal("fetch", h.fetch);
 const {
 	uploadStemFile,
 	uploadFile,
+	uploadEventFile,
 	uploadNotationFile,
 	uploadDemoFile,
 	uploadRecordingFile,
@@ -172,6 +175,68 @@ describe("uploadFile", () => {
 			expect(form.has("pageCount")).toBe(false);
 		}
 		expect(h.pdfThumbnail).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("uploadEventFile", () => {
+	it("reserves under the event by kind, name and size, and reports an image with its thumbnail and pixel size", async () => {
+		h.imageThumbnail.mockResolvedValue({
+			image: new Blob(["img"], { type: "image/webp" }),
+			width: 1600,
+			height: 1200,
+		});
+		h.fetch
+			.mockResolvedValueOnce(
+				Response.json({ fileId: "ef1", pathname: "accounts/a/events/e1/ef1.jpg" }),
+			)
+			.mockResolvedValueOnce(Response.json({ file: { id: "ef1", kind: "photo" } }));
+		const out = await uploadEventFile("e1", "photo", file("night.jpg"));
+		expect(out).toEqual({ id: "ef1", kind: "photo" });
+		expect(calls()[0]).toEqual({
+			url: "/api/events/e1/files",
+			method: "POST",
+			json: { kind: "photo", filename: "night.jpg", sizeBytes: 3 },
+		});
+		expect(h.upload).toHaveBeenCalledWith(
+			"accounts/a/events/e1/ef1.jpg",
+			expect.any(File),
+			expect.objectContaining({ access: "public", contentType: "image/jpeg", multipart: true }),
+		);
+		const [url, init] = h.fetch.mock.calls[1] as [string, RequestInit];
+		expect(url).toBe("/api/event-files/ef1/ready");
+		const form = init.body as FormData;
+		expect(form.get("url")).toBe(`${BLOB}/accounts/a/events/e1/ef1.jpg`);
+		expect(form.get("width")).toBe("1600");
+		expect(form.get("height")).toBe("1200");
+		expect(form.has("thumbnail")).toBe(true);
+		expect(h.pdfThumbnail).not.toHaveBeenCalled();
+	});
+	it("renders a PDF's first page without a size, and goes on without a thumbnail when none can be made", async () => {
+		h.pdfThumbnail.mockResolvedValue({ image: new Blob(["img"]), pageCount: 1 });
+		h.imageThumbnail.mockResolvedValue(null);
+		h.fetch.mockImplementation(async (url: string) =>
+			url.endsWith("/files")
+				? Response.json({ fileId: "f", pathname: "p", access: "private" })
+				: Response.json({ file: {} }),
+		);
+		await uploadEventFile("e1", "poster", file("poster.pdf"));
+		await uploadEventFile("e1", "poster", file("poster.heic"));
+		const forms = (h.fetch.mock.calls as [string, RequestInit][])
+			.filter(([url]) => url.endsWith("/ready"))
+			.map(([, init]) => init.body as FormData);
+		expect(forms[0].has("thumbnail")).toBe(true);
+		expect(forms[0].has("width")).toBe(false);
+		expect(forms[1].has("thumbnail")).toBe(false);
+		expect(h.upload.mock.calls[0][2]).toMatchObject({ access: "private" });
+	});
+	it("throws the server's message when the reservation is refused", async () => {
+		h.fetch.mockResolvedValueOnce(
+			Response.json({ message: "The poster is over 25 MB." }, { status: 413 }),
+		);
+		await expect(uploadEventFile("e1", "poster", file("big.pdf"))).rejects.toThrow(
+			"The poster is over 25 MB.",
+		);
+		expect(h.upload).not.toHaveBeenCalled();
 	});
 });
 

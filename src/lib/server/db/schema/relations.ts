@@ -25,6 +25,7 @@ import { recordingSession } from "./recordingSession";
 import { setList } from "./setList";
 import { setListItem } from "./setListItem";
 import { event } from "./event";
+import { eventFile } from "./eventFile";
 import { eventSet } from "./eventSet";
 import { beat } from "./beat";
 import { chordStyle } from "./chordStyle";
@@ -364,6 +365,14 @@ export const eventRelations = relations(event, ({ one, many }) => ({
 	creator: one(user, { fields: [event.createdBy], references: [user.id] }),
 	sets: many(eventSet),
 	sessions: many(recordingSession),
+	/** Its poster and photos (docs/band-plan.md, "Posters, pictures and video"). */
+	files: many(eventFile),
+}));
+
+export const eventFileRelations = relations(eventFile, ({ one }) => ({
+	account: one(account, { fields: [eventFile.accountId], references: [account.id] }),
+	event: one(event, { fields: [eventFile.eventId], references: [event.id] }),
+	uploader: one(user, { fields: [eventFile.uploadedBy], references: [user.id] }),
 }));
 
 export const eventSetRelations = relations(eventSet, ({ one }) => ({

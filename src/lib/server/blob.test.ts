@@ -19,7 +19,16 @@ vi.mock("@vercel/blob", () => ({
 	put: vi.fn(),
 }));
 
-const { blobAuth, isOurBlobUrl, movedPathname, songIdOfPathname } = await import("./blob");
+const {
+	blobAuth,
+	eventFilePathname,
+	fileThumbnailPathname,
+	isEventFilePathname,
+	isFilePathname,
+	isOurBlobUrl,
+	movedPathname,
+	songIdOfPathname,
+} = await import("./blob");
 // Locally the Vite integration bakes the real store ids into blob.ts (the mock
 // above only applies in CI, where the plugin is skipped): build the hosts from
 // whatever ENV blob.ts sees, so the test holds in both.
@@ -60,5 +69,23 @@ describe("blob helpers", () => {
 		expect(isOurBlobUrl("https://other.public.blob.vercel-storage.com/x.wav")).toBe(false);
 		expect(isOurBlobUrl(`http://${PUBLIC_HOST}/x.wav`)).toBe(false);
 		expect(isOurBlobUrl("not a url")).toBe(false);
+	});
+	test("an event's poster or photo lives under the event, and only the event-file predicate knows it", () => {
+		const p = eventFilePathname("acc", "ev1", "f1", "Poster.PNG");
+		expect(p).toBe("accounts/acc/events/ev1/files/f1.png");
+		expect(eventFilePathname("acc", "ev1", "f1", "noext")).toBe(
+			"accounts/acc/events/ev1/files/f1.bin",
+		);
+		expect(isEventFilePathname(p)).toBe(true);
+		expect(isFilePathname(p)).toBe(false);
+		// Its thumbnail is not the file itself.
+		expect(isEventFilePathname(fileThumbnailPathname(p, "webp"))).toBe(false);
+		// An attachment is not an event file, and stays an attachment.
+		expect(isEventFilePathname("accounts/acc/songs/s/files/f.pdf")).toBe(false);
+		expect(isFilePathname("accounts/acc/songs/s/files/f.pdf")).toBe(true);
+		expect(isFilePathname("accounts/acc/projects/p/files/f.txt")).toBe(true);
+		const pub = `https://${PUBLIC_HOST}/${p}`;
+		expect(isOurBlobUrl(pub, p)).toBe(true);
+		expect(isOurBlobUrl(pub, "accounts/acc/events/ev1/files/f2.png")).toBe(false);
 	});
 });

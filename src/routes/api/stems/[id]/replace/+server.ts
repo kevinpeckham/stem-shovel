@@ -1,12 +1,10 @@
 import { accountOfStem, memberOf } from "#lib/server/access.js";
-import { reserveStemReplacement, storageRoom } from "#lib/server/data.js";
-import { formatBytes } from "#lib/utils/formatBytes.js";
-import { background } from "#lib/server/background.js";
-import { checkStorage } from "#lib/server/notifications.js";
+import { reserveStemReplacement } from "#lib/server/data.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
 import { STEM_FORMAT_LIST, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 import { stemContentType } from "#lib/utils/stemContentType.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -27,14 +25,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 	const { accountId } = await memberOf(locals, accountOfStem, params.id);
 	// The new file counts against the account like any upload (the old version stays until it is retired).
-	const room = await storageRoom(accountId, sizeBytes);
-	if (!room.ok) {
-		error(
-			409,
-			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-		);
-	}
-	background(() => checkStorage(accountId));
+	await requireStorageRoom(accountId, sizeBytes);
 	const row = await reserveStemReplacement(accountId, params.id, {
 		filename,
 		contentType,

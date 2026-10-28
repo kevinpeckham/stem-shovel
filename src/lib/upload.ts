@@ -4,7 +4,8 @@ import { computePeaks, PEAK_BINS } from "#lib/audio/peaks.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { stemContentType } from "#lib/utils/stemContentType.js";
 import { pdfThumbnail } from "#lib/utils/pdfThumbnail.js";
-import { FILE_CONTENT_TYPE_OF, type FileKind } from "#lib/constants/fileFormats.js";
+import { imageThumbnail } from "#lib/utils/imageThumbnail.js";
+import { FILE_CONTENT_TYPE_OF, fileKindOf, type FileKind } from "#lib/constants/fileFormats.js";
 import { NOTATION_CONTENT_TYPE_OF, notationFormatOf } from "#lib/constants/notationFormats.js";
 import { upload } from "@vercel/blob/client";
 import { withRetries } from "#lib/utils/withRetries.js";
@@ -117,6 +118,57 @@ export async function uploadFile(
 	const ready = await fetch(`/api/files/${fileId}/ready`, { method: "POST", body: form });
 	if (!ready.ok) throw new Error(await errorText(ready));
 	return (await ready.json()) as { shareCode: string; kind: FileKind };
+}
+
+/**
+ * An event's poster or one of its photos (docs/band-plan.md, "Event"):
+ * reserve under the event, send the bytes to Blob under the content type
+ * its name says, and report the URL with a thumbnail made here in the
+ * browser (a PDF's first page, utils/pdfThumbnail.ts; an image shrunk to
+ * WebP with its pixel size, utils/imageThumbnail.ts). A file the browser
+ * cannot render goes up without one. Answers the ready row.
+ */
+export async function uploadEventFile<Row>(
+	eventId: string,
+	kind: "poster" | "photo",
+	file: File,
+	onProgress?: (percent: number) => void,
+): Promise<Row> {
+	const {
+		fileId,
+		pathname,
+		access = "public",
+	} = await postJson<{
+		fileId: string;
+		pathname: string;
+		access?: "public" | "private";
+	}>(`/api/events/${eventId}/files`, { kind, filename: file.name, sizeBytes: file.size });
+	const pdf = fileKindOf(file.name, file.type) === "pdf";
+	const [blob, thumb] = await Promise.all([
+		upload(pathname, file, {
+			access,
+			handleUploadUrl: "/api/upload",
+			contentType: FILE_CONTENT_TYPE_OF(file.name),
+			multipart: true,
+			onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+		}),
+		(pdf
+			? pdfThumbnail(file).then((t) => (t ? { image: t.image, width: null, height: null } : null))
+			: imageThumbnail(file)
+		).catch(() => null),
+	]);
+	const form = new FormData();
+	form.set("url", blob.url);
+	if (thumb) {
+		form.set("thumbnail", thumb.image, "thumbnail.webp");
+		if (thumb.width && thumb.height) {
+			form.set("width", String(thumb.width));
+			form.set("height", String(thumb.height));
+		}
+	}
+	const ready = await fetch(`/api/event-files/${fileId}/ready`, { method: "POST", body: form });
+	if (!ready.ok) throw new Error(await errorText(ready));
+	return ((await ready.json()) as { file: Row }).file;
 }
 
 export interface SessionReservation {

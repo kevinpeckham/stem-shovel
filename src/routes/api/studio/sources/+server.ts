@@ -1,14 +1,12 @@
 import { requireStudioAccess } from "#lib/server/access.js";
-import { background } from "#lib/server/background.js";
-import { createStudioSource, storageRoom } from "#lib/server/data.js";
-import { checkStorage } from "#lib/server/notifications.js";
+import { createStudioSource } from "#lib/server/data.js";
 import { parseBody } from "#lib/server/parseJsonBody.js";
 import { DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
 import { MAX_STUDIO_SOURCES } from "#lib/constants/studio.js";
 import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
-import { formatBytes } from "#lib/utils/formatBytes.js";
 import { StudioSourceReserveSchema } from "#lib/val/StudioSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -30,15 +28,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const reserve = parseBody(body, StudioSourceReserveSchema);
 	// The song is the user's own idea (whichever account holds its files); its account's storage is what the source counts against.
 	const { accountId, userId } = await requireStudioAccess(locals, reserve.ideaId);
-	const room = await storageRoom(accountId, reserve.sizeBytes);
-	if (!room.ok) {
-		error(
-			409,
-			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-		);
-	}
-	// The reservation may have crossed a warning line; the account's admins hear after the response.
-	background(() => checkStorage(accountId));
+	await requireStorageRoom(accountId, reserve.sizeBytes);
 	const made = await createStudioSource(accountId, userId, reserve);
 	if (made === null) error(404, "Song not found");
 	if (typeof made === "string") error(...REFUSED[made]);

@@ -42,6 +42,12 @@
 	const upcoming = $derived(shown.filter((e) => e.startsOn >= today));
 	const past = $derived(shown.filter((e) => e.startsOn < today).reverse());
 
+	/** The poster on the tile: its thumbnail, else the poster itself when it is an image (a PDF without a thumbnail shows none). */
+	const posterOf = (e: EventListRow): string | null =>
+		e.posterThumbnailUrl ??
+		(e.posterUrl && /\.(png|jpe?g|webp|gif|avif)$/i.test(new URL(e.posterUrl, "http://x").pathname)
+			? e.posterUrl
+			: null);
 	const tileTitle = (e: EventListRow) => e.title.trim() || e.venue.trim() || `Untitled ${noun}`;
 	function tileLine(e: EventListRow): string {
 		const place = [e.venue, e.city]
@@ -69,10 +75,24 @@
 		{:else}
 			<ul class="grid gap-3" aria-label="{label} {heading.toLowerCase()}">
 				{#each rows as e (e.id)}
+					{@const thumb = posterOf(e)}
 					<li class={e.status === "canceled" ? "opacity-60" : ""}>
-						<a class="app-list-tile block" href="/{account.slug}/events/{e.id}">
-							<span class="app-tile-heading">{tileTitle(e)}</span>
-							<span class="mt-1 block text-13px text-dim">{tileLine(e)}</span>
+						<a
+							class="app-list-tile {thumb ? 'flex items-center gap-3' : 'block'}"
+							href="/{account.slug}/events/{e.id}"
+						>
+							{#if thumb}
+								<img
+									class="h-14 w-10 shrink-0 rounded object-cover"
+									src={thumb}
+									alt=""
+									loading="lazy"
+								/>
+							{/if}
+							<span class="block min-w-0">
+								<span class="app-tile-heading">{tileTitle(e)}</span>
+								<span class="mt-1 block text-13px text-dim">{tileLine(e)}</span>
+							</span>
 						</a>
 					</li>
 				{/each}

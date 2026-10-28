@@ -1,6 +1,6 @@
 import { getRequestEvent } from "$app/server";
 import { background } from "#lib/server/background.js";
-import { isRecordingPathname, isSessionPathname } from "#lib/server/blob.js";
+import { isEventFilePathname, isRecordingPathname, isSessionPathname } from "#lib/server/blob.js";
 import { db, schema } from "#lib/server/db/index.js";
 import {
 	logAudit,
@@ -159,6 +159,7 @@ const {
 	setList,
 	setListItem,
 	event,
+	eventFile,
 	eventSet,
 } = schema;
 
@@ -305,6 +306,15 @@ export async function accountOfEvent(eventId: string) {
 	return row?.accountId ?? null;
 }
 
+/** A show's or practice's poster or photo's account (docs/band-plan.md, "Posters, pictures and video"). */
+export async function accountOfEventFile(fileId: string) {
+	const row = await db.query.eventFile.findFirst({
+		where: eq(eventFile.id, fileId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
 /** An event set's account, through its event. */
 export async function accountOfEventSet(setId: string) {
 	const row = await db.query.eventSet.findFirst({
@@ -412,6 +422,14 @@ export async function accountOfUploadPathname(pathname: string) {
 	if (isSessionPathname(pathname)) {
 		const row = await db.query.sessionRecording.findFirst({
 			where: eq(sessionRecording.pathname, pathname),
+			columns: { accountId: true },
+		});
+		return row?.accountId ?? null;
+	}
+	// A show's or practice's poster or photo (docs/band-plan.md, "Posters, pictures and video").
+	if (isEventFilePathname(pathname)) {
+		const row = await db.query.eventFile.findFirst({
+			where: eq(eventFile.pathname, pathname),
 			columns: { accountId: true },
 		});
 		return row?.accountId ?? null;
@@ -525,7 +543,8 @@ const PROJECT_OF = new Map<
 	[
 		accountOfUploadPathname,
 		async (pathname) => {
-			if (isRecordingPathname(pathname)) return null;
+			// A take and an event's file belong to no project.
+			if (isRecordingPathname(pathname) || isEventFilePathname(pathname)) return null;
 			const s = await db.query.stem.findFirst({
 				where: eq(stem.pathname, pathname),
 				with: { song: { columns: { projectId: true } } },

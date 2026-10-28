@@ -1,19 +1,12 @@
 import { accountOfRecording, requireUser } from "#lib/server/access.js";
-import { background } from "#lib/server/background.js";
-import {
-	createRecordingStem,
-	recordingStore,
-	storageRoom,
-	userOwnsRecording,
-} from "#lib/server/data.js";
-import { checkStorage } from "#lib/server/notifications.js";
+import { createRecordingStem, recordingStore, userOwnsRecording } from "#lib/server/data.js";
 import { DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
 import { RECORDING_CODECS, type RecordingCodec } from "#lib/constants/recordingCodecs.js";
 import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
-import { formatBytes } from "#lib/utils/formatBytes.js";
 import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -50,14 +43,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const accountId = await accountOfRecording(params.id);
 	if (!accountId || !(await userOwnsRecording(accountId, user.id, params.id)))
 		error(404, "Recording not found");
-	const room = await storageRoom(accountId, sizeBytes);
-	if (!room.ok) {
-		error(
-			409,
-			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-		);
-	}
-	background(() => checkStorage(accountId));
+	await requireStorageRoom(accountId, sizeBytes);
 	const row = await createRecordingStem(accountId, params.id, {
 		label: label.trim().slice(0, 60),
 		sortOrder,

@@ -31,6 +31,7 @@ const {
 	commentVersion,
 	demo,
 	event,
+	eventFile,
 	eventSet,
 	sessionRecording,
 	recordingSession,
@@ -178,10 +179,11 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 }
 
 /** Ideas with their takes, and a Studio song's sources and revisions (docs/multitrack-recorder.md). */
-/** An event's sets (the set lists themselves stay), its sessions untied, then the event (docs/band-plan.md, "Event"). */
+/** An event's sets (the set lists themselves stay), its poster and photos, its sessions untied, then the event (docs/band-plan.md, "Event"). */
 export async function deleteEventRows(eventIds: string[]): Promise<void> {
 	if (eventIds.length === 0) return;
 	await db.delete(eventSet).where(inArray(eventSet.eventId, eventIds));
+	await db.delete(eventFile).where(inArray(eventFile.eventId, eventIds));
 	await db
 		.update(recordingSession)
 		.set({ eventId: null })
@@ -306,6 +308,8 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 			(r) => r.id,
 		),
 	);
+	// A poster kept without its event.
+	await db.delete(eventFile).where(eq(eventFile.accountId, accountId));
 	await deleteSetListRows(
 		(await db.select({ id: setList.id }).from(setList).where(eq(setList.accountId, accountId))).map(
 			(r) => r.id,
@@ -376,6 +380,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 		.where(eq(recordingSession.createdBy, userId));
 	await db.update(songMix).set({ uploadedBy: null }).where(eq(songMix.uploadedBy, userId));
 	await db.update(songFile).set({ uploadedBy: null }).where(eq(songFile.uploadedBy, userId));
+	await db.update(eventFile).set({ uploadedBy: null }).where(eq(eventFile.uploadedBy, userId));
 	await db
 		.update(songNotation)
 		.set({ uploadedBy: null })

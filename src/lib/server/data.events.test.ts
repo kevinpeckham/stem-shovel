@@ -106,6 +106,8 @@ describe("listEvents", () => {
 			city: "Austin",
 			setCount: 2,
 			sessionCount: 1,
+			posterThumbnailUrl: null,
+			posterUrl: null,
 			createdAt: at("2026-10-01T00:00:00Z"),
 			updatedAt: at("2026-10-01T00:00:00Z"),
 		});

@@ -7,6 +7,18 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Playwright: `setInputFiles` right after `page.reload()` lands before hydration (2026-10-28)
+
+The events spec reloaded the page, asserted a server-rendered input's
+value (which passes on the SSR HTML at once) and then called
+`setInputFiles` on a hidden `<input type="file">`. The `change` event
+fired on an element whose Svelte handler was not attached yet, so nothing
+happened and the test waited 30 s for "Poster uploaded"; the same steps
+by hand worked every time. `page.reload()` resolves on `load`, before
+SvelteKit hydrates. Reload (and `goto`) with `{ waitUntil: "networkidle" }`
+before interacting with anything that needs a handler, as the other specs
+already do for navigation.
+
 ## Vercel function /tmp is ~500 MB; ffmpeg-static's https input segfaults, so big sources go through stdin (2026-10-28, v0.195.0)
 
 A 650 MB FLAC session recording never got its MP3: `downloadToFile`

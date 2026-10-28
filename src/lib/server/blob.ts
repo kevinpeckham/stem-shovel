@@ -98,9 +98,29 @@ export function fileThumbnailPathname(pathname: string, ext: string) {
 	const stamp = Date.now().toString(36);
 	return `${pathname.replace(/\.[a-z0-9]+$/i, "")}.thumb-${stamp}.${ext}`;
 }
-/** An attachment's own pathname (not its thumbnail): `/files/` since 2026-10-06 under a song or a project, `/pdfs/` for the rows uploaded before. */
+/** An event file's own pathname (not its thumbnail). */
+export const isEventFilePathname = (pathname: string) =>
+	/^accounts[/][^/]+[/]events[/][^/]+[/]files[/][^/.]+[.][a-z0-9]+$/.test(pathname);
+/** An attachment's own pathname (not its thumbnail): `/files/` since 2026-10-06 under a song or a project, `/pdfs/` for the rows uploaded before; never an event's file. */
 export const isFilePathname = (pathname: string) =>
-	/[/](files|pdfs)[/][^/.]+[.][a-z0-9]+$/.test(pathname);
+	!isEventFilePathname(pathname) && /[/](files|pdfs)[/][^/.]+[.][a-z0-9]+$/.test(pathname);
+
+/**
+ * Blob pathname for a show's or practice's poster or photo (docs/band-plan.md,
+ * "Posters, pictures and video"): under the event, the extension as
+ * uploaded, lower-cased. Events are never private, so `accessOfPathname`
+ * sends these to the public store; the thumbnail goes beside it
+ * (`fileThumbnailPathname`).
+ */
+export function eventFilePathname(
+	accountId: string,
+	eventId: string,
+	fileId: string,
+	filename: string,
+) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/events/${eventId}/files/${fileId}.${ext}`;
+}
 
 /** Blob pathname for a notation file attached to a song (docs/uploads-and-blob.md, "Notation files"): the extension as uploaded, lower-cased. */
 export function notationPathname(

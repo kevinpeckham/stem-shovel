@@ -102,10 +102,11 @@ describe("accountStorageBytes", () => {
 			studioSource: [mine(10_000)],
 			drumSample: [mine(100_000)],
 			songFile: [mine(1_000_000)],
+			eventFile: [mine(1_000_000_000), mine(9, "failed")],
 			songNotation: [mine(10_000_000), mine(5, "failed")],
 			sessionRecording: [mine(100_000_000), mine(7, "failed")],
 		});
-		expect(await accountStorageBytes("a1")).toBe(111_111_133);
+		expect(await accountStorageBytes("a1")).toBe(1_111_111_133);
 		expect(fake.calls.filter((c) => c.op === "select").map((c) => c.table)).toEqual([
 			"stem",
 			"demo",
@@ -116,6 +117,7 @@ describe("accountStorageBytes", () => {
 			"drum_sample",
 			"song_pdf",
 			"song_notation",
+			"event_file",
 			"session_recording",
 		]);
 	});

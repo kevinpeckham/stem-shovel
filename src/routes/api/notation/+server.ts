@@ -1,8 +1,6 @@
 import { accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
-import { createNotation, storageRoom } from "#lib/server/data.js";
+import { createNotation } from "#lib/server/data.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
-import { background } from "#lib/server/background.js";
-import { checkStorage } from "#lib/server/notifications.js";
 import {
 	MAX_NOTATION_PER_SONG,
 	NOTATION_MAX_BYTES,
@@ -10,6 +8,7 @@ import {
 } from "#lib/constants/notationFormats.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -36,14 +35,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
-	const room = await storageRoom(accountId, sizeBytes);
-	if (!room.ok) {
-		error(
-			409,
-			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-		);
-	}
-	background(() => checkStorage(accountId));
+	await requireStorageRoom(accountId, sizeBytes);
 	const row = await createNotation(accountId, requireUser(locals).id, songId, {
 		filename,
 		sizeBytes,

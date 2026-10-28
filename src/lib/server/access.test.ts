@@ -31,6 +31,8 @@ vi.mock("#lib/server/data.js", () => data);
 vi.mock("#lib/server/blob.js", () => ({
 	isRecordingPathname: (pathname: string) => pathname.includes("/recordings/"),
 	isSessionPathname: (pathname: string) => pathname.includes("/sessions/"),
+	isEventFilePathname: (pathname: string) =>
+		/^accounts\/[^/]+\/events\/[^/]+\/files\//.test(pathname),
 }));
 vi.mock("#lib/server/background.js", () => ({
 	background: (work: () => Promise<void>) => {
@@ -284,8 +286,19 @@ describe("accountOfUploadPathname", () => {
 			songNotation: [
 				{ id: "n1", accountId: "a6", pathname: "accounts/a6/songs/s6/notation/n1.xml" },
 			],
+			eventFile: [{ id: "ef1", accountId: "a7", pathname: "accounts/a7/events/e7/files/ef1.png" }],
 		}),
 	);
+	test("an event's poster or photo finds its owner from its own table alone", async () => {
+		fake.calls.length = 0;
+		expect(await access.accountOfUploadPathname("accounts/a7/events/e7/files/ef1.png")).toBe("a7");
+		expect(await access.accountOfUploadPathname("accounts/a7/events/e7/files/none.png")).toBeNull();
+		expect(fake.calls.map((c) => c.table)).toEqual(["event_file", "event_file"]);
+	});
+	test("accountOfEventFile: the file's account, or null", async () => {
+		expect(await access.accountOfEventFile("ef1")).toBe("a7");
+		expect(await access.accountOfEventFile("nope")).toBeNull();
+	});
 	test("a stem, its MIDI file, a take, a take's stem, a demo, an attachment and a notation file each find their owner", async () => {
 		expect(await access.accountOfUploadPathname("accounts/a1/songs/s1/st1.wav")).toBe("a1");
 		expect(await access.accountOfUploadPathname("accounts/a1/songs/s1/st1.mid")).toBe("a1");

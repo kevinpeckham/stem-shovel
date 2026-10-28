@@ -409,11 +409,16 @@ describe("deleteEventRows", () => {
 				{ id: "rs2", accountId: "a1", eventId: "e2" },
 				{ id: "rs3", accountId: "a1", eventId: null },
 			],
+			eventFile: [
+				{ id: "ef1", accountId: "a1", eventId: "e1", kind: "poster" },
+				{ id: "ef2", accountId: "a1", eventId: "e2", kind: "photo" },
+			],
 		}),
 	);
-	test("the sets go and the sessions are untied before the event; the set lists and sessions stay", async () => {
+	test("the sets, poster and photos go and the sessions are untied before the event; the set lists and sessions stay", async () => {
 		await deleteEventRows(["e1"]);
-		expect(deletes()).toEqual(["event_set", "event"]);
+		expect(deletes()).toEqual(["event_set", "event_file", "event"]);
+		expect(fake.rows("eventFile").map((r) => r.id)).toEqual(["ef2"]);
 		expect(updates().map((u) => u.table)).toEqual(["recording_session"]);
 		expect(fake.rows("event").map((r) => r.id)).toEqual(["e2"]);
 		expect(fake.rows("eventSet").map((r) => r.id)).toEqual(["es2"]);

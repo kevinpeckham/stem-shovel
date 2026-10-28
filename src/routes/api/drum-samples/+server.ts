@@ -1,12 +1,5 @@
 import { isEditor, memberOf, requireSystemAdmin, requireUser } from "#lib/server/access.js";
-import { background } from "#lib/server/background.js";
-import {
-	accountOfDrumKit,
-	createDrumSample,
-	ensureBuiltinKitRow,
-	storageRoom,
-} from "#lib/server/data.js";
-import { checkStorage } from "#lib/server/notifications.js";
+import { accountOfDrumKit, createDrumSample, ensureBuiltinKitRow } from "#lib/server/data.js";
 import { recordingAccess } from "#lib/server/blob.js";
 import { DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
 import { DRUM_SAMPLE_MAX_BYTES, isOverridableKit } from "#lib/constants/drumKits.js";
@@ -14,6 +7,7 @@ import { DRUM_VOICE_IDS, type DrumVoiceId } from "#lib/constants/drumMachine.js"
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -55,14 +49,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (kit.accountId) {
 		const m = await memberOf(locals, async () => kit.accountId, kit.accountId);
 		if (!isEditor(m.role)) error(404, "Kit not found");
-		const room = await storageRoom(kit.accountId, sizeBytes);
-		if (!room.ok) {
-			error(
-				409,
-				`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-			);
-		}
-		background(() => checkStorage(kit.accountId!));
+		await requireStorageRoom(kit.accountId, sizeBytes);
 	} else requireSystemAdmin(locals);
 	const row = await createDrumSample(kit.accountId, user.id, kitId, voice as DrumVoiceId, {
 		filename,

@@ -1,5 +1,9 @@
 import { presentUrl, readBlob } from "#lib/server/blob.js";
-import { fileByShareCode as attachmentByShareCode, notationByShareCode } from "#lib/server/data.js";
+import {
+	fileByShareCode as attachmentByShareCode,
+	eventFileByShareCode,
+	notationByShareCode,
+} from "#lib/server/data.js";
 import { NOTATION_CONTENT_TYPE_OF } from "#lib/constants/notationFormats.js";
 import { attachmentDisposition } from "#lib/utils/attachmentDisposition.js";
 import { error } from "@sveltejs/kit";
@@ -14,8 +18,9 @@ interface Served {
 
 /**
  * A file's permanent link (docs/uploads-and-blob.md, "Attachments" and
- * "Notation files"): `/f/<code>` finds the file by its share code (an
- * attachment's first, then a notation file's) and sends the visitor to where it is now, in
+ * "Notation files"; docs/band-plan.md, "Posters, pictures and video"):
+ * `/f/<code>` finds the file by its share code (an attachment's first, then
+ * a notation file's, then a show's poster or photo) and sends the visitor to where it is now, in
  * either store (a presigned URL, good for twelve hours, for a private
  * song's), so the link outlives renames and privacy moves. With
  * `?download=1` it streams the file instead, as an attachment under its
@@ -80,6 +85,16 @@ async function fileByShareCode(code: string): Promise<(Served & { pdf: Served | 
 						}
 					: null,
 		};
+	}
+	// A show's or practice's poster or photo: the type it was stored with; a PDF poster is its own PDF.
+	const eventFile = await eventFileByShareCode(code);
+	if (eventFile) {
+		const served = {
+			url: eventFile.url,
+			filename: eventFile.filename,
+			contentType: eventFile.contentType,
+		};
+		return { ...served, pdf: eventFile.contentType === "application/pdf" ? served : null };
 	}
 	return null;
 }

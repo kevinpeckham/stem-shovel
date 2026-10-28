@@ -1,6 +1,7 @@
 import { command, form, getRequestEvent } from "$app/server";
 import {
 	accountOfEvent,
+	accountOfEventFile,
 	accountOfEventSet,
 	memberOf,
 	requireEditor,
@@ -10,6 +11,8 @@ import {
 	addEventSet as addSet,
 	createEvent as create,
 	deleteEvent as remove,
+	deleteEventFile as removeFile,
+	updateEventFileCaption as updateFileCaption,
 	linkEventSession as linkSession,
 	removeEventSet as removeSet,
 	reorderEventSets as reorderSets,
@@ -26,6 +29,8 @@ import {
 	EventSetReorderSchema,
 	EventUpdateSchema,
 } from "#lib/val/EventSchema.js";
+import { EventFileCaptionSchema, EventFileIdSchema } from "#lib/val/EventFileSchema.js";
+import { deleteBlobs } from "#lib/server/blob.js";
 import { error, redirect } from "@sveltejs/kit";
 
 /** A new show or practice (docs/band-plan.md, "Event") in the account; an editor of it. Lands on its page. */
@@ -50,7 +55,7 @@ export const updateEvent = form(EventUpdateSchema, async ({ id, ...fields }) => 
 	return { ok: true };
 });
 
-/** The event and its sets; its sessions stay, untied. */
+/** The event, its sets, and its poster and photos (rows and files); its sessions stay, untied. */
 export const deleteEvent = command(EventIdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	requireUser(locals);
@@ -110,3 +115,23 @@ export const linkEventSession = command(
 		return { linked };
 	},
 );
+
+/** A poster's or photo's caption (docs/band-plan.md, "Posters, pictures and video"); an editor of its account. */
+export const updateEventFileCaption = command(EventFileCaptionSchema, async ({ id, caption }) => {
+	const { locals } = getRequestEvent();
+	requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfEventFile, id);
+	if (!(await updateFileCaption(accountId, id, caption))) error(404, "Not found");
+	return { ok: true };
+});
+
+/** A poster or photo off the event: the row, the file and its thumbnail. */
+export const deleteEventFile = command(EventFileIdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfEventFile, id);
+	const removed = await removeFile(accountId, id);
+	if (!removed) error(404, "Not found");
+	await deleteBlobs([removed.url, removed.thumbnailUrl ?? ""]);
+	return { ok: true };
+});

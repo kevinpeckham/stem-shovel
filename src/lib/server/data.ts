@@ -42,6 +42,7 @@ import {
 	copyBlob,
 	deleteBlobs,
 	demoPathname,
+	eventFilePathname,
 	sessionPathname,
 	songMixPathname,
 	filePathname,
@@ -186,6 +187,8 @@ import type { SignUpMode } from "#lib/val/SignUpModeSchema.js";
 import type { StemStreaming } from "#lib/val/StemStreamingSchema.js";
 import { accountLimits, storageFits } from "#lib/utils/accountLimits.js";
 import type { BlobAccess } from "#lib/utils/blobAccess.js";
+import { MAX_EVENT_PHOTOS, type EventFileKind } from "#lib/constants/eventFiles.js";
+import type { StemStatus } from "#lib/val/StemStatusSchema.js";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
 import type { ChatReactionEmoji, ChatScopeKind } from "#lib/val/ChatSchema.js";
@@ -253,6 +256,7 @@ const {
 	setList,
 	setListItem,
 	event,
+	eventFile,
 	eventSet,
 } = schema;
 
@@ -361,6 +365,11 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${songNotation.sizeBytes})` })
 		.from(songNotation)
 		.where(and(eq(songNotation.accountId, accountId), ne(songNotation.status, "failed")));
+	// So are a show's poster and photos (docs/band-plan.md, "Posters, pictures and video"); their thumbnails are derived.
+	const [eventFiles] = await db
+		.select({ bytes: sql<number | null>`sum(${eventFile.sizeBytes})` })
+		.from(eventFile)
+		.where(and(eq(eventFile.accountId, accountId), ne(eventFile.status, "failed")));
 	// Session recordings (docs/uploads-and-blob.md, "Sessions") are the account's too.
 	const [sessions] = await db
 		.select({ bytes: sql<number | null>`sum(${sessionRecording.sizeBytes})` })
@@ -376,6 +385,7 @@ export async function accountStorageBytes(accountId: string) {
 		(studioSources.bytes ?? 0) +
 		(samples.bytes ?? 0) +
 		(files.bytes ?? 0) +
+		(eventFiles.bytes ?? 0) +
 		(notation.bytes ?? 0)
 	);
 }
@@ -3386,12 +3396,17 @@ export async function deleteAccount(id: string) {
 		.select({ url: sessionRecording.url, playbackUrl: sessionRecording.playbackUrl })
 		.from(sessionRecording)
 		.where(eq(sessionRecording.accountId, id));
+	const eventFiles = await db
+		.select({ url: eventFile.url, thumbnailUrl: eventFile.thumbnailUrl })
+		.from(eventFile)
+		.where(eq(eventFile.accountId, id));
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...sessions.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
 		...recordings.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
 		...samples.map((smp) => smp.url),
+		...eventFiles.flatMap((f) => [f.url, f.thumbnailUrl ?? ""]),
 		...mixes.map((m) => m.mixUrl ?? ""),
 		...pictures,
 	]);
@@ -10849,9 +10864,49 @@ export type EventListRow = {
 	city: string;
 	setCount: number;
 	sessionCount: number;
+	/** The ready poster's thumbnail (its first page or a smaller copy), null without one or without a poster. */
+	posterThumbnailUrl: string | null;
+	/** The ready poster itself, null without one. */
+	posterUrl: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 };
+
+/** A show's or practice's poster or photo as its page and the API routes return it (docs/band-plan.md, "Posters, pictures and video"). */
+export interface EventFileRow {
+	id: string;
+	kind: EventFileKind;
+	status: StemStatus;
+	url: string;
+	filename: string;
+	contentType: string;
+	sizeBytes: number;
+	width: number | null;
+	height: number | null;
+	caption: string;
+	sortOrder: number;
+	thumbnailUrl: string | null;
+	shareCode: string;
+	createdAt: Date;
+}
+
+/** The columns an `EventFileRow` reads. */
+const eventFileColumns = {
+	id: true,
+	kind: true,
+	status: true,
+	url: true,
+	filename: true,
+	contentType: true,
+	sizeBytes: true,
+	width: true,
+	height: true,
+	caption: true,
+	sortOrder: true,
+	thumbnailUrl: true,
+	shareCode: true,
+	createdAt: true,
+} as const;
 
 /** One set of an event: the set list attached, its title and how many rows it holds. */
 export type EventSetRow = {
@@ -10880,12 +10935,24 @@ export async function listEvents(accountId: string, kind: EventKind): Promise<Ev
 			createdAt: true,
 			updatedAt: true,
 		},
-		with: { sets: { columns: { id: true } }, sessions: { columns: { id: true } } },
+		with: {
+			sets: { columns: { id: true } },
+			sessions: { columns: { id: true } },
+			// The ready poster, newest first: one query with the rest, not one per event.
+			files: {
+				where: and(eq(eventFile.kind, "poster"), eq(eventFile.status, "ready")),
+				orderBy: [desc(eventFile.createdAt)],
+				limit: 1,
+				columns: { url: true, thumbnailUrl: true },
+			},
+		},
 	});
-	return rows.map(({ sets, sessions, ...r }) => ({
+	return rows.map(({ sets, sessions, files, ...r }) => ({
 		...r,
 		setCount: sets.length,
 		sessionCount: sessions.length,
+		posterThumbnailUrl: files[0]?.thumbnailUrl ?? null,
+		posterUrl: files[0]?.url ?? null,
 	}));
 }
 
@@ -10945,14 +11012,15 @@ async function ownEventSet(accountId: string, id: string) {
  * with its set list's title and row count), the sessions that taped it,
  * and the choices for attaching more (the account's set lists by title, its
  * sessions newest first, at most 200, with the event each already points
- * at). Null when it is not the account's.
+ * at), its ready poster (the newest) and its ready photos in gallery
+ * order. Null when it is not the account's.
  */
 export async function eventPage(accountId: string, id: string) {
 	const e = await db.query.event.findFirst({
 		where: and(eq(event.accountId, accountId), eq(event.id, id)),
 	});
 	if (!e) return null;
-	const [sets, sessions, lists, choices] = await Promise.all([
+	const [sets, sessions, lists, choices, files] = await Promise.all([
 		db.query.eventSet.findMany({
 			where: eq(eventSet.eventId, id),
 			orderBy: [asc(eventSet.sortOrder), asc(eventSet.createdAt)],
@@ -10978,7 +11046,17 @@ export async function eventPage(accountId: string, id: string) {
 			columns: { id: true, name: true, kind: true, place: true, startsOn: true, eventId: true },
 			limit: 200,
 		}),
+		db.query.eventFile.findMany({
+			where: and(
+				eq(eventFile.accountId, accountId),
+				eq(eventFile.eventId, id),
+				eq(eventFile.status, "ready"),
+			),
+			orderBy: [asc(eventFile.sortOrder), asc(eventFile.createdAt)],
+			columns: eventFileColumns,
+		}),
 	]);
+	const posters = files.filter((f) => f.kind === "poster");
 	return {
 		event: e,
 		sets: sets.filter((s) => s.setList?.accountId === accountId).map(eventSetRow),
@@ -10988,6 +11066,12 @@ export async function eventPage(accountId: string, id: string) {
 		})),
 		setListChoices: lists.map((l) => ({ id: l.id, title: l.title, itemCount: l.items.length })),
 		sessionChoices: choices,
+		/** The newest ready poster; an older one is replaced at ready, so there is one at most but for a race. */
+		poster: posters.reduce<EventFileRow | null>(
+			(newest, f) => (!newest || f.createdAt > newest.createdAt ? f : newest),
+			null,
+		),
+		photos: files.filter((f) => f.kind === "photo") as EventFileRow[],
 	};
 }
 
@@ -11026,9 +11110,14 @@ export async function updateEvent(accountId: string, id: string, fields: EventFi
 	return row ?? null;
 }
 
-/** The event, its sets, and its sessions untied (cascade.ts); false when it is not the account's. */
+/** The event, its sets, its poster and photos (rows and blobs), and its sessions untied (cascade.ts); false when it is not the account's. */
 export async function deleteEvent(accountId: string, id: string) {
 	if (!(await ownEvent(accountId, id))) return false;
+	const files = await db
+		.select({ url: eventFile.url, thumbnailUrl: eventFile.thumbnailUrl })
+		.from(eventFile)
+		.where(and(eq(eventFile.accountId, accountId), eq(eventFile.eventId, id)));
+	await deleteBlobs(files.flatMap((f) => [f.url, f.thumbnailUrl ?? ""]));
 	await deleteEventRows([id]);
 	return true;
 }
@@ -11134,4 +11223,212 @@ export async function linkEventSession(
 					),
 		);
 	return true;
+}
+
+// ---- event files: posters and photos (docs/band-plan.md, "Posters, pictures and video") ----
+
+/** Where an event file's blobs are, for the caller to remove them. */
+export interface EventFileBlobs {
+	url: string;
+	pathname: string;
+	thumbnailUrl: string | null;
+	thumbnailPathname: string | null;
+}
+
+/** The columns an `EventFileBlobs` reads, for a delete's `returning` (a function: the schema is read when it runs). */
+const eventFileBlobColumns = () => ({
+	url: eventFile.url,
+	pathname: eventFile.pathname,
+	thumbnailUrl: eventFile.thumbnailUrl,
+	thumbnailPathname: eventFile.thumbnailPathname,
+});
+
+/**
+ * Step 1 of a poster's or photo's upload: the row in `uploading` state with
+ * its pathname under the event, its content type from the extension and a
+ * share code. A photo goes last in the gallery. Null for an event the
+ * account lacks; "full" when the event already holds `MAX_EVENT_PHOTOS`
+ * photos (a poster replaces the old one at ready, so it is never full).
+ */
+export async function createEventFile(input: {
+	accountId: string;
+	userId: string;
+	eventId: string;
+	kind: EventFileKind;
+	filename: string;
+	sizeBytes: number;
+}) {
+	const { accountId, eventId, kind } = input;
+	if (!(await ownEvent(accountId, eventId))) return null;
+	let sortOrder = 0;
+	if (kind === "photo") {
+		const [stats] = await db
+			.select({ n: sql<number>`count(*)`, last: sql<number | null>`max(${eventFile.sortOrder})` })
+			.from(eventFile)
+			.where(
+				and(
+					eq(eventFile.eventId, eventId),
+					eq(eventFile.kind, "photo"),
+					ne(eventFile.status, "failed"),
+				),
+			);
+		if (Number(stats?.n ?? 0) >= MAX_EVENT_PHOTOS) return "full" as const;
+		sortOrder = (stats?.last ?? -1) + 1;
+	}
+	const id = nanoid();
+	const [row] = await db
+		.insert(eventFile)
+		.values({
+			id,
+			accountId,
+			eventId,
+			kind,
+			url: "",
+			pathname: eventFilePathname(accountId, eventId, id, input.filename),
+			filename: input.filename,
+			contentType: FILE_CONTENT_TYPE_OF(input.filename),
+			sizeBytes: input.sizeBytes,
+			sortOrder,
+			shareCode: nanoid(16),
+			uploadedBy: input.userId,
+		})
+		.returning();
+	return row!;
+}
+
+/** The kind of the account's event ("show" or "practice"), or null: the noun in a refusal. */
+export async function eventKindOf(accountId: string, id: string): Promise<EventKind | null> {
+	const row = await db.query.event.findFirst({
+		where: and(eq(event.accountId, accountId), eq(event.id, id)),
+		columns: { kind: true },
+	});
+	return row?.kind ?? null;
+}
+
+/** The account's event file, every column, or null. */
+export async function findEventFileById(accountId: string, id: string) {
+	const row = await db.query.eventFile.findFirst({
+		where: and(eq(eventFile.accountId, accountId), eq(eventFile.id, id)),
+	});
+	return row ?? null;
+}
+
+/** The upload token's check (`/api/upload`): the reservation at this pathname, still uploading. */
+export async function findUploadingEventFile(accountId: string, pathname: string) {
+	const row = await db.query.eventFile.findFirst({
+		where: and(
+			eq(eventFile.accountId, accountId),
+			eq(eventFile.pathname, pathname),
+			eq(eventFile.status, "uploading"),
+		),
+	});
+	return row ?? null;
+}
+
+/** Vercel's completion webhook (production only): the URL lands even if the browser's own report never does; the bytes are checked when it does. */
+export async function recordEventFileUrl(pathname: string, url: string) {
+	await db
+		.update(eventFile)
+		.set({ url })
+		.where(and(eq(eventFile.pathname, pathname), eq(eventFile.status, "uploading")));
+}
+
+/**
+ * Step 3: the file checked, its thumbnail stored, the row ready. A poster
+ * replaces the event's earlier ready posters: their rows go here and
+ * `replaced` names their blobs for the caller to remove. Null when the
+ * file is not the account's.
+ */
+export async function markEventFileReady(
+	accountId: string,
+	id: string,
+	data: {
+		url: string;
+		thumbnailUrl: string | null;
+		thumbnailPathname: string | null;
+		width: number | null;
+		height: number | null;
+	},
+): Promise<{ file: EventFileRow; replaced: EventFileBlobs[] } | null> {
+	const [row] = await db
+		.update(eventFile)
+		.set({ ...data, status: "ready" })
+		.where(and(eq(eventFile.accountId, accountId), eq(eventFile.id, id)))
+		.returning();
+	if (!row) return null;
+	const replaced =
+		row.kind === "poster" && row.eventId
+			? await db
+					.delete(eventFile)
+					.where(
+						and(
+							eq(eventFile.accountId, accountId),
+							eq(eventFile.eventId, row.eventId),
+							eq(eventFile.kind, "poster"),
+							eq(eventFile.status, "ready"),
+							ne(eventFile.id, id),
+						),
+					)
+					.returning(eventFileBlobColumns())
+			: [];
+	return { file: eventFileRowOf(row), replaced };
+}
+
+/** The upload was not what its name said (or never finished): the row goes, and whatever landed. */
+export async function failEventFile(accountId: string, id: string) {
+	const [row] = await db
+		.delete(eventFile)
+		.where(and(eq(eventFile.accountId, accountId), eq(eventFile.id, id)))
+		.returning({ url: eventFile.url, thumbnailUrl: eventFile.thumbnailUrl });
+	if (row) await deleteBlobs([row.url, row.thumbnailUrl ?? ""]);
+}
+
+/** A poster's or photo's caption; null when it is not the account's. */
+export async function updateEventFileCaption(accountId: string, id: string, caption: string) {
+	const [row] = await db
+		.update(eventFile)
+		.set({ caption })
+		.where(and(eq(eventFile.accountId, accountId), eq(eventFile.id, id)))
+		.returning();
+	return row ? eventFileRowOf(row) : null;
+}
+
+/** The row removed; its blobs for the caller to remove, or null when it is not the account's. */
+export async function deleteEventFile(
+	accountId: string,
+	id: string,
+): Promise<EventFileBlobs | null> {
+	const [row] = await db
+		.delete(eventFile)
+		.where(and(eq(eventFile.accountId, accountId), eq(eventFile.id, id)))
+		.returning(eventFileBlobColumns());
+	return row ?? null;
+}
+
+/** The ready event file a permanent link names (`/f/<code>`), with the type stored at reserve time. */
+export async function eventFileByShareCode(code: string) {
+	const row = await db.query.eventFile.findFirst({
+		where: and(eq(eventFile.shareCode, code), eq(eventFile.status, "ready")),
+		columns: { url: true, filename: true, contentType: true, kind: true },
+	});
+	return row ?? null;
+}
+
+function eventFileRowOf(r: typeof eventFile.$inferSelect): EventFileRow {
+	return {
+		id: r.id,
+		kind: r.kind,
+		status: r.status,
+		url: r.url,
+		filename: r.filename,
+		contentType: r.contentType,
+		sizeBytes: r.sizeBytes,
+		width: r.width,
+		height: r.height,
+		caption: r.caption,
+		sortOrder: r.sortOrder,
+		thumbnailUrl: r.thumbnailUrl,
+		shareCode: r.shareCode,
+		createdAt: r.createdAt,
+	};
 }

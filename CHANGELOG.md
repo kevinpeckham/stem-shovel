@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.196.0] - 2026-10-28
+
+### Added
+
+- **Posters and photos on shows and practices** (Kevin's request, the first of band plan phase 3): a show's page has a **Poster** section (one PDF or image, uploaded before the night; a menu with Open, Download for printing, Copy link for a permanent `/f/<code>` address, Replace and Remove) and a **Photos** gallery (images from the night in a grid; a lightbox with Previous/Next and arrow keys, a caption per photo, Download, Delete; Add photos uploads several at once). The poster's thumbnail is the event's picture on the Shows and Practices tiles. Files count toward the account's storage like attachments.
+
+### Technical
+
+- `event_file` (migration 0108): kind poster|photo, the attachments' reserve → upload → ready lifecycle at `POST /api/events/[id]/files` and `POST /api/event-files/[id]/ready`, pathnames `accounts/<a>/events/<e>/files/<id>.<ext>` (public store), thumbnails rendered in the browser (`imageThumbnail`, `pdfThumbnail`), `shareCode` served by `/f/[code]`; `eventPage` returns `poster` and `photos`, `listEvents` joins the poster; cascade removes rows and blobs with the event; storage sums include it.
+- Shared server helpers from the Fallow pass: `readyForm.ts` (`readyFormOf`, `pageCountOf`, `storeFileThumbnail`), `requireStorageRoom.ts` (used by all twelve reserve routes), `sizeCeilingMessage`, `headOfBlob(url, atLeast)` for the notation and sessions ready routes; `uploadColumns`/`thumbnailColumns`/`shareCodeColumn` in the schema's columns.ts; `EventPhotoLightbox.svelte`.
+
 ## [0.195.0] - 2026-10-28
 
 ### Added

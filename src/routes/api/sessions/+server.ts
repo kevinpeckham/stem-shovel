@@ -1,8 +1,6 @@
 import { memberOf, requireUser } from "#lib/server/access.js";
-import { createSessionRecording, storageRoom } from "#lib/server/data.js";
+import { createSessionRecording } from "#lib/server/data.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
-import { background } from "#lib/server/background.js";
-import { checkStorage } from "#lib/server/notifications.js";
 import { DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
 import {
 	MAX_SESSIONS_PER_ACCOUNT,
@@ -14,6 +12,7 @@ import { sessionDeviceOf } from "#lib/utils/sessionDeviceOf.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
+import { requireStorageRoom } from "#lib/server/requireStorageRoom.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -63,14 +62,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const title = typeof body.title === "string" ? body.title.trim().slice(0, 120) : "";
 
 	await memberOf(locals, async () => accountId, accountId);
-	const room = await storageRoom(accountId, sizeBytes);
-	if (!room.ok) {
-		error(
-			409,
-			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
-		);
-	}
-	background(() => checkStorage(accountId));
+	await requireStorageRoom(accountId, sizeBytes);
 	const row = await createSessionRecording(accountId, requireUser(locals).id, {
 		sessionId: typeof body.sessionId === "string" && body.sessionId ? body.sessionId : null,
 		kind,

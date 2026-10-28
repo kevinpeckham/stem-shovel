@@ -667,6 +667,34 @@ The sets an event plays, in order: a set list attached to the show (the
 same set list may be attached twice under two labels). A set list's
 deletion removes its rows here; at most `MAX_EVENT_SETS` (20) an event.
 
+### event_file (`eventFile`, `event.files`)
+
+| column                            | type                              | notes                                                                         |
+| --------------------------------- | --------------------------------- | ----------------------------------------------------------------------------- |
+| id                                | text PK                           |                                                                               |
+| account_id                        | text FK → account (cascade)       | indexed                                                                       |
+| event_id                          | text FK → event (cascade)         | nullable (a poster kept without a show, later); indexed, and (event_id, kind) |
+| kind                              | text not null                     | `poster` (one ready per event; a new one replaces it) or `photo`              |
+| status                            | text not null default 'uploading' | `StemStatus`, the attachments' lifecycle                                      |
+| url, pathname                     | text not null                     | pathname unique: `accounts/<a>/events/<e>/files/<id>.<ext>`                   |
+| filename, content_type            | text not null                     | the type from the extension (`fileFormats.ts`)                                |
+| size_bytes                        | integer not null                  | counts toward the account's storage                                           |
+| width, height                     | integer                           | the browser measured the image                                                |
+| caption                           | text not null default ''          | a photo's caption                                                             |
+| sort_order                        | integer not null default 0        |                                                                               |
+| thumbnail_url, thumbnail_pathname | text                              | a WebP or PNG the browser rendered (a PDF's first page)                       |
+| share_code                        | text not null unique              | `/f/<code>`, the permanent address                                            |
+| uploaded_by                       | text FK → user (set null)         | indexed                                                                       |
+| created_at, updated_at            | timestamp_ms                      |                                                                               |
+
+A show's poster (a PDF or an image, `EVENT_POSTER_FILE_KINDS`) and its
+photos (images, at most `MAX_EVENT_PHOTOS` = 200 an event), reserved by
+`POST /api/events/[id]/files`, uploaded to Blob from the browser and
+confirmed by `POST /api/event-files/[id]/ready`, which checks the first
+bytes (docs/uploads-and-blob.md, "Event files"). Deleting the event or
+the account removes the rows and their blobs (`cascade.ts`); a user's
+deletion nulls `uploaded_by`. Added 2026-10-28 (migration 0108).
+
 ### share_link
 
 | column       | type                          | notes                               |
