@@ -146,6 +146,8 @@ export const ROUTES = [
 		[404],
 	],
 	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
+	["api/events/[id]/files (server)", "/api/events/x/files", [405], [405]],
+	["api/event-files/[id]/ready (server)", "/api/event-files/x/ready", [405], [405]],
 	["api/mixes (server)", "/api/mixes", [405], [405]],
 	["api/mixes/[id]/ready (server)", "/api/mixes/x/ready", [405], [405]],
 	["api/files (server)", "/api/files", [405], [405]],
