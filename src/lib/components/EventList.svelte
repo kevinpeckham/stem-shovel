@@ -5,7 +5,7 @@
 	import EventNew from "#lib/components/EventNew.svelte";
 	import EventTile from "#lib/components/EventTile.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
-	import type { EventListRow, VenueChoice } from "#lib/server/data.js";
+	import type { EventListRow, PracticeLocationChoice, VenueChoice } from "#lib/server/data.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
 	import { localDay } from "#lib/utils/isoDay.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
@@ -13,8 +13,8 @@
 
 	/**
 	 * The Shows or the Practices page (docs/band-plan.md, "Event"): a search
-	 * by title and venue, a venue filter (`?venue=<id>`, applied by the
-	 * loader), the upcoming ones soonest first and the past ones newest
+	 * by title and place, a filter by place (a show's venue, `?venue=<id>`; a
+	 * practice's location, `?location=<id>`; applied by the loader), the upcoming ones soonest first and the past ones newest
 	 * first, a tile each (EventTile) linking to the event's page, and New.
 	 * "Today" is the browser's own day (read again once mounted, since the
 	 * server's may differ).
@@ -24,16 +24,58 @@
 		events: EventListRow[];
 		account: { id: string; slug: string; name: string };
 		canEdit: boolean;
-		/** The account's venues, for the filter and the New popover's picker. */
-		venueChoices: VenueChoice[];
+		/** The account's venues (shows), for the filter and the New popover's picker. */
+		venueChoices?: VenueChoice[];
 		/** The venue the list is filtered to, '' for all. */
-		venueId: string;
+		venueId?: string;
+		/** The account's practice locations (practices), for the filter and the New popover's picker. */
+		locationChoices?: PracticeLocationChoice[];
+		/** The location the list is filtered to, '' for all. */
+		locationId?: string;
 	}
-	let { kind, events, account, canEdit, venueChoices, venueId }: Props = $props();
+	let {
+		kind,
+		events,
+		account,
+		canEdit,
+		venueChoices = [],
+		venueId = "",
+		locationChoices = [],
+		locationId = "",
+	}: Props = $props();
 
 	const show = $derived(kind === "show");
 	const noun = $derived(show ? "show" : "practice");
 	const heading = $derived(show ? "Shows" : "Practices");
+	/** The place filter: a show's venue, a practice's location. */
+	const filter = $derived(
+		show
+			? {
+					param: "venue",
+					value: venueId,
+					label: "Filter by venue",
+					all: "All venues",
+					empty: "No shows at this venue.",
+					options: venueChoices.map((v) => ({
+						id: v.id,
+						label: v.city ? `${v.name} · ${v.city}` : v.name,
+					})),
+				}
+			: {
+					param: "location",
+					value: locationId,
+					label: "Filter by location",
+					all: "All locations",
+					empty: "No practices at this location.",
+					options: locationChoices.map((l) => ({ id: l.id, label: l.name })),
+				},
+	);
+
+	/** What the search matches besides the title: a show's venue and city, a practice's location. */
+	const placeText = (e: EventListRow) =>
+		show
+			? `${e.venue?.name ?? e.venueText} ${e.venue?.city ?? e.cityText}`
+			: (e.location?.name ?? "");
 
 	let today = $state(localDay(new Date()));
 	onMount(() => (today = localDay(new Date())));
@@ -43,7 +85,7 @@
 		filterByTitle(
 			events.map((e) => ({
 				...e,
-				meta: `${e.venue?.name ?? e.venueText} ${e.venue?.city ?? e.cityText}`,
+				meta: placeText(e),
 			})),
 			query,
 		),
@@ -51,10 +93,10 @@
 	const upcoming = $derived(shown.filter((e) => e.startsOn >= today));
 	const past = $derived(shown.filter((e) => e.startsOn < today).reverse());
 
-	function filterVenue(id: string) {
+	function filterBy(id: string) {
 		const params = new URLSearchParams(page.url.search);
-		if (id) params.set("venue", id);
-		else params.delete("venue");
+		if (id) params.set(filter.param, id);
+		else params.delete(filter.param);
 		const search = params.toString();
 		void goto(`${page.url.pathname}${search ? `?${search}` : ""}`, { reset: false });
 	}
@@ -75,28 +117,7 @@
 	</section>
 {/snippet}
 
-{#snippet venueFilter()}
-	{#if venueChoices.length || venueId}
-		<select
-			class="field w-full py-1 text-13px sm-w-56"
-			aria-label="Filter by venue"
-			value={venueId}
-			onchange={(ev) => filterVenue(ev.currentTarget.value)}
-		>
-			<option value="">All venues</option>
-			{#each venueChoices as v (v.id)}
-				<option value={v.id}>{v.city ? `${v.name} · ${v.city}` : v.name}</option>
-			{/each}
-		</select>
-	{/if}
-{/snippet}
-
-<svelte:head>
-	<title>{pageTitle(`${heading} · ${account.name}`)}</title>
-	<meta name="robots" content="noindex" />
-</svelte:head>
-
-<main class="page">
+{#snippet header()}
 	<header class="max-w-article mb-6">
 		<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
 			<h1 class="app-page-heading mb-0 flex items-center gap-2">
@@ -129,11 +150,36 @@
 			{/if}
 		</p>
 	</header>
+{/snippet}
 
-	{#if events.length === 0 && venueId}
+{#snippet placeFilter()}
+	{#if filter.options.length || filter.value}
+		<select
+			class="field w-full py-1 text-13px sm-w-56"
+			aria-label={filter.label}
+			value={filter.value}
+			onchange={(ev) => filterBy(ev.currentTarget.value)}
+		>
+			<option value="">{filter.all}</option>
+			{#each filter.options as o (o.id)}
+				<option value={o.id}>{o.label}</option>
+			{/each}
+		</select>
+	{/if}
+{/snippet}
+
+<svelte:head>
+	<title>{pageTitle(`${heading} · ${account.name}`)}</title>
+	<meta name="robots" content="noindex" />
+</svelte:head>
+
+<main class="page">
+	{@render header()}
+
+	{#if events.length === 0 && filter.value}
 		<div class="max-w-article grid gap-4">
-			{@render venueFilter()}
-			<p class="text-14px text-dim">No {noun}s at this venue.</p>
+			{@render placeFilter()}
+			<p class="text-14px text-dim">{filter.empty}</p>
 		</div>
 	{:else if events.length === 0}
 		<div class="max-w-article surface p-6">
@@ -152,12 +198,12 @@
 					<input
 						class="field w-full py-1 pl-7 text-13px"
 						type="search"
-						placeholder="Search by title or venue"
+						placeholder="Search by title or {show ? 'venue' : 'location'}"
 						aria-label="Search {heading.toLowerCase()}"
 						bind:value={query}
 					/>
 				</label>
-				{@render venueFilter()}
+				{@render placeFilter()}
 			</div>
 			{#if shown.length === 0}
 				<p class="text-14px text-dim">No {noun} matches "{query.trim()}".</p>
@@ -170,5 +216,5 @@
 </main>
 
 {#if canEdit}
-	<EventNew accountId={account.id} {kind} {venueChoices} />
+	<EventNew accountId={account.id} {kind} {venueChoices} {locationChoices} />
 {/if}

@@ -27,6 +27,7 @@ import { setListItem } from "./setListItem";
 import { event } from "./event";
 import { venue } from "./venue";
 import { accountVenue } from "./accountVenue";
+import { practiceLocation } from "./practiceLocation";
 import { eventFile } from "./eventFile";
 import { eventSet } from "./eventSet";
 import { beat } from "./beat";
@@ -84,6 +85,8 @@ export const accountRelations = relations(account, ({ many }) => ({
 	ampPresets: many(ampPreset),
 	/** The venues on its list (docs/band-plan.md, "Event"). */
 	venues: many(accountVenue),
+	/** Where it practices (docs/band-plan.md, "Event"). */
+	practiceLocations: many(practiceLocation),
 }));
 
 export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
@@ -369,6 +372,11 @@ export const eventRelations = relations(event, ({ one, many }) => ({
 	creator: one(user, { fields: [event.createdBy], references: [user.id] }),
 	/** Its venue (`venueId`); named `place` because the legacy text column holds the `venue` key. */
 	place: one(venue, { fields: [event.venueId], references: [venue.id] }),
+	/** A practice's location (`locationId`). */
+	location: one(practiceLocation, {
+		fields: [event.locationId],
+		references: [practiceLocation.id],
+	}),
 	sets: many(eventSet),
 	sessions: many(recordingSession),
 	/** Its poster and photos (docs/band-plan.md, "Posters, pictures and video"). */
@@ -380,6 +388,12 @@ export const venueRelations = relations(venue, ({ one, many }) => ({
 	updater: one(user, { fields: [venue.updatedBy], references: [user.id] }),
 	events: many(event),
 	accounts: many(accountVenue),
+}));
+
+export const practiceLocationRelations = relations(practiceLocation, ({ one, many }) => ({
+	account: one(account, { fields: [practiceLocation.accountId], references: [account.id] }),
+	creator: one(user, { fields: [practiceLocation.createdBy], references: [user.id] }),
+	events: many(event),
 }));
 
 export const accountVenueRelations = relations(accountVenue, ({ one }) => ({

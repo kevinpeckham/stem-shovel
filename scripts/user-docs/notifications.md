@@ -8,6 +8,7 @@ Your **inbox** collects what happens in the projects you belong to. Open it from
 - **New stems** someone uploads to a song, and **new songs** created in a project.
 - **New demo recordings** added to a song.
 - **Invitations accepted**: when someone joins through an invitation you sent.
+- **Show reminders**: the day before a show or practice on your band's calendar.
 - **Warnings** for an account you own or manage: storage nearly full (at 80 % and 95 %) or full, and every seat taken.
 
 Nothing you do yourself lands in your own inbox. Several new stems on one song within a short while show as one item. Opening an item marks it read and takes you where it points; **Mark all as read** clears the badge.

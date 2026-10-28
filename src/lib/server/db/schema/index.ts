@@ -40,6 +40,7 @@ export * from "./notification";
 export * from "./notificationPreference";
 export * from "./passkey";
 export * from "./chordStyle";
+export * from "./practiceLocation";
 export * from "./progression";
 export * from "./project";
 export * from "./projectMember";

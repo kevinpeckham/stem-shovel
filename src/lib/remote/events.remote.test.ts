@@ -58,7 +58,14 @@ const cases = [
 		args: [
 			ACCOUNT,
 			USER,
-			{ kind: "show", title: "", startsOn: "2026-11-20", venue: "The Hall", venueId: "" },
+			{
+				kind: "show",
+				title: "",
+				startsOn: "2026-11-20",
+				venue: "The Hall",
+				venueId: "",
+				locationId: "",
+			},
 		],
 		redirect: `/slug-acct-one/events/${EVENT}`,
 		missing: null,
@@ -237,6 +244,7 @@ describe("venues", () => {
 			startsOn: "2026-11-20",
 			venue: "",
 			venueId: VENUE,
+			locationId: "",
 		});
 	});
 	it("updateEvent passes the venue, or leaves it out (and the legacy text) when not sent", async () => {
@@ -256,6 +264,64 @@ describe("venues", () => {
 		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, { ...rest, venueId: VENUE });
 		await call(events.updateEvent, { id: EVENT, ...rest });
 		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, rest);
+	});
+});
+
+describe("practice locations", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	const LOCATION = fakeId("location-one");
+	it("createEvent passes the location picked", async () => {
+		data.createEvent.mockResolvedValue({ id: EVENT });
+		await expect(
+			call(events.createEvent, {
+				accountId: ACCOUNT,
+				kind: "practice",
+				startsOn: "2026-11-20",
+				locationId: LOCATION,
+			}),
+		).rejects.toMatchObject(redirected(`/slug-acct-one/events/${EVENT}`));
+		expect(data.createEvent).toHaveBeenCalledWith(ACCOUNT, USER, {
+			kind: "practice",
+			title: "",
+			startsOn: "2026-11-20",
+			venue: "",
+			venueId: "",
+			locationId: LOCATION,
+		});
+	});
+	it('updateEvent passes the location, "" to clear it, or leaves it out when not sent', async () => {
+		data.updateEvent.mockResolvedValue({ id: EVENT });
+		const rest = {
+			kind: "practice",
+			title: "",
+			status: "planned",
+			startsOn: "2026-11-20",
+			startsAt: "19:00",
+			endsAt: "",
+			loadInAt: "",
+			soundCheckAt: "",
+			notes: "",
+		};
+		await call(events.updateEvent, { id: EVENT, ...rest, locationId: LOCATION });
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, {
+			...rest,
+			locationId: LOCATION,
+		});
+		await call(events.updateEvent, { id: EVENT, ...rest, locationId: "" });
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, { ...rest, locationId: "" });
+		await call(events.updateEvent, { id: EVENT, ...rest });
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, rest);
+	});
+	it("refuses a locationId that is not an id", async () => {
+		await expect(
+			call(events.createEvent, {
+				accountId: ACCOUNT,
+				kind: "practice",
+				startsOn: "2026-11-20",
+				locationId: "the garage!",
+			}),
+		).rejects.toBeTruthy();
+		expect(data.createEvent).not.toHaveBeenCalled();
 	});
 });
 

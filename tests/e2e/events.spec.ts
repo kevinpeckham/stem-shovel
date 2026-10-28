@@ -13,6 +13,10 @@ import { expect, open, test } from "./fixtures";
 const SHOWS = process.env.E2E_SHOWS ?? "/mmkk/shows";
 const SET_LISTS = "/mmkk/set-lists";
 const VENUES = "/mmkk/venues";
+const PRACTICES = "/mmkk/practices";
+const LOCATIONS = "/mmkk/practice-locations";
+const PRACTICE = "E2E Practice";
+const LOCATION = "E2E Garage";
 const TITLE = "E2E Show";
 const SET = "E2E Show Set";
 const VENUE = "E2E Echo";
@@ -212,5 +216,81 @@ test("puts a show on the calendar, attaches a set and deletes it", async ({ page
 	await expect(page.getByText("No venues yet.")).toBeVisible();
 	await deleteStaleSets(page);
 	await expect(page.getByText(SET)).toHaveCount(0);
+	expect(errors).toEqual([]);
+});
+
+/** Deletes leftover E2E practices, then the E2E location (deletable once no practice uses it). */
+async function deleteStalePractices(page: import("@playwright/test").Page) {
+	await open(page, PRACTICES);
+	while (await page.getByRole("link", { name: PRACTICE }).count()) {
+		await page.getByRole("link", { name: PRACTICE }).first().click();
+		await page.waitForURL(/\/events\/[^/]+$/);
+		await page.getByRole("button", { name: "Delete" }).click();
+		await page.waitForURL(/\/practices$/);
+	}
+	await open(page, LOCATIONS);
+	const list = page.getByRole("list", { name: "Practice locations" });
+	while (await list.getByRole("link", { name: LOCATION }).count()) {
+		await list.getByRole("link", { name: LOCATION }).first().click();
+		await page.waitForURL(/\/practice-locations\/[^/]+$/);
+		await page.getByRole("button", { name: "Delete" }).click();
+		await page.waitForURL(/\/practice-locations$/);
+	}
+}
+
+test("puts a practice on the calendar at a saved location and deletes both", async ({
+	page,
+	errors,
+}) => {
+	test.setTimeout(120_000);
+	page.on("dialog", (d) => void d.accept());
+	await deleteStalePractices(page);
+
+	// The practice, with a new location made from the picker (Kevin, 2026-10-28: practices have locations, not venues).
+	await open(page, PRACTICES);
+	await page.getByRole("button", { name: "New practice" }).click();
+	await page.getByLabel("Title").fill(PRACTICE);
+	await page.getByRole("combobox", { name: "Location", exact: true }).selectOption({
+		label: "New location…",
+	});
+	const form = page.getByRole("dialog", { name: "New location" });
+	await form.getByRole("textbox", { name: "Name", exact: true }).fill(LOCATION);
+	await form.getByRole("textbox", { name: "Address", exact: true }).fill("12 Alley Way");
+	await form.getByRole("button", { name: "Create" }).click();
+	await expect(page.getByText("Location added")).toBeVisible();
+	await expect(page.getByRole("combobox", { name: "Location", exact: true })).toContainText(
+		LOCATION,
+	);
+	await page.getByRole("button", { name: "Create" }).click();
+	await page.waitForURL(/\/events\/[^/]+$/);
+	await expect(page.getByLabel("Title")).toHaveValue(PRACTICE);
+	await expect(page.getByText("12 Alley Way")).toBeVisible();
+	await expect(page.getByRole("combobox", { name: "Venue", exact: true })).toHaveCount(0);
+
+	// Its location page lists it, and the Practices page filters by it.
+	await page.getByRole("link", { name: "Edit location" }).click();
+	await page.waitForURL(/\/practice-locations\/[^/]+$/);
+	await expect(page.getByRole("heading", { level: 1 })).toContainText(LOCATION);
+	await expect(page.getByRole("link", { name: PRACTICE })).toBeVisible();
+	await expect(page.getByText(/In use by 1 practice/)).toBeVisible();
+	await page.getByRole("link", { name: "All practices here" }).click();
+	await page.waitForURL(/\/practices\?location=/);
+	await expect(page.getByRole("combobox", { name: "Filter by location" })).toContainText(LOCATION);
+	await expect(page.getByRole("link", { name: PRACTICE })).toBeVisible();
+
+	// Gone: the practice, then the location.
+	await page.getByRole("link", { name: PRACTICE }).click();
+	await page.waitForURL(/\/events\/[^/]+$/);
+	await page.getByRole("button", { name: "Delete" }).click();
+	await page.waitForURL(/\/practices$/);
+	await open(page, LOCATIONS);
+	await page
+		.getByRole("list", { name: "Practice locations" })
+		.getByRole("link", { name: LOCATION })
+		.click();
+	await page.waitForURL(/\/practice-locations\/[^/]+$/);
+	await page.getByRole("button", { name: "Delete" }).click();
+	await page.waitForURL(/\/practice-locations$/);
+	await expect(page.getByText("No locations yet.")).toBeVisible();
 	expect(errors).toEqual([]);
 });

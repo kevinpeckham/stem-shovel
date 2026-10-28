@@ -6,7 +6,7 @@ import { vi, type Mock } from "vite-plus/test";
  * `src/lib/server/access.ts` runs for real against rows a test provides),
  * the data layer, Blob, mail, jobs, notifications and the rate limiter.
  * Every function of the data layer (and of the mail, jobs, notification,
- * lifecycle, relocate and short-link modules) is a `vi.fn()` made on first
+ * lifecycle, relocate, short-link and calendar modules) is a `vi.fn()` made on first
  * use, so a test sets what it needs and asserts what was called with what.
  *
  * `resetRemoteMocks()` in a `beforeEach` clears every mock and restores the
@@ -63,6 +63,7 @@ const h = vi.hoisted(() => {
 		lifecycle: autoMock(),
 		relocate: autoMock(),
 		shortLinks: autoMock(),
+		calendar: autoMock(),
 		blob: autoMock({
 			isRecordingPathname: (pathname: string) => pathname.includes("/recordings/"),
 			imagePathname: (kind: string, accountId: string, id: string, ext: string) =>
@@ -88,6 +89,7 @@ vi.mock("#lib/server/notifications.js", () => h.notifications);
 vi.mock("#lib/server/projectLifecycle.js", () => h.lifecycle);
 vi.mock("#lib/server/relocate.js", () => h.relocate);
 vi.mock("#lib/server/shortLinks.js", () => h.shortLinks);
+vi.mock("#lib/server/calendar.js", () => h.calendar);
 vi.mock("#lib/server/blob.js", () => h.blob);
 vi.mock("#lib/server/aiDetect.js", () => h.aiDetect);
 vi.mock("#lib/server/rateLimit.js", () => h.rateLimit);
@@ -108,6 +110,7 @@ export const jobs = h.jobs;
 export const notifications = h.notifications;
 export const lifecycle = h.lifecycle;
 export const shortLinks = h.shortLinks;
+export const calendar = h.calendar;
 export const blob = h.blob;
 export const aiDetect = h.aiDetect;
 export const rateLimited = h.rateLimit.rateLimited;

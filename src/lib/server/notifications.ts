@@ -17,7 +17,8 @@ import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import { formatBytes } from "#lib/utils/formatBytes.js";
-import { sessionDisplayName } from "#lib/utils/sessionName.js";
+import { eventPlace } from "#lib/utils/eventPlace.js";
+import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 import {
 	DEFAULT_PREFS,
 	digestDue,
@@ -48,6 +49,7 @@ const {
 	account,
 	user: userTable,
 	idea,
+	event,
 } = schema;
 
 const COALESCE_MS = 30 * 60 * 1000;
@@ -399,6 +401,65 @@ export async function notifySessionRecording(
 		href: `/${r.account.slug}/sessions`,
 		subjectId: r.sessionId,
 		coalesce: true,
+	});
+}
+
+/**
+ * The day before a show or practice (docs/band-plan.md, "Notifications";
+ * the daily cron, src/lib/server/calendar.ts): every member of its
+ * account, at the event's page. Once per person per event: someone who
+ * already has this reminder (read or not) is skipped, so a second run of
+ * the cron the same day adds nothing. A canceled event reminds nobody.
+ */
+export async function notifyEventReminder(eventId: string) {
+	const e = await db.query.event.findFirst({
+		where: eq(event.id, eventId),
+		columns: {
+			id: true,
+			accountId: true,
+			kind: true,
+			status: true,
+			title: true,
+			startsOn: true,
+			startsAt: true,
+			venue: true,
+		},
+		with: {
+			account: { columns: { slug: true } },
+			place: { columns: { name: true } },
+			location: { columns: { name: true } },
+		},
+	});
+	if (!e || e.status === "canceled") return;
+	const members = await db.query.accountMember.findMany({
+		where: eq(accountMember.accountId, e.accountId),
+		columns: { userId: true },
+	});
+	if (members.length === 0) return;
+	// By (userId, kind, subjectId): notification_subject_idx answers it.
+	const reminded = await db.query.notification.findMany({
+		where: and(
+			inArray(
+				notification.userId,
+				members.map((m) => m.userId),
+			),
+			eq(notification.kind, "event-reminder"),
+			eq(notification.subjectId, e.id),
+		),
+		columns: { userId: true },
+	});
+	const done = new Set(reminded.map((r) => r.userId));
+	const audience = members.map((m) => m.userId).filter((id) => !done.has(id));
+	if (audience.length === 0) return;
+	const place = eventPlace(e);
+	const noun = e.kind === "show" ? "Show" : "Practice";
+	await notifyUsers(audience, {
+		kind: "event-reminder",
+		accountId: e.accountId,
+		title: `Tomorrow: ${e.title.trim() || place || noun}`,
+		body: [noun, dayText(e.startsOn), e.startsAt, place].filter(Boolean).join(" · "),
+		href: `/${e.account.slug}/events/${e.id}`,
+		subjectId: e.id,
 	});
 }
 

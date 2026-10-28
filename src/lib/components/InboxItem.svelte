@@ -32,6 +32,7 @@
 		demo: "i-ph-microphone",
 		mix: "i-ph-waveform",
 		session: "i-ph-cassette-tape",
+		"event-reminder": "i-ph-calendar-check",
 	};
 
 	async function open() {

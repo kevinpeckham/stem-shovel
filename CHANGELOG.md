@@ -8,6 +8,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.199.0] - 2026-10-28
+
+### Added
+
+- **Practice locations** (Kevin's request): a practice has a location instead of a venue, the account's own (name, address, notes), saved once and picked for every practice there; the Practices page filters by location and **Practice locations** joins the Manage menu with a page per location. Shows keep venues.
+- **Upcoming on the dashboard**: the next shows and practices across the user's bands, with countdown text, the poster thumbnail and the place.
+- **Day-before reminders**: the daily cron sends every member an inbox notification (and an email at once for those who get recording emails; it does not wait for a digest) the day before a show or practice.
+- **Calendar feed**: a private ICS link per account (Calendar feed on the Upcoming block) that phones and shared calendars subscribe to; times are floating, as the venue's clock reads them.
+
+### Technical
+
+- `practice_location` (account-scoped), `event.location_id`, `account.calendar_token` (migration 0110; the backfill turns each practice's venue into one of its account's locations and clears its `venue_id`). `src/lib/server/calendar.ts` holds the calendar queries (`upcomingEvents`, `calendarEvents`, `sendEventReminders`); `/cal/[token].ics`; `calendar.remote.ts` `calendarFeedUrl`; notification kind `event-reminder`.
+
 ## [0.198.0] - 2026-10-28
 
 ### Changed

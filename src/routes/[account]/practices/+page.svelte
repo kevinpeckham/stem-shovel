@@ -10,6 +10,6 @@
 	events={data.events}
 	account={data.account}
 	canEdit={data.canEdit}
-	venueChoices={data.venueChoices}
-	venueId={data.venueId}
+	locationChoices={data.locationChoices}
+	locationId={data.locationId}
 />

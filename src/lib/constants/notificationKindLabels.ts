@@ -13,4 +13,5 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, { one: string; m
 	demo: { one: "demo", many: "demos" },
 	mix: { one: "mix", many: "mixes" },
 	session: { one: "session", many: "sessions" },
+	"event-reminder": { one: "show reminder", many: "show reminders" },
 };

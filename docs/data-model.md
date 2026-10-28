@@ -290,6 +290,7 @@ per song), stem versions (replicator's `audio_version` pattern), comments.
 | plan                | text, default free   | subscription tier; only `free` today (docs/billing.md)                             |
 | lifetime_free       | integer bool, def. 1 | never a base subscription cost                                                     |
 | is_founder          | integer bool, def. 0 | never charged, unlimited data, every feature; first 20 accounts, then super admins |
+| calendar_token      | text unique          | the ICS feed's token (`/cal/<token>.ics`), made on demand (2026-10-28)             |
 | created_at          | timestamp_ms         |                                                                                    |
 | updated_at          | timestamp_ms         |                                                                                    |
 
@@ -707,6 +708,24 @@ null, indexed) points a show or practice at its venue; the event's
 `venue`, `address`, `city`, `map_url` and `venue_notes` text columns are
 legacy since migration 0109 (backfilled into venues and links, shown
 only for an event with no venue, no longer written).
+
+### practice_location (`practiceLocation`, `account.practiceLocations`)
+
+| column                 | type                        | notes                                          |
+| ---------------------- | --------------------------- | ---------------------------------------------- |
+| id                     | text PK                     |                                                |
+| account_id             | text FK → account (cascade) | indexed; (account_id, name) indexed            |
+| name                   | text not null               | unique per account in code, case-insensitively |
+| address, notes         | text not null default ''    |                                                |
+| created_by             | text FK → user (set null)   | indexed                                        |
+| created_at, updated_at | timestamp_ms                |                                                |
+
+Where the band rehearses (Kevin, 2026-10-28: practices do not use the
+shared venues). The account's own, picked on a practice through
+`event.location_id` (FK, set null, indexed) and reused; deleted only while
+no practice references it. At most `MAX_PRACTICE_LOCATIONS_PER_ACCOUNT`
+(200). A show never has a location and a practice never a venue: the
+data layer nulls the other.
 
 ### event_file (`eventFile`, `event.files`)
 

@@ -40,6 +40,7 @@ import {
 	userById,
 	userIdeaNudges,
 } from "#lib/server/data.js";
+import { upcomingEvents } from "#lib/server/calendar.js";
 import { listInbox } from "#lib/server/notifications.js";
 import { canViewProject, canViewSong, type Viewer } from "#lib/server/viewAccess.js";
 import { realMemberships, type Membership } from "#lib/utils/actingMemberships.js";
@@ -452,7 +453,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const who = await whoseDashboard(locals, url);
 	const { id, memberships, viewing } = who;
 	const since = new Date(Date.now() - DASHBOARD_ACTIVITY_DAYS * DAY);
-	const [inbox, ideaRows, loopRows, multitrackRows, tiles, ideaNudges, pins, seenAt] =
+	// Today by UTC (the server knows no viewer's zone): in an evening in the Americas the date has already turned, so that day's events leave the list a few hours early.
+	const today = new Date().toISOString().slice(0, 10);
+	const [inbox, ideaRows, loopRows, multitrackRows, tiles, ideaNudges, pins, seenAt, upcoming] =
 		await Promise.all([
 			listInbox(id),
 			recentUserIdeas(id, "idea", DASHBOARD_LIST_CAP),
@@ -462,9 +465,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			userIdeaNudges(id),
 			listDashboardPins(id),
 			seenAtFor(who),
+			upcomingEvents(
+				memberships.map((m) => m.accountId),
+				today,
+			),
 		]);
 	return {
-		accounts: tiles.map(({ slug, name, role, counts, quota, band, invites }) => ({
+		accounts: tiles.map(({ accountId, slug, name, role, counts, quota, band, invites }) => ({
+			accountId,
 			slug,
 			name,
 			role,
@@ -481,6 +489,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		pinned: pinnedEntries(tiles, pins),
 		seenAt,
 		viewing,
+		upcoming,
+		today,
 		comments: inbox
 			.filter((i) => !i.readAt && COMMENT_KINDS.has(i.kind))
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),

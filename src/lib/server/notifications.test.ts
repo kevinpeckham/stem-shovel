@@ -37,6 +37,7 @@ const {
 	notifySessionChat,
 	notifyInvitationAccepted,
 	notifySessionRecording,
+	notifyEventReminder,
 	notifySong,
 	notifyStems,
 	prefsOf,
@@ -524,6 +525,74 @@ describe("notifySessionRecording", () => {
 				body: "Ann added 2 recordings to The Elbow Room · Oct 17, 2026.",
 			}),
 		]);
+	});
+});
+
+describe("notifyEventReminder", () => {
+	const echo = { id: "v1", name: "The Echo", address: "", city: "Los Angeles" };
+	const show = {
+		id: "ev1",
+		accountId: "a1",
+		kind: "show",
+		title: "Release show",
+		status: "confirmed",
+		startsOn: "2026-10-09",
+		startsAt: "20:00",
+		venueId: "v1",
+		locationId: null,
+		venue: "",
+	};
+	test("every member of the account hears once, at the event's page", async () => {
+		reset(base({ venue: [echo], event: [show] }));
+		await notifyEventReminder("ev1");
+		expect(inboxOf("u4")).toEqual([]); // on a project only, not in the account
+		for (const u of ["u1", "u2", "u3"])
+			expect(inboxOf(u)).toEqual([
+				expect.objectContaining({
+					kind: "event-reminder",
+					accountId: "a1",
+					title: "Tomorrow: Release show",
+					body: "Show · Oct 9, 2026 · 20:00 · The Echo",
+					href: "/lj/events/ev1",
+					subjectId: "ev1",
+				}),
+			]);
+		// A second run (read or not) adds nothing.
+		fake.rows("notification").find((r) => r.userId === "u2")!.readAt = at(NOW);
+		await notifyEventReminder("ev1");
+		for (const u of ["u1", "u2", "u3"]) expect(inboxOf(u)).toHaveLength(1);
+	});
+	test("an untitled practice is called by its place, else its kind; the email follows the recordings' opt-in, digest or not", async () => {
+		reset(
+			base({
+				event: [
+					{
+						...show,
+						id: "ev2",
+						kind: "practice",
+						title: "",
+						venueId: null,
+						venue: "Garage",
+						startsAt: "",
+					},
+					{ ...show, id: "ev3", kind: "practice", title: "", venueId: null, venue: "" },
+				],
+				notificationPreference: [prefRow("u2", { emailDemos: true, digest: "weekly" })],
+			}),
+		);
+		await notifyEventReminder("ev2");
+		await notifyEventReminder("ev3");
+		expect(inboxOf("u1").map((r) => [r.title, r.body])).toEqual([
+			["Tomorrow: Garage", "Practice · Oct 9, 2026 · Garage"],
+			["Tomorrow: Practice", "Practice · Oct 9, 2026 · 20:00"],
+		]);
+		expect(emailsTo()).toEqual(["bob@example.com", "bob@example.com"]);
+	});
+	test("a canceled event or an unknown one reminds nobody", async () => {
+		reset(base({ event: [{ ...show, status: "canceled" }] }));
+		await notifyEventReminder("ev1");
+		await notifyEventReminder("nope");
+		expect(fake.rows("notification")).toEqual([]);
 	});
 });
 

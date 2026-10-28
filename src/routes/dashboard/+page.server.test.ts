@@ -11,6 +11,7 @@ import {
 } from "../../../tests/helpers/fakeRequestEvent";
 import {
 	background,
+	calendar,
 	data,
 	notifications,
 	resetRemoteMocks,
@@ -183,6 +184,7 @@ beforeEach(() => {
 	data.accountNudges.mockResolvedValue([]);
 	data.pendingInvitations.mockResolvedValue([]);
 	data.listInviteCodes.mockResolvedValue([]);
+	calendar.upcomingEvents.mockResolvedValue([]);
 });
 
 // ---- tests ---------------------------------------------------------------
@@ -737,5 +739,30 @@ describe("dashboard load: the person's own things", () => {
 			id: "song 1",
 			href: "/multitrack-recorder?song=song%201",
 		});
+	});
+});
+
+describe("dashboard load: upcoming shows and practices", () => {
+	it("asks for the real accounts' events from today (UTC) on and passes them through", async () => {
+		const rows = [{ id: "ev1", accountSlug: "one", title: "Release show" }];
+		calendar.upcomingEvents.mockResolvedValue(rows);
+		const r = await run([member(ACCOUNT), member(OTHER_ACCOUNT, "owner", { actingAs: true })]);
+		expect(r.upcoming).toBe(rows);
+		expect(calendar.upcomingEvents).toHaveBeenCalledWith(
+			[ACCOUNT],
+			new Date().toISOString().slice(0, 10),
+		);
+		expect(r.accounts[0].accountId).toBe(ACCOUNT);
+	});
+
+	it("an account narrowed to (?account=) asks for that account alone", async () => {
+		const acting = member(OTHER_ACCOUNT, "owner", { actingAs: true });
+		await run([member(ACCOUNT), acting], fakeUser(), `?account=${acting.slug}`);
+		expect(calendar.upcomingEvents).toHaveBeenCalledWith([OTHER_ACCOUNT], expect.any(String));
+	});
+
+	it("with no accounts, asks with none", async () => {
+		expect((await run([])).upcoming).toEqual([]);
+		expect(calendar.upcomingEvents).toHaveBeenCalledWith([], expect.any(String));
 	});
 });

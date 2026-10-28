@@ -27,13 +27,18 @@ describe("TimeSchema", () => {
 
 describe("EventCreateSchema", () => {
 	const base = { accountId: ID, kind: "show", startsOn: "2026-11-14" };
-	test("the kind and the day; title, venue and venueId default empty", () => {
+	test("the kind and the day; title, venue, venueId and locationId default empty", () => {
 		expect(v.parse(EventCreateSchema, base)).toEqual({
 			...base,
 			title: "",
 			venue: "",
 			venueId: "",
+			locationId: "",
 		});
+	});
+	test("locationId is an id or empty", () => {
+		expect(ok(EventCreateSchema, { ...base, kind: "practice", locationId: ID })).toBe(true);
+		expect(ok(EventCreateSchema, { ...base, locationId: "The garage!" })).toBe(false);
 	});
 	test("venueId is an id or empty", () => {
 		expect(ok(EventCreateSchema, { ...base, venueId: ID })).toBe(true);
@@ -77,6 +82,13 @@ describe("EventUpdateSchema", () => {
 		expect(v.parse(EventUpdateSchema, { ...base, venueId: "" }).venueId).toBe("");
 		expect(v.parse(EventUpdateSchema, { ...base, venueId: ID }).venueId).toBe(ID);
 		expect(ok(EventUpdateSchema, { ...base, venueId: "not an id!" })).toBe(false);
+	});
+	test("locationId: an id, empty for none, or left out to keep it", () => {
+		const base = { id: ID, kind: "practice", status: "planned", startsOn: "2026-11-14" };
+		expect(v.parse(EventUpdateSchema, { ...base, locationId: "" }).locationId).toBe("");
+		expect(v.parse(EventUpdateSchema, { ...base, locationId: ID }).locationId).toBe(ID);
+		expect("locationId" in v.parse(EventUpdateSchema, base)).toBe(false);
+		expect(ok(EventUpdateSchema, { ...base, locationId: "not an id!" })).toBe(false);
 	});
 	test("the legacy place fields keep their bounds when sent", () => {
 		const base = { id: ID, kind: "show", status: "planned", startsOn: "2026-11-14" };

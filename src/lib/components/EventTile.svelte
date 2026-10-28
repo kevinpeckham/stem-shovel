@@ -6,10 +6,10 @@
 
 	/**
 	 * A show or practice as a list tile (the Shows and Practices pages, a
-	 * venue's page): the poster's thumbnail, the title (else the venue), and
-	 * a line with the day, the time, the place, the sets and sessions and a
-	 * status other than planned. A canceled one is dimmed. Render it in an
-	 * `<li>`.
+	 * venue's or location's page): the poster's thumbnail, the title (else
+	 * the venue or location), and a line with the day, the time, the place,
+	 * the sets and sessions and a status other than planned. A canceled one
+	 * is dimmed. Render it in an `<li>`.
 	 */
 	let { e, accountSlug }: { e: EventListRow; accountSlug: string } = $props();
 
@@ -21,15 +21,19 @@
 				? e.posterUrl
 				: null),
 	);
-	const venueName = $derived((e.venue?.name ?? e.venueText ?? "").trim());
-	const title = $derived(
-		e.title.trim() || venueName || `Untitled ${e.kind === "show" ? "show" : "practice"}`,
+	const show = $derived(e.kind === "show");
+	/** Where: a show's venue (else the free text from before venues), a practice's location. */
+	const venueName = $derived(
+		(show ? (e.venue?.name ?? e.venueText ?? "") : (e.location?.name ?? "")).trim(),
 	);
+	const title = $derived(e.title.trim() || venueName || `Untitled ${show ? "show" : "practice"}`);
 	const line = $derived(
 		[
 			dayText(e.startsOn),
 			e.startsAt,
-			[venueName, (e.venue?.city ?? e.cityText ?? "").trim()].filter(Boolean).join(", "),
+			show
+				? [venueName, (e.venue?.city ?? e.cityText ?? "").trim()].filter(Boolean).join(", ")
+				: venueName,
 			e.setCount ? plural(e.setCount, "set") : "",
 			e.sessionCount ? plural(e.sessionCount, "session") : "",
 			e.status === "planned" ? "" : EVENT_STATUS_LABELS[e.status],

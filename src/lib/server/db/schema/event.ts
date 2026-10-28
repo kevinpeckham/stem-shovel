@@ -3,6 +3,7 @@ import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type { EventKind, EventStatus } from "../../../val/EventSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
+import { practiceLocation } from "./practiceLocation";
 import { user } from "./user";
 import { venue as venueTable } from "./venue";
 
@@ -36,6 +37,10 @@ export const event = table(
 		soundCheckAt: t.text("sound_check_at").notNull().default(""),
 		/** Where it is: the account's venue (docs/band-plan.md, "Event"); null for none. */
 		venueId: t.text("venue_id").references(() => venueTable.id, { onDelete: "set null" }),
+		/** Where a practice is: the account's practice location; null for none (a show's is `venueId`). */
+		locationId: t
+			.text("location_id")
+			.references(() => practiceLocation.id, { onDelete: "set null" }),
 		/** Legacy free text from before venues were their own rows: no longer written, shown only when `venueId` is null. */
 		venue: t.text("venue").notNull().default(""),
 		address: t.text("address").notNull().default(""),
@@ -54,5 +59,6 @@ export const event = table(
 		t.index("event_day_idx").on(table.accountId, table.startsOn),
 		t.index("event_created_by_idx").on(table.createdBy),
 		t.index("event_venue_idx").on(table.venueId),
+		t.index("event_location_idx").on(table.locationId),
 	],
 );

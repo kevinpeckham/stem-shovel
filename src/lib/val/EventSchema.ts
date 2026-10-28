@@ -8,6 +8,7 @@ import {
 	VenueNotesSchema as VenueOwnNotesSchema,
 	VenueRefSchema,
 } from "./VenueSchema";
+import { PracticeLocationRefSchema } from "./PracticeLocationSchema";
 
 /** What an event is (docs/band-plan.md, "Event"): a show or a practice. */
 export const EVENT_KINDS = ["show", "practice"] as const;
@@ -76,6 +77,8 @@ export const EventCreateSchema = v.object({
 	title: TitleSchema,
 	startsOn: IsoDaySchema,
 	venueId: v.optional(VenueRefSchema, ""),
+	/** A practice's location (`locationId`, "" for none); a show ignores it. */
+	locationId: v.optional(PracticeLocationRefSchema, ""),
 	venue: v.optional(VenueTextSchema, ""),
 });
 export type EventCreate = v.InferOutput<typeof EventCreateSchema>;
@@ -96,6 +99,8 @@ export const EventUpdateSchema = v.object({
 	loadInAt: TimeSchema,
 	soundCheckAt: TimeSchema,
 	venueId: v.optional(VenueRefSchema),
+	/** A practice's location: "" for none, left out to keep it; a show ignores it. */
+	locationId: v.optional(PracticeLocationRefSchema),
 	venue: v.optional(VenueTextSchema),
 	address: v.optional(VenueAddressSchema),
 	city: v.optional(VenueCitySchema),

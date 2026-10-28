@@ -26,5 +26,7 @@ export const account = table("account", {
 	defaultArtistId: t.text("default_artist_id"),
 	/** The account's picture (a resized WebP in Blob, migration 0052), or null. */
 	imageUrl: t.text("image_url"),
+	/** The secret in the account's calendar feed address (`/cal/<token>.ics`, docs/band-plan.md), made the first time a member asks for it; null until then. */
+	calendarToken: t.text("calendar_token").unique(),
 	...timestamps,
 });

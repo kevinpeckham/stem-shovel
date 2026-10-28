@@ -6,6 +6,7 @@
 	import DashboardNudges from "#lib/components/DashboardNudges.svelte";
 	import DashboardPending from "#lib/components/DashboardPending.svelte";
 	import DashboardStart from "#lib/components/DashboardStart.svelte";
+	import DashboardUpcoming from "#lib/components/DashboardUpcoming.svelte";
 	import DashboardViewing from "#lib/components/DashboardViewing.svelte";
 	import DashboardWidget from "#lib/components/DashboardWidget.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
@@ -100,6 +101,13 @@
 		class="grid gap-8 lg-gap-x-12 xl-gap-x-16 2xl-gap-x-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_1fr] lg:gap-y-6 lg:items-start"
 	>
 		<aside aria-label="Latest" class="grid gap-6 lg:col-start-2 lg:row-start-1">
+			<!-- Upcoming first (Kevin, 2026-10-28): what is on the calendar beats the digest, which can run long. -->
+			<DashboardUpcoming
+				events={data.upcoming}
+				accounts={data.accounts}
+				today={data.today}
+				feed={data.viewing?.kind !== "user"}
+			/>
 			<DashboardNew digest={data.digest} />
 			<DashboardConversations chats={data.chats} comments={data.comments} />
 			<DashboardPending items={data.pending} />

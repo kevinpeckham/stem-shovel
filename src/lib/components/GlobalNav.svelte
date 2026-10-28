@@ -39,11 +39,11 @@
 
 	// Five menus: Music (a member's own: projects, songs, sessions, ideas; Kevin,
 	// 2026-10-19, in place of the Projects link), Manage (a member's shows,
-	// practices, venues and set lists; Kevin, 2026-10-28), Instruments (the drum
-	// machine and the piano), Tools (everyone, every width: the Idea Recorder
-	// for a member, the tuner and the metronome) and the account menu,
-	// everything a signed-in user can reach behind one button instead of a
-	// row of links. One open at a time; outside click or Escape closes it.
+	// practices, venues, practice locations and set lists; Kevin, 2026-10-28),
+	// Instruments (the drum machine and the piano), Tools (everyone, every
+	// width: the Idea Recorder for a member, the tuner and the metronome) and
+	// the account menu, everything a signed-in user can reach behind one
+	// button instead of a row of links. One open at a time; outside click or Escape closes it.
 	let openMenu = $state<"music" | "manage" | "instruments" | "tools" | "account" | null>(null);
 	let open = $derived(openMenu === "account");
 	let toolsOpen = $derived(openMenu === "tools");
@@ -81,13 +81,19 @@
 				active("/songs") ||
 				active(`/${member.slug}/sessions`)),
 	);
+	/** The Manage menu: path under the account, title, icon, label. */
+	const MANAGE_ITEMS = [
+		["/shows", "The show calendar: upcoming and past", "i-ph-ticket", "Shows"],
+		["/practices", "Rehearsals, scheduled and past", "i-ph-calendar-dots", "Practices"],
+		["/venues", "Where you play and rehearse", "i-ph-map-pin", "Venues"],
+		["/practice-locations", "Where you rehearse", "i-ph-house-line", "Practice locations"],
+		["/set-lists", "What to play, in order", "i-ph-list-numbers", "Set lists"],
+	] as const;
 	let onManagePage = $derived(
 		!!member &&
-			(active(`/${member.slug}/shows`) ||
-				active(`/${member.slug}/practices`) ||
-				active(`/${member.slug}/events`) ||
-				active(`/${member.slug}/venues`) ||
-				active(`/${member.slug}/set-lists`)),
+			[...MANAGE_ITEMS.map(([path]) => path), "/events"].some((path) =>
+				active(`/${member.slug}${path}`),
+			),
 	);
 	let onToolPage = $derived(
 		TOOL_PAGES.some(active) ||
@@ -109,6 +115,12 @@
 	>
 		<span class="{icon} w-1em" aria-hidden="true"></span>{label}
 	</a>
+{/snippet}
+
+{#snippet manageItems(slug: string)}
+	{#each MANAGE_ITEMS as [path, title, icon, label] (path)}
+		{@render menuItem(`/${slug}${path}`, title, icon, label)}
+	{/each}
 {/snippet}
 
 <svelte:window onpointerdown={onwindowpointerdown} onkeydown={onwindowkeydown} />
@@ -224,30 +236,7 @@
 						role="menu"
 						aria-label="Manage menu"
 					>
-						{@render menuItem(
-							`/${member.slug}/shows`,
-							"The show calendar: upcoming and past",
-							"i-ph-ticket",
-							"Shows",
-						)}
-						{@render menuItem(
-							`/${member.slug}/practices`,
-							"Rehearsals, scheduled and past",
-							"i-ph-calendar-dots",
-							"Practices",
-						)}
-						{@render menuItem(
-							`/${member.slug}/venues`,
-							"Where you play and rehearse",
-							"i-ph-map-pin",
-							"Venues",
-						)}
-						{@render menuItem(
-							`/${member.slug}/set-lists`,
-							"What to play, in order",
-							"i-ph-list-numbers",
-							"Set lists",
-						)}
+						{@render manageItems(member.slug)}
 					</div>
 				{/if}
 			</div>

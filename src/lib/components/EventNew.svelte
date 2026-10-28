@@ -1,23 +1,37 @@
 <script lang="ts">
+	import FieldIssues from "#lib/components/FieldIssues.svelte";
+	import LocationPicker from "#lib/components/LocationPicker.svelte";
 	import VenuePicker from "#lib/components/VenuePicker.svelte";
 	import { createEvent } from "#lib/remote/events.remote.js";
-	import type { VenueChoice } from "#lib/server/data.js";
+	import type { PracticeLocationChoice, VenueChoice } from "#lib/server/data.js";
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { localDay } from "#lib/utils/isoDay.js";
 	import type { EventKind } from "#lib/val/EventSchema.js";
 
-	/** The New show / New practice popover (`#new-event`): a day, a title and a venue (VenuePicker), then the event's page (the form redirects there). */
+	/**
+	 * The New show / New practice popover (`#new-event`): a day, a title and
+	 * where (a show's venue, VenuePicker; a practice's location,
+	 * LocationPicker), then the event's page (the form redirects there).
+	 */
 	let {
 		accountId,
 		kind,
-		venueChoices,
-	}: { accountId: string; kind: EventKind; venueChoices: VenueChoice[] } = $props();
+		venueChoices = [],
+		locationChoices = [],
+	}: {
+		accountId: string;
+		kind: EventKind;
+		venueChoices?: VenueChoice[];
+		locationChoices?: PracticeLocationChoice[];
+	} = $props();
 
 	const show = $derived(kind === "show");
 	/** The default day: today where the browser is, read again each time the popover opens. */
 	let today = $state(localDay(new Date()));
 	/** The venue picked, '' for none; cleared each time the popover opens. */
 	let venueId = $state("");
+	/** The practice location picked, '' for none; cleared each time the popover opens. */
+	let locationId = $state("");
 </script>
 
 <div
@@ -26,7 +40,7 @@
 	onbeforetoggle={(e) => {
 		if (e.newState !== "open") return;
 		today = localDay(new Date());
-		venueId = "";
+		venueId = locationId = "";
 		clearForm(createEvent);
 	}}
 	class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
@@ -49,9 +63,7 @@
 			Day
 			<input class="field text-15px" {...createEvent.fields.startsOn.as("date", today)} required />
 		</label>
-		{#each createEvent.fields.startsOn.issues() ?? [] as issue (issue.message)}
-			<p class="text-sm text-red-400">{issue.message}</p>
-		{/each}
+		<FieldIssues issues={createEvent.fields.startsOn.issues()} />
 		<label class="grid gap-1 text-13px text-dim">
 			Title
 			<input
@@ -61,17 +73,22 @@
 				maxlength="160"
 			/>
 		</label>
-		{#each createEvent.fields.title.issues() ?? [] as issue (issue.message)}
-			<p class="text-sm text-red-400">{issue.message}</p>
-		{/each}
-		<div class="grid gap-1 text-13px text-dim">
-			<span aria-hidden="true">Venue</span>
-			<VenuePicker choices={venueChoices} bind:value={venueId} {accountId} canCreate />
-			<input {...createEvent.fields.venueId.as("hidden", venueId)} />
-		</div>
-		{#each createEvent.fields.venueId.issues() ?? [] as issue (issue.message)}
-			<p class="text-sm text-red-400">{issue.message}</p>
-		{/each}
+		<FieldIssues issues={createEvent.fields.title.issues()} />
+		{#if show}
+			<div class="grid gap-1 text-13px text-dim">
+				<span aria-hidden="true">Venue</span>
+				<VenuePicker choices={venueChoices} bind:value={venueId} {accountId} canCreate />
+				<input {...createEvent.fields.venueId.as("hidden", venueId)} />
+			</div>
+			<FieldIssues issues={createEvent.fields.venueId.issues()} />
+		{:else}
+			<div class="grid gap-1 text-13px text-dim">
+				<span aria-hidden="true">Location</span>
+				<LocationPicker choices={locationChoices} bind:value={locationId} {accountId} canCreate />
+				<input {...createEvent.fields.locationId.as("hidden", locationId)} />
+			</div>
+			<FieldIssues issues={createEvent.fields.locationId.issues()} />
+		{/if}
 		<button
 			class="button button-sm button-accent justify-self-start"
 			disabled={!!createEvent.pending}

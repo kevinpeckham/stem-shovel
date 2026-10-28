@@ -191,6 +191,8 @@ import type { BlobAccess } from "#lib/utils/blobAccess.js";
 import { MAX_EVENT_PHOTOS, type EventFileKind } from "#lib/constants/eventFiles.js";
 import { MAX_ACCOUNT_VENUES, VENUE_SEARCH_LIMIT } from "#lib/constants/venues.js";
 import type { VenueFields } from "#lib/val/VenueSchema.js";
+import { MAX_PRACTICE_LOCATIONS_PER_ACCOUNT } from "#lib/constants/practiceLocations.js";
+import type { PracticeLocationFields } from "#lib/val/PracticeLocationSchema.js";
 import type { StemStatus } from "#lib/val/StemStatusSchema.js";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -263,6 +265,7 @@ const {
 	eventSet,
 	venue,
 	accountVenue,
+	practiceLocation,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -10867,6 +10870,8 @@ export type EventListRow = {
 	startsAt: string;
 	/** Where it is (docs/band-plan.md, "Event"), null for none. */
 	venue: VenueChoice | null;
+	/** A practice's location, null for none (a show never has one). */
+	location: PracticeLocationChoice | null;
 	/** The legacy free-text venue and city (`event.venue`, `event.city`), from before venues were their own rows. */
 	venueText: string;
 	cityText: string;
@@ -10926,17 +10931,18 @@ export type EventSetRow = {
 	itemCount: number;
 };
 
-/** The account's shows or practices, by day then creation (the page splits upcoming from past itself); `filter.venueId` keeps those at one venue. */
+/** The account's shows or practices, by day then creation (the page splits upcoming from past itself); `filter.venueId` keeps those at one venue, `filter.locationId` those at one practice location. */
 export async function listEvents(
 	accountId: string,
 	kind: EventKind,
-	filter: { venueId?: string } = {},
+	filter: { venueId?: string; locationId?: string } = {},
 ): Promise<EventListRow[]> {
 	return eventListRows(
 		and(
 			eq(event.accountId, accountId),
 			eq(event.kind, kind),
 			filter.venueId ? eq(event.venueId, filter.venueId) : undefined,
+			filter.locationId ? eq(event.locationId, filter.locationId) : undefined,
 		),
 		[asc(event.startsOn), asc(event.createdAt)],
 	);
@@ -10961,6 +10967,7 @@ async function eventListRows(where: SQL | undefined, orderBy: SQL[]): Promise<Ev
 		},
 		with: {
 			place: { columns: { id: true, name: true, city: true } },
+			location: { columns: { id: true, name: true } },
 			sets: { columns: { id: true } },
 			sessions: { columns: { id: true } },
 			// The ready poster, newest first: one query with the rest, not one per event.
@@ -10972,9 +10979,10 @@ async function eventListRows(where: SQL | undefined, orderBy: SQL[]): Promise<Ev
 			},
 		},
 	});
-	return rows.map(({ sets, sessions, files, place, venue: venueText, city, ...r }) => ({
+	return rows.map(({ sets, sessions, files, place, location, venue: venueText, city, ...r }) => ({
 		...r,
 		venue: place ?? null,
+		location: location ?? null,
 		venueText,
 		cityText: city,
 		setCount: sets.length,
@@ -11042,51 +11050,55 @@ async function ownEventSet(accountId: string, id: string) {
  * sessions newest first, at most 200, with the event each already points
  * at), its ready poster (the newest) and its ready photos in gallery
  * order, its venue (with this account's notes and contact) and the
- * account's venues to pick from. Null when it is not the account's.
+ * account's venues to pick from, and its practice location and the
+ * account's locations to pick from. Null when it is not the account's.
  */
 export async function eventPage(accountId: string, id: string) {
 	const e = await db.query.event.findFirst({
 		where: and(eq(event.accountId, accountId), eq(event.id, id)),
 	});
 	if (!e) return null;
-	const [sets, sessions, lists, choices, files, place, places] = await Promise.all([
-		db.query.eventSet.findMany({
-			where: eq(eventSet.eventId, id),
-			orderBy: [asc(eventSet.sortOrder), asc(eventSet.createdAt)],
-			with: eventSetWith,
-		}),
-		db.query.recordingSession.findMany({
-			where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.eventId, id)),
-			orderBy: [asc(recordingSession.startsOn), asc(recordingSession.createdAt)],
-			columns: { id: true, name: true, kind: true, place: true, startsOn: true },
-			with: {
-				recordings: { columns: { id: true }, where: eq(sessionRecording.status, "ready") },
-			},
-		}),
-		db.query.setList.findMany({
-			where: eq(setList.accountId, accountId),
-			orderBy: [asc(setList.title), asc(setList.createdAt)],
-			columns: { id: true, title: true },
-			with: { items: { columns: { id: true } } },
-		}),
-		db.query.recordingSession.findMany({
-			where: eq(recordingSession.accountId, accountId),
-			orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
-			columns: { id: true, name: true, kind: true, place: true, startsOn: true, eventId: true },
-			limit: 200,
-		}),
-		db.query.eventFile.findMany({
-			where: and(
-				eq(eventFile.accountId, accountId),
-				eq(eventFile.eventId, id),
-				eq(eventFile.status, "ready"),
-			),
-			orderBy: [asc(eventFile.sortOrder), asc(eventFile.createdAt)],
-			columns: eventFileColumns,
-		}),
-		e.venueId ? venueRowFor(accountId, e.venueId) : Promise.resolve(null),
-		venueChoices(accountId),
-	]);
+	const [sets, sessions, lists, choices, files, place, places, location, locations] =
+		await Promise.all([
+			db.query.eventSet.findMany({
+				where: eq(eventSet.eventId, id),
+				orderBy: [asc(eventSet.sortOrder), asc(eventSet.createdAt)],
+				with: eventSetWith,
+			}),
+			db.query.recordingSession.findMany({
+				where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.eventId, id)),
+				orderBy: [asc(recordingSession.startsOn), asc(recordingSession.createdAt)],
+				columns: { id: true, name: true, kind: true, place: true, startsOn: true },
+				with: {
+					recordings: { columns: { id: true }, where: eq(sessionRecording.status, "ready") },
+				},
+			}),
+			db.query.setList.findMany({
+				where: eq(setList.accountId, accountId),
+				orderBy: [asc(setList.title), asc(setList.createdAt)],
+				columns: { id: true, title: true },
+				with: { items: { columns: { id: true } } },
+			}),
+			db.query.recordingSession.findMany({
+				where: eq(recordingSession.accountId, accountId),
+				orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
+				columns: { id: true, name: true, kind: true, place: true, startsOn: true, eventId: true },
+				limit: 200,
+			}),
+			db.query.eventFile.findMany({
+				where: and(
+					eq(eventFile.accountId, accountId),
+					eq(eventFile.eventId, id),
+					eq(eventFile.status, "ready"),
+				),
+				orderBy: [asc(eventFile.sortOrder), asc(eventFile.createdAt)],
+				columns: eventFileColumns,
+			}),
+			e.venueId ? venueRowFor(accountId, e.venueId) : Promise.resolve(null),
+			venueChoices(accountId),
+			e.locationId ? findPracticeLocation(accountId, e.locationId) : Promise.resolve(null),
+			practiceLocationChoices(accountId),
+		]);
 	const posters = files.filter((f) => f.kind === "poster");
 	return {
 		event: e,
@@ -11105,14 +11117,18 @@ export async function eventPage(accountId: string, id: string) {
 		photos: files.filter((f) => f.kind === "photo") as EventFileRow[],
 		venue: place,
 		venueChoices: places,
+		location,
+		locationChoices: locations,
 	};
 }
 
 /**
  * A new show or practice; null when the account already holds
  * `MAX_EVENTS_PER_ACCOUNT`. `venueId` ("" or null for none) is kept only
- * when the venue exists, and puts it on the account's list; `venue` is the
- * legacy free text.
+ * when the venue exists, and puts it on the account's list; `locationId`
+ * likewise only when it is the account's practice location. A practice
+ * never gets a venue and a show never a location. `venue` is the legacy
+ * free text.
  */
 export async function createEvent(
 	accountId: string,
@@ -11123,6 +11139,7 @@ export async function createEvent(
 		startsOn: string;
 		venue?: string;
 		venueId?: string | null;
+		locationId?: string | null;
 	},
 ) {
 	const [{ n }] = await db
@@ -11130,7 +11147,10 @@ export async function createEvent(
 		.from(event)
 		.where(eq(event.accountId, accountId));
 	if (n >= MAX_EVENTS_PER_ACCOUNT) return null;
-	const venueId = (await eventVenueId(accountId, input.venueId)) ?? null;
+	const venueId =
+		input.kind === "practice" ? null : ((await eventVenueId(accountId, input.venueId)) ?? null);
+	const locationId =
+		input.kind === "show" ? null : ((await eventLocationId(accountId, input.locationId)) ?? null);
 	const [row] = await db
 		.insert(event)
 		.values({
@@ -11140,26 +11160,44 @@ export async function createEvent(
 			startsOn: input.startsOn,
 			venue: input.venue ?? "",
 			venueId,
+			locationId,
 			createdBy,
 		})
 		.returning();
 	return row!;
 }
 
-/** What an event update writes: `venueId` "" or null for none, left out (or an unknown venue) to keep the one it has. */
-export type EventUpdateFields = Omit<EventFields, "venueId"> & { venueId?: string | null };
+/**
+ * What an event update writes: `venueId` and `locationId` "" or null for
+ * none, left out (or unknown) to keep the one it has.
+ */
+export type EventUpdateFields = Omit<EventFields, "venueId" | "locationId"> & {
+	venueId?: string | null;
+	locationId?: string | null;
+};
 
-/** The event's own words (when, where, the notes); null when it is not the account's. */
+/**
+ * The event's own words (when, where, the notes); null when it is not the
+ * account's. A practice's venue and a show's location are cleared, whatever
+ * was sent.
+ */
 export async function updateEvent(
 	accountId: string,
 	id: string,
-	{ venueId: wanted, ...fields }: EventUpdateFields,
+	{ venueId: wantedVenue, locationId: wantedLocation, ...fields }: EventUpdateFields,
 ) {
 	if (!(await ownEvent(accountId, id))) return null;
-	const venueId = await eventVenueId(accountId, wanted);
+	const venueId = fields.kind === "practice" ? null : await eventVenueId(accountId, wantedVenue);
+	const locationId =
+		fields.kind === "show" ? null : await eventLocationId(accountId, wantedLocation);
 	const [row] = await db
 		.update(event)
-		.set({ ...fields, ...(venueId === undefined ? {} : { venueId }), updatedAt: new Date() })
+		.set({
+			...fields,
+			...(venueId === undefined ? {} : { venueId }),
+			...(locationId === undefined ? {} : { locationId }),
+			updatedAt: new Date(),
+		})
 		.where(and(eq(event.accountId, accountId), eq(event.id, id)))
 		.returning();
 	return row ?? null;
@@ -11179,6 +11217,20 @@ async function eventVenueId(
 	if (!(await venueExists(venueId))) return undefined;
 	await ensureVenueLink(accountId, venueId);
 	return venueId;
+}
+
+/**
+ * The practice location an event write stores: null for "" or null,
+ * undefined (keep what is there) when left out or when it is not one of the
+ * account's locations.
+ */
+async function eventLocationId(
+	accountId: string,
+	locationId: string | null | undefined,
+): Promise<string | null | undefined> {
+	if (locationId === undefined) return undefined;
+	if (!locationId) return null;
+	return (await ownPracticeLocation(accountId, locationId)) ? locationId : undefined;
 }
 
 /** The event, its sets, its poster and photos (rows and blobs), and its sessions untied (cascade.ts); false when it is not the account's. */
@@ -11451,6 +11503,173 @@ export async function updateVenueNotes(
 		.update(accountVenue)
 		.set({ notes: input.notes, contact: input.contact, updatedAt: new Date() })
 		.where(and(eq(accountVenue.accountId, accountId), eq(accountVenue.venueId, venueId)));
+	return true;
+}
+
+// ---- practice locations: the account's own (docs/band-plan.md, "Event") ----
+
+/** A practice location with how many of the account's events are there. */
+export interface PracticeLocationRow {
+	id: string;
+	name: string;
+	address: string;
+	notes: string;
+	eventCount: number;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+/** A practice location in a picker or on a calendar tile. */
+export interface PracticeLocationChoice {
+	id: string;
+	name: string;
+}
+
+/** The columns a `PracticeLocationRow` reads, with the account's events there counted. */
+const practiceLocationRead = (accountId: string) =>
+	({
+		columns: {
+			id: true,
+			name: true,
+			address: true,
+			notes: true,
+			createdAt: true,
+			updatedAt: true,
+		},
+		with: { events: { where: eq(event.accountId, accountId), columns: { id: true } } },
+	}) as const;
+
+function practiceLocationRow({
+	events,
+	...r
+}: Omit<PracticeLocationRow, "eventCount"> & { events: { id: string }[] }): PracticeLocationRow {
+	return { ...r, eventCount: events.length };
+}
+
+/** Name order for practice locations: case-insensitive. */
+function byLocationName(a: PracticeLocationChoice, b: PracticeLocationChoice) {
+	return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+}
+
+/** The account's practice location, or null. */
+async function ownPracticeLocation(accountId: string, id: string) {
+	return (
+		(await db.query.practiceLocation.findFirst({
+			where: and(eq(practiceLocation.accountId, accountId), eq(practiceLocation.id, id)),
+			columns: { id: true },
+		})) ?? null
+	);
+}
+
+/** Another of the account's locations with the name (case-insensitive, trimmed), other than `exceptId`. */
+async function samePracticeLocation(accountId: string, name: string, exceptId?: string) {
+	return (
+		(await db.query.practiceLocation.findFirst({
+			where: and(
+				eq(practiceLocation.accountId, accountId),
+				sql`lower(${practiceLocation.name}) = lower(${name.trim()})`,
+				exceptId ? ne(practiceLocation.id, exceptId) : undefined,
+			),
+			columns: { id: true },
+		})) ?? null
+	);
+}
+
+/** The account's practice locations by name (case-insensitive), each with how many of its events are there. */
+export async function listPracticeLocations(accountId: string): Promise<PracticeLocationRow[]> {
+	const rows = await db.query.practiceLocation.findMany({
+		where: eq(practiceLocation.accountId, accountId),
+		...practiceLocationRead(accountId),
+	});
+	return rows.map(practiceLocationRow).sort(byLocationName);
+}
+
+/** The account's practice locations for a picker, by name. */
+export async function practiceLocationChoices(
+	accountId: string,
+): Promise<PracticeLocationChoice[]> {
+	const rows = await db.query.practiceLocation.findMany({
+		where: eq(practiceLocation.accountId, accountId),
+		columns: { id: true, name: true },
+	});
+	return rows.sort(byLocationName);
+}
+
+/** One of the account's practice locations, or null when it is not the account's. */
+export async function findPracticeLocation(
+	accountId: string,
+	id: string,
+): Promise<PracticeLocationRow | null> {
+	const r = await db.query.practiceLocation.findFirst({
+		where: and(eq(practiceLocation.accountId, accountId), eq(practiceLocation.id, id)),
+		...practiceLocationRead(accountId),
+	});
+	return r ? practiceLocationRow(r) : null;
+}
+
+/**
+ * A new practice location in the account; "full" at
+ * `MAX_PRACTICE_LOCATIONS_PER_ACCOUNT`, "duplicate" when the account has
+ * one of that name (case-insensitive).
+ */
+export async function createPracticeLocation(
+	accountId: string,
+	userId: string,
+	fields: PracticeLocationFields,
+): Promise<PracticeLocationRow | "full" | "duplicate"> {
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(practiceLocation)
+		.where(eq(practiceLocation.accountId, accountId));
+	if (n >= MAX_PRACTICE_LOCATIONS_PER_ACCOUNT) return "full";
+	if (await samePracticeLocation(accountId, fields.name)) return "duplicate";
+	const [row] = await db
+		.insert(practiceLocation)
+		.values({
+			accountId,
+			name: fields.name.trim(),
+			address: fields.address,
+			notes: fields.notes,
+			createdBy: userId,
+		})
+		.returning({ id: practiceLocation.id });
+	return (await findPracticeLocation(accountId, row!.id))!;
+}
+
+/** A practice location's name, address and notes; "duplicate" when another of the account's has the name, null when it is not the account's. */
+export async function updatePracticeLocation(
+	accountId: string,
+	id: string,
+	fields: PracticeLocationFields,
+): Promise<PracticeLocationRow | "duplicate" | null> {
+	if (!(await ownPracticeLocation(accountId, id))) return null;
+	if (await samePracticeLocation(accountId, fields.name, id)) return "duplicate";
+	await db
+		.update(practiceLocation)
+		.set({
+			name: fields.name.trim(),
+			address: fields.address,
+			notes: fields.notes,
+			updatedAt: new Date(),
+		})
+		.where(and(eq(practiceLocation.accountId, accountId), eq(practiceLocation.id, id)));
+	return findPracticeLocation(accountId, id);
+}
+
+/** The practice location gone; "used" while the account's events are there, false when it is not the account's. */
+export async function deletePracticeLocation(
+	accountId: string,
+	id: string,
+): Promise<"used" | boolean> {
+	if (!(await ownPracticeLocation(accountId, id))) return false;
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(event)
+		.where(and(eq(event.accountId, accountId), eq(event.locationId, id)));
+	if (n > 0) return "used";
+	await db
+		.delete(practiceLocation)
+		.where(and(eq(practiceLocation.accountId, accountId), eq(practiceLocation.id, id)));
 	return true;
 }
 

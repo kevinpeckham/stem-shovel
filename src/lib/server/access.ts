@@ -160,6 +160,7 @@ const {
 	setListItem,
 	event,
 	eventFile,
+	practiceLocation,
 	eventSet,
 } = schema;
 
@@ -301,6 +302,15 @@ export async function accountOfSetListItem(itemId: string) {
 export async function accountOfEvent(eventId: string) {
 	const row = await db.query.event.findFirst({
 		where: eq(event.id, eventId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+/** A practice location's account (docs/band-plan.md, "Event"). */
+export async function accountOfPracticeLocation(locationId: string) {
+	const row = await db.query.practiceLocation.findFirst({
+		where: eq(practiceLocation.id, locationId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

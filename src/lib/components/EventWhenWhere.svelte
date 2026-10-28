@@ -8,8 +8,15 @@
 		type EventFields,
 		type EventKind,
 	} from "#lib/val/EventSchema.js";
+	import LocationDetails from "#lib/components/LocationDetails.svelte";
+	import LocationPicker from "#lib/components/LocationPicker.svelte";
 	import VenuePicker from "#lib/components/VenuePicker.svelte";
-	import type { VenueChoice, VenueRow } from "#lib/server/data.js";
+	import type {
+		PracticeLocationChoice,
+		PracticeLocationRow,
+		VenueChoice,
+		VenueRow,
+	} from "#lib/server/data.js";
 	import VenueDetails from "#lib/components/VenueDetails.svelte";
 	import { venueDetailsOf } from "#lib/utils/venueDetailsOf.js";
 	import type { Snippet } from "svelte";
@@ -29,12 +36,15 @@
 	/**
 	 * The "When and where" fields of a show or practice's form (the event
 	 * page): kind, status, the day and its times (a practice has no load-in
-	 * or sound check), and the venue (VenuePicker, posted as `venueId`) with
-	 * its details read-only: address and city, a Directions link (the map
-	 * link, else a map search of the address), the account's contact and
-	 * notes, and a link to the venue's page. With no venue, the free text
-	 * from before venues reads the same way, with a hint to replace it.
-	 * `kind` follows the select before the form is saved.
+	 * or sound check), and where: a show's venue (VenuePicker, posted as
+	 * `venueId`) with its details read-only: address and city, a Directions
+	 * link (the map link, else a map search of the address), the account's
+	 * contact and notes, and a link to the venue's page; with no venue, the
+	 * free text from before venues reads the same way, with a hint to
+	 * replace it. A practice has a location instead (LocationPicker, posted
+	 * as `locationId`, local to the account) with its address, Directions,
+	 * notes and a link to its page. `kind` follows the select before the
+	 * form is saved.
 	 */
 	let {
 		form,
@@ -43,6 +53,8 @@
 		issues,
 		venue,
 		venueChoices,
+		location,
+		locationChoices,
 		accountId,
 		accountSlug,
 		canEdit,
@@ -53,6 +65,8 @@
 		issues: Snippet<[{ message: string }[] | undefined]>;
 		venue: VenueRow | null;
 		venueChoices: VenueChoice[];
+		location: PracticeLocationRow | null;
+		locationChoices: PracticeLocationChoice[];
 		accountId: string;
 		accountSlug: string;
 		canEdit: boolean;
@@ -69,7 +83,60 @@
 	);
 	/** What the details show: the chosen venue's, else (no venue at all) the free text from before venues. */
 	const shown = $derived(venueDetailsOf(chosen, venueId, e));
+
+	/** The chosen practice location's id ('' for none), starting from the saved one. */
+	let locationId = $derived(location?.id ?? "");
+	/** Locations added from the picker on this page, with their details. */
+	let addedLocations = $state<Record<string, PracticeLocationRow>>({});
+	const chosenLocation = $derived(
+		locationId
+			? location?.id === locationId
+				? location
+				: (addedLocations[locationId] ?? null)
+			: null,
+	);
 </script>
+
+{#snippet venuePlace()}
+	<div class="grid gap-1 text-13px text-dim">
+		<span aria-hidden="true">Venue</span>
+		<VenuePicker
+			choices={venueChoices}
+			bind:value={venueId}
+			{accountId}
+			canCreate={canEdit}
+			onadded={(row) => (added[row.id] = row)}
+		/>
+	</div>
+	{@render issues(form.fields.venueId.issues())}
+	{#if shown}
+		<VenueDetails
+			{...shown}
+			editHref={chosen ? `/${accountSlug}/venues/${chosen.id}` : null}
+			legacy={!chosen}
+		/>
+	{/if}
+{/snippet}
+
+{#snippet locationPlace()}
+	<div class="grid gap-1 text-13px text-dim">
+		<span aria-hidden="true">Location</span>
+		<LocationPicker
+			choices={locationChoices}
+			bind:value={locationId}
+			{accountId}
+			canCreate={canEdit}
+			onadded={(row) => (addedLocations[row.id] = row)}
+		/>
+	</div>
+	{@render issues(form.fields.locationId.issues())}
+	{#if chosenLocation}
+		<LocationDetails
+			location={chosenLocation}
+			editHref="/{accountSlug}/practice-locations/{chosenLocation.id}"
+		/>
+	{/if}
+{/snippet}
 
 <section class="grid gap-3" aria-labelledby="event-when">
 	<h2 class="heading-2 mb-0" id="event-when">When and where</h2>
@@ -124,23 +191,11 @@
 		...(form.fields.loadInAt.issues() ?? []),
 		...(form.fields.soundCheckAt.issues() ?? []),
 	])}
-	<div class="grid gap-1 text-13px text-dim">
-		<span aria-hidden="true">Venue</span>
-		<VenuePicker
-			choices={venueChoices}
-			bind:value={venueId}
-			{accountId}
-			canCreate={canEdit}
-			onadded={(row) => (added[row.id] = row)}
-		/>
-		<input {...form.fields.venueId.as("hidden", venueId)} />
-	</div>
-	{@render issues(form.fields.venueId.issues())}
-	{#if shown}
-		<VenueDetails
-			{...shown}
-			editHref={chosen ? `/${accountSlug}/venues/${chosen.id}` : null}
-			legacy={!chosen}
-		/>
+	{#if show}
+		{@render venuePlace()}
+	{:else}
+		{@render locationPlace()}
 	{/if}
+	<input {...form.fields.venueId.as("hidden", venueId)} />
+	<input {...form.fields.locationId.as("hidden", locationId)} />
 </section>

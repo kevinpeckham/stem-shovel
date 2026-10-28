@@ -36,6 +36,7 @@ export const KIND_PRIORITY: Record<NotificationKind, NotificationPriority> = {
 	demo: "normal",
 	mix: "normal",
 	session: "normal",
+	"event-reminder": "normal",
 };
 
 /** The opt-in kinds and the setting that turns each on. */
@@ -48,19 +49,25 @@ const OPT_IN: Partial<Record<NotificationKind, keyof NotificationPrefs>> = {
 	demo: "emailDemos",
 	mix: "emailDemos",
 	session: "emailDemos",
+	// A show or practice tomorrow rides with its recordings' setting (no column of its own).
+	"event-reminder": "emailDemos",
 };
+
+/** Kinds that are no use late: with their opt-in on, they go at once even when the person chose a digest. */
+const TIMELY = new Set<NotificationKind>(["event-reminder"]);
 
 /**
  * "now": an email goes out as the notification is made. "digest": it waits
  * for the person's daily or weekly summary. "never": the inbox alone. High
  * priority kinds and an accepted invitation always go now; the rest need
- * the matching opt-in, and go into the digest when one is chosen.
+ * the matching opt-in, and go into the digest when one is chosen (but a
+ * day-before reminder, which a digest would deliver too late, goes now).
  */
 export function emailDelivery(kind: NotificationKind, prefs: NotificationPrefs) {
 	const setting = OPT_IN[kind];
 	if (!setting) return "now" as const;
 	if (!prefs[setting]) return "never" as const;
-	return prefs.digest === "none" ? ("now" as const) : ("digest" as const);
+	return prefs.digest === "none" || TIMELY.has(kind) ? ("now" as const) : ("digest" as const);
 }
 
 const HOUR = 60 * 60 * 1000;

@@ -33,7 +33,11 @@
 	const listHref = $derived(`/${data.account.slug}/${data.event.kind}s`);
 	/** The legacy free-text venue name, from before venues (the server may drop it). */
 	const legacyVenue = $derived((e as { venue?: string | null }).venue?.trim() ?? "");
-	const name = $derived(e.title.trim() || data.venue?.name || legacyVenue || `Untitled ${noun}`);
+	/** A show falls back to its venue, a practice to its location. */
+	const place = $derived(
+		data.event.kind === "show" ? data.venue?.name || legacyVenue : data.location?.name,
+	);
+	const name = $derived(e.title.trim() || place || `Untitled ${noun}`);
 
 	let sets = $derived(data.sets);
 	let sessions = $derived(data.sessions);
@@ -127,6 +131,8 @@
 					{issues}
 					venue={data.venue}
 					venueChoices={data.venueChoices}
+					location={data.location}
+					locationChoices={data.locationChoices}
 					accountId={data.account.id}
 					accountSlug={data.account.slug}
 					canEdit={data.canEdit}

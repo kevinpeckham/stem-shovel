@@ -103,6 +103,7 @@ describe("listEvents", () => {
 			startsOn: "2026-12-01",
 			startsAt: "",
 			venue: null,
+			location: null,
 			venueText: "The Hall",
 			cityText: "Austin",
 			setCount: 2,

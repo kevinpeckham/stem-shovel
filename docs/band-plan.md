@@ -141,7 +141,12 @@ and the day:
   day-before reminder rides the existing daily cron.
 - Dashboard: an **Upcoming** block in the Latest column (the next few
   shows and practices, with countdown text), and past shows in Activity
-  when their notes or books are written up.
+  when their notes or books are written up. Built 2026-10-28 (v0.199.0)
+  with the day-before reminder (kind `event-reminder`, sent by the daily
+  digest cron for tomorrow's events) and the ICS feed
+  (`/cal/<token>.ics`, the account's `calendar_token`, made on demand
+  from the Upcoming block's Calendar feed button; floating times). Still
+  open: notifications on a new event or a changed day, the month grid.
 
 ### Posters, pictures and video (`event_file`)
 
@@ -195,6 +200,10 @@ its people, with emails). The plan adds:
   link, website), and what is the band's own sits on `account_venue` (notes, the
   band's contact at the venue). A show picks a venue from the account's
   list or finds one across the site; the Shows page filters by venue.
+  **Practices do not use venues** (Kevin, 2026-10-28, v0.199.0): a
+  practice has a location, the account's own (`practice_location`: name,
+  address, notes), picked and reused the same way, with its own filter
+  and a Practice locations page under Manage.
 - **Contacts** (`contact`): promoters, booking agents, sound
   engineers, with name, role, phone, email, address, notes. An event's
   promoter becomes a contact reference once this exists, with

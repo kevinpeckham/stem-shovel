@@ -76,6 +76,7 @@ export const SHORT_LINK_RESERVED_SLUGS: readonly string[] = [
 	"accounts",
 	"blog",
 	"built-with",
+	"cal",
 	"chord-player",
 	"convert",
 	"dashboard",

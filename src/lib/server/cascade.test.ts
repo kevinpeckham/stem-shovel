@@ -526,6 +526,18 @@ describe("deleteAccountRows", () => {
 		expect(fake.rows("accountVenue").map((r) => r.id)).toEqual(["av2"]);
 		expect(fake.rows("venue")).toEqual([{ id: "v1" }]);
 	});
+	test("the account's practice locations go, after its events; another account's stay", async () => {
+		fake.reset({
+			event: [{ id: "e1", accountId: "a1", locationId: "p1" }],
+			practiceLocation: [
+				{ id: "p1", accountId: "a1" },
+				{ id: "p2", accountId: "a2" },
+			],
+		});
+		await deleteAccountRows("a1");
+		expect(fake.rows("practiceLocation").map((r) => r.id)).toEqual(["p2"]);
+		expect(position("practice_location")).toBeGreaterThan(position("event"));
+	});
 	test("the account's set lists go with their rows; another account's stay", async () => {
 		await deleteAccountRows("a1");
 		expect(fake.rows("setList").map((l) => l.id)).toEqual(["l2"]);
@@ -637,6 +649,20 @@ describe("deleteUserRows", () => {
 		expect(fake.rows("venue")).toEqual([
 			{ id: "v1", createdBy: null, updatedBy: "u2" },
 			{ id: "v2", createdBy: "u2", updatedBy: null },
+		]);
+	});
+	test("the practice locations they added stay without an author", async () => {
+		fake.reset({
+			user: [{ id: "u1" }, { id: "u2" }],
+			practiceLocation: [
+				{ id: "p1", createdBy: "u1" },
+				{ id: "p2", createdBy: "u2" },
+			],
+		});
+		await deleteUserRows("u1");
+		expect(fake.rows("practiceLocation")).toEqual([
+			{ id: "p1", createdBy: null },
+			{ id: "p2", createdBy: "u2" },
 		]);
 	});
 	test("the user's dashboard pins go, nobody else's", async () => {
