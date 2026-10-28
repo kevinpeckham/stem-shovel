@@ -176,6 +176,37 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **The redesigned song-check, re-measured: the guard works, the
+  instruction loses to the settings line** (stem-bench Study 7,
+  2026-10-28; full tables in the repo's REPORT.md). The v0.192 call
+  was ported verbatim and run over truth-by-construction mixes, score
+  summaries and band charts, true and wrong settings. The good half
+  is decisive: Study 4's deference failure is CLOSED — with a chart
+  that states the truth, wrong settings reached neither the raw
+  answer (0/12 echo; the old design echoed 10-12/12) nor the song
+  (`chartStatedAnswer` let 0/24 wrong values through on the
+  production model), and key-from-chords on the band-chart path is
+  perfect (12/12). The bad half: "Do not estimate a tempo by ear...
+  null when the chart has no tempo mark" fails 24/24 on chord-only
+  charts — and every invented tempo is the SETTINGS value verbatim
+  (120 in, 120 out; a lying 60 in, 60 out; both models, 47/47). "Use
+  them to follow the bars" reads as "this is the tempo"; the fact
+  line beats the instruction, the same failure shape Studies 1, 2
+  and 4 found in other costumes. No harm reaches a song (the applied
+  layer nulls tempo/meter on a chart that states neither, 24/24),
+  so this is a display/robustness note, not an incident: (1) never
+  show the raw tempo/meter from a chord-path answer — the applied
+  nulls are the real result; (2) the stronger fix: `chartStatedAnswer`
+  filters by PRESENCE, but the chart summary's tempo marks and time
+  signatures are machine-readable — parse them directly and stop
+  asking the model for tempo/meter at all, reserving it for what
+  measured perfect (keys from chords, change placement in seconds).
+  One more guard note: the presence-based gate passed a wrong echoed
+  tempo through once on gemini-3.5-flash (1/22) — value-substitution
+  would close that path too. Placement under wrong-tempo
+  bar-following degrades (3/3 to 1/3): when settings and chart
+  disagree, mark placements as approximate.
+
 - **`chartReadWarnings` validated, with a measured upgrade path**
   (stem-bench Study 6, 2026-10-28; zero model spend — the bench holds
   model reads of the same engraved pages in corrupted and clean form
