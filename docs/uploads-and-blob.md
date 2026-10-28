@@ -49,7 +49,7 @@ in three steps driven by `src/lib/upload.ts`:
   About a tenth of the WAV, so a tenth of the download, decode time and
   Blob egress per listen; the source stays for downloads. The render runs
   after the response (`waitUntil` through Vercel's request context; the
-  route sets `maxDuration: 300`) and the song page schedules any stem still
+  route sets `maxDuration: 800`) and the song page schedules any stem still
   without one (never tried, failed over an hour ago, or "pending" for more
   than 15 minutes), so uploads that predate renditions get them on first
   view. `claimPlayback` is the lock. The manifest points at the rendition
@@ -355,7 +355,12 @@ then schedules the MP3 (`scheduleSessionPlayback`, the demo's transcode
 with `SESSION_TARGET`) and tells the account's members
 (`notifySessionRecording`, kind `session`, coalesced per session, the
 demo opt-in for email). The completion webhook's backstop is
-`recordSessionUrl`.
+`recordSessionUrl`. A source over `SOURCE_DISK_BUDGET_BYTES` (a whole
+show as FLAC) is not downloaded: the jobs function's `/tmp` is about 500
+MB, so every ffmpeg pass reads it from Blob through its standard input
+(the bundled ffmpeg's https input segfaults, FINDINGS.md) and only the MP3
+lands on the disk (2026-10-28, after a 650 MB recording failed with
+`ENOSPC` on every retry).
 
 **The page** (`/[account]/sessions`, members only,
 `listRecordingSessions`): a toolbar in the title row, at the right of
@@ -527,7 +532,7 @@ peaky set stays quieter rather than squashed) followed by `alimiter` at
 −1 dBFS with a fast attack (`peakLimiterFilter`), which catches the
 peaks the gain or the declipper's rebuilt waveform put over. The first
 chain used `loudnorm`'s two passes with the declipper in both; it ran a
-clipped show past the jobs function's 300 s (FINDINGS.md 2026-10-26). A
+clipped show past the jobs function's then 300 s (FINDINGS.md 2026-10-26). A
 measurement that prints nothing usable (a silent file) leaves the gain
 out and keeps the limiter. The measurement and the encode together cost
 under a second per minute of audio on one core, so a set over

@@ -9,6 +9,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import ffmpegPath from "ffmpeg-static";
 import { execFile, spawn } from "node:child_process";
+import type { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { BlobAccess } from "#lib/utils/blobAccess.js";
 import { deleteBlobs, putBlob, readBlob } from "#lib/server/blob.js";
 import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "#lib/server/data.js";
@@ -99,7 +101,12 @@ export class Ffmpeg extends Context.Service<
 	{
 		readonly run: (
 			args: string[],
-			options?: { maxBuffer?: number; stderrTail?: number },
+			options?: {
+				maxBuffer?: number;
+				stderrTail?: number;
+				/** Piped into ffmpeg's stdin (the args read it as `-i pipe:0`): a source too big for the disk. */
+				input?: Readable;
+			},
 		) => Effect.Effect<{ stdout: string; stderr: string }, FfmpegError>;
 		readonly stream: (
 			args: string[],
@@ -111,14 +118,28 @@ export class Ffmpeg extends Context.Service<
 		run: (args, options) =>
 			Effect.callback<{ stdout: string; stderr: string }, FfmpegError>((resume) => {
 				if (!ffmpegPath) {
+					options?.input?.destroy();
 					resume(Effect.fail(FfmpegError.unavailable()));
 					return;
 				}
+				// A failure reading the input (the Blob stream breaking mid-file) fails the run even
+				// when ffmpeg, seeing the end of its stdin, exits 0 on what it got.
+				let inputError: Error | null = null;
 				const child = execFile(
 					ffmpegPath,
 					args,
 					{ maxBuffer: options?.maxBuffer ?? 1024 * 1024 },
 					(error, stdout, stderr) => {
+						if (!error && inputError)
+							return resume(
+								Effect.fail(
+									new FfmpegError({
+										code: null,
+										stderr: `input failed: ${inputError.message}`,
+										timedOut: false,
+									}),
+								),
+							);
 						if (!error) return resume(Effect.succeed({ stdout, stderr }));
 						const code = typeof error.code === "number" ? error.code : null;
 						resume(
@@ -133,7 +154,24 @@ export class Ffmpeg extends Context.Service<
 						);
 					},
 				);
+				const input = options?.input;
+				if (input && child.stdin) {
+					const stdin = child.stdin;
+					// ffmpeg may stop reading before the end (a probe, `-t`): EPIPE on its stdin is not
+					// a failure, and the source is destroyed with it, so the download stops.
+					let stdinClosed = false;
+					const closed = () => {
+						stdinClosed = true;
+					};
+					stdin.on("error", closed);
+					stdin.on("close", closed);
+					input.on("error", (e) => {
+						if (!stdinClosed) inputError = e;
+					});
+					pipeline(input, stdin).catch(() => {});
+				}
 				return Effect.sync(() => {
+					input?.destroy();
 					child.kill();
 				});
 			}),

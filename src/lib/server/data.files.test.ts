@@ -673,6 +673,7 @@ describe("demos", () => {
 			url: "https://b/d1.m4a",
 			pathname: "accounts/a1/songs/sg1/demos/d1.m4a",
 			playbackUrl: null,
+			sizeBytes: 10,
 		});
 		expect(row("demo", "d1")).toMatchObject({
 			playbackStatus: "pending",

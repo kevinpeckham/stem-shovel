@@ -6,6 +6,7 @@
 	import DashboardNudges from "#lib/components/DashboardNudges.svelte";
 	import DashboardPending from "#lib/components/DashboardPending.svelte";
 	import DashboardStart from "#lib/components/DashboardStart.svelte";
+	import DashboardViewing from "#lib/components/DashboardViewing.svelte";
 	import DashboardWidget from "#lib/components/DashboardWidget.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import { DASHBOARD_INSTRUMENTS } from "#lib/constants/dashboardLinks.js";
@@ -29,8 +30,16 @@
 			return { ...a, steps, onboarding: showOnboarding(steps, counts) };
 		}),
 	);
-	/** The Session Recorder, Account settings and the sections' calls to action go to the current account (the root layout's), when there is one; to the one account shown when the dashboard is narrowed to it. */
-	let current = $derived(accounts.length > 0 ? (data.viewing?.slug ?? data.currentSlug) : null);
+	/** The Session Recorder, Account settings and the sections' calls to action go to the current account (the root layout's), when there is one; to the one account shown when the dashboard is narrowed to it; to the viewed user's first account when a super admin views their dashboard. */
+	let current = $derived(
+		accounts.length === 0
+			? null
+			: data.viewing?.kind === "account"
+				? data.viewing.slug
+				: data.viewing?.kind === "user"
+					? accounts[0].slug
+					: data.currentSlug,
+	);
 	/** A path inside the current account, or the accounts page when there is none to go to. */
 	const at = (path: string) => (current ? `/${current}${path}` : "/accounts");
 	let tools = $derived(dashboardTools(current));
@@ -40,6 +49,8 @@
 	/** The Pinned section as it stands: the loader's pins, then each toggle moves an entry in or out without a reload. */
 	let pinned = $state<DashboardEntry[]>(data.pinned);
 	let pins = $derived(new SvelteSet(pinned.map((p) => `${p.pin!.kind}:${p.pin!.id}`)));
+	/** Viewing another user's dashboard: the pins are theirs, so no pin buttons (the Pinned section still lists them). */
+	let pinProps = $derived(data.viewing?.kind === "user" ? {} : { pins, onpin: togglePin });
 	async function togglePin(entry: DashboardEntry, on: boolean) {
 		if (!entry.pin) return;
 		const { kind, id } = entry.pin;
@@ -81,24 +92,7 @@
 <main class="page">
 	<h1 class="app-page-heading">User Dashboard</h1>
 	{#if data.viewing}
-		<p
-			class="surface mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-15px"
-			role="status"
-		>
-			{#if data.viewing.actingAs}
-				<span
-					class="rounded bg-red-400/20 px-1.5 py-0.5 text-10px uppercase tracking-wider text-red-300"
-					>acting as owner</span
-				>
-				<span
-					>You are viewing the dashboard of {data.viewing.name} as its owner. You are not a member here,
-					and every action is logged.</span
-				>
-			{:else}
-				<span>Showing {data.viewing.name} alone.</span>
-			{/if}
-			<a class="link" href="/dashboard">Back to your dashboard</a>
-		</p>
+		<DashboardViewing viewing={data.viewing} />
 	{/if}
 
 	<!-- Three grid children: Latest, the content, the widgets. One column on a phone in that order, so what is new comes first; from lg the content takes the left column over two rows and Latest sits above the widgets on the right. The rows are auto then 1fr: the content's height goes to the second row alone, so the widgets sit right under Latest instead of halfway down (the spanning column would otherwise be shared into both rows). -->
@@ -139,8 +133,7 @@
 						ideas={pinned}
 						empty="Nothing pinned."
 						search="Search pinned"
-						{pins}
-						onpin={togglePin}
+						{...pinProps}
 					/>
 				{/if}
 				<DashboardIdeas
@@ -164,8 +157,7 @@
 					all={{ label: "All projects", href: "/projects" }}
 					search="Search projects"
 					since={data.seenAt}
-					{pins}
-					onpin={togglePin}
+					{...pinProps}
 				/>
 				<DashboardIdeas
 					id="dashboard-songs"
@@ -178,8 +170,7 @@
 					all={{ label: "All songs", href: "/songs" }}
 					search="Search songs"
 					since={data.seenAt}
-					{pins}
-					onpin={togglePin}
+					{...pinProps}
 				/>
 				<DashboardIdeas
 					id="dashboard-sessions"
@@ -192,8 +183,7 @@
 					all={{ label: "All sessions", href: "/sessions" }}
 					search="Search sessions"
 					since={data.seenAt}
-					{pins}
-					onpin={togglePin}
+					{...pinProps}
 				/>
 				<DashboardIdeas
 					id="dashboard-set-lists"
@@ -206,8 +196,7 @@
 					all={{ label: "All set lists", href: at("/set-lists") }}
 					search="Search set lists"
 					since={data.seenAt}
-					{pins}
-					onpin={togglePin}
+					{...pinProps}
 				/>
 			{/if}
 			<DashboardIdeas

@@ -9,8 +9,8 @@ Press **New show** (or **New practice**), give it a day, a title if it has one (
 A show's page has four sections:
 
 - **When and where.** The day, the showtime, when it ends, load-in and sound check as the venue's clock reads them (no time zones: a time on a poster is the venue's time), the venue, its address and city, a map link (leave it blank and the address is looked up), and notes about the place: parking, the back door, the house engineer's name. The **status** moves from planned to confirmed to played, or canceled; a canceled show stays on the record.
-- **Sets.** The set lists you will play, in order, each with a label ("Set 1", "Encore"). Attach a set list from the account's, drag the sets into order, and open any set's editor or its show view from here. One set list can serve two shows, or two sets of one show.
-- **Tapes.** The session recordings of the night. Link a session from the account's sessions and its recordings are a click away; a session belongs to one show or practice at a time.
+- **Set lists.** The set lists you will play, in order, each with a label ("Set 1", "Encore"). Choose a set list from the account's and it is attached at once; drag the sets into order, and open any set's editor or its show view from here. One set list can serve two shows, or two sets of one show.
+- **Recordings.** The session recordings of the night. Choose a session from the account's and it is linked at once, its recordings a click away; a session belongs to one show or practice at a time.
 - **Notes.** The plan for the night, then how it went, for posterity.
 
 Practices have the same page without the show-only fields.

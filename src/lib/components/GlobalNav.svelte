@@ -100,7 +100,7 @@
 <svelte:window onpointerdown={onwindowpointerdown} onkeydown={onwindowkeydown} />
 
 <header
-	class="page-x-padding flex items-center justify-between gap-6 py-4 border-b border-white/10 {collapsed
+	class="page-x-padding flex items-center justify-between gap-2 sm-gap-6 py-4 border-b border-white/10 {collapsed
 		? 'max-h-0 overflow-hidden !py-0'
 		: ''}"
 >
@@ -109,7 +109,7 @@
 		href={user ? "/dashboard" : "/"}
 		title={user ? "Your dashboard" : "Back to home"}
 	>
-		<img class="h-6 w-auto" src={wordmark} loading="eager" alt="Stem Shovel wordmark" />
+		<img class="h-5 sm-h-6 w-auto" src={wordmark} loading="eager" alt="Stem Shovel wordmark" />
 		<div class="sr-only">Stem Shovel App</div>
 		<!-- The image's baseline is its bottom edge, where the wordmark's letters sit. -->
 		<span
@@ -118,7 +118,7 @@
 		>
 	</a>
 
-	<nav aria-label="Primary" class="justify-end flex items-center gap-4 sm-gap-4 text-15px">
+	<nav aria-label="Primary" class="justify-end flex items-center gap-0.5 sm-gap-4 text-15px">
 		{#if !member && accountSlug && viewedName}
 			<a class="opacity-60 truncate hover:opacity-100" href="/{accountSlug}/projects"
 				>{viewedName}</a
@@ -129,7 +129,7 @@
 			<div class="relative" bind:this={musicMenu}>
 				<button
 					type="button"
-					class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {musicOpen
+					class="flex items-center gap-1 sm-gap-1.5 rounded px-1 sm-px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {musicOpen
 						? 'bg-white/10 opacity-100'
 						: ''} {onMusicPage ? 'text-accent' : ''}"
 					aria-haspopup="menu"
@@ -205,7 +205,7 @@
 			<div class="relative" bind:this={manageMenu}>
 				<button
 					type="button"
-					class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {manageOpen
+					class="flex items-center gap-1 sm-gap-1.5 rounded px-1 sm-px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {manageOpen
 						? 'bg-white/10 opacity-100'
 						: ''} {onManagePage ? 'text-accent' : ''}"
 					aria-haspopup="menu"
@@ -272,7 +272,7 @@
 		<div class="relative" bind:this={instrumentsMenu}>
 			<button
 				type="button"
-				class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {instrumentsOpen
+				class="flex items-center gap-1 sm-gap-1.5 rounded px-1 sm-px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {instrumentsOpen
 					? 'bg-white/10 opacity-100'
 					: ''} {onInstrumentPage ? 'text-accent' : ''}"
 				aria-haspopup="menu"
@@ -336,7 +336,7 @@
 		<div class="relative" bind:this={toolsMenu}>
 			<button
 				type="button"
-				class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {toolsOpen
+				class="flex items-center gap-1 sm-gap-1.5 rounded px-1 sm-px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {toolsOpen
 					? 'bg-white/10 opacity-100'
 					: ''} {onToolPage ? 'text-accent' : ''}"
 				aria-haspopup="menu"
@@ -462,7 +462,7 @@
 			<div class="relative" bind:this={menu}>
 				<button
 					type="button"
-					class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {open
+					class="flex items-center gap-1 sm-gap-1.5 rounded px-1 sm-px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {open
 						? 'bg-white/10 opacity-100'
 						: ''}"
 					aria-haspopup="menu"
@@ -483,7 +483,9 @@
 						<span
 							class="rounded bg-red-400/20 px-1.5 py-0.5 text-10px uppercase tracking-wider text-red-300"
 							title="You are not a member here; as a super admin you act as its owner, and every action is logged"
-							>acting as owner</span
+							><span class="sm-hidden" aria-hidden="true">AOR</span><span class="max-sm-sr-only"
+								>acting as owner</span
+							></span
 						>
 					{/if}
 					<span

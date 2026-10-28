@@ -73,6 +73,13 @@
 					: ""}
 			</span>
 		</p>
+		{#if data.canViewAs}
+			<a
+				class="link text-13px"
+				href="/dashboard?user={u.id}"
+				title="Their dashboard as they see it; every view is logged">Dashboard as this user</a
+			>
+		{/if}
 	</div>
 
 	<div class="grid gap-6 md:grid-cols-2">
@@ -190,7 +197,7 @@
 			{#if u.audit.length === 0}
 				<p class="text-dim text-15px">
 					None. Audit lines are written only for acting memberships (super admins outside their own
-					accounts).
+					accounts) and for views of another user's dashboard.
 				</p>
 			{:else}
 				<ul class="divide-y divide-white/10 font-mono text-13px">

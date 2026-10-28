@@ -263,7 +263,12 @@ describe("dashboard load: one account (?account=)", () => {
 		data.touchDashboardSeen.mockResolvedValue(day(20));
 		const r = await run([member(ACCOUNT), acting], fakeUser(), `?account=${acting.slug}`);
 		expect(r.accounts.map((a: Row) => a.slug)).toEqual([acting.slug]);
-		expect(r.viewing).toEqual({ slug: acting.slug, name: "Two", actingAs: true });
+		expect(r.viewing).toEqual({
+			kind: "account",
+			slug: acting.slug,
+			name: "Two",
+			actingAs: true,
+		});
 		expect(data.projectRolesOf).toHaveBeenCalledTimes(1);
 		expect(data.projectRolesOf).toHaveBeenCalledWith(OTHER_ACCOUNT, USER);
 		expect(data.touchDashboardSeen).not.toHaveBeenCalled();
@@ -280,7 +285,12 @@ describe("dashboard load: one account (?account=)", () => {
 		const own = member(ACCOUNT, "admin");
 		const r = await run([own, member(OTHER_ACCOUNT)], fakeUser(), `?account=${own.slug}`);
 		expect(r.accounts.map((a: Row) => a.slug)).toEqual([own.slug]);
-		expect(r.viewing).toEqual({ slug: own.slug, name: "One", actingAs: false });
+		expect(r.viewing).toEqual({
+			kind: "account",
+			slug: own.slug,
+			name: "One",
+			actingAs: false,
+		});
 		expect(data.touchDashboardSeen).toHaveBeenCalledWith(USER);
 		expect(background).not.toHaveBeenCalled();
 	});
@@ -290,6 +300,74 @@ describe("dashboard load: one account (?account=)", () => {
 			status: 404,
 		});
 		expect(data.touchDashboardSeen).not.toHaveBeenCalled();
+	});
+});
+
+describe("dashboard load: another user's dashboard (?user=)", () => {
+	const TARGET = fakeId("user-target");
+	const ADMIN = fakeId("user-admin");
+	const superAdmin = () => fakeUser(ADMIN, { isSuperAdmin: true });
+	const targetRow = { id: TARGET, name: "Tess", email: "tess@example.com" };
+	const theirs = member(ACCOUNT, "member");
+
+	beforeEach(() => {
+		data.userById.mockResolvedValue(targetRow);
+		data.membershipsOfUser.mockResolvedValue([theirs]);
+		data.dashboardSeenAtOf.mockResolvedValue(day(15));
+	});
+
+	it("is a 404 for anyone but a super admin, and nothing is looked up or logged", async () => {
+		const own = member(OTHER_ACCOUNT, "owner");
+		await expect(run([own], fakeUser(), `?user=${TARGET}`)).rejects.toMatchObject({
+			status: 404,
+		});
+		expect(data.userById).not.toHaveBeenCalled();
+		expect(data.membershipsOfUser).not.toHaveBeenCalled();
+		expect(background).not.toHaveBeenCalled();
+		expect(data.touchDashboardSeen).not.toHaveBeenCalled();
+	});
+
+	it("is a 404 for an unknown id", async () => {
+		data.userById.mockResolvedValue(null);
+		await expect(run([], superAdmin(), "?user=nobody")).rejects.toMatchObject({ status: 404 });
+		expect(data.userById).toHaveBeenCalledWith("nobody");
+		expect(background).not.toHaveBeenCalled();
+	});
+
+	it("builds everything for the target, reads their marker without moving it, and logs the view", async () => {
+		const adminOwn = member(OTHER_ACCOUNT, "owner");
+		const r = await run(
+			[adminOwn, member(ACCOUNT, "owner", { actingAs: true })],
+			superAdmin(),
+			`?user=${TARGET}&account=${adminOwn.slug}`,
+		);
+		expect(data.membershipsOfUser).toHaveBeenCalledWith(TARGET);
+		expect(r.accounts.map((a: Row) => a.slug)).toEqual([theirs.slug]);
+		expect(data.projectRolesOf).toHaveBeenCalledTimes(1);
+		expect(data.projectRolesOf).toHaveBeenCalledWith(ACCOUNT, TARGET);
+		expect(data.unreadSongChats).toHaveBeenCalledWith(ACCOUNT, theirs.slug, TARGET);
+		expect(data.unreadSessionChats).toHaveBeenCalledWith(ACCOUNT, theirs.slug, TARGET);
+		expect(notifications.listInbox).toHaveBeenCalledWith(TARGET);
+		expect(data.recentUserIdeas.mock.calls.map((c) => [c[0], c[1]])).toEqual([
+			[TARGET, "idea"],
+			[TARGET, "loop"],
+			[TARGET, "song"],
+		]);
+		expect(data.userIdeaNudges).toHaveBeenCalledWith(TARGET);
+		expect(data.listDashboardPins).toHaveBeenCalledWith(TARGET);
+		expect(data.touchDashboardSeen).not.toHaveBeenCalled();
+		expect(data.dashboardSeenAtOf).toHaveBeenCalledWith(TARGET);
+		expect(r.seenAt).toEqual(day(15));
+		expect(r.viewing).toEqual({ kind: "user", id: TARGET, name: "Tess" });
+		// One audit line, written in the background, under the admin's id and no account.
+		expect(background).toHaveBeenCalledTimes(1);
+		await background.mock.calls[0][0]();
+		expect(data.logAudit).toHaveBeenCalledTimes(1);
+		expect(data.logAudit).toHaveBeenCalledWith({
+			userId: ADMIN,
+			accountId: null,
+			action: expect.stringContaining(`view-as-user ${TARGET} GET /dashboard?user=${TARGET}`),
+		});
 	});
 });
 

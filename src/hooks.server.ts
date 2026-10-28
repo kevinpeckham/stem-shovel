@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/node";
 import { building } from "$app/env";
 import { auth } from "#lib/auth.js";
 import { db, schema } from "#lib/server/db/index.js";
+import { membershipsOfUser } from "#lib/server/data.js";
 import { withActingMemberships } from "#lib/utils/actingMemberships.js";
 import {
 	indexableStage,
@@ -59,23 +60,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	event.locals.user = user;
-	const real = user
-		? (
-				await db.query.accountMember.findMany({
-					where: eq(schema.accountMember.userId, user.id),
-					with: {
-						account: { columns: { slug: true, name: true, status: true } },
-					},
-				})
-			) // A suspended account counts as no membership: its pages, mutations and uploads all close.
-				.filter((m) => m.account.status === "active")
-				.map((m) => ({
-					accountId: m.accountId,
-					slug: m.account.slug,
-					name: m.account.name,
-					role: m.role,
-				}))
-		: [];
+	const real = user ? await membershipsOfUser(user.id) : [];
 	// A super admin is an acting owner everywhere else (src/lib/utils/actingMemberships.ts).
 	event.locals.memberships = user?.isSuperAdmin
 		? withActingMemberships(

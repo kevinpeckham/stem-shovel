@@ -10,7 +10,9 @@ const {
 	accountNudges,
 	accountPendingWork,
 	accountQuota,
+	dashboardSeenAtOf,
 	listDashboardPins,
+	membershipsOfUser,
 	recentRecordingSessions,
 	recentProjects,
 	recentSongs,
@@ -19,6 +21,7 @@ const {
 	touchDashboardSeen,
 	unreadSessionChats,
 	unreadSongChats,
+	userById,
 	userIdeaNudges,
 } = await import("./data");
 
@@ -1026,6 +1029,59 @@ describe("touchDashboardSeen", () => {
 		expect(await touchDashboardSeen(U, at("2026-10-28T00:00:00Z"))).toEqual(second);
 		// Another person's stamp is untouched.
 		expect(await touchDashboardSeen(V, second)).toBeNull();
+	});
+});
+
+describe("dashboardSeenAtOf", () => {
+	beforeEach(() =>
+		reset({
+			user: [
+				{ id: U, name: "Uma", email: "u@x", dashboardSeenAt: at("2026-10-20T00:00:00Z") },
+				{ id: V, name: "Vic", email: "v@x", dashboardSeenAt: null },
+			],
+		}),
+	);
+	test("reads the stamp without moving it; null for none or no such user", async () => {
+		expect(await dashboardSeenAtOf(U)).toEqual(at("2026-10-20T00:00:00Z"));
+		expect(await dashboardSeenAtOf(U)).toEqual(at("2026-10-20T00:00:00Z"));
+		expect(await dashboardSeenAtOf(V)).toBeNull();
+		expect(await dashboardSeenAtOf("nobody")).toBeNull();
+		expect(fake.calls.filter((c) => c.op === "update")).toEqual([]);
+	});
+});
+
+describe("userById", () => {
+	beforeEach(() => reset({ user: [{ id: U, name: "Uma", email: "u@x", dashboardSeenAt: null }] }));
+	test("id, name and email; null when missing", async () => {
+		expect(await userById(U)).toEqual({ id: U, name: "Uma", email: "u@x" });
+		expect(await userById("nobody")).toBeNull();
+	});
+});
+
+describe("membershipsOfUser", () => {
+	const C = "acct-three__________";
+	beforeEach(() =>
+		reset({
+			account: [
+				{ id: A, slug: "band-a", name: "Band A", status: "active" },
+				{ id: B, slug: "band-b", name: "Band B", status: "suspended" },
+				{ id: C, slug: "band-c", name: "Band C", status: "active" },
+			],
+			accountMember: [
+				{ id: "m1", accountId: A, userId: U, role: "owner" },
+				{ id: "m2", accountId: B, userId: U, role: "admin" },
+				{ id: "m3", accountId: C, userId: V, role: "member" },
+			],
+		}),
+	);
+	test("the person's memberships in active accounts, as the hook maps them", async () => {
+		expect(await membershipsOfUser(U)).toEqual([
+			{ accountId: A, slug: "band-a", name: "Band A", role: "owner" },
+		]);
+		expect(await membershipsOfUser(V)).toEqual([
+			{ accountId: C, slug: "band-c", name: "Band C", role: "member" },
+		]);
+		expect(await membershipsOfUser("nobody")).toEqual([]);
 	});
 });
 

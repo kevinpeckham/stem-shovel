@@ -15,7 +15,8 @@ import { RUNNERS } from "./runners";
  * work needs. Answers 202 as soon as the job is accepted and runs it inside
  * `waitUntil`.
  */
-export const config: Config = { split: true, maxDuration: 300 };
+/** 800 s, the Pro plan's ceiling: a whole show's recording (hours of FLAC) is decoded, measured and encoded here (docs/environment.md). */
+export const config: Config = { split: true, maxDuration: 800 };
 
 export const POST: RequestHandler = async ({ request }) => {
 	const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;

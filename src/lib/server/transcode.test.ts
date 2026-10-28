@@ -13,6 +13,8 @@ import { Writable } from "node:stream";
 const h = vi.hoisted(() => ({
 	/** Every execFile call's argv; a handler decides what ffmpeg "answers". */
 	runs: [] as string[][],
+	/** Each execFile child's stdin, by the index of its run in `runs`. */
+	stdins: new Map<unknown, number>(),
 	answer: vi.fn<(args: string[]) => { stderr: string } | Error>(),
 	data: {
 		claimPlayback: vi.fn(),
@@ -90,7 +92,9 @@ vi.mock("node:child_process", () => ({
 		// execFile's own callback shape: the error, then stdout and stderr (a probe's answer is in stderr).
 		if (a instanceof Error) cb(a, "", (a as { stderr?: string }).stderr ?? "");
 		else cb(null, "", a?.stderr ?? "");
-		return { kill: () => {} };
+		const stdin = new Writable({ write: (_c, _e, done) => done() });
+		h.stdins.set(stdin, h.runs.length - 1);
+		return { kill: () => {}, stdin };
 	},
 }));
 vi.mock("node:fs", () => ({
@@ -115,6 +119,13 @@ vi.mock("#lib/server/reportError.js", () => ({ reportError: h.reportError }));
 
 const { renderStems, renderDemos, renderRecordings, renderSessions, flacStudioSources } =
 	await import("./transcode");
+const { pipeline } = await import("node:stream/promises");
+/** The runs whose stdin was fed a source (`Ffmpeg.run`'s `input`), by index in `h.runs`. */
+const pipedRuns = () =>
+	vi
+		.mocked(pipeline)
+		.mock.calls.filter((c) => h.stdins.has(c[1]))
+		.map((c) => h.stdins.get(c[1]));
 
 const PUBLIC = "https://store.public.blob.vercel-storage.com";
 const PRIVATE = "https://store.private.blob.vercel-storage.com";
@@ -158,6 +169,8 @@ beforeEach(() => {
 	vi.resetAllMocks();
 	vi.spyOn(console, "error").mockImplementation(() => {});
 	h.runs.length = 0;
+	h.stdins.clear();
+	vi.mocked(pipeline).mockImplementation(async () => {});
 	h.fs.removed.length = 0;
 	h.fs.written.clear();
 	h.ffmpegPath = "/opt/ffmpeg";
@@ -574,6 +587,102 @@ describe("renderSessions", () => {
 		await renderDemos(["demo-1"]);
 		expect(h.runs.some((r) => afOf(r)?.includes(MEASURE))).toBe(false);
 		expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe("aformat=channel_layouts=mono|stereo");
+	});
+	describe("a source over the disk budget", () => {
+		const BIG = 650 * 1024 * 1024;
+		const URL_PUBLIC = `${PUBLIC}/accounts/a/sessions/s/r1.flac`;
+		/** The argv's input: what follows `-i`. */
+		const inputOf = (args: string[]) => args[args.indexOf("-i") + 1];
+		const bigClaim = (over: Record<string, unknown> = {}) => ({
+			url: URL_PUBLIC,
+			pathname: "accounts/a/sessions/s/r1.flac",
+			playbackUrl: null,
+			sizeBytes: BIG,
+			...over,
+		});
+		beforeEach(() => {
+			vi.spyOn(console, "log").mockImplementation(() => {});
+		});
+		it("is piped from Blob into the stats, measurement and encode passes, never downloaded", async () => {
+			h.data.claimSessionPlayback.mockResolvedValue(bigClaim());
+			answers(stats("00:38:12.00", "-6.2"), measured());
+			await renderSessions(["r1"]);
+			const statsRun = h.runs.findIndex((r) => r.includes(ASTATS));
+			const measure = h.runs.findIndex((r) => afOf(r)?.includes(MEASURE));
+			const encode = h.runs.findIndex((r) => r[r.length - 1].endsWith("/demo.mp3"));
+			// Each pass reads the file afresh from Blob; none is written to the temporary directory.
+			expect(pipedRuns()).toEqual([statsRun, measure, encode]);
+			expect(h.blob.readBlob.mock.calls).toEqual([[URL_PUBLIC], [URL_PUBLIC], [URL_PUBLIC]]);
+			for (const i of [statsRun, measure, encode]) expect(inputOf(h.runs[i])).toBe("pipe:0");
+			expect(h.runs[encode].slice(0, 7)).toEqual([
+				"-hide_banner",
+				"-loglevel",
+				"error",
+				"-xerror",
+				"-y",
+				"-i",
+				"pipe:0",
+			]);
+			expect(afOf(h.runs[encode])).toBe(
+				`aformat=channel_layouts=mono|stereo,volume=5.5dB,${LIMIT}`,
+			);
+			expect(h.blob.putBlob).toHaveBeenCalledWith(
+				expect.stringMatching(/^accounts\/a\/sessions\/s\/r1\.play-[a-z0-9]+\.mp3$/),
+				expect.anything(),
+				"audio/mpeg",
+				"public",
+			);
+			expect(h.data.finishSessionPlayback).toHaveBeenCalledWith(
+				"r1",
+				expect.objectContaining({ pathname: expect.stringMatching(/\.mp3$/) }),
+			);
+			expect(h.data.failSessionPlayback).not.toHaveBeenCalled();
+			expect(console.log).toHaveBeenCalledWith(
+				`[jobs] session-playback r1 streamed ${BIG} bytes from Blob`,
+			);
+		});
+		it("a private WAV is read through the store, and without a printed duration is measured by its size over its bitrate", async () => {
+			const url = `${PRIVATE}/accounts/a/sessions/s/r1.wav`;
+			// 40 minutes of 96 kHz 16-bit stereo.
+			h.data.claimSessionPlayback.mockResolvedValue(
+				bigClaim({ url, pathname: "accounts/a/sessions/s/r1.wav", sizeBytes: 40 * 60 * 384_000 }),
+			);
+			const piped = stats("00:00:00.00", "-6.2").replace(
+				/Duration: [^\n]*/,
+				"Duration: N/A, bitrate: 3072 kb/s",
+			);
+			answers(piped, measured());
+			await renderSessions(["r1"]);
+			expect(h.blob.readBlob).toHaveBeenCalledWith(url);
+			expect(h.runs.some((r) => afOf(r)?.includes(MEASURE))).toBe(true);
+			expect(afOf(runFor(/\/demo\.mp3$/)!)).toBe(
+				`aformat=channel_layouts=mono|stereo,volume=5.5dB,${LIMIT}`,
+			);
+			expect(h.blob.putBlob).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.anything(),
+				"audio/mpeg",
+				"private",
+			);
+		});
+		it("a failed Blob read fails the row", async () => {
+			h.data.claimSessionPlayback.mockResolvedValue(bigClaim());
+			h.blob.readBlob.mockImplementation(async () => new Response(null, { status: 404 }));
+			await renderSessions(["r1"]);
+			expect(runFor(/\/demo\.mp3$/)).toBeUndefined();
+			expect(h.data.failSessionPlayback).toHaveBeenCalledWith("r1");
+			expect(h.data.finishSessionPlayback).not.toHaveBeenCalled();
+		});
+		it("a source within the budget is still downloaded and read from the temporary directory", async () => {
+			h.data.claimSessionPlayback.mockResolvedValue(bigClaim({ sizeBytes: 200 * 1024 * 1024 }));
+			await renderSessions(["r1"]);
+			expect(h.blob.readBlob.mock.calls).toEqual([[URL_PUBLIC]]);
+			expect(pipedRuns()).toEqual([]);
+			const encode = runFor(/\/demo\.mp3$/)!;
+			expect(inputOf(encode)).toMatch(/\/demo-abc\/source$/);
+			expect(encode).not.toContain("-xerror");
+			expect(h.data.finishSessionPlayback).toHaveBeenCalled();
+		});
 	});
 });
 

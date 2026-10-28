@@ -8,6 +8,26 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.195.0] - 2026-10-28
+
+### Added
+
+- **A super admin views a user's dashboard** (Kevin's request): `/dashboard?user=<id>`, linked from the admin user page, shows that person's dashboard as they see it, under a notice; the pin buttons are hidden, their seen marker is untouched, and every view is written to the audit log. Admin-only: not for the releases page.
+
+### Changed
+
+- **Attaching a set list or linking a session to a show is one step** (Kevin's request): choosing one in the dropdown attaches or links it at once; the Attach and Link buttons are gone. The show page's sections are named **Set lists** and **Recordings** (were Sets and Tapes).
+- **The header fits a phone** (Kevin's report): the super admin's "acting as owner" badge collapses to "AOR" below 640 px (the full phrase stays for screen readers and on hover), and the icon row's spacing tightens so the account button no longer runs off a 390 px screen. Admin-only badge: not for the releases page.
+
+### Fixed
+
+- **Large session recordings render again.** A whole-show FLAC (650 MB) never got its MP3: the jobs function downloaded the source to its temporary disk, which is smaller than that, and failed with `ENOSPC` on every hourly retry (seen on production 2026-10-28). Sources over `SOURCE_DISK_BUDGET_BYTES` are now piped from Blob into ffmpeg's standard input for every pass, so only the MP3 touches the disk. The failed recording picks itself up on the next retry after the deploy.
+- **Notes transcription no longer crashes on a silent tail.** A segment that produced no frames made basic-pitch throw (`frames[0]` undefined); such a segment now yields no notes.
+
+### Technical
+
+- `claim*Playback` return `sizeBytes`; `transcodeToMp3` streams a source over `SOURCE_DISK_BUDGET_BYTES` (256 MB) into ffmpeg's stdin (`Ffmpeg.run` takes an `input` Readable; each pass re-reads the Blob through the store, private files included; `-xerror` on the encode so an unreadable piped container fails the row instead of finishing an empty MP3; `ffmpegBitrateDuration` estimates a piped WAV's length for the loudness guard) and the bundled ffmpeg's https input segfaults, so it was never an option (FINDINGS); the jobs function's `maxDuration` goes from 300 to 800 s and `FFMPEG_TIMEOUT_MS` from 240 to 600 s, so a three-hour recording's passes fit; `membershipsOfUser`, `dashboardSeenAtOf`, `userById` in data.ts, the hook using the first; `logAudit` takes a null account and the admin audit page shows such rows; package.json reformatted with the project's config (FINDINGS: `bunx oxfmt` ignores it).
+
 ## [0.194.0] - 2026-10-28
 
 ### Added

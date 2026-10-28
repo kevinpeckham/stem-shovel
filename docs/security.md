@@ -27,7 +27,11 @@ What protects what, and where each rule lives. The first security pass ran on
   `/dashboard?account=<slug>` (the admin accounts page links there): the
   dashboard narrows to that one account under a notice, the view is
   logged like any acting use, and the person's own "since your last
-  visit" marker does not move.
+  visit" marker does not move. `/dashboard?user=<id>` (linked from the
+  admin user page) shows another user's dashboard as they see it, super
+  admins only: built from that user's own memberships, pins and inbox,
+  with the pin buttons hidden and their seen marker untouched; each view
+  writes an `audit_log` row (`view-as-user <id> GET …`, no account).
 - **Owners and admins** invite, manage members and account settings;
   **system admins** (`user.is_system_admin`, set only by a script) reach
   `/admin` and the user-doc editor; everyone else gets a 404 there.

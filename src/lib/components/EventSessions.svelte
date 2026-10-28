@@ -7,9 +7,10 @@
 	import EventSessionRow from "./EventSessionRow.svelte";
 
 	/**
-	 * An event's tapes (docs/band-plan.md, "Event"): the recording sessions
-	 * tied to it, each linking to its page with Unlink, and a session of the
-	 * account to link (one tied to another event moves here). The lists are
+	 * An event's recordings (docs/band-plan.md, "Event"): the recording sessions
+	 * tied to it, each linking to its page with Unlink, and a picker of the
+	 * account's sessions: choosing one links it at once (one tied to another
+	 * event moves here), and the picker returns to its prompt. The lists are
 	 * local state kept from what each command returns; a session linked here
 	 * has no recording count until the page loads again.
 	 */
@@ -56,14 +57,16 @@
 	function retie(sessionId: string, to: string | null) {
 		choices = choices.map((c) => (c.id === sessionId ? { ...c, eventId: to } : c));
 	}
-	function link(sessionId: string) {
-		return run("link", async () => {
+	/** Links the chosen session, then returns the picker to its prompt either way. */
+	async function link(sessionId: string) {
+		if (!sessionId || busy) return;
+		await run("link", async () => {
 			await linkEventSession({ eventId, sessionId, linked: true });
 			retie(sessionId, eventId);
 			const c = choices.find((c) => c.id === sessionId);
 			if (c) sessions = [...sessions, c].sort((a, b) => a.startsOn.localeCompare(b.startsOn));
-			picked = "";
 		});
+		picked = "";
 	}
 	function unlink(sessionId: string) {
 		return run("unlink", async () => {
@@ -90,23 +93,18 @@
 {/if}
 
 {#if canEdit && linkable.length > 0}
-	<div class="flex flex-wrap items-end gap-2">
-		<label class="grid min-w-0 flex-1 gap-1 text-13px text-dim sm:max-w-sm">
-			Link a session
-			<select class="field text-14px" bind:value={picked}>
-				<option value="" disabled>Choose a session</option>
-				{#each linkable as c (c.id)}
-					<option value={c.id}>{sessionChoiceLabel(c, eventId)}</option>
-				{/each}
-			</select>
-		</label>
-		<button
-			class="button button-sm"
-			type="button"
-			disabled={!picked || busy}
-			onclick={() => link(picked)}
+	<label class="grid min-w-0 gap-1 text-13px text-dim sm:max-w-sm">
+		Link a session
+		<select
+			class="field text-14px"
+			bind:value={picked}
+			disabled={busy}
+			onchange={(e) => link(e.currentTarget.value)}
 		>
-			<span class="i-ph-link" aria-hidden="true"></span> Link
-		</button>
-	</div>
+			<option value="" disabled>Choose a session to link…</option>
+			{#each linkable as c (c.id)}
+				<option value={c.id}>{sessionChoiceLabel(c, eventId)}</option>
+			{/each}
+		</select>
+	</label>
 {/if}

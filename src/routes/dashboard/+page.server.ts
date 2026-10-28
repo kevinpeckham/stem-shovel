@@ -14,6 +14,7 @@ import type { Nudge } from "#lib/constants/dashboardActivity.js";
 import type { DashboardPinRow } from "#lib/server/data.js";
 import { error } from "@sveltejs/kit";
 import { requireMember, requireSignedIn } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
 import {
 	accountActivity,
 	accountBand,
@@ -21,8 +22,11 @@ import {
 	accountNudges,
 	accountPendingWork,
 	accountQuota,
+	dashboardSeenAtOf,
 	listDashboardPins,
 	listInviteCodes,
+	logAudit,
+	membershipsOfUser,
 	pendingInvitations,
 	projectRolesOf,
 	recentProjects,
@@ -33,6 +37,7 @@ import {
 	touchDashboardSeen,
 	unreadSessionChats,
 	unreadSongChats,
+	userById,
 	userIdeaNudges,
 } from "#lib/server/data.js";
 import { listInbox } from "#lib/server/notifications.js";
@@ -349,6 +354,79 @@ function ideaEntries(
 	return rows.map((r) => ({ id: r.id, title: r.title, href: href(r.id), when: r.createdAt }));
 }
 
+/** The user a super admin views the dashboard of (`?user=<id>`), with the view logged; a 404 for anyone else or an unknown id. */
+async function viewedUser(locals: App.Locals, url: URL, userId: string) {
+	const admin = locals.user;
+	if (!admin?.isSuperAdmin) error(404, "Not found");
+	const target = await userById(userId);
+	if (!target) error(404, "Not found");
+	const action = `view-as-user ${target.id} GET ${url.pathname}${url.search}`;
+	background(() => logAudit({ userId: admin.id, accountId: null, action }));
+	return target;
+}
+
+/**
+ * Whose dashboard a request asks for: the person's own, an account narrowed
+ * to (`?account=`, real or acting), or the user a super admin views as
+ * (`?user=`); with the memberships whose tiles it shows and the `viewing`
+ * notice the page carries.
+ */
+async function whoseDashboard(locals: App.Locals, url: URL) {
+	const user = requireSignedIn(locals, url);
+	const userParam = url.searchParams.get("user");
+	if (userParam) {
+		const target = await viewedUser(locals, url, userParam);
+		return {
+			user,
+			target,
+			acting: false,
+			/** Whose dashboard this is: the user a super admin is viewing as. */
+			id: target.id,
+			memberships: await membershipsOfUser(target.id),
+			viewing: { kind: "user" as const, id: target.id, name: target.name },
+		};
+	}
+	const chosen = chosenAccount(locals, url.searchParams.get("account"));
+	const acting = !!chosen?.actingAs;
+	return {
+		user,
+		target: null,
+		acting,
+		id: user.id,
+		memberships: chosen ? [chosen] : realMemberships(locals.memberships),
+		viewing: chosen
+			? { kind: "account" as const, slug: chosen.slug, name: chosen.name, actingAs: acting }
+			: null,
+	};
+}
+
+/** The account `?account=<slug>` narrows the dashboard to, real or acting (requireMember logs an acting view); a 404 for one the person cannot reach. */
+function chosenAccount(locals: App.Locals, slug: string | null) {
+	if (!slug) return undefined;
+	const chosen = locals.memberships.find((m) => m.slug === slug);
+	if (!chosen) error(404, "Not found");
+	requireMember(locals, chosen.accountId);
+	return chosen;
+}
+
+/**
+ * The visit before this one is what "since your last visit" means; this one
+ * is recorded now. Someone else's account (acting) neither moves the marker
+ * nor uses it; someone else's dashboard (?user) reads theirs and leaves it.
+ */
+function seenAtFor({
+	target,
+	acting,
+	user,
+}: {
+	target: { id: string } | null;
+	acting: boolean;
+	user: { id: string };
+}) {
+	if (target) return dashboardSeenAtOf(target.id);
+	return acting ? null : touchDashboardSeen(user.id);
+}
+
 /**
  * Where a signed-in person lands (docs/dashboard-plan.md): a tile per
  * account they really belong to (not a super admin's acting ones) with its
@@ -363,27 +441,27 @@ function ideaEntries(
  * acting: a super admin opens an account's dashboard from /admin/accounts
  * that way. An acting view goes through requireMember (which logs it) and
  * leaves the person's "since your last visit" marker where it was.
+ *
+ * `?user=<id>` (a super admin only, from /admin/users/[id]; anyone else gets
+ * a 404) is that user's dashboard as they see it: their real memberships,
+ * their ideas, inbox, nudges and pins, and their "since your last visit"
+ * marker read but never moved. Every such view writes an audit line. It
+ * wins over `?account=`.
  */
 export const load: PageServerLoad = async ({ locals, url }) => {
-	const user = requireSignedIn(locals, url);
-	const slug = url.searchParams.get("account");
-	const chosen = slug ? locals.memberships.find((m) => m.slug === slug) : undefined;
-	if (slug && !chosen) error(404, "Not found");
-	if (chosen) requireMember(locals, chosen.accountId);
-	const acting = !!chosen?.actingAs;
-	const memberships = chosen ? [chosen] : realMemberships(locals.memberships);
+	const who = await whoseDashboard(locals, url);
+	const { id, memberships, viewing } = who;
 	const since = new Date(Date.now() - DASHBOARD_ACTIVITY_DAYS * DAY);
 	const [inbox, ideaRows, loopRows, multitrackRows, tiles, ideaNudges, pins, seenAt] =
 		await Promise.all([
-			listInbox(user.id),
-			recentUserIdeas(user.id, "idea", DASHBOARD_LIST_CAP),
-			recentUserIdeas(user.id, "loop", DASHBOARD_LIST_CAP),
-			recentUserIdeas(user.id, "song", DASHBOARD_LIST_CAP),
-			Promise.all(memberships.map((m) => dashboardAccount(m, user.id, since))),
-			userIdeaNudges(user.id),
-			listDashboardPins(user.id),
-			// The visit before this one is what "since your last visit" means; this one is recorded now. Someone else's account (acting) neither moves the marker nor uses it.
-			acting ? null : touchDashboardSeen(user.id),
+			listInbox(id),
+			recentUserIdeas(id, "idea", DASHBOARD_LIST_CAP),
+			recentUserIdeas(id, "loop", DASHBOARD_LIST_CAP),
+			recentUserIdeas(id, "song", DASHBOARD_LIST_CAP),
+			Promise.all(memberships.map((m) => dashboardAccount(m, id, since))),
+			userIdeaNudges(id),
+			listDashboardPins(id),
+			seenAtFor(who),
 		]);
 	return {
 		accounts: tiles.map(({ slug, name, role, counts, quota, band, invites }) => ({
@@ -402,7 +480,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		nudges: nudgeEntries(tiles, ideaNudges),
 		pinned: pinnedEntries(tiles, pins),
 		seenAt,
-		viewing: chosen ? { slug: chosen.slug, name: chosen.name, actingAs: acting } : null,
+		viewing,
 		comments: inbox
 			.filter((i) => !i.readAt && COMMENT_KINDS.has(i.kind))
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),

@@ -5,6 +5,7 @@ import {
 } from "#lib/val/IdeaSchema.js";
 import type { ReportKind, ReportVote } from "#lib/val/BugReportSchema.js";
 import { byStatus } from "#lib/utils/byStatus.js";
+import type { Membership } from "#lib/utils/actingMemberships.js";
 import { reorderById } from "#lib/utils/reorderById.js";
 import { sortOrderMoves } from "#lib/utils/sortOrderMoves.js";
 import { sessionDisplayName } from "#lib/utils/sessionName.js";
@@ -3611,7 +3612,12 @@ export async function reservedPathname(
 
 // ---- audit log --------------------------------------------------------------
 
-export async function logAudit(entry: { userId: string; accountId: string; action: string }) {
+/** One audit line; `accountId` is null when the action is not in an account (a super admin viewing another user's dashboard). */
+export async function logAudit(entry: {
+	userId: string;
+	accountId: string | null;
+	action: string;
+}) {
 	await db.insert(auditLog).values(entry);
 }
 
@@ -4517,6 +4523,7 @@ export async function claimSessionPlayback(recordingId: string) {
 			url: sessionRecording.url,
 			pathname: sessionRecording.pathname,
 			playbackUrl: sessionRecording.playbackUrl,
+			sizeBytes: sessionRecording.sizeBytes,
 		});
 	return row ?? null;
 }
@@ -6321,6 +6328,7 @@ export async function claimDemoPlayback(demoId: string) {
 			url: demo.url,
 			pathname: demo.pathname,
 			playbackUrl: demo.playbackUrl,
+			sizeBytes: demo.sizeBytes,
 		});
 	return row ?? null;
 }
@@ -6489,6 +6497,7 @@ export async function claimMixPlayback(mixId: string) {
 			url: songMix.url,
 			pathname: songMix.pathname,
 			playbackUrl: songMix.playbackUrl,
+			sizeBytes: songMix.sizeBytes,
 		});
 	return row ?? null;
 }
@@ -7208,6 +7217,7 @@ export async function claimRecordingPlayback(recordingId: string) {
 			url: recording.url,
 			pathname: recording.pathname,
 			playbackUrl: recording.playbackUrl,
+			sizeBytes: recording.sizeBytes,
 			contentType: recording.contentType,
 			codec: recording.codec,
 			trimSilence: recording.trimSilence,
@@ -10025,6 +10035,46 @@ export async function touchDashboardSeen(userId: string, now = new Date()): Prom
 	});
 	await db.update(user).set({ dashboardSeenAt: now }).where(eq(user.id, userId));
 	return row?.dashboardSeenAt ?? null;
+}
+
+/** The person's dashboard stamp as it stands, without moving it: what a super admin viewing their dashboard reads (docs/security.md). */
+export async function dashboardSeenAtOf(userId: string): Promise<Date | null> {
+	const row = await db.query.user.findFirst({
+		where: eq(user.id, userId),
+		columns: { dashboardSeenAt: true },
+	});
+	return row?.dashboardSeenAt ?? null;
+}
+
+/** A user's id, name and email, or null when there is no such user. */
+export async function userById(userId: string) {
+	return (
+		(await db.query.user.findFirst({
+			where: eq(user.id, userId),
+			columns: { id: true, name: true, email: true },
+		})) ?? null
+	);
+}
+
+/**
+ * The accounts a person really belongs to, as `locals.memberships` holds
+ * them before a super admin's acting ones join (src/hooks.server.ts). A
+ * suspended account counts as no membership: its pages, mutations and
+ * uploads all close.
+ */
+export async function membershipsOfUser(userId: string): Promise<Membership[]> {
+	const rows = await db.query.accountMember.findMany({
+		where: eq(accountMember.userId, userId),
+		with: { account: { columns: { slug: true, name: true, status: true } } },
+	});
+	return rows
+		.filter((m) => m.account.status === "active")
+		.map((m) => ({
+			accountId: m.accountId,
+			slug: m.account.slug,
+			name: m.account.name,
+			role: m.role,
+		}));
 }
 
 /** One thing a person pinned to their dashboard, resolved to where it lives and what `canViewSong` / `canViewProject` read. */

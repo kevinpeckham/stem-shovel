@@ -7,6 +7,31 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Vercel function /tmp is ~500 MB; ffmpeg-static's https input segfaults, so big sources go through stdin (2026-10-28, v0.195.0)
+
+A 650 MB FLAC session recording never got its MP3: `downloadToFile`
+(src/lib/server/effect/blobIo.ts) failed with `ENOSPC: no space left on
+device, write`, because a Vercel function's `/tmp` holds about 500 MB, and
+the row failed again on every hourly retry. ffmpeg-static (johnvansickle
+7.0.2) lists `https` in `ffmpeg -protocols`, but `ffmpeg -i https://….flac`
+segfaults at once (exit 139) on the VM, by the Blob URL and by the raw IP
+(so TLS, not DNS), with or without `-reconnect`; `curl … | ffmpeg -i
+pipe:0` works. So `transcodeToMp3` (src/lib/server/transcode.ts) pipes a
+source over `SOURCE_DISK_BUDGET_BYTES` (256 MB, the claim's `sizeBytes`)
+from `BlobStore.read` into ffmpeg's stdin (`Ffmpeg.run`'s `input`), once
+per pass (stats, loudness, encode); only the MP3 touches the disk.
+
+What a pipe changes, tried with the bundled binary: a FLAC still prints
+its `Duration:` (STREAMINFO carries the sample count), attached picture
+and all; a WAV prints `Duration: N/A, bitrate: 3072 kb/s`, so its length
+comes from the size over the bitrate (`ffmpegBitrateDuration`); an MP4
+with its `moov` at the end cannot be read from a pipe and ffmpeg
+**exits 0 with an empty MP3** unless `-xerror` is given (the streamed
+encode passes it). When ffmpeg stops reading early (`-t`, a probe) the
+write side gets `EPIPE`, which is not a failure; a source that breaks
+mid-file ends ffmpeg's input cleanly too, so `Ffmpeg.run` fails the run
+on the input's own error even when ffmpeg exits 0.
+
 ## varlock falls back to the default environment's values when the chosen one has none (2026-10-26)
 
 `.env.schema` keys the 1Password environment on `APP_ENV`
@@ -1029,6 +1054,17 @@ From building the Studio's streaming voice (static/worklets/stream-voice.js, aud
 - **`pcmCache.write` resolves the same whether the copy was written or not** (a miss is never an error), so the engine confirms a copy with a `stat` afterwards before marking a source `onDisk`; and a buffer read back from disk says nothing about its origin, so a source held as a blob (the browser-kept song) is excluded explicitly or it would be marked on disk with no copy.
 - **The singleton engine opens its context once per module**, so a test of the "worklet refused" fallback re-imports it with `vi.resetModules()`.
 - **A 16-tap Kaiser-windowed sinc (β 7, cutoff 0.9 of the lower Nyquist, 512 tabulated phases)** resamples 48 to 44.1 kHz at -72 dB error at 1 kHz and -65 dB at 10 kHz, about 3 ms per second of stereo; 44.1 to 48 at 15 kHz is only -39 dB, the short kernel's roll-off.
+
+## `bunx oxfmt <file>` ignores the project's formatting config (2026-10-28)
+
+From the v0.194.0 release: `bunx oxfmt CHANGELOG.md package.json` printed
+"No config found, using defaults" and rewrote package.json with two-space
+indentation, after the release's `bun run lint` had already passed; the
+commit carried it and the next `vp check` failed on formatting. The
+project's formatter settings live with Vite+ (`vp fmt`, what `bun run
+format` runs), not in an `.oxfmtrc`, so the standalone binary falls back
+to its defaults. Format single files with `bunx vp fmt <file>` or run
+`bun run format`; never `bunx oxfmt` directly.
 
 ## Fallow's audit JSON keeps the new-only verdict under `attribution` (2026-10-28)
 

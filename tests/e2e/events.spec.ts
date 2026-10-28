@@ -66,9 +66,9 @@ test("puts a show on the calendar, attaches a set and deletes it", async ({ page
 	);
 
 	// The set, attached and labeled.
+	// Choosing a set list attaches it at once (no button, Kevin 2026-10-28).
 	await page.getByLabel("Attach a set list").selectOption({ label: `${SET} · 1 row` });
-	await page.getByRole("button", { name: "Attach" }).click();
-	const sets = page.getByRole("list", { name: "Sets" });
+	const sets = page.getByRole("list", { name: "Set lists" });
 	await expect(sets.getByRole("listitem")).toHaveCount(1);
 	await expect(sets.getByRole("link", { name: SET })).toBeVisible();
 	await page.getByLabel("Label of set 1").fill("Set 1");

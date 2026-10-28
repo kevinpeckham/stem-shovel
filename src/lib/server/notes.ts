@@ -94,6 +94,8 @@ const artifacts = {
 const model = new BasicPitch(tf.loadGraphModel(tf.io.fromMemory(artifacts)));
 const frames = [], onsets = [];
 await model.evaluateModel(audio, (f, o) => { frames.push(...f); onsets.push(...o); }, () => {});
+// No frames (a segment too short to evaluate): no notes, where outputToNotesPoly would throw.
+if (frames.length === 0) { await new Promise((r) => process.stdout.write("[]", r)); process.exit(0); }
 const notes = noteFramesToTime(outputToNotesPoly(frames, onsets, 0.5, 0.3, 11, true, 3000, 40, true, 11));
 process.stdout.write(JSON.stringify(notes.map((e) => [e.startTimeSeconds, e.durationSeconds, e.pitchMidi, e.amplitude])));
 `;

@@ -5,17 +5,18 @@
 	import { dropIndexAt } from "#lib/utils/dropIndexAt.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { moveId } from "#lib/utils/moveId.js";
-	import { plural } from "#lib/utils/plural.js";
 	import { reorderById } from "#lib/utils/reorderById.js";
+	import SetAttach from "./EventSetAttach.svelte";
 	import SetRow from "./EventSetRow.svelte";
 
 	/**
-	 * An event's sets (docs/band-plan.md, "Event"): the set lists attached in
+	 * An event's set lists (docs/band-plan.md, "Event"): the set lists attached in
 	 * order, each numbered with a label ("Set 1", "Encore") saved on change,
 	 * its editor and show view linked, and Remove; the order changed by
 	 * dragging the grip (pointer events, so touch works), its arrow keys or
-	 * the up and down buttons, saved once the move is done. Under them a set
-	 * list to attach as the next set. The rows are local state kept from
+	 * the up and down buttons, saved once the move is done. Under them a
+	 * picker: choosing a set list attaches it as the next set at once, and
+	 * the picker returns to its prompt. The rows are local state kept from
 	 * what each command returns.
 	 */
 	interface Props {
@@ -81,29 +82,30 @@
 
 	const rowClass = (id: string) => (dragging === id ? "opacity-50" : "");
 	const gripClass = (id: string) => (dragging === id ? "cursor-grabbing opacity-100" : "");
-	const choiceLabel = (c: Props["choices"][number]) =>
-		`${c.title || "Untitled"} · ${plural(c.itemCount, "row")}`;
 	function replace(saved: EventSetRow) {
 		sets = sets.map((s) => (s.id === saved.id ? saved : s));
 	}
-	async function attach() {
-		if (!picked) return;
+	/** Attaches the chosen set list, then returns the picker to its prompt either way. */
+	async function attach(setListId: string) {
+		if (!setListId || adding) return;
 		adding = true;
 		try {
-			sets = [...sets, await addEventSet({ eventId, setListId: picked })];
-			picked = "";
+			sets = [...sets, await addEventSet({ eventId, setListId })];
 		} catch (e) {
 			notify(`Could not attach the set list: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
 			adding = false;
+			picked = "";
 		}
 	}
 </script>
 
 {#if sets.length === 0}
-	<p class="text-14px text-dim">No sets yet.</p>
+	{#if !(canEdit && choices.length === 0)}
+		<p class="text-14px text-dim">No set lists yet.</p>
+	{/if}
 {:else}
-	<ol class="grid gap-2 {dragging ? 'select-none' : ''}" aria-label="Sets">
+	<ol class="grid gap-2 {dragging ? 'select-none' : ''}" aria-label="Set lists">
 		{#each sets as row, i (row.id)}
 			<li class="surface flex items-center gap-2 px-2 py-2 {rowClass(row.id)}" data-event-set>
 				<SetRow
@@ -140,24 +142,5 @@
 {/if}
 
 {#if canEdit}
-	{#if choices.length === 0}
-		<p class="text-14px text-dim">
-			No set lists yet. <a class="link" href="/{accountSlug}/set-lists">Make one on Set lists</a>.
-		</p>
-	{:else}
-		<div class="flex flex-wrap items-end gap-2">
-			<label class="grid min-w-0 flex-1 gap-1 text-13px text-dim sm:max-w-sm">
-				Attach a set list
-				<select class="field text-14px" bind:value={picked}>
-					<option value="" disabled>Choose a set list</option>
-					{#each choices as c (c.id)}
-						<option value={c.id}>{choiceLabel(c)}</option>
-					{/each}
-				</select>
-			</label>
-			<button class="button button-sm" type="button" disabled={!picked || adding} onclick={attach}>
-				<span class="i-ph-plus" aria-hidden="true"></span> Attach
-			</button>
-		</div>
-	{/if}
+	<SetAttach {accountSlug} {choices} {adding} bind:picked onchoose={attach} />
 {/if}

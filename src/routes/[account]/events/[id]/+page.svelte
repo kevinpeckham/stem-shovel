@@ -131,7 +131,7 @@
 		</form>
 
 		<section class="grid gap-3" aria-labelledby="event-sets">
-			<h2 class="heading-2 mb-0" id="event-sets">Sets</h2>
+			<h2 class="heading-2 mb-0" id="event-sets">Set lists</h2>
 			<EventSets
 				bind:sets
 				eventId={e.id}
@@ -142,7 +142,7 @@
 		</section>
 
 		<section class="grid gap-3" aria-labelledby="event-tapes">
-			<h2 class="heading-2 mb-0" id="event-tapes">Tapes</h2>
+			<h2 class="heading-2 mb-0" id="event-tapes">Recordings</h2>
 			<EventSessions
 				bind:sessions
 				bind:choices={sessionChoices}

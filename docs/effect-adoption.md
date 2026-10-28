@@ -216,7 +216,7 @@ functions and routes never see Effect.
 
 Phase 0 landed on 2026-10-25 (commit 4794540): failures in background work
 and in one id of a job reach Sentry tagged with the job kind, every job
-loop continues past a bad id, every ffmpeg run has a 240 s bound.
+loop continues past a bad id, every ffmpeg run has a 600 s bound (240 s until 2026-10-28).
 
 The pilot landed the same day: `src/lib/server/effect/` (errors, services,
 runtime, `runJob`; 221 lines plus a 61-line service test) and `mix.ts`

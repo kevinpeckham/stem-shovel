@@ -203,7 +203,8 @@ its people, with emails). The plan adds:
    **v0.194.0 (in progress)**: `event` without the money, house and
    public columns, `event_set`, `recording_session.event_id`; the Shows
    and Practices pages (Upcoming and Past), the event page with When and
-   where, Sets, Tapes and Notes; the Manage menu. `event_payout` and
+   where, Set lists, Recordings (named Sets and Tapes until 2026-10-28) and
+   Notes; the Manage menu. `event_payout` and
    `account.currency` move to phase 4 with the books.
 3. **Posters, pictures and video, and the public show page** (v0.197–
    0.198). `event_file`, uploads and playback, the posters page, the

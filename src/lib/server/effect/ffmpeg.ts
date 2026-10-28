@@ -4,6 +4,7 @@ import ffmpegPath from "ffmpeg-static";
 import { FfmpegError } from "./errors.js";
 import { Ffmpeg } from "./services.js";
 import { JobTuning } from "./tuning.js";
+import type { Readable } from "node:stream";
 
 /**
  * Fails at once when this platform has no ffmpeg binary, so a job can
@@ -19,6 +20,8 @@ interface RunOptions {
 	stderrTail?: number;
 	/** The span's name; `ffmpeg.run` when absent. */
 	span?: string;
+	/** Piped into ffmpeg's stdin, read as `-i pipe:0` (a source streamed from Blob, not downloaded). */
+	input?: Readable;
 }
 
 /**

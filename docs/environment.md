@@ -96,7 +96,8 @@ down now:
   `notation-pdf`). The first three used to run inside the page function after the response,
   which put ffmpeg (77 MB) and the transcription stack in every route's
   bundle. `src/lib/server/jobs.ts` now posts each job to `POST /api/jobs`
-  (`src/routes/api/jobs/+server.ts`, `config.split = true`, 300 s), which
+  (`src/routes/api/jobs/+server.ts`, `config.split = true`, 800 s since
+  2026-10-28, the Pro ceiling, for a whole show's recording), which
   answers 202 and does the work under its own `waitUntil`. The route trusts
   a bearer token derived from `BETTER_AUTH_SECRET` (an HMAC, no extra
   secret per stage) and validates the body with `JobSchema`. In

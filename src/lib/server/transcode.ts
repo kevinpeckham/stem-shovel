@@ -42,6 +42,7 @@ import {
 	LEVEL_MAX_SECONDS,
 } from "#lib/constants/sessionLoudness.js";
 import { ffmpegDuration } from "#lib/utils/ffmpegDuration.js";
+import { ffmpegBitrateDuration } from "#lib/utils/ffmpegBitrateDuration.js";
 import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
 import type { JobKind } from "#lib/val/JobSchema.js";
 import { playbackPathname } from "#lib/server/blob.js";
@@ -49,7 +50,7 @@ import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes } from "#lib/server/notes.js";
 import { eachJob } from "#lib/server/eachJob.js";
 import { downloadToFile } from "#lib/server/effect/blobIo.js";
-import type { BlobError, DbError, FfmpegError } from "#lib/server/effect/errors.js";
+import { BlobError, type DbError, type FfmpegError } from "#lib/server/effect/errors.js";
 import { requireFfmpeg, runFfmpeg, streamFfmpeg } from "#lib/server/effect/ffmpeg.js";
 import { tempDir } from "#lib/server/effect/resources.js";
 import { runJob } from "#lib/server/effect/runJob.js";
@@ -58,6 +59,7 @@ import type * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import { readFile, stat } from "node:fs/promises";
+import { Readable } from "node:stream";
 import { dirname, join } from "node:path";
 
 /**
@@ -480,6 +482,8 @@ interface Mp3Target {
 		url: string;
 		pathname: string;
 		playbackUrl: string | null;
+		/** The source's size: one over SOURCE_DISK_BUDGET_BYTES is piped from Blob, not downloaded. */
+		sizeBytes: number;
 		/** Takes only: the source's type and codec, and whether the recorder asked for a silence trim. */
 		contentType?: string;
 		codec?: string | null;
@@ -583,20 +587,22 @@ function findSilence(file: string): Effect.Effect<SilenceBounds | null, never, S
  * channel hit full scale (`peakLevels`, for the declipper). An unreadable
  * file reads as neither.
  */
-function channelStats(file: string): Effect.Effect<string, never, Services> {
-	return runFfmpeg(
-		[
-			"-hide_banner",
-			"-i",
-			file,
-			"-vn",
-			"-af",
-			"astats=measure_overall=none:measure_perchannel=Peak_level",
-			"-f",
-			"null",
-			"-",
-		],
-		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.channelStats" },
+function channelStats(file: string, body?: SourceBody): Effect.Effect<string, never, Services> {
+	return withBody(body, (input) =>
+		runFfmpeg(
+			[
+				"-hide_banner",
+				"-i",
+				file,
+				"-vn",
+				"-af",
+				"astats=measure_overall=none:measure_perchannel=Peak_level",
+				"-f",
+				"null",
+				"-",
+			],
+			{ maxBuffer: 4 * 1024 * 1024, span: "transcode.channelStats", input },
+		),
 	).pipe(
 		Effect.map(({ stderr }) => stderr),
 		Effect.orElseSucceed(() => ""),
@@ -614,10 +620,13 @@ function channelStats(file: string): Effect.Effect<string, never, Services> {
 function measureLoudness(
 	file: string,
 	shape: string,
+	body?: SourceBody,
 ): Effect.Effect<{ integrated: number; truePeak: number } | null, never, Services> {
-	return runFfmpeg(
-		["-hide_banner", "-i", file, "-vn", "-af", `${shape},ebur128=peak=true`, "-f", "null", "-"],
-		{ maxBuffer: 4 * 1024 * 1024, span: "transcode.measureLoudness" },
+	return withBody(body, (input) =>
+		runFfmpeg(
+			["-hide_banner", "-i", file, "-vn", "-af", `${shape},ebur128=peak=true`, "-f", "null", "-"],
+			{ maxBuffer: 4 * 1024 * 1024, span: "transcode.measureLoudness", input },
+		),
 	).pipe(
 		Effect.map(({ stderr }) => parseEbur128Summary(stderr)),
 		Effect.orElseSucceed(() => null),
@@ -636,13 +645,17 @@ function levelingFilters(
 	input: string,
 	stats: string,
 	shape: string,
+	streamed?: { body: SourceBody; sizeBytes: number },
 ): Effect.Effect<string, never, Services> {
 	return Effect.gen(function* () {
-		const seconds = ffmpegDuration(stats);
+		const body = streamed?.body;
+		// A piped WAV prints no duration; its size over its bitrate gives one.
+		const seconds =
+			ffmpegDuration(stats) ?? (streamed ? ffmpegBitrateDuration(stats, streamed.sizeBytes) : null);
 		const clipped = peakLevels(stats).some((p) => p >= CLIPPED_PEAK_DB);
 		const shaping = clipped ? `${shape},${DECLIP_FILTER}` : shape;
 		const measurable = seconds !== null && seconds <= LEVEL_MAX_SECONDS;
-		const loudness = measurable ? yield* measureLoudness(input, shape) : null;
+		const loudness = measurable ? yield* measureLoudness(input, shape, body) : null;
 		return loudness
 			? `${shaping},volume=${levelingGainDb(loudness).toFixed(1)}dB,${peakLimiterFilter()}`
 			: `${shaping},${peakLimiterFilter()}`;
@@ -793,48 +806,102 @@ function trimTake(
 }
 
 /**
- * A demo as uploaded may be anything a phone produces — ALAC in .m4a, CAF,
- * AMR — which browsers cannot all play. The MP3 is what the page plays and
- * offers for download; the original stays in Blob. The claim is failed when
- * anything after it fails or is interrupted, even past a source already
- * replaced, so the row is retried.
+ * A source over this size is not downloaded: each ffmpeg pass reads it
+ * from Blob on its stdin (`blobBody`), and only the MP3 touches the disk. A
+ * Vercel function's `/tmp` holds about 500 MB and the MP3 output needs room
+ * too (192 kbps is about 85 MB an hour); a 650 MB FLAC session recording
+ * failed with ENOSPC while it downloaded (2026-10-28).
  */
-function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
+const SOURCE_DISK_BUDGET_BYTES = 256 * 1024 * 1024;
+
+/**
+ * A source streamed into ffmpeg's stdin (`-i pipe:0`): each pass opens the
+ * Blob file afresh through `BlobStore.read`, so a private file is read with
+ * the store's credentials. ffmpeg-static's own https input segfaults
+ * (FINDINGS.md, 2026-10-28), so ffmpeg is never handed the URL.
+ */
+type SourceBody = Effect.Effect<Readable, BlobError, BlobStore>;
+
+function blobBody(url: string): SourceBody {
 	return Effect.gen(function* () {
-		const claim = yield* claimOrFail(target.kind, id, target.claim, target.fail);
-		if (!claim) return;
-		yield* requireFfmpeg;
-		const db = yield* Db;
 		const store = yield* BlobStore;
-		const dir = yield* tempDir("demo-");
-		const source = join(dir, "source");
-		const output = join(dir, "demo.mp3");
+		const res = yield* store.read(url);
+		if (!res.ok || !res.body) return yield* new BlobError({ op: "read", url, status: res.status });
+		return Readable.fromWeb(res.body as never);
+	});
+}
+
+/** Runs `run` with the source's body opened for it, or with no stdin input when the source is a local file. */
+function withBody<A, E, R>(
+	body: SourceBody | undefined,
+	run: (input: Readable | undefined) => Effect.Effect<A, E, R>,
+): Effect.Effect<A, E | BlobError, R | BlobStore> {
+	return body ? Effect.flatMap(body, run) : run(undefined);
+}
+
+/**
+ * The file (or `pipe:0`) the MP3 is made from, and the Blob body to pipe
+ * into ffmpeg when the source is streamed rather than downloaded.
+ */
+function sourceInput(
+	target: Mp3Target,
+	id: string,
+	claim: Mp3Claim,
+	source: string,
+): Job<{ input: string; body: SourceBody | undefined }> {
+	return Effect.gen(function* () {
+		// A source too big for the function's disk is read from Blob by every pass (SOURCE_DISK_BUDGET_BYTES).
+		const streamed = !target.replaceSource && claim.sizeBytes > SOURCE_DISK_BUDGET_BYTES;
+		if (streamed) {
+			yield* Effect.annotateCurrentSpan("streamed", true);
+			console.log(`[jobs] ${target.kind} ${id} streamed ${claim.sizeBytes} bytes from Blob`);
+			return { input: "pipe:0", body: blobBody(claim.url) };
+		}
 		yield* downloadToFile(claim.url, source);
 		const input = target.replaceSource
 			? yield* replaceTakeSource(id, target.kind, target.replaceSource, claim, source)
 			: source;
-		// An MP3 as uploaded is its own rendition: nothing to encode, one file kept,
-		// played as it came (a second MP3 would cost storage and a little quality).
-		if (input === source && /\.mp3$/i.test(claim.pathname) && (yield* isMp3(source))) {
-			const size = yield* sizeOf(source);
-			const measured = target.measure ? yield* measurePeaks(source) : {};
-			yield* db.call(`${target.kind}:finish`, () =>
-				target.finish(id, { url: claim.url, pathname: claim.pathname, bytes: size, ...measured }),
-			);
-			if (claim.playbackUrl && claim.playbackUrl !== claim.url)
-				yield* store.delete([claim.playbackUrl]);
-			return;
-		}
-		// A left-only recording becomes a mono MP3: the one channel with sound, which plays on both sides.
-		const stats = target.fromRecorder ? yield* channelStats(input) : "";
-		const fold = silentRightChannel(stats);
-		const shape = fold ? "pan=mono|c0=c0" : "aformat=channel_layouts=mono|stereo";
-		const filters = target.level ? yield* levelingFilters(input, stats, shape) : shape;
-		yield* runFfmpeg(
+		return { input, body: undefined };
+	});
+}
+
+/**
+ * An MP3 as uploaded is its own rendition: nothing to encode, one file kept,
+ * played as it came (a second MP3 would cost storage and a little quality).
+ * Returns true when the source was adopted as the rendition.
+ */
+function adoptUploadedMp3(
+	target: Mp3Target,
+	id: string,
+	claim: Mp3Claim,
+	source: string,
+): Job<boolean> {
+	return Effect.gen(function* () {
+		if (!/\.mp3$/i.test(claim.pathname) || !(yield* isMp3(source))) return false;
+		const db = yield* Db;
+		const store = yield* BlobStore;
+		const size = yield* sizeOf(source);
+		const measured = target.measure ? yield* measurePeaks(source) : {};
+		yield* db.call(`${target.kind}:finish`, () =>
+			target.finish(id, { url: claim.url, pathname: claim.pathname, bytes: size, ...measured }),
+		);
+		if (claim.playbackUrl && claim.playbackUrl !== claim.url)
+			yield* store.delete([claim.playbackUrl]);
+		return true;
+	});
+}
+
+/** The MP3 encode itself, reading `input` (or the piped `body`) through `filters` into `output`. */
+function encodeMp3(input: string, body: SourceBody | undefined, filters: string, output: string) {
+	return withBody(body, (stdin) =>
+		runFfmpeg(
 			[
 				"-hide_banner",
 				"-loglevel",
 				"error",
+				// Piped, a demuxing error (an MP4 with its index at the end, which a pipe cannot
+				// seek to) fails the run instead of finishing an empty MP3.
+				...(stdin ? ["-xerror"] : []),
 				"-y",
 				"-i",
 				input,
@@ -853,8 +920,38 @@ function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
 				"3",
 				output,
 			],
-			{ span: "transcode.mp3.encode" },
-		);
+			{ span: "transcode.mp3.encode", input: stdin },
+		),
+	);
+}
+
+/**
+ * A demo as uploaded may be anything a phone produces — ALAC in .m4a, CAF,
+ * AMR — which browsers cannot all play. The MP3 is what the page plays and
+ * offers for download; the original stays in Blob. The claim is failed when
+ * anything after it fails or is interrupted, even past a source already
+ * replaced, so the row is retried.
+ */
+function transcodeToMp3(id: string, target: Mp3Target): Job<void> {
+	return Effect.gen(function* () {
+		const claim = yield* claimOrFail(target.kind, id, target.claim, target.fail);
+		if (!claim) return;
+		yield* requireFfmpeg;
+		const db = yield* Db;
+		const store = yield* BlobStore;
+		const dir = yield* tempDir("demo-");
+		const source = join(dir, "source");
+		const output = join(dir, "demo.mp3");
+		const { input, body } = yield* sourceInput(target, id, claim, source);
+		if (input === source && (yield* adoptUploadedMp3(target, id, claim, source))) return;
+		// A left-only recording becomes a mono MP3: the one channel with sound, which plays on both sides.
+		const stats = target.fromRecorder ? yield* channelStats(input, body) : "";
+		const fold = silentRightChannel(stats);
+		const shape = fold ? "pan=mono|c0=c0" : "aformat=channel_layouts=mono|stereo";
+		const filters = target.level
+			? yield* levelingFilters(input, stats, shape, body && { body, sizeBytes: claim.sizeBytes })
+			: shape;
+		yield* encodeMp3(input, body, filters, output);
 		const bytes = yield* readBytes(output);
 		const pathname =
 			claim.pathname.replace(/\.[a-z0-9]+$/i, "") + `.play-${Date.now().toString(36)}.mp3`;

@@ -747,6 +747,7 @@ describe("claimRecordingPlayback and the rendition's outcome", () => {
 			url: "https://b/r1.wav",
 			pathname: "accounts/a1/recordings/r1.wav",
 			playbackUrl: null,
+			sizeBytes: 100,
 			contentType: "audio/wav",
 			codec: "pcm",
 			trimSilence: false,

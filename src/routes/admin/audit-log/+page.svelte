@@ -12,8 +12,9 @@
 <section>
 	<h1 class="app-page-heading">Audit log</h1>
 	<p class="mt-1 text-sm opacity-90">
-		Every request a super admin made inside an account they do not belong to (latest 50). Super
-		admins are made with <code>bun run db:super-admin</code>.
+		Every request a super admin made inside an account they do not belong to, and every view of
+		another user's dashboard (latest 50). Super admins are made with
+		<code>bun run db:super-admin</code>.
 	</p>
 	{#if data.auditLog.length === 0}
 		<p class="mt-2 text-dim">Nothing yet.</p>
@@ -23,11 +24,10 @@
 				<li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-2">
 					<span>
 						<span class="font-600">{a.user?.name ?? "someone"}</span>
-						in
 						{#if a.account}
-							<a class="link-dim" href="/{a.account.slug}/projects">{a.account.name}</a>
-						{:else}
-							a deleted account
+							in <a class="link-dim" href="/{a.account.slug}/projects">{a.account.name}</a>
+						{:else if a.accountId}
+							in a deleted account
 						{/if}
 						<span class="ml-2 font-mono opacity-80">{a.action}</span>
 					</span>
