@@ -66,7 +66,7 @@ export const ROUTES = [
 	["[account]/shows", "/{account}/shows", [303], [200]],
 	["[account]/practices", "/{account}/practices", [303], [200]],
 	// An event's own page (a show or a practice); an id nobody has: 404 either way.
-	["[account]/events/[id]", "/{account}/events/x", [404], [404]],
+	["[account]/events/[id]", "/{account}/events/x", [303], [404]],
 	["[account]/artists/[id]", "/{account}/artists/x", [303], [404]],
 	["admin/accounts", "/admin/accounts", [404], [200]],
 	["admin/ai-requests", "/admin/ai-requests", [404], [200]],
