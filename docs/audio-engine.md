@@ -571,9 +571,12 @@ rasterized PDFs and now does not plan to; instead the read is checked:
   caught every detectable corrupted read but flagged 4 of 42 clean ones,
   honest sharp-key charts whose chords legitimately carry none; scoping
   to the key in force kept 10 of 10 and flagged 1 of 42, a read that had
-  placed a modulation late. The warning names both causes, a file that
-  lost its accidentals or a misread. `keySignatureSharps` maps majors and
-  minors to their signatures.
+  placed a modulation late. The shipped rule keeps the pooled rule's
+  no-accidental-anywhere condition on top, which silences that last flag
+  (0 of 42 on the same reads, a number the bench did not register; Study
+  6b registers the rule as shipped on new pages). The warning names both
+  causes, a file that lost its accidentals or a misread.
+  `keySignatureSharps` maps majors and minors to their signatures.
 - `askAiAboutMix` runs it on a read score (never on the band's own chart,
   which is not a read) and returns the lines as `AiAnswer.warnings`.
 - The song page shows them in amber on the AI card, and `askAiWithScore`

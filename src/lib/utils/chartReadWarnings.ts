@@ -16,12 +16,15 @@
  * for flats) and the root carries none; a slash bass is not judged. The
  * warning wants two or more suspicious chords, eight or more chords in all
  * and not one accidental anywhere (root or bass). stem-bench Study 6
- * (2026-10-28) measured it on 148 saved reads: the same 10 of 10
- * detectable corrupted reads as the pooled-signature rule it replaces,
- * with 1 false alarm in 42 clean reads instead of 4 (honest D-major
- * charts of natural chords, and modulating charts, no longer trip it; the
- * one left was a read that placed its modulation bars late). The wording
- * names both causes, since the flag earned trust as either.
+ * (2026-10-28) measured the key-in-force idea on 148 saved reads: the
+ * same 10 of 10 detectable corrupted reads as the pooled-signature rule
+ * it replaces, with 1 false alarm in 42 clean reads instead of 4 (honest
+ * D-major charts of natural chords, and modulating charts, no longer trip
+ * it; the one left was a read that placed its modulation bars late). This
+ * rule's extra no-accidental-anywhere condition silences that one too
+ * (0 of 42 on the same reads, unregistered); Study 6b registers the rule
+ * as shipped on new pages. The wording names both causes, since the flag
+ * earned trust as either.
  */
 const SHARPS_OF_MAJOR: Record<string, number> = {
 	C: 0,
