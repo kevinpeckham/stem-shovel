@@ -196,6 +196,22 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Proposal: tempo as a grid plus a counting tuple, not a scalar**
+  (stem-bench, 2026-10-29; full plan in docs/tempo-grid-plan.md).
+  Every octave-family tempo "error" across ten studies — the real
+  MMKK half-of-224 and 2/3-of-145 reads, every synthetic 6/8 item at
+  1.5× — is the scalar schema forcing a rung of a ladder, not a
+  hearing failure. Proposed: keep the declared settings and the
+  summed-envelope detector as they are; add a detected representation
+  of beats/downbeats + {pulse, subdivision, grouping} with bpm and
+  meter derived (6/8 becomes expressible); make the song-check's
+  tempo comparison ladder-aware ("matches, counted at half" instead
+  of a mismatch); optional Beat This! small for per-beat grids on
+  real recordings. Explicit non-goals, also measured: no detector
+  swap, no agreement-as-confidence, no settings-model change. The
+  bench offers a zero-spend validation study for the ladder rule
+  before anything ships.
+
 - **Study 10 verdict: the detector survives the neural MIR bench —
   keep tempo, keep Krumhansl; LinkSeg is the no-chart section
   fallback** (stem-bench, 2026-10-29; the study this repo's agent
