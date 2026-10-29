@@ -45,10 +45,10 @@ DETECTOR produces and what the comparison does:
    - `subdivision: 2 | 3` (straight vs compound/swung),
    - `grouping: 2 | 3 | 4` (pulses per bar),
    - `confidence` as today.
-   `bpm` and the meter string become DERIVED views of this record
-   (4/4 = subdivision 2 × grouping 4; 6/8 = subdivision 3 × grouping
-   2 — expressible for the first time). Migration is additive: new
-   optional fields beside the existing ones.
+     `bpm` and the meter string become DERIVED views of this record
+     (4/4 = subdivision 2 × grouping 4; 6/8 = subdivision 3 × grouping
+     2 — expressible for the first time). Migration is additive: new
+     optional fields beside the existing ones.
 
 2. **Keep the summed-envelope autocorrelation as the period finder.**
    It survived every adversarial stem (Study 9) and beat the neural

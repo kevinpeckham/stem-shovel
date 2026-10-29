@@ -246,6 +246,63 @@ fields are `$state`, so components read `engine.position` directly.
 - The waveform canvas uses `{@attach}`; the attachment gets the 2D context
   once and a nested `$effect` redraws.
 
+## The tempo ladder (2026-10-29)
+
+stem-bench Studies 9 and 10 (FINDINGS.md, "AI features") measured the
+detector's one remaining tempo failure class on both corpora: every miss
+was the right grid counted at another level — exactly half of a declared
+224, exactly two thirds of a declared 145, every 6/8 item read at 1.5×
+because the meter vocabulary (`"4/4" | "3/4"`) had no compound rung to
+land on while the declared settings accept 6/8 already. The bench's
+proposal (docs/tempo-grid-plan.md) is built in part: the detector keeps
+its summed-envelope autocorrelation (it beat every per-stem and neural
+alternative) and gains a ladder; beat timestamps and a neural tracker
+are deferred until a tempo map for drifting live recordings wants them.
+
+- **Subdivision.** `analysis.ts` tests the detected beat lag L for a
+  three-feel, on the autocorrelation of the summed envelope: at the
+  sub-beat, ac(L/3) > 1.15 · ac(L/2) and ac(L/3) ≥ 0.55 · ac(L)
+  (running triplets measure 0.67–0.69 of the beat, swing at most 0.5 in
+  theory and 0.46–0.50 measured: a swung 4/4 stays straight, on a thin
+  margin; a comparison of L/3 against 2L/3 cannot do it, since an
+  envelope that repeats every beat has ac(τ) = ac(L − τ)); and at the
+  super-beat, ac(1.5L) > 1.05 · ac(2L) with ac(1.5L) ≥ 0.2 · ac(L), the
+  case the bench saw on every 6/8 item: the autocorrelation picks the
+  quarter where the beat is the dotted quarter (the margin is low
+  because the log-compressed envelope flattens accents: a 6/8 whose
+  dotted beats are four times louder reaches only 1.02–1.12, while
+  straight eighths cannot exceed 1.0 and measure 0.91–0.97). Either
+  firing makes `tempo.subdivision` 3, the super-beat case re-picks the
+  pulse at L × 1.5 (refined), and `detectMeter` answers `"6/8"` (the
+  only compound meter emitted). Straight meters behave as before;
+  silence now gives bpm 0 instead of the range's first lag. The
+  constants carry these numbers with their reasons; the 1.05 margin is
+  the one to watch for false 6/8 on real recordings, which stem-bench
+  Study 11 measures.
+- **Alternates.** `tempo.alternates` lists the rungs ×2, ×½, ×1.5 and
+  ×⅔ of the chosen bpm with the autocorrelation at each rung's lag
+  relative to the chosen one as `strength`; the song page shows the
+  strong ones ("112 bpm, or 224 counted in eighths") through
+  `utils/tempoRungText.ts`, which leaves the ×1.5 and ×⅔ rungs out of
+  the text unless the subdivision is 3 (straight running eighths
+  correlate at three eighths too, 1.02–1.10 on a 4/4 at 120, and "or 80
+  counted in dotted quarters" would mislead on a straight song; the
+  array keeps all four).
+- **One comparison, three surfaces.** `utils/tempoLadderMatch.ts`
+  decides whether a declared tempo and a detected one are the same
+  grid: direct, ×2 and ×½ always, ×1.5 and ×⅔ only with compound
+  evidence (`utils/isCompoundMeter.ts` on either meter, or subdivision
+  3), since a two-thirds reading on a straight meter is a real error.
+  It sits behind `settingsChartDisagreement` (a chart marked ♩ = 112
+  against settings of 224 no longer warns; the tolerance is the larger
+  of 3 bpm and 2 %), the Scan stems offer (the
+  stems "agree with your 224 bpm, heard as 112 counted in eighths" and
+  the tempo is not offered for replacement) and the upload-time notice
+  when a song already has settings. The declared value stays
+  authoritative as the band's intent; the ladder only stops the app
+  calling an equivalent count a mismatch. stem-bench Study 11 validates
+  the rule's false-accept rate and the subdivision test on both corpora.
+
 ## One tempo for the page
 
 The metronome engine's `bpm` (`lib/audio/metronome.svelte.ts`, remembered

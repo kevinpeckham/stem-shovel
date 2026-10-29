@@ -1,3 +1,6 @@
+import { isCompoundMeter } from "./isCompoundMeter.js";
+import { tempoLadderMatch } from "./tempoLadderMatch.js";
+
 /**
  * The caveat for the song-check's key-change placement when the song's
  * settings disagree with what the chart states (stem-bench Study 7,
@@ -5,7 +8,11 @@
  * wrong setting moves every change it places (3 of 3 placed right fell to
  * 1 of 3). Pure: the settings as stored (tempo a string of bpm) and the
  * chart's own values (`chartStatedValues`) in; the warning, or null when
- * they agree or either side states nothing. Tempos within 2 % agree.
+ * they agree or either side states nothing. Tempos within 2 % (at least
+ * 3 bpm) agree, and so do tempos on the same ladder: 224 against a chart's
+ * 112 is the same grid counted in eighths, and 120 against 80 when either
+ * meter is compound is the same grid counted in quarters
+ * (`tempoLadderMatch`, docs/tempo-grid-plan.md).
  */
 export function settingsChartDisagreement(
 	settings: { tempo: string | null; meter: string | null },
@@ -16,7 +23,10 @@ export function settingsChartDisagreement(
 		Number.isFinite(setTempo) &&
 		setTempo > 0 &&
 		chart.tempo !== null &&
-		Math.abs(setTempo - chart.tempo) / chart.tempo > 0.02;
+		tempoLadderMatch(setTempo, chart.tempo, {
+			compound: isCompoundMeter(settings.meter) || isCompoundMeter(chart.meter),
+			tolerance: Math.max(3, 0.02 * chart.tempo),
+		}) === null;
 	const meterDiffers = !!settings.meter && !!chart.meter && settings.meter !== chart.meter;
 	if (!tempoDiffers && !meterDiffers) return null;
 	const parts = [

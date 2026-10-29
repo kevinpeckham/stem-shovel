@@ -29,6 +29,31 @@ function clickTrack(bpm: number, beatsPerBar: number, seconds = 24): AudioBuffer
 	return fakeAudioBuffer([data], SR);
 }
 
+/**
+ * Noise bursts at fractions of a beat: `hits` is one bar as [beat position, gain]
+ * pairs (beats from the downbeat), repeated for `seconds`.
+ */
+function pattern(
+	bpm: number,
+	beatsPerBar: number,
+	hits: [number, number][],
+	seconds = 24,
+): AudioBuffer {
+	const data = new Float32Array(seconds * SR);
+	const beat = (60 / bpm) * SR;
+	let seed = 1;
+	const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) * 2 - 1;
+	for (let bar = 0; bar * beatsPerBar * beat < data.length; bar++) {
+		for (const [at, gain] of hits) {
+			const start = Math.round((bar * beatsPerBar + at) * beat);
+			for (let i = 0; i < 400 && start + i < data.length; i++) {
+				data[start + i] += gain * rand() * (1 - i / 400);
+			}
+		}
+	}
+	return fakeAudioBuffer([data], SR);
+}
+
 /** A sustained chord of sines. */
 function chord(midi: number[], seconds = 6): AudioBuffer {
 	const data = new Float32Array(seconds * SR);
@@ -97,6 +122,69 @@ describe("tempo and meter", { timeout: 30_000 }, () => {
 		const b = extractFeatures(chord([60, 64, 67], 24));
 		const d = analyse(combineFeatures([a, b])!);
 		expect(Math.abs(d.tempo.bpm - 140)).toBeLessThan(1.5);
+	});
+});
+
+describe("subdivision and the tempo ladder", { timeout: 30_000 }, () => {
+	const rung = (d: ReturnType<typeof analyse>, factor: number) =>
+		d.tempo.alternates.find((r) => r.factor === factor);
+	test("straight 4/4 at 120 with eighths: subdivision 2, and 240 and 60 on the ladder", () => {
+		// Accented downbeat, beats, softer off-beat eighths.
+		const hits: [number, number][] = [0, 1, 2, 3].flatMap((b): [number, number][] => [
+			[b, b === 0 ? 1 : 0.7],
+			[b + 0.5, 0.5],
+		]);
+		const d = analyse(extractFeatures(pattern(120, 4, hits)));
+		expect(Math.abs(d.tempo.bpm - 120)).toBeLessThan(1.5);
+		expect(d.tempo.subdivision).toBe(2);
+		expect(d.meter.value).toBe("4/4");
+		expect(Math.abs(rung(d, 2)!.bpm - 240)).toBeLessThan(3);
+		expect(Math.abs(rung(d, 0.5)!.bpm - 60)).toBeLessThan(1);
+		expect(rung(d, 2)!.strength).toBeGreaterThan(0.5);
+		expect(rung(d, 0.5)!.strength).toBeGreaterThan(0.5);
+		const strengths = d.tempo.alternates.map((r) => r.strength);
+		expect(strengths).toEqual([...strengths].sort((a, b) => b - a));
+	});
+	test("a 140 bpm waltz: subdivision 2, 3/4", () => {
+		const d = analyse(extractFeatures(clickTrack(140, 3)));
+		expect(Math.abs(d.tempo.bpm - 140)).toBeLessThan(1.5);
+		expect(d.tempo.subdivision).toBe(2);
+		expect(d.meter.value).toBe("3/4");
+	});
+	/** One bar of 6/8 in dotted beats (an eighth is a third), accented 3+3, the other eighths at `light`. */
+	const sixEight = (light: number): [number, number][] =>
+		[0, 1, 2, 3, 4, 5].map((e) => [e / 3, e === 0 ? 1 : e === 3 ? 0.8 : light]);
+	test("6/8 at a dotted-quarter 80 with running eighths, the dotted beat found first: 80, compound", () => {
+		// Light eighths: the autocorrelation peaks at three eighths (80) and the sub-beat test fires.
+		const hits = sixEight(0.1);
+		const d = analyse(extractFeatures(pattern(80, 2, hits)));
+		expect(Math.abs(d.tempo.bpm - 80)).toBeLessThan(1.5);
+		expect(d.tempo.subdivision).toBe(3);
+		expect(d.meter.value).toBe("6/8");
+		expect(Math.abs(rung(d, 1.5)!.bpm - 120)).toBeLessThan(3);
+	});
+	test("6/8 at 80 where the autocorrelation picks two eighths (120) first: re-picked to 80", () => {
+		// Louder eighths: the bare peak sits at two eighths, 1.5× the dotted beat; the super-beat test re-picks.
+		const hits = sixEight(0.2);
+		const d = analyse(extractFeatures(pattern(80, 2, hits)));
+		expect(Math.abs(d.tempo.bpm - 80)).toBeLessThan(1.5);
+		expect(d.tempo.subdivision).toBe(3);
+		expect(d.meter.value).toBe("6/8");
+	});
+	test("swung 4/4 at 100 (off-beats at two thirds): subdivision 2, 4/4", () => {
+		const hits: [number, number][] = [0, 1, 2, 3].flatMap((b): [number, number][] => [
+			[b, b === 0 ? 1 : 0.7],
+			[b + 2 / 3, 0.5],
+		]);
+		const d = analyse(extractFeatures(pattern(100, 4, hits)));
+		expect(Math.abs(d.tempo.bpm - 100)).toBeLessThan(1.5);
+		expect(d.tempo.subdivision).toBe(2);
+		expect(d.meter.value).toBe("4/4");
+	});
+	test("silence: no tempo, no alternates", () => {
+		const d = analyse(extractFeatures(fakeAudioBuffer([new Float32Array(10 * SR)], SR)));
+		expect(d.tempo).toEqual({ bpm: 0, confidence: 0, subdivision: 2, alternates: [] });
+		expect(d.meter.value).toBe("4/4");
 	});
 });
 

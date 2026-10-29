@@ -6,6 +6,8 @@
  * against the Krumhansl-Kessler key templates. Features are extracted per
  * stem and summed, so a batch of stems is analyzed as one mix.
  */
+import { TEMPO_LADDER_RUNGS } from "#lib/utils/tempoLadderMatch.js";
+
 export interface Features {
 	/** Onset strength per frame. */
 	onset: Float32Array;
@@ -21,9 +23,19 @@ export interface Features {
 	parts?: Float32Array[];
 }
 
+/** How the beat divides: 2 straight, 3 compound (6/8's running eighths, three to the dotted beat). */
+export type Subdivision = 2 | 3;
+/** Another rung of the tempo ladder: the same grid counted at a different level. */
+export interface TempoRung {
+	/** The rung's bpm over the detected one (2 = counted in eighths, 0.5 = in half notes, …). */
+	factor: number;
+	bpm: number;
+	/** The autocorrelation at the rung's lag over the detected beat's, 0..1.5. */
+	strength: number;
+}
 export interface Detection {
-	tempo: { bpm: number; confidence: number };
-	meter: { value: "4/4" | "3/4"; confidence: number };
+	tempo: { bpm: number; confidence: number; subdivision: Subdivision; alternates: TempoRung[] };
+	meter: { value: "4/4" | "3/4" | "6/8"; confidence: number };
 	key: { value: string; confidence: number };
 }
 
@@ -222,13 +234,34 @@ function autocorrelation(x: Float32Array, lag: number): number {
 	return s / Math.max(1, x.length - lag);
 }
 
-/** Tempo in the 50–210 bpm range, preferring the octave nearest 110 bpm. */
+/** No tempo: silence, or too short to hold a pulse. */
+const NO_TEMPO: Detection["tempo"] = { bpm: 0, confidence: 0, subdivision: 2, alternates: [] };
+
+/**
+ * Tempo in the 50–210 bpm range, preferring the octave nearest 110 bpm,
+ * with how the beat divides (`subdivisionOf`) and the other rungs of the
+ * ladder the same grid could be counted at (`tempoAlternates`).
+ */
 function detectTempo(onset: Float32Array, fps: number): Detection["tempo"] {
 	const x = detrend(onset, fps);
-	if (x.length < fps * 4) return { bpm: 0, confidence: 0 };
+	const pulse = findPulse(x, fps);
+	if (!pulse) return NO_TEMPO;
+	const { lag, subdivision } = subdivisionOf(x, pulse.lag);
+	const bpm = Math.round(((60 * fps) / lag) * 10) / 10;
+	return {
+		bpm,
+		confidence: pulse.confidence,
+		subdivision,
+		alternates: tempoAlternates(x, lag, bpm),
+	};
+}
+
+/** The beat's lag in frames (refined, fractional) and how clearly it stands out, or null. */
+function findPulse(x: Float32Array, fps: number): { lag: number; confidence: number } | null {
+	if (x.length < fps * 4 || autocorrelation(x, 0) <= 0) return null;
 	const minLag = Math.floor((60 / 210) * fps);
 	const maxLag = Math.ceil((60 / 50) * fps);
-	const zero = autocorrelation(x, 0) || 1;
+	const zero = autocorrelation(x, 0);
 	const scores: number[] = [];
 	let best = -1;
 	let bestScore = -Infinity;
@@ -248,18 +281,85 @@ function detectTempo(onset: Float32Array, fps: number): Detection["tempo"] {
 			best = lag;
 		}
 	}
-	if (best < 0) return { bpm: 0, confidence: 0 };
+	if (best < 0) return null;
 	// Parabolic refinement of the peak lag, then a sharper measure: the
 	// autocorrelation peak at k beats sits at k times the period, so its
 	// position pins the period to 1/k of a frame. Take the longest span that
 	// still peaks clearly (the envelope must hold the pulse that long).
 	const lag = refinePeriod(x, refineLag(scores, best));
-	const bpm = Math.round(((60 * fps) / lag) * 10) / 10;
 	// Confidence: the peak against the mean score of the range.
 	const values = scores.filter((v) => Number.isFinite(v));
 	const mean = values.reduce((a, b) => a + b, 0) / values.length;
 	const confidence = Math.max(0, Math.min(1, (bestScore - mean) / (bestScore || 1)));
-	return { bpm, confidence };
+	return { lag, confidence };
+}
+
+/** The autocorrelation's best value within a frame of a fractional lag (0 outside the envelope). */
+function acNear(x: Float32Array, centre: number): number {
+	let best = 0;
+	for (let lag = Math.floor(centre - 1); lag <= Math.ceil(centre + 1); lag++) {
+		if (lag > 0 && lag < x.length) best = Math.max(best, autocorrelation(x, lag));
+	}
+	return best;
+}
+
+// Subdivision thresholds. The plan's starting points (docs/tempo-grid-plan.md)
+// were 1.15 for both margins; the synthetic fixtures in analysis.test.ts
+// moved the super-beat one. The onset envelope is log-compressed spectral
+// flux, which flattens accents: a 6/8 whose dotted beats are four times
+// louder than its other eighths reads only 1.02–1.12 at three eighths
+// against four, while straight eighths can never exceed 1 (ab ≤ (a² + b²)/2;
+// 0.91–0.97 measured).
+/** The third-of-a-beat lag must beat the half-beat lag by this much (sub-beat test). */
+const COMPOUND_MARGIN = 1.15;
+/** The dotted-beat lag must beat the two-beat lag by this much (super-beat test): above straight's ceiling of 1. */
+const DOTTED_MARGIN = 1.05;
+/**
+ * And the third-of-a-beat lag must carry this share of the beat's own:
+ * running triplets pair every onset with the next (6/8 with 3+3 accents
+ * scores 0.6–1), a swung beat pairs only the late off-beat with the next
+ * downbeat (at most 0.5, at equal loudness). This replaces the plan's
+ * second clause, ac(L/3) ≥ 0.8·ac(2L/3), which an envelope periodic in L
+ * always passes: ac(τ) = ac(L − τ), so swing scores the two alike.
+ */
+const TRIPLET_SHARE = 0.55;
+/** The dotted-beat lag must carry this share of the beat's, so two near-silent lags decide nothing. */
+const DOTTED_FLOOR = 0.2;
+
+/**
+ * Straight or compound, and the beat lag to keep. Two tests, both on the
+ * autocorrelation at lags around the detected beat L:
+ * - sub-beat: the beat splits in three (ac at L/3 beats L/2, and running
+ *   triplets fill it): the detector found the dotted beat, keep it;
+ * - super-beat: groups of three of half the beat (ac at 1.5 L beats 2 L):
+ *   the detector took two eighths of a 6/8 for the beat (1.5× the true
+ *   tempo, every 6/8 item on the bench), so the dotted beat, 1.5 L, is
+ *   re-picked as the pulse.
+ */
+function subdivisionOf(x: Float32Array, lag: number): { lag: number; subdivision: Subdivision } {
+	const beat = acNear(x, lag);
+	const third = acNear(x, lag / 3);
+	if (third > COMPOUND_MARGIN * acNear(x, lag / 2) && third >= TRIPLET_SHARE * beat) {
+		return { lag, subdivision: 3 };
+	}
+	const dotted = acNear(x, lag * 1.5);
+	if (dotted > DOTTED_MARGIN * acNear(x, lag * 2) && dotted >= DOTTED_FLOOR * beat) {
+		return { lag: refinePeriod(x, lag * 1.5), subdivision: 3 };
+	}
+	return { lag, subdivision: 2 };
+}
+
+/** Each rung with the autocorrelation at its lag over the beat's, strongest first. */
+function tempoAlternates(x: Float32Array, lag: number, bpm: number): TempoRung[] {
+	const beat = acNear(x, lag);
+	if (beat <= 0) return [];
+	return TEMPO_LADDER_RUNGS.filter((factor) => lag / factor >= 2 && lag / factor < x.length)
+		.map((factor) => ({
+			factor,
+			bpm: Math.round(bpm * factor * 10) / 10,
+			strength: Math.round(Math.max(0, Math.min(1.5, acNear(x, lag / factor) / beat)) * 100) / 100,
+		}))
+		.sort((a, b) => b.strength - a.strength);
 }
 
 function refineLag(scores: number[], best: number): number {
@@ -303,34 +403,30 @@ function refinePeriod(x: Float32Array, period: number): number {
  */
 function meterLean(x: Float32Array, fps: number, bpm: number): number {
 	const beat = (60 * fps) / bpm;
-	const at = (beats: number) => {
-		// Take the best lag within a small window, since the beat length is fractional.
-		const centre = beat * beats;
-		let best = 0;
-		for (let lag = Math.floor(centre - 1); lag <= Math.ceil(centre + 1); lag++) {
-			if (lag > 0 && lag < x.length) best = Math.max(best, autocorrelation(x, lag));
-		}
-		return best;
-	};
+	// The best lag within a small window, since the beat length is fractional.
+	const at = (beats: number) => acNear(x, beat * beats);
 	const four = at(4) + at(8);
 	const three = at(3) + at(6);
 	return (three - four) / Math.max(three, four, 1e-9);
 }
 
 /**
- * 4/4 against 3/4. With several stems each votes with its own envelope,
+ * 4/4 against 3/4, and 6/8 when the beat divides in three. With several stems each votes with its own envelope,
  * weighted by how decisive it is: a kick that repeats every beat says
  * nothing, a hat or bass with a clear four-beat pattern says a lot, and one
  * riff with a three-feel cannot outvote them — which is what happened when
  * the summed envelope alone decided. 4/4 is the prior: 3/4 needs a clear
- * lean. The confidence is the size of the agreed lean.
+ * lean. The confidence is the size of the agreed lean. A compound beat
+ * (subdivision 3) is always 6/8, two dotted beats to the bar, the only
+ * compound meter emitted; the grouping vote's confidence stays.
  */
 function detectMeter(
 	onset: Float32Array,
 	fps: number,
-	bpm: number,
+	tempo: Pick<Detection["tempo"], "bpm" | "subdivision">,
 	parts?: Float32Array[],
 ): Detection["meter"] {
+	const { bpm, subdivision } = tempo;
 	if (!bpm) return { value: "4/4", confidence: 0 };
 	const envelopes = parts && parts.length > 1 ? parts : [onset];
 	let total = 0;
@@ -341,7 +437,7 @@ function detectMeter(
 		weight += Math.abs(lean);
 	}
 	const lean = weight > 0 ? total / weight : 0;
-	const value = lean > 0.03 ? "3/4" : "4/4";
+	const value = subdivision === 3 ? "6/8" : lean > 0.03 ? "3/4" : "4/4";
 	return { value, confidence: Math.max(0, Math.min(1, Math.abs(lean))) };
 }
 
@@ -545,7 +641,7 @@ export function analyse(features: Features): Detection {
 	const tempo = detectTempo(features.onset, features.fps);
 	return {
 		tempo,
-		meter: detectMeter(features.onset, features.fps, tempo.bpm, features.parts),
+		meter: detectMeter(features.onset, features.fps, tempo, features.parts),
 		key: detectKey(features.chroma, features.bassChroma),
 	};
 }

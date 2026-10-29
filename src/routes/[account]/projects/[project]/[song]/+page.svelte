@@ -91,6 +91,8 @@
 	import { formatSongChange } from "#lib/utils/formatSongChange.js";
 	import { keyLine } from "#lib/utils/keyLine.js";
 	import { keyWindows } from "#lib/utils/keyWindows.js";
+	import { scanOffer, type ScanLadder, type ScanOffer } from "#lib/utils/scanOffer.js";
+	import { tempoAlternatesText, tempoRungText } from "#lib/utils/tempoRungText.js";
 	import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemState } from "#lib/audio/types.js";
@@ -1164,7 +1166,13 @@
 		detection: Detection;
 		/** The keys through the song, a change each (one for a song that stays put). */
 		keys: KeyChange[];
+		/** The rows a Replace writes: all of them, or only those that differ when the tempo sits on the declared one's ladder. */
+		values: SongChange[];
+		/** The declared tempo matched on its ladder (docs/tempo-grid-plan.md), with the declared bpm; null when it did not or there is none. */
+		ladder: ScanLadder | null;
 		summary: string;
+		/** The detection's other rungs ("or 224 counted in eighths"), when the tempo is among the values. */
+		alternates: string;
 		current: string;
 		applied: boolean;
 	} | null>(null);
@@ -1177,6 +1185,53 @@
 			...keys.map((k) => ({ kind: "key" as const, start: k.start, value: k.value })),
 			...(d.tempo.bpm ? [{ kind: "meter" as const, start: 0, value: d.meter.value }] : []),
 		];
+	}
+	/** "counted in eighths": how the declared tempo counts the heard grid at this rung. */
+	const countedAs = (factor: number) => tempoRungText(0, factor).replace(/^\S+\s+/, "");
+	/** "The stems agree with your 224 bpm (heard as 112, counted in eighths)." */
+	function agreementText(ladder: ScanLadder, d: Detection): string {
+		if (ladder.factor === 1) return `The stems agree with your ${ladder.declared} bpm.`;
+		return `The stems agree with your ${ladder.declared} bpm (heard as ${Math.round(d.tempo.bpm)}, ${countedAs(ladder.factor)}).`;
+	}
+	/** "112 bpm · D major · 4/4 (or 224 counted in eighths)": the summary with the tempo's other rungs. */
+	function withAlternates(summary: string, d: Detection): string {
+		const alt = tempoAlternatesText(d.tempo);
+		return alt ? `${summary} (${alt})` : summary;
+	}
+	/** The upload-time notice for a song that keeps its own settings. */
+	function keptNotice(summary: string, ladder: ScanLadder | null): string {
+		if (!ladder) return `Detected ${summary}; the song's own settings are kept`;
+		if (ladder.factor === 1)
+			return `Detected ${summary}: it agrees with the song's settings (kept)`;
+		return `Detected ${summary}: it agrees with the song's ${ladder.declared} bpm ${countedAs(ladder.factor)} (kept)`;
+	}
+	/** The scan result for the card: what is offered (or was applied), described. */
+	function scanResultOf(
+		detection: Detection,
+		keys: KeyChange[],
+		offer: ScanOffer,
+		applied: boolean,
+	) {
+		const kinds = new Set(offer.values.map((r) => r.kind));
+		return {
+			detection,
+			keys,
+			values: offer.values,
+			ladder: offer.ladder,
+			summary: describe(offer.values),
+			alternates: kinds.has("tempo") ? tempoAlternatesText(detection.tempo) : "",
+			current: applied ? "" : describe(data.song.changes.filter((c) => kinds.has(c.kind))),
+			applied,
+		};
+	}
+	/** "Tempo, key and time signature", for the kinds among the rows. */
+	function kindsText(rows: SongChange[]): string {
+		const names = SONG_CHANGE_KINDS.filter((k) => rows.some((r) => r.kind === k)).map((k) =>
+			SONG_CHANGE_LABELS[k].toLowerCase(),
+		);
+		const list =
+			names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? "");
+		return list.charAt(0).toUpperCase() + list.slice(1);
 	}
 	/** "120 bpm · C major (also A♭ major) · 4/4", one entry per kind. */
 	const describe = (rows: SongChange[]) =>
@@ -1226,21 +1281,16 @@
 				notify("Nothing could be detected from these stems", { kind: "info" });
 				return;
 			}
-			if (data.song.changes.length === 0) {
+			// On the declared tempo's ladder the tempo agrees: offer only what differs (docs/tempo-grid-plan.md). Read before a first fill saves the rows.
+			const offer = scanOffer(detection, values, data.song.changes);
+			const fresh = data.song.changes.length === 0;
+			if (fresh) {
 				await saveChanges({ id: data.song.id, changes: values });
 				await refreshAll();
 				resetChangeRows();
-				scanResult = { detection, keys, summary: describe(values), current: "", applied: true };
 				notify("Tempo, key and time signature set from the stems");
-			} else {
-				scanResult = {
-					detection,
-					keys,
-					summary: describe(values),
-					current: describe(data.song.changes),
-					applied: false,
-				};
 			}
+			scanResult = scanResultOf(detection, keys, offer, fresh);
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {
@@ -1395,7 +1445,7 @@
 	}
 	async function replaceFromScan() {
 		if (!scanResult) return;
-		const values = scanChanges(scanResult.detection, scanResult.keys);
+		const values = scanResult.values;
 		const replaced = new Set(values.map((r) => r.kind));
 		// The scan's keys cover the whole song, so every key change goes; tempo and meter only at 0:00, as before.
 		const kept = data.song.changes.filter(
@@ -1405,7 +1455,7 @@
 			await saveChanges({ id: data.song.id, changes: [...kept, ...values] });
 			await refreshAll();
 			resetChangeRows();
-			notify("Tempo, key and time signature replaced from the stems");
+			notify(`${kindsText(values)} replaced from the stems`);
 			scanResult = { ...scanResult, applied: true };
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
@@ -1761,7 +1811,9 @@
 		if (changes.length === 0) return;
 		const summary = describe(changes);
 		if (data.song.changes.length > 0) {
-			notify(`Detected ${summary}; the song's own settings are kept`, { kind: "info" });
+			notify(keptNotice(summary, scanOffer(d, changes, data.song.changes).ladder), {
+				kind: "info",
+			});
 			return;
 		}
 		try {
@@ -1769,7 +1821,7 @@
 			await refreshAll();
 			resetChangeRows();
 			notify(
-				`Detected ${summary} — set as the song's tempo, key and time signature. Change them in settings.`,
+				`Detected ${withAlternates(summary, d)} — set as the song's tempo, key and time signature. Change them in settings.`,
 				{
 					timeout: 12_000,
 				},
@@ -2719,17 +2771,30 @@
 							{#if scanResult}
 								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
 									{#if scanResult.applied}
-										Set from the stems: <strong>{scanResult.summary}</strong>. Adjust below if the
-										song knows better.
+										Set from the stems: <strong>{scanResult.summary}</strong
+										>{#if scanResult.alternates}<span class="ml-1 text-dim"
+												>({scanResult.alternates})</span
+											>{/if}. Adjust below if the song knows better.
 									{:else}
-										The stems suggest <strong>{scanResult.summary}</strong>; the song has
-										{scanResult.current}. Replace?
-										<button class="ml-2 link-dim" type="button" onclick={replaceFromScan}
-											>Replace</button
-										>
-										<button class="ml-2 link-dim" type="button" onclick={() => (scanResult = null)}
-											>Keep current</button
-										>
+										{#if scanResult.ladder}
+											{agreementText(scanResult.ladder, scanResult.detection)}
+										{/if}
+										{#if scanResult.values.length > 0}
+											{scanResult.ladder ? "They" : "The stems"} suggest
+											<strong>{scanResult.summary}</strong>{#if scanResult.alternates}<span
+													class="ml-1 text-dim">({scanResult.alternates})</span
+												>{/if}; the song has {scanResult.current}. Replace?
+											<button class="ml-2 link" type="button" onclick={replaceFromScan}
+												>Replace</button
+											>
+											<button class="ml-2 link" type="button" onclick={() => (scanResult = null)}
+												>Keep current</button
+											>
+										{:else}
+											<button class="ml-2 link" type="button" onclick={() => (scanResult = null)}
+												>Dismiss</button
+											>
+										{/if}
 									{/if}
 								</p>
 							{/if}
