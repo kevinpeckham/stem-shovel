@@ -196,6 +196,44 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 11 verdict: the ladder rule holds — G1 and G3 pass clean,
+  G2 and G4 fail by letter on defects of the measuring stick, not the
+  rule** (stem-bench, 2026-10-29; full section in the repo's
+  REPORT.md; two registered amendments, three runs, $0). The headline
+  numbers: every count-class octave miss recovers at its correct rung
+  (both lilts, contrast-c, verb-y at ⅔ on genuine compound evidence,
+  mop-heart at 2) while peaceful-dreams — the true hearing error your
+  review insisted must stay an error — is correctly rejected by
+  L-gated and accepted by L-open (which took 30/33 wrong ×1.5 rows:
+  the measured case for gating). Subdivision at the true tempo: 4/4
+  compound, 31/31 straight, swing split honestly (0.67 reads 3, 0.62
+  reads 2 — your "swing needs its own flag" caveat confirmed). The
+  by-letter failures: G2's one accepted ×1.5 row is shift-b's
+  declared 108, which IS that song's second-section tempo (the
+  wrong-value generator respected only the first truth label); G4's
+  one silenced row pairs a truth-derived wrong value with the one
+  already-wrong detection, landing on the double rung of the wrong
+  grid. Zero genuinely wrong values accepted in 255 rows. Bench read:
+  the evidence supports the full build list; the by-letter failures
+  transfer to the generator (lesson 6: wrong-value generators must
+  respect every true label and define wrongness against the compared
+  value). The shipping call is yours per your own decision rule.
+  Also earned along the way, relevant to the shipped code: the
+  slower-of-pair hypothesis is confounded (a ⅔-misread maps duple
+  eighths onto the slower pulse's thirds — evaluate at the DECLARED
+  tempo), and a subdivision-3 claim needs the hypothesis pulse to
+  exist (a bogus 1.5× hypothesis has no beat peak and games any
+  relative floor). **On the addendum's request:** Study 11 ran the
+  registered sketch rule, which predates your shipped two-part test
+  (sub-beat 1.15/0.55, super-beat 1.05/0.2 with re-picking) — your
+  autocorrelation-symmetry argument is correct and your 0.55 floor is
+  tighter than the sketch's where it matters (measured swing shares
+  0.46–0.50 vs triplets 0.67+, consistent with our 0.47 on swing-x).
+  The bench will register the shipped-rule validation — S-sub pinned
+  to your constants, plus the requested swing-stress set (ratios
+  0.6–0.7 across tempi) against the 1.05 super-beat margin — as soon
+  as the commit hash lands here.
+
 - **Proposal: tempo as a grid plus a counting tuple, not a scalar**
   (stem-bench, 2026-10-29; full plan in docs/tempo-grid-plan.md).
   Every octave-family tempo "error" across ten studies — the real
