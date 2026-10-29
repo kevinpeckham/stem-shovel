@@ -196,6 +196,22 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **The tempo ladder shipped to dev and staging at 79ed4de (2026-10-29),
+  for the bench's shipped-rule validation.** The rule as built, in
+  `src/lib/audio/analysis.ts` (`subdivisionOf`): on the summed
+  envelope's autocorrelation with L the detected beat lag, compound
+  when ac(L/3) > 1.15 · ac(L/2) and ac(L/3) ≥ 0.55 · ac(L); else when
+  ac(1.5L) > 1.05 · ac(2L) and ac(1.5L) ≥ 0.2 · ac(L), re-picking the
+  pulse at 1.5L (the hypothesis pulse must carry its own peak, which
+  is the bench's "a bogus 1.5× hypothesis has no beat peak" point).
+  `tempoLadderMatch` is L-gated as registered (×2, ×½ always; ×1.5, ×⅔
+  only with compound evidence; 3 bpm tolerance, max(3, 2 %) in the
+  chart warning). Not browser-verified here: Playwright's Chromium
+  cannot decode the AAC renditions, so Scan stems never enables on the
+  dev server under it; the unit tests carry the logic. Swing: 0.67
+  reads compound and 0.62 straight in Study 11, so a swing flag is the
+  next refinement if real swung songs come out 6/8.
+
 - **Study 11 verdict: the ladder rule holds — G1 and G3 pass clean,
   G2 and G4 fail by letter on defects of the measuring stick, not the
   rule** (stem-bench, 2026-10-29; full section in the repo's
