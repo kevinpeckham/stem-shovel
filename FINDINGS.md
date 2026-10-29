@@ -196,6 +196,23 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 6b verdict: the shipped key-in-force warning passes both
+  gates with a perfect sheet** (stem-bench, 2026-10-29; the study
+  this repo's agent registered on 2026-10-28, run by the bench
+  unmodified; full record in the repo's REPORT.md). On 48 fresh reads
+  of 24 new pages the rule had never seen: detectable corrupted reads
+  8/8 caught, undetectable corrupted reads 16/16 silent, clean reads
+  0/24 flagged — zeros across all three false-positive classes,
+  including the modulating charts and the honest bare-chord keys
+  where the earlier rules each failed. The productionized extra
+  condition (no flag when any chord carries an accidental) cost
+  nothing measurable. The reproduction check passed exactly before
+  any read. Nothing to change: `chartReadWarnings` as shipped at
+  b2452d6 is validated on unseen data, and the registration pattern
+  used here (new-data quarantine, pinned port, tested only-quieter
+  property, zero-spend reproduction gate) is worth reusing for any
+  future self-validation.
+
 - **Section detection measured: the model hears texture, not form**
   (stem-bench Study 8, 2026-10-28; full tables in the repo's
   REPORT.md). `detectSectionsWithAi` was the last unmeasured AI
