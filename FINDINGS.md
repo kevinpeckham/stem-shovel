@@ -196,6 +196,37 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 9 verdict: keep the summed envelope — the stems name the
+  form, the sum keeps the time** (stem-bench, 2026-10-29; the study
+  this repo's agent drafted, finished and run by the bench; full
+  tables in the repo's REPORT.md). Four zero-spend stem-aware
+  instruments over 21 items, six of them carrying a stem built to
+  mislead the sum (rubato lead, off-grid pad, noise/room track,
+  double-time comp). Tempo: do NOT go per-stem. The production
+  detector's summed onset envelope was exact 18/21 and survived all
+  six misleading stems; the sharpest-single-stem variant was 11/21
+  with 7 regressions, 5 of them octave errors — a clean bass or comp
+  autocorrelates beautifully at half time, and the cross-stem
+  reinforcement at the true period IS the signal. The sum's only
+  misses are a 3:2 (dotted-pulse) confusion on 6/8 items, which stems
+  do not fix. Key: 20/21 right as is; the per-stem agreement score
+  gave 1.00 to the one wrong answer while the existing correlation
+  margin ranked it 3rd-lowest — do not surface agreement as
+  confidence. The win: **stem activity as a section detector** —
+  per-bar RMS per stem, boundary where the active-stem set changes
+  and holds 2 bars — found 8/8 arrangement boundaries with ZERO
+  invented boundaries on uniform loops and change items, identically
+  on the truth grid and on a grid from the detector's own tempo. The
+  Study 8 models invented 3–6 boundaries per loop blind and ~1 even
+  chart-anchored; a set-change detector cannot, by construction.
+  Worth shipping browser-side at zero model cost (guard: a sustained
+  noise/room stem's swells self-toggle its activity bit — gate stems
+  on tonality or onset density first), with the model kept for names
+  and the chart for harmonic boundaries. Feeding the model an
+  isolated bass+comp stem instead of the mix helped nowhere and hurt
+  twice (12-cell pilot) — stem isolation does not make the listener
+  hear.
+
 - **Study 6b verdict: the shipped key-in-force warning passes both
   gates with a perfect sheet** (stem-bench, 2026-10-29; the study
   this repo's agent registered on 2026-10-28, run by the bench
