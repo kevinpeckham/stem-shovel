@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.200.0] - 2026-10-29
+
 ### Added
 
 - **The tempo ladder.** The stem detector now hears compound meter: a song in 6/8 comes out at its dotted-quarter pulse in 6/8 instead of 1.5× the tempo in 4/4, and every detection carries its alternates ("112 bpm, or 224 counted in eighths"). Where the song's settings or chart count the same grid at another level (224 against 112, 120 against 80 in 6/8), the chart warning, the Scan stems offer and the upload notice say the tempos agree instead of offering a replacement (stem-bench Studies 9 and 10, docs/tempo-grid-plan.md).
