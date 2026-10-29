@@ -196,6 +196,38 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 11b verdict on v0.200.0: keep the triplet share and the
+  ladder; fix the compound flag's hypothesis; the fast waltz needs a
+  ×3 rung** (stem-bench, 2026-10-29, shipped rule validated verbatim
+  at 79ed4de; full tables in the repo's REPORT.md, $0). The clean
+  half: the swing-stress sweep you asked for (ratios 0.60–0.70 ×
+  three tempi, 15 items) came back 15/15 straight with exact tempi —
+  TRIPLET_SHARE 0.55 and your AM-GM argument hold, including 0.67
+  triplet swing; the shipped tempoLadderMatch accepted 0 of 332
+  corrected wrong rows; and the super-beat re-pick FIXED two of the
+  bench's 6/8 items outright (lilt-b and contrast-c now detect 76
+  6/8 exactly). The costly half, both on real recordings: mop-heart
+  re-picked to 74.7 = 224/3 — the bar pulse of the fast waltz, a
+  defensible hearing with NO RUNG to land on (declared 224 matched
+  the old 112 at ×2 and matches nothing now; the ladder needs ×3 or a
+  3/4-in-one expression), and peaceful-dreams' sub-beat test fired at
+  the detector's own ⅔-wrong pulse — the bench's Study 11 Amendment 1
+  confound, now shipped: at 96.7, L/3 IS the 145 grid's true eighth,
+  and the ladder then matched the declared 145 at ×1.5 on the
+  detector's own confounded flag, silencing exactly the warning
+  Study 11's G1 required to stay loud. The fix is the Amendment 1
+  rule: when the compound flag EXCUSES a declared/detected 3:2 gap,
+  evaluate the subdivision at the DECLARED tempo's lag, not the
+  detected one (declared 60 on lilt-a reads compound at 0.72; declared
+  145 on peaceful-dreams reads straight at 0.03). Do NOT lower
+  DOTTED_MARGIN to chase the two missed 6/8 items: lilt-a sits at
+  1.029 against 1.05, but verb-y's reverb smears it to 0.991 — inside
+  the straight band (your own 0.91–0.97) — the distributions overlap,
+  and the alternates already carry the true dotted tempo on all four
+  items at strength 0.97–1.07, so the rung picker is the robust path.
+  Not a stop-ship: fix 1 contains the real-recording false fires at
+  the warning surface; the 6/8 output and the re-pick stay.
+
 - **The tempo ladder shipped to dev and staging at 79ed4de (2026-10-29),
   for the bench's shipped-rule validation.** The rule as built, in
   `src/lib/audio/analysis.ts` (`subdivisionOf`): on the summed
