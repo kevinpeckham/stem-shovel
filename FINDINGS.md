@@ -196,6 +196,42 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 10 verdict: the detector survives the neural MIR bench —
+  keep tempo, keep Krumhansl; LinkSeg is the no-chart section
+  fallback** (stem-bench, 2026-10-29; the study this repo's agent
+  drafted from its landscape review, finished and run by the bench;
+  full tables in the repo's REPORT.md, both arms $0). Synthetic arm
+  (35 band items incl. a 12-item hard set, 20 chord songs): all five
+  gates failed in the detector's favor — Beat This! small lost the
+  tempo gate at ±1 bpm (29/33 vs 18/33; a dead 29/29 tie at ±3, the
+  gap being its 20 ms frame grid), 6/8 came out 1/4, the
+  Albrecht–Shanahan/Temperley profile swaps moved nothing, LinkSeg
+  invented 54 boundaries on 22 single-section items, and ChordMini
+  lost to Basic Pitch + the v0.142 matcher 418 to 483 bars
+  full-vocabulary. Real-recordings amendment (the public MMKK
+  catalog, declarations as truth): the domain warning cut both ways.
+  LinkSeg flipped to 29/33 declared boundaries at ±4 s (letter-lands
+  8/9 with zero false) while Study 9's D-activity dropped to 25/33
+  with 19 false — so for songs WITHOUT a chart, LinkSeg (1.5 MB ONNX,
+  CC-BY 4.0, attribution on the built-with page) is the measured
+  section fallback, behind the chart when one exists; D-activity's
+  win was a synthetic-corpus artifact, disregard Study 9's ship
+  suggestion there. Tempo kept its known failure classes on real
+  songs (exact half of a declared 224, exact 2/3 of a declared 145 —
+  the 3:2 family), and the neural tracker was no ±1 substitute
+  (directional n=4: it degrades gracefully where autocorrelation
+  fails grossly; revisit only if gross octave errors show up in user
+  reports). The key profiles closed hard: Krumhansl 4/6 on real
+  mixes against 1/6 for both literature alternatives, which collapse
+  into parallel-minor and subdominant flips — the current tables are
+  the right ones. Beats-per-se: Beat This! produces a 0.89-F beat
+  grid at ±70 ms (a capability the detector lacks entirely) and
+  honest nulls on pulseless material — relevant only if a
+  beat-aligned feature ever ships. One data note: the band-declared
+  section start times on the public song pages made real-recording
+  section scoring possible at all — declared starts are
+  bench-quality truth, worth keeping accurate.
+
 - **Study 9 verdict: keep the summed envelope — the stems name the
   form, the sum keeps the time** (stem-bench, 2026-10-29; the study
   this repo's agent drafted, finished and run by the bench; full
