@@ -16,6 +16,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **And the whole settings popover**, with the Demos and Options tabs and a `DemoUploads` class for the demo uploads the stem menu shares: step 4, 277 lines off the page (3,222 left).
 - **And the Uploads and Downloads menus**, the downloads, mixes, Dawn hand-off and default-mix save in a `SongDownloads` class: step 5, 354 lines off the page (2,868 left).
 - **And the comments**, the popover and the cards in a `SongComments` class, with the card, fields and delete button shared with the mix page and the Sessions page: step 6, 272 lines off the page (2,596 left).
+- **And the per-stem actions**, rename, tint, replace, MIDI upload, reorder and the version offer in a `StemActions` class with the `⋯` menu and the banner as components: step 7, 313 lines off the page (2,283 left).
 
 ### Fixed
 

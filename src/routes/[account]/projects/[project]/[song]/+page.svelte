@@ -22,6 +22,9 @@
 	import { songStage } from "#lib/utils/songStage.js";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
+	import StemMenu from "#lib/components/StemMenu.svelte";
+	import StemVersionOffer from "#lib/components/StemVersionOffer.svelte";
+	import { StemActions } from "#lib/state/stemActions.svelte.js";
 	import { MAX_MIXES_PER_SONG, MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
@@ -38,8 +41,6 @@
 	import { type MidiSummary, parseMidi } from "#lib/audio/midi.js";
 	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, secondsAtBar } from "#lib/audio/measures.js";
-	import { bumpVersion } from "#lib/utils/bumpVersion.js";
-	import { midiContentType } from "#lib/utils/midiContentType.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { dayText } from "#lib/utils/sessionName.js";
@@ -47,11 +48,9 @@
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { copyShortLink } from "#lib/utils/copyShortLink.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
-	import { formatKhz } from "#lib/utils/formatKhz.js";
 	import { artistLine } from "#lib/utils/artistLine.js";
 	import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
 	import { formatMonth } from "#lib/utils/formatMonth.js";
-	import { STEM_TINTS, type StemTint } from "#lib/constants/stemTints.js";
 	import { decodedStemBytes } from "#lib/utils/decodedStemBytes.js";
 	import { SONG_CHANGE_KINDS } from "#lib/constants/songChanges.js";
 	import { formatSongChange } from "#lib/utils/formatSongChange.js";
@@ -62,27 +61,14 @@
 	import { DEMO_ACCEPT, DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
 	import { demoContentType } from "#lib/utils/demoContentType.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
-	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
 	import { STEM_ACCEPT, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
-	import {
-		postJson,
-		type Reservation,
-		saveAs,
-		uploadMidiFile,
-		uploadMixFile,
-		uploadStemFile,
-	} from "#lib/upload.js";
+	import { postJson, uploadMixFile } from "#lib/upload.js";
 	import {
 		deleteStem,
 		removeDemoById,
-		removeStemMidi,
-		renameStem,
-		reorderStems,
 		saveChartDraft,
 		saveDoc,
 		saveSections,
-		setSongVersion,
-		setStemTint,
 		shareSong,
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
@@ -110,21 +96,8 @@
 	/** The settings form (settings' Details tab): its entries, the start and end positions, and the credits. */
 	const details = new SongDetails({ song: () => data.song, changes, onsaved: refreshAll });
 
-	// After stems change, offer a version bump; the user decides, nothing bumps itself.
-	let versionOffer = $state(false);
-	let versionBusy = $state(false);
-	async function bump(level: "major" | "minor" | "patch") {
-		versionBusy = true;
-		try {
-			const next = bumpVersion(data.song.version, level);
-			await setSongVersion({ id: data.song.id, version: next });
-			await refreshAll();
-			notify(`Version bumped to v${next}`);
-		} finally {
-			versionBusy = false;
-			versionOffer = false;
-		}
-	}
+	/** The per-stem actions (the row menu, the pending list, the order) and the stems-changed version offer. */
+	const stemActions = new StemActions({ song: () => data.song, onsaved: refreshAll });
 
 	/** Demo recordings, uploaded from settings, the Demos view and the stem actions menu. */
 	const demos = new DemoUploads({ song: () => data.song, onuploaded: refreshAll });
@@ -752,59 +725,6 @@
 	let uploadNotice = $state<string | null>(null);
 	let ready = $derived(data.song.stems.filter((s) => s.status === "ready" && s.url));
 
-	// "Upload new version" for one stem: same pipeline as adding, but the
-	// reservation is /api/stems/[id]/replace, which keeps the row and label.
-	let replacing = $state<Record<string, { percent: number; stage: string; error?: string }>>({});
-	async function replaceStem(stemId: string, input: HTMLInputElement) {
-		const file = input.files?.[0];
-		input.value = "";
-		if (!file) return;
-		const ctx = new AudioContext({ sampleRate: 32_000 });
-		replacing[stemId] = { percent: 0, stage: "uploading" };
-		try {
-			await uploadStemFile(
-				file,
-				() =>
-					postJson<Reservation>(`/api/stems/${stemId}/replace`, {
-						filename: file.name,
-						sizeBytes: file.size,
-					}),
-				{
-					ctx,
-					onProgress: (p) => (replacing[stemId] = { ...replacing[stemId], percent: p }),
-					onDecoding: () => (replacing[stemId] = { ...replacing[stemId], stage: "decoding" }),
-				},
-			);
-			delete replacing[stemId];
-			await refreshAll();
-			versionOffer = true;
-		} catch (err) {
-			replacing[stemId] = { ...replacing[stemId], stage: "error", error: (err as Error).message };
-		} finally {
-			await ctx.close();
-		}
-	}
-
-	// Rename from the row menu. A prompt keeps this one-click; the load refresh
-	// carries the new label into the player without re-decoding (StemPlayer
-	// relabels in place).
-	/** The row's tint from the menu: saved on the song, the player retints in place on the refresh. */
-	async function tintStem(stemId: string, tint: StemTint | null) {
-		try {
-			await setStemTint({ id: stemId, tint });
-			await refreshAll();
-		} catch (e) {
-			notify(`Could not set the tint: ${errorMessage(e)}`, { kind: "error" });
-		}
-	}
-
-	async function rename(stemId: string, current: string) {
-		const label = prompt("Stem name", current)?.trim();
-		if (!label || label === current) return;
-		await renameStem({ id: stemId, label });
-		await refreshAll();
-	}
-
 	// The database row behind a player stem (filename, size, url).
 	let stemRows = $derived(new Map(data.song.stems.map((s) => [s.id, s])));
 
@@ -893,44 +813,6 @@
 		}
 	}
 
-	// A stem's optional MIDI file: uploaded from the row menu; a badge on the row when present.
-	let midiJobs = $state<Record<string, { percent: number; error?: string }>>({});
-	async function uploadMidi(stemId: string, input: HTMLInputElement) {
-		const file = input.files?.[0];
-		input.value = "";
-		if (!file) return;
-		if (!midiContentType(file.name)) {
-			midiJobs = {
-				...midiJobs,
-				[stemId]: { percent: 0, error: `${file.name} is not a MIDI file (.mid or .midi).` },
-			};
-			return;
-		}
-		if (file.size > MIDI_MAX_BYTES) {
-			midiJobs[stemId] = {
-				percent: 0,
-				error: `${file.name} is over ${formatBytes(MIDI_MAX_BYTES)}.`,
-			};
-			return;
-		}
-		midiJobs = { ...midiJobs, [stemId]: { percent: 0 } };
-		try {
-			await uploadMidiFile(
-				stemId,
-				file,
-				(percent) => (midiJobs = { ...midiJobs, [stemId]: { percent } }),
-			);
-			await refreshAll();
-			// Reassign rather than delete: a removed key does not notify the row.
-			midiJobs = Object.fromEntries(Object.entries(midiJobs).filter(([id]) => id !== stemId));
-		} catch (e) {
-			midiJobs = {
-				...midiJobs,
-				[stemId]: { percent: 0, error: errorMessage(e) },
-			};
-		}
-	}
-
 	// Share by email: the song's public link plus a note, sent through Resend.
 	let sharePanel = $state<HTMLDivElement | null>(null);
 	let shareTo = $state("");
@@ -989,16 +871,6 @@
 		alignChart: () => check.alignChart(),
 		onsaved: refreshAll,
 	});
-	/** A member dragged the rows into a new order: it becomes the song's order, for everyone. */
-	async function saveStemOrder(ids: string[]) {
-		try {
-			await reorderStems({ songId: data.song.id, ids });
-			await refreshAll();
-			notify("Stem order saved");
-		} catch (e) {
-			notify(`Could not save the stem order: ${errorMessage(e)}`, { kind: "error" });
-		}
-	}
 	let player = $state<StemPlayer | null>(null);
 	/** The "keep on this device" line for the header's status (the player's own box is hidden); nothing until the player mounts. */
 	const NO_KEEP = { available: false, kept: null, keeping: null, onkeep() {}, onremove() {} };
@@ -1456,7 +1328,7 @@
 						onstemcontext={onStemContext}
 						{afterRows}
 						songId={data.song.id}
-						onreorder={data.canEdit ? saveStemOrder : undefined}
+						onreorder={data.canEdit ? stemActions.saveOrder : undefined}
 						bind:this={player}
 					>
 						{#snippet errorHint()}
@@ -1483,7 +1355,7 @@
 								decodedBytes={decodedStemBytes(data.song.stems)}
 								bind:jobs={uploadJobs}
 								bind:notice={uploadNotice}
-								onuploaded={() => (versionOffer = true)}
+								onuploaded={stemActions.offer}
 								onanalysis={check.applyDetection}
 								label="Upload stems"
 								class="inline-flex items-center gap-2"
@@ -1535,7 +1407,7 @@
 			bind:jobs={uploadJobs}
 			bind:notice={uploadNotice}
 			bind:uploader
-			onuploaded={() => (versionOffer = true)}
+			onuploaded={stemActions.offer}
 			onpickmix={() => void pickMix()}
 			onpickfiles={() => void pickFiles()}
 			onpicknotation={() => void pickNotation()}
@@ -1543,41 +1415,7 @@
 			onresetmix={() => player?.resetMix()}
 		/>
 
-		{#if versionOffer && data.canEdit}
-			<div
-				class="mb-2 flex flex-wrap items-center gap-3 rounded-md border border-current/40 bg-blue-300/5 px-3 py-2 text-sm"
-				role="status"
-			>
-				<span>Stems changed. Bump the song version from v{data.song.version}?</span>
-				<button
-					class="button button-xs"
-					type="button"
-					disabled={versionBusy}
-					onclick={() => bump("patch")}
-				>
-					{bumpVersion(data.song.version, "patch")}
-				</button>
-				<button
-					class="button button-xs"
-					type="button"
-					disabled={versionBusy}
-					onclick={() => bump("minor")}
-				>
-					{bumpVersion(data.song.version, "minor")}
-				</button>
-				<button
-					class="button button-xs"
-					type="button"
-					disabled={versionBusy}
-					onclick={() => bump("major")}
-				>
-					{bumpVersion(data.song.version, "major")}
-				</button>
-				<button class="link-dim text-xs" type="button" onclick={() => (versionOffer = false)}
-					>Keep v{data.song.version}</button
-				>
-			</div>
-		{/if}
+		<StemVersionOffer actions={stemActions} version={data.song.version} canEdit={data.canEdit} />
 		<!-- upload notice -->
 		{#if uploadNotice}
 			<p class="text-sm px-3 py-2 border border-current/40 rounded-md mb-2 bg-blue-300/5">
@@ -1627,7 +1465,7 @@
 		{#if pending.length > 0}
 			<ul class="mt-4 surface divide-y divide-white/10 text-sm" aria-label="Stems not ready">
 				{#each pending as stem (stem.id)}
-					{@const job = replacing[stem.id]}
+					{@const job = stemActions.replacing[stem.id]}
 					{@const remove = deleteStem.for(stem.id)}
 					<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
 						<span class="truncate">
@@ -1649,7 +1487,7 @@
 										type="file"
 										accept={STEM_ACCEPT}
 										disabled={!!job}
-										onchange={(e) => replaceStem(stem.id, e.currentTarget)}
+										onchange={(e) => stemActions.replace(stem.id, e.currentTarget)}
 									/>
 								</label>
 								<form {...remove}>
@@ -2441,156 +2279,5 @@
 {/snippet}
 
 {#snippet stemMenu(stem: StemState)}
-	{@const row = stemRows.get(stem.id)}
-	{@const job = replacing[stem.id]}
-	{@const remove = deleteStem.for(stem.id)}
-	{@const dropMidi = removeStemMidi.for(stem.id)}
-	{@const midi = midiJobs[stem.id]}
-	{#if row}
-		<!-- The menu as a ContextMenu (a native popover on the top layer, anchored to the button), so the next
-		     row never covers it (Kevin); the body is one snippet item, as the Studio's track effects are. -->
-		{#snippet stemMenuBody()}
-			<div class="w-56 px-1 text-sm">
-				<div class="truncate px-3 py-1.5 text-xs text-dim">
-					{row.filename} · {formatBytes(row.sizeBytes)}{row.sampleRate
-						? ` · ${formatKhz(row.sampleRate)} kHz`
-						: ""}
-				</div>
-				<button
-					class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-					type="button"
-					onclick={() => saveAs(row.url, row.filename)}
-				>
-					<span class="i-ph-download-simple mr-2" aria-hidden="true"></span>Download Stem
-				</button>
-				{#if row.midiUrl && row.midiFilename}
-					<button
-						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-						type="button"
-						onclick={() => saveAs(row.midiUrl ?? "", row.midiFilename ?? "stem.mid")}
-					>
-						<span class="i-ph-music-notes mr-2" aria-hidden="true"></span>Download MIDI
-					</button>
-				{/if}
-				{#if data.canEdit}
-					<label
-						class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10"
-					>
-						<span class="i-ph-file-plus mr-2" aria-hidden="true"></span>{midi && !midi.error
-							? `Uploading MIDI ${Math.round(midi.percent)}%`
-							: row.midiUrl
-								? "Replace MIDI"
-								: "Upload MIDI"}
-						<input
-							class="sr-only"
-							type="file"
-							accept={MIDI_ACCEPT}
-							disabled={!!midi && !midi.error}
-							onchange={(e) => uploadMidi(stem.id, e.currentTarget)}
-						/>
-					</label>
-					{#if row.midiUrl}
-						<form
-							{...dropMidi.enhance(async ({ submit }) => {
-								if (!confirm(`Remove the MIDI file for "${stem.label}"?`)) return;
-								await submit();
-							})}
-						>
-							<input {...dropMidi.fields.id.as("hidden", stem.id)} />
-							<button
-								class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-								disabled={!!dropMidi.pending}
-							>
-								<span class="i-ph-file-x mr-2" aria-hidden="true"></span>{dropMidi.pending
-									? "Removing…"
-									: "Remove MIDI"}
-							</button>
-						</form>
-					{/if}
-					{#if midi?.error}<p class="px-3 py-1 text-xs text-red-400">{midi.error}</p>{/if}
-				{/if}
-				{#if data.canEdit}
-					<button
-						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-						type="button"
-						onclick={() => rename(stem.id, stem.label)}
-					>
-						<span class="i-ph-pencil-simple mr-2" aria-hidden="true"></span>Rename
-					</button>
-					<!-- The row's tint (constants/stemTints.ts): the palette as swatches, none first; shared with the song. -->
-					<div class="px-3 py-1.5" role="group" aria-label="{stem.label}: tint">
-						<div class="mb-1 text-xs text-dim">Tint</div>
-						<div class="flex flex-wrap gap-1.5">
-							<button
-								type="button"
-								class="h-5 w-5 rounded-full border {stem.tint
-									? 'border-white/30 hover:border-white/70'
-									: 'border-white ring-1 ring-white/60'} bg-blue-300/60"
-								aria-label="No tint"
-								aria-pressed={!stem.tint}
-								title="No tint (the player's blue)"
-								onclick={() => tintStem(stem.id, null)}
-							></button>
-							{#each STEM_TINTS as t (t.id)}
-								<button
-									type="button"
-									class="h-5 w-5 rounded-full border {stem.tint === t.id
-										? 'border-white ring-1 ring-white/60'
-										: 'border-white/30 hover:border-white/70'}"
-									style:background-color={t.hex}
-									aria-label="Tint {t.name}"
-									aria-pressed={stem.tint === t.id}
-									title={t.name}
-									onclick={() => tintStem(stem.id, t.id)}
-								></button>
-							{/each}
-						</div>
-					</div>
-					<label
-						class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10"
-					>
-						<span class="i-ph-upload-simple mr-2" aria-hidden="true"></span>{job
-							? job.stage === "uploading"
-								? `Uploading ${Math.round(job.percent)}%`
-								: job.stage
-							: "Upload new version"}
-						<input
-							class="sr-only"
-							type="file"
-							accept={STEM_ACCEPT}
-							disabled={!!job}
-							onchange={(e) => replaceStem(stem.id, e.currentTarget)}
-						/>
-					</label>
-					<form
-						{...remove.enhance(async ({ submit }) => {
-							if (!confirm(`Remove "${stem.label}" and its file?`)) return;
-							await submit();
-						})}
-					>
-						<input {...remove.fields.id.as("hidden", stem.id)} />
-						<button
-							class="block w-full rounded px-3 py-1.5 text-left text-red-400 hover:bg-white/10"
-							disabled={!!remove.pending}
-						>
-							<span class="i-ph-trash mr-2" aria-hidden="true"></span>{remove.pending
-								? "Removing…"
-								: "Remove"}
-						</button>
-					</form>
-				{/if}
-				{#if job?.error}<p class="px-3 py-1 text-xs text-red-400">{job.error}</p>{/if}
-			</div>
-		{/snippet}
-		<ContextMenu
-			ariaLabel="{stem.label}: options"
-			title="{stem.label}: options"
-			clearButtonBaseClasses={true}
-			buttonClasses="device-fader-menu-button-sm"
-			iconClass="i-ph-dots-three-bold"
-			position="bottom left"
-			popoverClasses="!max-h-[calc(100vh-2rem)] overflow-y-auto"
-			items={[{ id: "stem", kind: "snippet", snippet: stemMenuBody }]}
-		/>
-	{/if}
+	<StemMenu {stem} row={stemRows.get(stem.id)} actions={stemActions} canEdit={data.canEdit} />
 {/snippet}

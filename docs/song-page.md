@@ -120,7 +120,20 @@ step so it shrinks with the page and still fails on anything new.
      `CommentFields.svelte` and `CommentDeleteButton.svelte`, used by all
      three; the mix and Sessions pages lost their copies and their Go
      to, Edit and Delete links went from `link-dim` to `link`.
-7. **The stem menu** (`stemMenuBody`), then the page is the layout, the floating panels and the data.
+7. **The stem actions and the stem menu** (2026-10-30, done): the page
+   lost 313 lines.
+   - `state/stemActions.svelte.ts`, `StemActions`: `replace` (with the
+     per-stem `replacing` progress), `tint`, `rename`, `uploadMidi`
+     (`midiJobs`), `saveOrder`, and the stems-changed version offer
+     (`versionOffer`, `versionBusy`, `bump`, `offer`, `dismiss`); arrow
+     methods so the uploaders take `onuploaded={stemActions.offer}`
+     unbound.
+   - `components/StemMenu.svelte`: the `⋯` menu body in four snippets,
+     importing the delete and remove-MIDI forms itself; the page keeps
+     the one-line `stemMenu` snippet the player takes.
+     `components/StemVersionOffer.svelte`: the banner, `link-dim` →
+     `link` on Keep.
+8. Then the page is the layout, the floating panels and the data.
 
 ## Effect on the client, as a pilot
 
