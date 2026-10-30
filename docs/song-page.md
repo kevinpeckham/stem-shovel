@@ -72,7 +72,20 @@ step so it shrinks with the page and still fails on anything new.
      `updateSong.enhance` spread, in six snippets; the issue lists and
      the Start/End fields each became one parameterized snippet (Fallow
      flagged them as clones once they stood alone), `link-dim` → `link`.
-4. **Demos** and **Options** tabs: the same shape.
+4. **Demo uploads and the settings popover** (2026-10-30, done): the
+   page lost 277 lines.
+   - `state/demoUploads.svelte.ts`, `DemoUploads`: `jobs`, `notice`,
+     `busy`, `upload(input)` with the format, size and room refusals in
+     one module function; the Demos tab, the stem actions menu's Upload
+     Demos, the notice line and the visibility refresh all read it.
+   - `components/SongSettingsPopover.svelte`: the whole popover, its tab
+     switcher (`SETTINGS_TABS` and the current tab now inside), the
+     three extracted tabs, and the Demos and Options tabs' markup in
+     snippets. The page keeps the gear button (`popovertarget`) and
+     calls the exported `showTab(id)` through `bind:this` when the song
+     check wants Tempo & key; the Details tab's save closes the popover
+     from inside; the phone tab menu closes on its own
+     `<svelte:window onpointerdown>`.
 5. **The uploads and downloads menu** (the `actionButtons` snippet).
 6. **Comments**: the popover, the two cards and the ⌘-click menus.
 7. Then the page is the layout, the floating panels and the data.

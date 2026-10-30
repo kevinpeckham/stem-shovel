@@ -13,6 +13,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **The song page's Tempo & key tab is its own component**, with the change rows, the chord detection and draft, and the song check moved into three state classes under `src/lib/state/` (docs/song-page.md): step 1 of breaking up the page, 842 lines lighter, nothing changed for the user.
 - **The Sections tab is its own component too**, its rows, detection and Place from chart in a `SongSections` class: step 2, another 249 lines off the page.
 - **And the Details tab**, the settings form with its credits and positions, in a `SongDetails` class: step 3, 334 lines off the page (3,499 left of 4,928).
+- **And the whole settings popover**, with the Demos and Options tabs and a `DemoUploads` class for the demo uploads the stem menu shares: step 4, 277 lines off the page (3,222 left).
 
 ## [0.201.2] - 2026-10-30
 
