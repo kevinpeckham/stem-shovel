@@ -21,6 +21,11 @@
 	],
 	// The house rules (CLAUDE.md, mechanised): `fallow audit` in CI, `fallow guard <file>` before editing.
 	"rulePacks": ["fallow-rules.json"],
+	// The song page's template complexity as it stood on 2026-10-30, when a multi-line
+	// expression that had hidden the whole template from Fallow's parser was replaced and
+	// its inherited findings surfaced as "introduced" (FINDINGS.md). Only that file; a new
+	// finding there, or anywhere else, still fails the audit.
+	"audit": { "healthBaseline": ".fallow-health-baseline.json" },
 	// Library code never reaches into routes (types excepted); schemas and utils stay leaf-like.
 	"boundaries": {
 		"zones": [

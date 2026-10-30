@@ -794,3 +794,43 @@ and the song-check's key and tempo changes.
   same parser), three or more endings, D.S. and coda jumps, a tempo map
   from the alignment itself (the bench's candidates memo), and the
   bench's measurement of the ratio threshold.
+
+## The detected chords checked (2026-10-30)
+
+stem-bench Study 13 measured the chord path on a real recording for
+the first time: Basic Pitch and the template matcher, 95.8 % on the
+synthetic bench, read 38 % of Letter Lands' bars right against the
+chart, the transcription of real timbres (sustained synths, guitar
+voicings) being the limit, not the matcher. One text-only pass by the
+draft model over the key, each bar's detected chord and its transcribed
+note line lifted that to 54 % with twelve fixes and no breaks, for
+about a cent a song. Both findings shipped.
+
+- **The pass** (`reconcileChordsWithAi` in server/aiDetect.ts): the
+  bench's registered system prompt verbatim (a careful copyist corrects
+  the detector only where the notes clearly support it, N.C. for a
+  silent bar, plain symbols, JSON `{"chords": [...]}` one entry a bar),
+  the same model and adaptive low-effort thinking as the chart draft, a
+  16 000-token output cap (every 4 000-token pilot truncated: the model
+  narrates before the JSON), logged to `ai_request` as
+  `chord-reconcile`. The answer is parsed by
+  `utils/parseReconciledChords.ts` (the first `{…}`, a string array of
+  exactly the bar count, each symbol trimmed to 12 characters); anything
+  else keeps the detector's chords. Remote `reconcileChords` (the draft's
+  gates; its own limit of ten an hour) takes the segments and the note
+  lines the page already holds, `utils/barChordsOfSegments.ts` lays the
+  segments out one chord a bar, and `utils/reconciledSegments.ts` turns
+  the answer back into runs with the matcher's confidence per bar and a
+  count of bars changed.
+- **On the page.** "Detect chords" runs the pass as its last step when
+  the AI is configured ("Checking the chords with AI…", cancelable); the
+  card then says how many bars the AI corrected from the notes instead
+  of the matcher's average confidence, and the draft that follows gets
+  the corrected chords as its hints. A failed pass, or one whose answer does not parse, shows
+  the detector's chords as before, without a word.
+- **The hedge.** The card carries one line, "A rough read: on a real
+  recording about half the bars come out right, so check these against
+  your ears before you draft or save", and the button's title says the
+  same in short. The honest ceiling is the transcription: the next
+  investment, if chord drafts matter, is a transcriber that holds up on
+  real timbres, not more model.

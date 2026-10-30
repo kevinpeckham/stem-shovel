@@ -18,6 +18,8 @@ import { redisConfigured, redisPipeline } from "#lib/server/redis.js";
 import { createHash } from "node:crypto";
 import { musicXmlFromMxl } from "#lib/utils/musicXmlFromMxl.js";
 import { musicXmlSummary } from "#lib/utils/musicXmlSummary.js";
+import { parseReconciledChords } from "#lib/utils/parseReconciledChords.js";
+import { reconcileChordsMessage } from "#lib/utils/reconcileChordsMessage.js";
 
 /**
  * The song-check: a model reads the song's chart beside its rendered mix
@@ -634,4 +636,88 @@ ${examples ? `THIS BAND'S CHARTS, FOR STYLE:\n${examples}` : "No example charts 
 	});
 	if (error || !parsed?.success) throw new Error(error ?? "The model's answer did not make sense");
 	return parsed.output;
+}
+
+/**
+ * One text request through the gateway: its text and token usage, or, when
+ * the transport fails, the failure logged to `ai_request` and thrown.
+ */
+async function generateLogged(
+	log: { kind: string; model: string; userId: string; songId: string; prompt: string },
+	started: number,
+	request: Parameters<typeof generateText>[0],
+): Promise<{ text: string; usage: { inputTokens?: number; outputTokens?: number } }> {
+	try {
+		const result = await generateText(request);
+		return {
+			text: result.text,
+			usage: { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens },
+		};
+	} catch (e) {
+		await logAiRequest({
+			...log,
+			error: e instanceof Error ? e.message : String(e),
+			durationMs: Date.now() - started,
+		});
+		throw e;
+	}
+}
+
+/** stem-bench Study 13's registered reconciler prompt, verbatim. */
+const RECONCILE_SYSTEM = `You are a careful music copyist. A chord detector produced one chord per bar for a song, from machine-transcribed notes. Correct the detector's mistakes using only the evidence given: the song's key, the transcribed notes in each bar, and the detected chord. Change a chord only when the notes clearly support a different one; prefer the detected chord when the evidence is ambiguous. If a bar's notes are silent or purely percussive, answer "N.C." for that bar; never invent harmony. Use plain chord symbols (C, Cm, C7, Cmaj7, Cm7, Csus4, C5 and the like). Reply with JSON only, exactly: {"chords": ["...", one entry per bar in order]}`;
+
+/** What the chord reconciler reads: the song's key, meter and tempo at 0:00, the detector's chord per bar, the notes per bar. */
+export interface ChordReconcileInput {
+	key: string | null;
+	meter: string | null;
+	tempo: string | null;
+	chords: string[];
+	bars: BarNotesInput[];
+}
+
+/**
+ * The detector's chord per bar checked against the transcribed notes by
+ * the draft model (stem-bench Study 13: 38 % of bars right on a real
+ * recording, 54 % after this pass with no bar broken). Symbols in,
+ * symbols out; text only. An answer that does not parse comes back as
+ * `{ chords: null, error }` (the page keeps the detector's chords); only
+ * a transport failure throws, after it is logged. Logged as
+ * `chord-reconcile`.
+ */
+export async function reconcileChordsWithAi(
+	input: ChordReconcileInput,
+	who: { userId: string; songId: string },
+): Promise<{ chords: string[] | null; error: string | null }> {
+	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
+	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
+	const question = reconcileChordsMessage(input);
+	const started = Date.now();
+	const log = {
+		kind: "chord-reconcile",
+		model: DRAFT_MODEL,
+		userId: who.userId,
+		songId: who.songId,
+		prompt: `SYSTEM:\n${RECONCILE_SYSTEM}\n\nUSER:\n${question}`,
+	};
+	const { text, usage } = await generateLogged(log, started, {
+		model: gateway(DRAFT_MODEL),
+		system: RECONCILE_SYSTEM,
+		prompt: question,
+		// Every 4000-token pilot truncated: the model narrates bar by bar before the JSON.
+		maxOutputTokens: 16000,
+		// As the draft. The bench ran without thinking and at temperature 0, which the
+		// gateway ignored for this model.
+		providerOptions: { anthropic: { thinking: { type: "adaptive" }, effort: "low" } },
+	});
+	const answer = parseReconciledChords(text, input.chords.length);
+	await logAiRequest({
+		...log,
+		response: text,
+		parsed: answer.chords ? { chords: answer.chords } : null,
+		error: answer.error,
+		durationMs: Date.now() - started,
+		inputTokens: usage.inputTokens ?? null,
+		outputTokens: usage.outputTokens ?? null,
+	});
+	return answer;
 }

@@ -1,0 +1,24 @@
+{
+	"kind": "health",
+	"finding_counts": {
+		"src/routes/[account]/projects/[project]/[song]/+page.svelte": {
+			"complexity_critical": {
+				"count": 6
+			},
+			"complexity_high": {
+				"count": 1
+			},
+			"crap_critical": {
+				"count": 8
+			},
+			"crap_high": {
+				"count": 5
+			},
+			"crap_moderate": {
+				"count": 20
+			}
+		}
+	},
+	"target_keys": ["src/routes/[account]/projects/[project]/[song]/+page.svelte:complexity"],
+	"runtime_coverage_findings": []
+}

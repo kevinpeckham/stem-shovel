@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Detected chords checked by the AI, and an honest word about them.** After Detect chords reads a chord per bar from the stems, the AI now corrects the bars whose transcribed notes clearly say otherwise (stem-bench Study 13: a real recording went from about four bars in ten right to over five, with no right bar broken), the card says how many it changed, and the chart draft starts from the corrected chords. The card also says plainly that chords detected from a real recording are a rough read to check by ear.
+
 ## [0.201.0] - 2026-10-30
 
 ### Added

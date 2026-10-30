@@ -243,6 +243,25 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   Safari also purges script-writable storage after seven days without a
   visit, which is why every copy is a cache and the UI says so.
 
+- **Fallow's Svelte template parser can skip a whole page over one
+  expression, and the page's complexity then surfaces as "introduced"
+  the day the expression changes** (2026-10-30, the chord check on the
+  song page). The song page's template had never appeared in Fallow's
+  complexity findings; it was not simple, Fallow could not parse it. The
+  culprit was a multi-line `{Math.round(chordSegments.reduce(…))}`
+  expression inside a `<span\n>` in the chord card's header: with that
+  one span replaced by a plain `{chordsByBarSummary(…)}`, Fallow read
+  the template for the first time and reported it at cyclomatic 320
+  with four snippets over the ceiling, all attributed to the change
+  because the base snapshot had nothing to compare against. Bisection
+  by the agent that made the change confirmed it. Resolution: a health
+  baseline (`fallow health --save-baseline`, hand-trimmed to that one
+  file, wired as `audit.healthBaseline` in `.fallowrc.json`) records the
+  template's standing counts, so the gate still fails on a new finding
+  in the page or anywhere else; putting back an expression the parser cannot read
+  would have kept the verdict green by keeping Fallow blind. The real
+  fix is breaking the page's template up, a project of its own.
+
 - **Porting a bench method means porting the app's conventions, not
   the bench's** (2026-10-30, the chart alignment,
   `audio/chartAlignment.ts`). stem-bench Study 12's `barSeconds` counts

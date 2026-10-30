@@ -106,6 +106,8 @@
 	import { demoContentType } from "#lib/utils/demoContentType.js";
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
+	import { chordsByBarSummary } from "#lib/utils/chordsByBarSummary.js";
 	import { slugify } from "#lib/utils/slugify.js";
 	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
 	import { STEM_ACCEPT, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
@@ -128,6 +130,7 @@
 		deleteStem,
 		detectSections,
 		draftChart,
+		reconcileChords,
 		removeDemoById,
 		removeSongCredit,
 		removeStemMidi,
@@ -1345,6 +1348,8 @@
 	let chordBusy = $state<string | null>(null);
 	let chordSegments = $state<ChordSegment[] | null>(null);
 	let chordBars = $state<{ bar: number; notes: string }[]>([]);
+	/** How many bars the AI corrected from the notes; null when it did not check them. */
+	let chordsChecked = $state<{ changed: number } | null>(null);
 	let chordError = $state<string | null>(null);
 	let draft = $state<(ChartDraftAnswer & { chartHtml: string }) | null>(null);
 	let draftBusy = $state(false);
@@ -1364,6 +1369,7 @@
 		chordBusy = "Listening…";
 		chordError = null;
 		chordSegments = null;
+		chordsChecked = null;
 		draft = null;
 		try {
 			const duration = playerEngine.duration;
@@ -1406,6 +1412,7 @@
 			chordBars = describeBars(notes, barStarts);
 			if (chordSegments.length === 0)
 				chordError = "No bars to read; check the tempo and time signature.";
+			await checkChords(run);
 		} catch (e) {
 			if (cancelled() || e instanceof DraftCancelled) return;
 			chordError = errorMessage(e);
@@ -1413,6 +1420,26 @@
 		} finally {
 			if (!cancelled()) chordBusy = null;
 		}
+	}
+	/**
+	 * The detected chords checked against their notes by the AI (stem-bench
+	 * Study 13: the matcher reads about 38 % of bars right on a real
+	 * recording, 54 % after this pass). Any failure keeps the detector's
+	 * chords, without a word: they are still shown.
+	 */
+	async function checkChords(run: number) {
+		const segments = chordSegments;
+		if (!data.aiAvailable || !segments?.length) return;
+		chordBusy = "Checking the chords with AI…";
+		const answer = await reconcileChords({
+			id: data.song.id,
+			chords: segments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
+			bars: chordBars,
+		}).catch(() => null);
+		if (run !== draftRun || !answer?.chords) return;
+		const fixed = reconciledSegments(segments, answer.chords);
+		chordSegments = fixed.segments;
+		chordsChecked = { changed: fixed.changed };
 	}
 	/** The chart panel's button: detect chords first when that has not run, then draft. */
 	async function draftFromPanel() {
@@ -2754,7 +2781,7 @@
 												!posCtx.grid}
 											title={!posCtx.grid
 												? "Needs a tempo and a time signature first"
-												: "Transcribe the tonal stems and read a chord per bar (takes a while)"}
+												: "Transcribe the tonal stems and read a chord per bar (takes a while) — a rough read on real recordings"}
 											onclick={() => detectChords()}
 										>
 											<span class="i-ph-music-notes" aria-hidden="true"></span>
@@ -2806,17 +2833,7 @@
 							{#if chordSegments}
 								<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
 									<div class="flex flex-wrap items-center justify-between gap-2">
-										<span
-											>Chords by bar ({chordSegments.reduce((n, c) => n + c.bars, 0)} bars,
-											{Math.round(
-												(chordSegments.reduce((n, c) => n + c.confidence * c.bars, 0) /
-													Math.max(
-														1,
-														chordSegments.reduce((n, c) => n + c.bars, 0),
-													)) *
-													100,
-											)}% sure on average)</span
-										>
+										<span>{chordsByBarSummary(chordSegments, chordsChecked?.changed ?? null)}</span>
 										<span class="flex items-center gap-3">
 											{#if data.aiAvailable}
 												<button
@@ -2835,6 +2852,10 @@
 											>
 										</span>
 									</div>
+									<p class="mt-1 text-12px text-dim">
+										A rough read: on a real recording about half the bars come out right, so check
+										these against your ears before you draft or save.
+									</p>
 									<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{chordChart(
 											chordSegments,
 										)}</pre>

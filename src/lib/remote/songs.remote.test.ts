@@ -19,6 +19,7 @@ import {
 	email,
 	givenRow,
 	jobs,
+	rateLimited,
 	resetRemoteMocks,
 } from "../../../tests/helpers/fakeServerModules";
 
@@ -285,6 +286,27 @@ describe("editor-gated functions", () => {
 				notes: "",
 				chartHtml: "<p>C</p>",
 			},
+		},
+		{
+			name: "reconcileChords",
+			fn: songs.reconcileChords,
+			input: {
+				id: SONG,
+				chords: [{ bar: 1, bars: 1, chord: "C" }],
+				bars: [{ bar: 1, notes: "C4" }],
+			},
+			anon: 401,
+			arrange: () => {
+				data.getSongById.mockResolvedValue({
+					noAi: false,
+					project: { noAi: false },
+					changes: [],
+				});
+				aiDetect.reconcileChordsWithAi.mockResolvedValue({ chords: ["Am"], error: null });
+			},
+			dataFn: "getSongById",
+			args: [ACCOUNT, SONG],
+			outcome: { chords: ["Am"], error: null },
 		},
 		{
 			name: "saveChartDraft",
@@ -577,5 +599,79 @@ describe("side effects of the editor-gated functions", () => {
 			httpError(409),
 		);
 		expect(data.saveSongDoc).not.toHaveBeenCalled();
+	});
+});
+
+describe("reconcileChords", () => {
+	const input = {
+		id: SONG,
+		chords: [
+			{ bar: 1, bars: 2, chord: "D" },
+			{ bar: 3, bars: 1, chord: "G" },
+		],
+		bars: [
+			{ bar: 1, notes: "D2" },
+			{ bar: 2, notes: "D2" },
+			{ bar: 3, notes: "G2" },
+		],
+	};
+	const song = (over: Record<string, unknown> = {}) => ({
+		noAi: false,
+		project: { noAi: false },
+		changes: [
+			{ kind: "key", start: 0, value: "D major" },
+			{ kind: "meter", start: 0, value: "4/4" },
+			{ kind: "tempo", start: 0, value: "120" },
+			{ kind: "key", start: 30, value: "E major" },
+		],
+		...over,
+	});
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("sends the key, meter and tempo at 0:00 and the detector's chord per bar", async () => {
+		data.getSongById.mockResolvedValue(song());
+		aiDetect.reconcileChordsWithAi.mockResolvedValue({ chords: ["D", "Bm", "G"], error: null });
+		await expect(call(songs.reconcileChords, input)).resolves.toEqual({
+			chords: ["D", "Bm", "G"],
+			error: null,
+		});
+		expect(aiDetect.reconcileChordsWithAi).toHaveBeenCalledWith(
+			{
+				key: "D major",
+				meter: "4/4",
+				tempo: "120",
+				chords: ["D", "D", "G"],
+				bars: input.bars,
+			},
+			{ userId: USER, songId: SONG },
+		);
+	});
+	it("an answer that did not parse comes back as it is, not as an error", async () => {
+		data.getSongById.mockResolvedValue(song());
+		aiDetect.reconcileChordsWithAi.mockResolvedValue({
+			chords: null,
+			error: "expected 3 bars, got 2",
+		});
+		await expect(call(songs.reconcileChords, input)).resolves.toEqual({
+			chords: null,
+			error: "expected 3 bars, got 2",
+		});
+	});
+	it("502 when the gateway fails", async () => {
+		data.getSongById.mockResolvedValue(song());
+		aiDetect.reconcileChordsWithAi.mockRejectedValue(new Error("gateway down"));
+		await expect(call(songs.reconcileChords, input)).rejects.toMatchObject(httpError(502));
+	});
+	it("403 when AI is off for the song; 429 past its own limit", async () => {
+		data.getSongById.mockResolvedValue(song({ noAi: true }));
+		await expect(call(songs.reconcileChords, input)).rejects.toMatchObject(httpError(403));
+		data.getSongById.mockResolvedValue(song());
+		rateLimited.mockResolvedValue(true);
+		await expect(call(songs.reconcileChords, input)).rejects.toMatchObject(httpError(429));
+		expect(rateLimited).toHaveBeenCalledWith(`reconcile:${USER}`, 10, 3_600_000);
+		expect(aiDetect.reconcileChordsWithAi).not.toHaveBeenCalled();
+	});
+	it("503 when the gateway is not configured", async () => {
+		aiDetect.aiAvailable.mockReturnValue(false);
+		await expect(call(songs.reconcileChords, input)).rejects.toMatchObject(httpError(503));
 	});
 });

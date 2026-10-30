@@ -65,6 +65,7 @@ import {
 	askAiAboutMix,
 	detectSectionsWithAi,
 	draftChartWithAi,
+	reconcileChordsWithAi,
 } from "#lib/server/aiDetect.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import { chartBars } from "#lib/utils/chartBars.js";
@@ -75,6 +76,7 @@ import { MY_NOTES_KIND } from "#lib/val/SongDocKindSchema.js";
 import { SongStageSetSchema } from "#lib/val/SongStageSchema.js";
 import { SongCreditAddSchema } from "#lib/val/ArtistSchema.js";
 import { HOUR, MINUTE, rateLimited } from "#lib/server/rateLimit.js";
+import { barChordsOfSegments } from "#lib/utils/barChordsOfSegments.js";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**
@@ -473,6 +475,38 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 	);
 	// The chart is previewed with the panel's styling before it is saved.
 	return { ...answer, chartHtml: renderMarkdown(answer.chart) };
+});
+
+/**
+ * The detected chords checked against the transcribed notes by the draft
+ * model (stem-bench Study 13), one chord per bar back, or null with the
+ * reason when the answer did not parse (the page keeps the detector's
+ * chords). Members; a few per hour; a 502 only when the gateway fails.
+ */
+export const reconcileChords = command(ChartDraftSchema, async ({ id, chords, bars }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	if (!aiAvailable()) error(503, "The AI check is not configured");
+	const song = await getSongById(accountId, id);
+	if (!song) error(404, "Song not found");
+	if (song.noAi || song.project.noAi) error(403, "AI is switched off for this song");
+	if (await rateLimited(`reconcile:${user.id}`, 10, HOUR))
+		error(429, "Too many chord checks in one hour.");
+	const at0 = (kind: string) =>
+		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
+	return aiOrError(
+		reconcileChordsWithAi(
+			{
+				key: at0("key"),
+				meter: at0("meter"),
+				tempo: at0("tempo"),
+				chords: barChordsOfSegments(chords, bars.length),
+				bars,
+			},
+			{ userId: user.id, songId: id },
+		),
+	);
 });
 
 /** Saves a drafted chart as the song's chart; refuses to overwrite content unless `replace`. */
