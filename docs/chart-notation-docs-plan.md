@@ -46,8 +46,14 @@ bench validated every one of these against `chordChartBars` at
 - **`|: … :|` around lines** plays them twice.
 - **`## Heading` starts a section**, and the heading names should
   match the Structure list one to one (the other real-world blocker).
-- **`N.C.` is silence**; lyric lines under chord lines are fine and
-  skipped.
+- **`N.C.` means no HARMONY, not no sound** — a drums-only break is
+  `| N.C. | N.C. |` (or `| N.C. | % |`; NC and n.c. normalize). The
+  trap to warn about: EMPTY cells hold the previous harmony, so
+  `| G5 | | | G5 |` charts four bars of G5, silently. Lyric lines
+  under chord lines are fine and skipped. (Bench-verified: the
+  alignment reference renders N.C. bars truly silent; placements
+  beside long drum breaks arrive hedged by the local-cost rule, which
+  is correct — the chart says nothing about those bars.)
 - **Chord spellings**: letter + accidental + quality
   (`D7sus4`/`D(7)sus4` read the same; `♯`/`♭` are understood; slash
   bass `D/F#` works; `6/9` keeps its slash). One honest note: `G5(7)`
