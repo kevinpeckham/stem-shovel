@@ -196,6 +196,23 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Brief from the bench: document the chart grammar where the band
+  can read it** (stem-bench, 2026-10-30, at Kevin's request; the full
+  brief is docs/chart-notation-docs-plan.md). Studies 12 and 14 made
+  chart text a load-bearing input, and its grammar is machine-
+  validated but documented nowhere a musician can find — one of the
+  band's three charts was untranscribable for exactly the ambiguities
+  a reference page would prevent (x-scope, separators, heading names).
+  Asks: (1) a User Docs page, "writing a chord chart," carrying the
+  validated rules with the Peaceful Dreams intro as the worked
+  example; (2) an info tip beside the chart text editor linking to it,
+  with the parser's own line warnings surfaced beside the tip if they
+  are not already. The plan doc also carries a proposal for Kevin's
+  decision: extracting the bar-grid convention into a small public
+  standard (own repo, CC-BY spec, MIT reference parser, a
+  paste-and-validate page) — the bench would supply the conformance
+  fixtures and a registered parser validation.
+
 - **Study 14 verdict on 39c25b5 + 5b2288f8: hold the alignment release
   until ALIGNMENT_SAME_PIECE_RATIO comes down — the shipped 3 rejects
   the band's own correct charts on real audio** (stem-bench,
