@@ -94,6 +94,11 @@
 		<a class="footer-link" href="/support">Help</a>
 		<a class="footer-link" href="/pricing">Pricing</a>
 		<a class="footer-link" href="/releases">Releases</a>
+		<a
+			class="footer-link"
+			href="https://www.lightningjar.com/research/stem-bench"
+			title="stem-bench: the studies behind the audio features">Research</a
+		>
 
 		{#if user}
 			<button type="button" class="footer-link" popovertarget="bug-report"> Report a bug </button>
