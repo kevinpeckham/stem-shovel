@@ -30,6 +30,10 @@ The transport above the stems has play/pause, a go-to-beginning button and a rea
 
 Playback starts once every stem has been decoded; the status line under the stems counts them in.
 
+### Keeping a song on this device
+
+The status line under the stems offers **keep on this device**. Press it and the stems' playback files are stored in this browser, so the song opens without downloading them again, which makes a rehearsal room with a weak connection much less of a problem: the page itself still needs a connection, but the audio, which is nearly all of the download, is already here. The line then says the song is kept and how much space it takes, with **remove** to clear it. When a stem is replaced, the line says a stem is missing and offers **update**. Kept songs live only in this browser on this device and count against its storage; the browser may clear them if it runs short or, in Safari, after a week without a visit, and the song simply downloads again. Private browsing keeps nothing.
+
 When the song has a tempo and a time signature (set in its settings), a **Click** button sits beside the readout: press it and a metronome plays in time with the stems, the first beat of each bar higher, following the song's tempo and meter changes and every seek. A small knob beside the button sets how loud it is, and the **count-in** choice beside that counts a bar (or two, or four) of click before the stems start when you press Play, so you can come in with the band, the readout counting down (−1 | 4, −1 | 3, −1 | 2, −1 | 1) as it goes; choose "No count-in" to start at once. The click is for listening and practice only: it is not part of your mix or of any download, and it is off each time you open a song.
 
 ### Looping a part of the song

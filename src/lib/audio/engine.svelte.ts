@@ -2,6 +2,8 @@ import { playThroughSilentSwitch } from "#lib/audio/playThroughSilentSwitch.js";
 import { reorderById } from "#lib/utils/reorderById.js";
 import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
 import { monoPan } from "#lib/utils/monoPan.js";
+import { mediaCache } from "#lib/audio/mediaCache.js";
+import { mediaCacheKey } from "#lib/utils/mediaCacheKey.js";
 import { collapseDualMono } from "./mono";
 import { computeMixPeaks, computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
@@ -131,6 +133,24 @@ function sumPeaks(peaks: number[][]): number[] {
 	return out;
 }
 
+/**
+ * A stem's compressed bytes for a buffered load: a kept song's (`keep`)
+ * from this device's copy when there is one, else fetched, and then kept
+ * for next time.
+ */
+async function stemBytes(src: StemSource, keep: string | null): Promise<ArrayBuffer> {
+	const key = keep ? mediaCacheKey(src.url) : null;
+	const disk = key ? await mediaCache.read(key) : null;
+	if (disk) return disk;
+	const res = await fetch(src.url);
+	if (!res.ok) throw new Error(`${src.label}: ${res.status} ${res.statusText} for ${src.url}`);
+	const bytes = await res.arrayBuffer();
+	// decodeAudioData detaches its buffer and the write transfers its own, so the cache
+	// gets a copy (a few MB of compressed audio, briefly) and the decode the original.
+	if (key && keep) void mediaCache.write(key, bytes.slice(0), keep);
+	return bytes;
+}
+
 /** A warning to Sentry with what the load was carrying; the import is lazy so tests and SSR never load it. */
 async function report(message: string, extra: Record<string, unknown>): Promise<void> {
 	try {
@@ -241,6 +261,15 @@ export class StemEngine {
 	 */
 	canUndoMix = $state(false);
 	canRedoMix = $state(false);
+	/**
+	 * The song whose playback renditions this device keeps (audio/mediaCache.ts,
+	 * "keep on this device"), set by the player before `load` when the song is
+	 * kept: a buffered load then reads each stem from disk first and keeps
+	 * what it had to fetch. Null when the song is not kept.
+	 */
+	keepSong = $state<string | null>(null);
+	/** A keep in progress (`keepOnDevice`): renditions written of those it had to fetch. */
+	keeping = $state<{ done: number; total: number } | null>(null);
 	#mixHistory = new MixHistory<MixSnap>();
 	/** Set while a snapshot is being restored, so the setters do not record it. */
 	#restoringMix = false;
@@ -417,11 +446,12 @@ export class StemEngine {
 		}
 		marker.write(sources.length, this.estimatedBytes);
 
+		// A kept song's stems come from disk first. Only a kept song is asked
+		// about: nothing else ever writes the cache, so for any other song the
+		// read is a sure miss that would cost a worker's start and its timeout.
+		const keep = this.keepSong;
 		const loadOne = async (src: StemSource) => {
-			const res = await fetch(src.url);
-			if (!res.ok) throw new Error(`${src.label}: ${res.status} ${res.statusText} for ${src.url}`);
-			const bytes = await res.arrayBuffer();
-			const decoded = await ctx.decodeAudioData(bytes);
+			const decoded = await ctx.decodeAudioData(await stemBytes(src, keep));
 			// Dual-mono files keep one channel; the decoded original is released.
 			const buffer = collapseDualMono(decoded, ctx);
 
@@ -507,6 +537,10 @@ export class StemEngine {
 		worker.postMessage({ type: "port", port: channel.port2 }, [channel.port2]);
 		mixer.port.postMessage({ type: "stems", ids: sources.map((s) => s.id) });
 		this.#applyGains(true);
+		const stems = sources.map((s) => ({ id: s.id, url: s.url, key: mediaCacheKey(s.url) }));
+		// The stream worker reads a kept file straight from disk and never touches the index, so the
+		// cache is told the song was used (a stat marks its file), which keeps it from eviction.
+		if (this.keepSong) for (const s of stems) if (s.key) void mediaCache.stat(s.key);
 		await new Promise<void>((resolve, reject) => {
 			let ready = false;
 			worker.onmessage = (e: MessageEvent) => {
@@ -541,7 +575,7 @@ export class StemEngine {
 				type: "load",
 				rate: ctx.sampleRate,
 				ahead,
-				stems: sources.map((s) => ({ id: s.id, url: s.url })),
+				stems,
 			});
 		});
 		this.mixPeaks = sumPeaks(this.stems.map((s) => s.peaks));
@@ -891,10 +925,11 @@ export class StemEngine {
 		this.#stemAnalysers.get(id)?.disconnect();
 		this.#stemAnalysers.delete(id);
 		this.#buffers.delete(id);
+		// Either mode: the manifest is what a keep on this device keeps.
+		this.#manifest = this.#manifest.filter((s) => s.id !== id);
 		if (this.mode === "streamed") {
 			this.#mixer?.port.postMessage({ type: "remove", id });
 			this.#worker?.postMessage({ type: "remove", id });
-			this.#manifest = this.#manifest.filter((s) => s.id !== id);
 		}
 		this.stems = this.stems.filter((s) => s.id !== id);
 		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
@@ -923,6 +958,76 @@ export class StemEngine {
 			out.push(await scratch.decodeAudioData(await res.arrayBuffer()));
 		}
 		return out;
+	}
+
+	/**
+	 * What this device keeps of the song (audio/mediaCache.ts): its files'
+	 * size, and how many of the loaded stems' renditions it lacks (a stem
+	 * replaced since the keep, or one that would not fit); complete when
+	 * none. Asked before a load there are no stems yet to lack. Null when it keeps nothing of the song, or the cache did not
+	 * answer within `timeoutMs` (the player asks before a load and will not
+	 * wait long).
+	 */
+	async keptOnDevice(
+		songId: string,
+		options: { timeoutMs?: number } = {},
+	): Promise<{ bytes: number; complete: boolean; missing: number } | null> {
+		const song = (await mediaCache.songs(options.timeoutMs)).find((s) => s.song === songId);
+		if (!song) return null;
+		const held = new Set(song.keys);
+		const missing = this.#manifest.filter((s) => {
+			const key = mediaCacheKey(s.url);
+			return !key || !held.has(key);
+		}).length;
+		return { bytes: song.bytes, complete: missing === 0, missing };
+	}
+
+	/**
+	 * Keep the song on this device ("keep on this device"): every loaded
+	 * stem's rendition this device lacks is fetched, LOAD_CONCURRENCY at a
+	 * time, and written under the song, then the song's other files (a
+	 * replaced stem's old rendition) are dropped. From now on a load of the
+	 * song reads its stems from disk. Throws when a fetch fails, or when the
+	 * cache would not keep every stem (no room); `keeping` counts meanwhile
+	 * and is cleared either way.
+	 */
+	async keepOnDevice(songId: string): Promise<{ bytes: number }> {
+		this.keepSong = songId;
+		const sources = this.#manifest.map((s) => ({ src: s, key: mediaCacheKey(s.url) }));
+		const held = new Set((await mediaCache.songs()).find((s) => s.song === songId)?.keys ?? []);
+		const queue = sources.filter(
+			(s): s is { src: StemSource; key: string } => !!s.key && !held.has(s.key),
+		);
+		this.keeping = { done: 0, total: queue.length };
+		try {
+			const workers = Array.from({ length: Math.min(LOAD_CONCURRENCY, queue.length) }, async () => {
+				for (let next = queue.shift(); next; next = queue.shift()) {
+					const res = await fetch(next.src.url);
+					if (!res.ok) throw new Error(`${next.src.label}: ${res.status} ${res.statusText}`);
+					await mediaCache.write(next.key, await res.arrayBuffer(), songId);
+					if (this.keeping) this.keeping = { ...this.keeping, done: this.keeping.done + 1 };
+				}
+			});
+			await Promise.all(workers);
+			await mediaCache.prune(
+				songId,
+				sources.flatMap((s) => (s.key ? [s.key] : [])),
+			);
+		} finally {
+			this.keeping = null;
+		}
+		const kept = await this.keptOnDevice(songId);
+		if (!kept?.complete)
+			throw new Error(
+				"This device would not keep every stem of the song; its storage may be full.",
+			);
+		return { bytes: kept.bytes };
+	}
+
+	/** Stop keeping the song on this device: its files go, and later loads fetch every stem. */
+	async forgetDevice(songId: string): Promise<void> {
+		await mediaCache.forgetSong(songId);
+		if (this.keepSong === songId) this.keepSong = null;
 	}
 
 	/**

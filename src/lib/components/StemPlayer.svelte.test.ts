@@ -8,6 +8,29 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vit
 import StemPlayer from "./StemPlayer.svelte";
 
 /**
+ * The kept-songs cache (audio/mediaCache.ts) is a stand-in, off unless a
+ * test turns it on (OPFS needs a browser); the engine shares it, so a kept
+ * song's load reads from it. Notifications are recorded, not shown.
+ */
+const cache = vi.hoisted(() => ({
+	available: false,
+	read: vi.fn(async () => null),
+	stat: vi.fn(async () => null),
+	write: vi.fn(async () => true),
+	songs: vi.fn<(timeoutMs?: number) => Promise<{ song: string; bytes: number; keys: string[] }[]>>(
+		async () => [],
+	),
+	prune: vi.fn(async () => {}),
+	forgetSong: vi.fn(async () => {}),
+}));
+vi.mock("#lib/audio/mediaCache.js", () => ({ mediaCache: cache }));
+const notify = vi.hoisted(() => vi.fn());
+vi.mock("#lib/state/notifications.svelte.js", async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	notify,
+}));
+
+/**
  * The real StemEngine runs here, on a stand-in AudioContext: decoding hands
  * back a short silent buffer, gain nodes are inert objects, and fetch answers
  * every stem URL with a few bytes. That covers loading, the rows, relabel and
@@ -148,5 +171,88 @@ describe("StemPlayer", () => {
 		render(StemPlayer, { props: { manifest: manifest() } });
 		await screen.findByText("Couldn't load the stems.");
 		expect(screen.getByText(/404 Not Found/)).toBeInTheDocument();
+	});
+
+	describe("keep on this device", () => {
+		const MB = 1024 * 1024;
+		const keys = ["drums", "bass", "vox"];
+		beforeEach(() => {
+			cache.available = true;
+			cache.songs.mockReset();
+			cache.songs.mockImplementation(async () => []);
+			cache.forgetSong.mockClear();
+			notify.mockClear();
+		});
+		afterAll(() => {
+			cache.available = false;
+		});
+
+		test("no link without a song id, or without a cache", async () => {
+			const { unmount } = render(StemPlayer, { props: { manifest: manifest() } });
+			await ready();
+			expect(screen.queryByRole("button", { name: "keep on this device" })).toBeNull();
+			unmount();
+			cache.available = false;
+			render(StemPlayer, { props: { manifest: manifest(), songId: "song1" } });
+			await ready();
+			expect(screen.queryByRole("button", { name: "keep on this device" })).toBeNull();
+			expect(cache.songs).not.toHaveBeenCalled();
+		});
+
+		test("asks the cache (1 s at most) before the first load; keeping fetches, notifies and offers remove", async () => {
+			const user = userEvent.setup();
+			const onengine = vi.fn<(engine: StemEngine) => void>();
+			render(StemPlayer, { props: { manifest: manifest(), songId: "song1", onengine } });
+			const engine = onengine.mock.calls[0][0];
+			await ready();
+			expect(cache.songs).toHaveBeenNthCalledWith(1, 1000);
+			expect(engine.keepSong).toBeNull();
+			const keep = screen.getByRole("button", { name: "keep on this device" });
+			expect(keep).toHaveClass("link");
+			expect(keep.title).toMatch(/The page itself still needs a connection/);
+			fetchSpy.mockClear();
+			cache.songs.mockImplementation(async () => [{ song: "song1", bytes: 42 * MB, keys }]);
+			const keepSpy = vi.spyOn(engine, "keepOnDevice");
+			await user.click(keep);
+			expect(keepSpy).toHaveBeenCalledWith("song1");
+			await waitFor(() => expect(notify).toHaveBeenCalledWith("Kept on this device (42.0 MB)"));
+			expect(await screen.findByText(/kept on this device \(42\.0 MB\)/)).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "remove" })).toHaveAttribute(
+				"title",
+				"Remove this song's playback files from this device",
+			);
+		});
+
+		test("a kept song loads with keepSong set; remove forgets it and notifies", async () => {
+			const user = userEvent.setup();
+			const onengine = vi.fn<(engine: StemEngine) => void>();
+			cache.songs.mockImplementation(async () => [{ song: "song1", bytes: 42 * MB, keys }]);
+			render(StemPlayer, { props: { manifest: manifest(), songId: "song1", onengine } });
+			const engine = onengine.mock.calls[0][0];
+			await ready();
+			expect(engine.keepSong).toBe("song1");
+			await user.click(await screen.findByRole("button", { name: "remove" }));
+			expect(cache.forgetSong).toHaveBeenCalledWith("song1");
+			expect(notify).toHaveBeenCalledWith("Removed from this device");
+			expect(engine.keepSong).toBeNull();
+		});
+
+		test("an incomplete copy says how many stems are missing and offers update", async () => {
+			const user = userEvent.setup();
+			const onengine = vi.fn<(engine: StemEngine) => void>();
+			cache.songs.mockImplementation(async () => [
+				{ song: "song1", bytes: 42 * MB, keys: ["drums", "bass"] },
+			]);
+			render(StemPlayer, { props: { manifest: manifest(), songId: "song1", onengine } });
+			const engine = onengine.mock.calls[0][0];
+			await ready();
+			expect(
+				await screen.findByText(/kept on this device \(42\.0 MB, 1 stem missing\)/),
+			).toBeInTheDocument();
+			const keepSpy = vi.spyOn(engine, "keepOnDevice").mockRejectedValue(new Error("No room"));
+			await user.click(screen.getByRole("button", { name: "update" }));
+			expect(keepSpy).toHaveBeenCalledWith("song1");
+			await waitFor(() => expect(notify).toHaveBeenCalledWith("No room", { kind: "error" }));
+		});
 	});
 });

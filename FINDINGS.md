@@ -196,6 +196,26 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **OPFS reads need no sync access handle, which lets a second worker
+  read the cache without a lock** (2026-10-30, the stem player's
+  "keep on this device", `workers/mediaCache.worker.ts`). Dawn's PCM
+  cache opens every file with a sync access handle because Safari has
+  no `createWritable`; writes need that, reads do not: a
+  `FileSystemFileHandle.getFile()` gives a `File` any worker can slice,
+  so the stream worker reads a kept rendition through mediabunny's
+  `BlobSource` while the cache worker may be writing another file, and a
+  `.part` in flight is never mistaken for a whole file because the
+  stream worker trusts only a key the saved `index.json` lists at the
+  file's exact size. Also learned: Vitest cannot exercise OPFS at all
+  (no `navigator.storage.getDirectory`), so the worker's file operations
+  were checked by importing the page-side module into a Playwright
+  Chromium page on the dev server (`import("/src/lib/audio/…")` works
+  under Vite) and running write, stat, read, songs, prune, forget and
+  clear against the real directory; Playwright's Linux WebKit cannot
+  open OPFS (the 2026-10-24 entry), so Safari stays Kevin's to check.
+  Safari also purges script-writable storage after seven days without a
+  visit, which is why every copy is a cache and the UI says so.
+
 - **Study 12 verdict: chart placement in seconds is a solved,
   model-free problem — ship alignment behind a path-cost gate and an
   edge flag** (stem-bench, 2026-10-30; full section in the repo's

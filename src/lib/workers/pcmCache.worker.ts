@@ -1,4 +1,5 @@
 import { STUDIO_PCM_CACHE_BYTES } from "#lib/constants/studio.js";
+import { cacheBudget } from "#lib/utils/cacheBudget.js";
 import { createSliceQueue } from "#lib/utils/createSliceQueue.js";
 import {
 	PCM_HEADER_BYTES,
@@ -201,7 +202,7 @@ async function quota(): Promise<number> {
 async function evict(keep: string) {
 	const idx = await loadIndex();
 	const q = await quota();
-	const budget = q > 0 ? Math.min(STUDIO_PCM_CACHE_BYTES, q / 2) : STUDIO_PCM_CACHE_BYTES;
+	const budget = cacheBudget(STUDIO_PCM_CACHE_BYTES, q);
 	let total = Object.values(idx).reduce((n, e) => n + e.bytes, 0);
 	const oldest = Object.keys(idx)
 		.filter((k) => k !== keep)

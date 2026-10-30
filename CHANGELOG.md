@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Keep a song on this device.** The stem player's status line offers to store the stems' playback files in the browser's own file store (OPFS, as Dawn keeps its sources), so a kept song opens without downloading its audio again and plays through a weak connection once the page has loaded; the line shows the size, offers to remove the copy, and offers an update when a stem was replaced. Kept songs are a cache: the browser may clear them, and the song downloads again.
 - **Your Shows on the dashboard.** A section in the content column lists your shows across your accounts, the next one first with how far off it is, then the ones played, each with its day, time, place, status and the set lists attached, with a search and a link to the account's Shows page.
 
 ## [0.200.2] - 2026-10-30

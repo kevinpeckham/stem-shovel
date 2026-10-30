@@ -264,3 +264,68 @@ pulses the button while it runs. A re-plan of the click now adopts a
 small shift of the clock's origin (a streamed report's jitter) without
 dropping the clicks already queued; only a seek or a loop's turn plans
 again.
+
+## Kept on this device (2026-10-30)
+
+Kevin asked whether Dawn's disk copies (docs/multitrack-recorder.md "A
+disk copy of each source") could serve the Stem Player, the looper and
+the Idea Recorder. The answer built here is the player's half, and only
+the cheap half: the compressed renditions, not decoded PCM. Both of the
+player's modes start from the stem's AAC `.m4a` (buffered fetches and
+decodes it whole; streamed reads it by byte range), and until now only
+the browser's HTTP cache kept those bytes, opportunistically and poorly
+for Range reads. A kept song's renditions live in the Origin Private
+File System under `stem-shovel/media/` (beside Dawn's `pcm/`), so the
+audio, which is nearly the whole download, never fetches again on that
+device and the song plays through a weak connection once the page has
+loaded. The page itself still needs the network: a service worker for
+the song page's shell is the step that would make the player work with
+no connection at all, and it is not built.
+
+- **Opt-in per song, a cache all the same.** The status line under the
+  rows (`StemPlayer.svelte`, with a `songId`) offers "keep on this
+  device"; kept, it shows the size with "remove", and "update" when a
+  replaced stem's rendition is missing. Nothing is kept unasked. The
+  copy is a cache: Safari purges script-writable storage after seven
+  days without a visit, a private tab has no OPFS, and the budget
+  (`STEM_MEDIA_CACHE_BYTES`, 1 GB, or half the site's quota) evicts
+  whole songs least recently used first, so a kept song can be gone
+  next time and simply downloads again.
+- **The worker.** `workers/mediaCache.worker.ts` is pcmCache.worker.ts
+  for opaque bytes: sync access handles (Safari has no
+  `createWritable`), `index.json` with each file's size, last use and
+  song, `.part` writes moved over when whole, the slice queue, every
+  failure a miss. The key is the rendition's basename without its
+  extension (`utils/mediaCacheKey.ts`): unique per rendition and stable
+  across presigning, since a private song's URL changes its query every
+  twelve hours. `audio/mediaCache.ts` is the page side and never throws.
+- **The engine.** Only a kept song touches the cache on load: the
+  player asks `keptOnDevice` (one second at most) before the first load
+  and sets `engine.keepSong`; buffered mode then reads each rendition
+  from the cache before fetching it and writes a miss's bytes (a copy:
+  the decoder detaches the buffer it is given, and so does the write's
+  transfer). An unkept song never starts the worker. Streamed mode
+  always hands each stem's key to `streamWorker.ts`, which reads the
+  cache's `index.json` once per load and opens a listed file whose size
+  matches as a `File` through mediabunny's `BlobSource` (no sync handle,
+  so no lock against the cache worker); anything wrong falls through to
+  `UrlSource`, and the stream path never writes. `keptOnDevice` (bytes,
+  complete, how many stems are missing), `keepOnDevice` (fetches only
+  the missing renditions, then prunes the song's stale ones; throws when
+  the budget will not hold the song) and `forgetDevice` are the
+  component's three calls; `audio/deviceKeep.svelte.ts` holds the
+  player's kept state and handlers and `KeepOnDevice.svelte` is the
+  control (both kept out of the player, whose template Fallow already
+  scores at its ceiling).
+  Eviction (`utils/mediaCacheEvictions.ts`, pure) removes whole songs,
+  least recently used first, never the song being written unless it
+  alone is over the budget (`utils/cacheBudget.ts`, shared with the PCM
+  cache). Verified against real OPFS in Chromium on the dev server
+  (write, stat, read, songs, prune, forget, the index on disk, clear);
+  Vitest covers the pure parts and the protocol with a stubbed worker.
+- **Not done, on purpose.** Decoded PCM copies and the stream voice for
+  buffered mode (instant seek, less decode CPU) wait on a measurement
+  that phones need them; the looper's loop already lives in IndexedDB at
+  a size where OPFS gains nothing; the Idea Recorder's takes join only
+  as part of this same cache if wanted. The looper and the Idea Recorder
+  are unchanged.

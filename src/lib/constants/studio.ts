@@ -42,6 +42,15 @@ export const STUDIO_MEMORY_WARNING_BYTES = 400 * 1024 * 1024;
  */
 export const STUDIO_PCM_CACHE_BYTES = 2 * 1024 * 1024 * 1024;
 /**
+ * The disk the Stem Player's kept songs may take in this browser
+ * (audio/mediaCache.ts, "keep on this device"): the stems' compressed
+ * playback renditions, about 1 MB a stereo minute each, so 1 GB holds
+ * some two dozen four-minute songs of eight stems. The worker takes half
+ * the site's quota when that is less; the least recently used songs go
+ * first, whole.
+ */
+export const STEM_MEDIA_CACHE_BYTES = 1024 * 1024 * 1024;
+/**
  * The rates a song may be rendered at (Song settings, docs/multitrack-recorder.md
  * "Sample rates"): the mix, the stems and the project files come out at the
  * song's rate on every machine, whatever rate the device records at.

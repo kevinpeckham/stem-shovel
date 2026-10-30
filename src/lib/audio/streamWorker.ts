@@ -1,5 +1,13 @@
 /// <reference lib="webworker" />
-import { ALL_FORMATS, AudioSampleSink, Input, UrlSource, type AudioSample } from "mediabunny";
+import {
+	ALL_FORMATS,
+	AudioSampleSink,
+	BlobSource,
+	Input,
+	UrlSource,
+	type AudioSample,
+	type Source,
+} from "mediabunny";
 
 /**
  * The streamed stem player's decoder (docs/stem-streaming.md): one worker
@@ -10,6 +18,14 @@ import { ALL_FORMATS, AudioSampleSink, Input, UrlSource, type AudioSample } from
  * `ahead` seconds past the playhead the worklet reports. A seek carries a
  * generation number: the running decode loops stop, and the worklet drops
  * whatever of the old generation still arrives.
+ *
+ * A kept song (audio/mediaCache.ts, "keep on this device") opens from
+ * disk instead: a stem whose load carries a `key` the media cache's index
+ * lists, at the length the index says, is read from its OPFS file
+ * (`getFile()` and a BlobSource; no sync handle, so no lock against the
+ * cache worker), and anything wrong with that copy falls through to the
+ * URL. This worker never writes the cache: a kept song's stem that missed
+ * here is filled by the engine's `keepOnDevice`.
  *
  * Messages from the main thread: load, port, seek, ahead, remove, dispose.
  * Replies: stem (one per stem as it opens), ready, error.
@@ -52,7 +68,7 @@ self.onmessage = async (e: MessageEvent) => {
 			case "load":
 				rate = m.rate;
 				ahead = m.ahead ?? ahead;
-				await Promise.all(m.stems.map((s: { id: string; url: string }) => open(s.id, s.url)));
+				await openAll(m.stems);
 				reply({ type: "ready" });
 				break;
 			case "port":
@@ -93,18 +109,82 @@ self.onmessage = async (e: MessageEvent) => {
 	}
 };
 
-async function open(id: string, url: string): Promise<void> {
+/** Every stem of a load opened, each from its kept file when there is a good one. */
+async function openAll(stems: { id: string; url: string; key?: string | null }[]): Promise<void> {
+	const disk = await keptFiles(stems.map((s) => s.key).filter((k): k is string => !!k));
+	await Promise.all(stems.map((s) => open(s.id, s.url, (s.key && disk.get(s.key)) || null)));
+}
+
+/** The media cache's directory and its index as last saved; null when there is none (NotFoundError) or the index is being rewritten. Never creates anything. */
+async function keptIndex(): Promise<{
+	dir: FileSystemDirectoryHandle;
+	index: Record<string, { bytes?: number } | undefined>;
+} | null> {
+	if (typeof navigator.storage?.getDirectory !== "function") return null;
 	try {
-		if (typeof AudioDecoder === "undefined") throw new Error("This browser has no AudioDecoder");
-		const input = new Input({
-			source: new UrlSource(url, { maxCacheSize: CACHE_BYTES }),
-			formats: ALL_FORMATS,
-		});
+		const root = await navigator.storage.getDirectory();
+		const dir = await (await root.getDirectoryHandle("stem-shovel")).getDirectoryHandle("media");
+		const text = await (await (await dir.getFileHandle("index.json")).getFile()).text();
+		return { dir, index: JSON.parse(text) };
+	} catch {
+		return null;
+	}
+}
+
+/** The key's file when it is the length the index says (how the cache says a file is whole); else null. */
+async function keptFile(
+	dir: FileSystemDirectoryHandle,
+	key: string,
+	bytes: number | undefined,
+): Promise<File | null> {
+	if (typeof bytes !== "number") return null;
+	try {
+		const file = await (await dir.getFileHandle(key)).getFile();
+		return file.size === bytes ? file : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The kept files among `keys` (workers/mediaCache.worker.ts keeps them
+ * under `stem-shovel/media/`): read-only, and empty when there is no
+ * cache, no index or anything fails, so every stem goes to the network.
+ */
+async function keptFiles(keys: string[]): Promise<Map<string, File>> {
+	const out = new Map<string, File>();
+	const kept = keys.length > 0 ? await keptIndex() : null;
+	if (!kept) return out;
+	for (const key of keys) {
+		const file = await keptFile(kept.dir, key, kept.index[key]?.bytes);
+		if (file) out.set(key, file);
+	}
+	return out;
+}
+
+/** A rendition opened far enough to play: its track's decoder found and its length read. Disposes the input when it cannot be. */
+async function openInput(source: Source) {
+	const input = new Input({ source, formats: ALL_FORMATS });
+	try {
 		const track = await input.getPrimaryAudioTrack();
 		if (!track) throw new Error("No audio track in the rendition");
 		if (!(await track.canDecode()))
 			throw new Error(`Cannot decode ${track.codec ?? "this codec"} here`);
-		const duration = await track.computeDuration();
+		return { input, track, duration: await track.computeDuration() };
+	} catch (e) {
+		input.dispose();
+		throw e;
+	}
+}
+
+async function open(id: string, url: string, file: File | null): Promise<void> {
+	try {
+		if (typeof AudioDecoder === "undefined") throw new Error("This browser has no AudioDecoder");
+		// The kept copy first; a copy that will not open is no copy, and the network serves as before.
+		const opened =
+			(file ? await openInput(new BlobSource(file)).catch(() => null) : null) ??
+			(await openInput(new UrlSource(url, { maxCacheSize: CACHE_BYTES })));
+		const { input, track, duration } = opened;
 		streams.set(id, {
 			id,
 			input,

@@ -9,12 +9,14 @@
 	import { dropIndexAt } from "#lib/utils/dropIndexAt.js";
 	import { moveId } from "#lib/utils/moveId.js";
 	import { StemEngine } from "#lib/audio/engine.svelte.js";
+	import { DeviceKeep } from "#lib/audio/deviceKeep.svelte.js";
 	import type { StemManifest, StemState } from "#lib/audio/types.js";
 	import StemRow from "#lib/components/StemRow.svelte";
 	import MixerStage from "#lib/components/MixerStage.svelte";
 	import { stemMixerModel } from "#lib/audio/mixerModel.js";
 	import { StemClick } from "#lib/audio/stemClick.svelte.js";
 	import Transport from "#lib/components/Transport.svelte";
+	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { stemMemoryBudget } from "#lib/utils/stemMemoryBudget.js";
 	import type { StemModeChoice, StemStreamingSetting } from "#lib/utils/stemPlaybackMode.js";
@@ -187,15 +189,7 @@
 					engine.retint(s.id, s.tint ?? null);
 				}
 				engine.reorder(stems.map((s) => s.id));
-			} else {
-				void engine.load(stems, { choice: modeChoice(), site: streaming });
-				// load() sets up the stems synchronously; the listener's own mix goes on top of the default.
-				if (songId) {
-					const local = loadLocalMix(songId);
-					if (local) applyLocalMix(engine, local, defaults, defaultPans);
-				}
-				engine.clearMixHistory(); // the mix as loaded is the starting point, not a move
-			}
+			} else void loadStems(stems, modeChoice());
 			loadedKeys = nextKeys;
 		});
 	});
@@ -242,13 +236,18 @@
 		} catch {
 			// no storage: the choice lasts for this load
 		}
-		void engine.load(manifest.stems, { choice: to === "auto" ? null : to, site: streaming });
-		if (songId) {
-			const local = loadLocalMix(songId);
-			if (local) applyLocalMix(engine, local, defaults, defaultPans);
-		}
-		engine.clearMixHistory();
+		void loadStems(manifest.stems, to === "auto" ? null : to);
 	}
+	const keep = new DeviceKeep(engine, () => songId); // "keep on this device" (audio/deviceKeep.svelte.ts)
+	/** Load the stems, once the keep knows whether the song is kept, with the listener's own mix on top of the default (load() sets up the stems synchronously). */
+	const loadStems = (stems: StemManifest["stems"], choice: StemModeChoice | null) =>
+		keep.load(() => {
+			const loading = engine.load(stems, { choice, site: streaming });
+			const local = songId ? loadLocalMix(songId) : null;
+			if (local) applyLocalMix(engine, local, defaults, defaultPans);
+			engine.clearMixHistory(); // the mix as loaded is the starting point, not a move
+			return loading;
+		});
 	/** ⌘Z / ⌘⇧Z (Ctrl on Windows) undo and redo mix moves from anywhere on the page but a text field, when this player has the keys. */
 	function onwindowkeydown(e: KeyboardEvent): void {
 		if (!keyboard || e.altKey || !(e.metaKey || e.ctrlKey) || isTextEntry(e.target)) return;
@@ -438,9 +437,9 @@
 				enable when every stem is ready.
 			{:else if engine.status === "ready"}
 				{manifest.stems.length}
-				{@html manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.mode === "streamed"},
-					streamed (a {Math.round(engine.estimatedBytes / manifest.stems.length / 1024 / 1024)} MB window
-					a stem){#if engine.buffering}, buffering…{:else}
+				{manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.mode === "streamed"}, streamed
+					(a {Math.round(engine.estimatedBytes / manifest.stems.length / 1024 / 1024)} MB window a stem){#if engine.buffering},
+						buffering…{:else}
 						<span class="text-green-300 i-ph-check"></span>{/if}
 					<button
 						class="link-dim ml-2"
@@ -459,6 +458,7 @@
 						>
 					{/if}
 				{/if}
+				<KeepOnDevice {...keep.props} />
 			{/if}
 		</div>
 	{/if}
