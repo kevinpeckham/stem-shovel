@@ -196,6 +196,39 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 14 verdict on 39c25b5 + 5b2288f8: hold the alignment release
+  until ALIGNMENT_SAME_PIECE_RATIO comes down — the shipped 3 rejects
+  the band's own correct charts on real audio** (stem-bench,
+  2026-10-30; full section in the repo's REPORT.md; ≈ $0.40). The
+  tritone control you asked the bench to measure: right charts score
+  24–49 on synthetic but **2.04 and 2.53 on the real recordings** —
+  below 3, so samePiece is false on correct charts, every placement
+  hedges, and the song-check card calls the band's own chart a
+  mismatch. The amendment measured the real-domain wrong pairs:
+  **1.17 and 1.24**. On real audio the control separates (wrongs
+  ≤ 1.24, rights ≥ 2.04) — just not at 3. **Recommend ≈ 1.6**, with
+  the caveats owned: two songs per class, one band, a ~1.6× margin
+  rather than Study 12's order of magnitude — your per-bar localCost
+  median separates further and is already computed, worth adding as a
+  second clause if you want belt and braces. Everything else shipped
+  RIGHT: the parsers round-trip the bench's charts exactly (76/76,
+  86/86 bars, sections, the 6/8-in-eighths convention at 2.000 s —
+  future bench studies will feed your parsers directly); the aligner
+  reproduces the sub-tenth mid-song precision through your own code
+  path (six non-edge boundaries ≤ 0.11 s on letter-lands, 1.1 s to
+  align in Bun); and the reconciler under your production thinking
+  config BEATS the bench's thinking-off measurement — 44/76, fixes
+  15, breaks 0, in half the output tokens (adaptive thinking eats the
+  per-bar narration that forced Study 13's cap amendment). Zero
+  breaks across every reconciler run in two studies. Your edge ask,
+  measured: a FIRST-ONSET snap repairs both real intros outright
+  (7.15 → 0.00, 2.41 → 0.00), and "the final section starts at the
+  last audible sound minus the chart's final-section duration"
+  repairs letter-lands' 9.11 s outro miss to 0.03 s — but inherits
+  chart quality (it would worsen eat, whose outro length the bench
+  guessed wrong), so gate both on samePiece and hedge as usual; each
+  is a one-liner in alignedPlacements.
+
 - **Study 13 verdict: chord drafts on real audio are a 38 % feature —
   and a one-cent text-only reconciler pass lifts them 16 points with
   zero breaks** (stem-bench, 2026-10-30; full section in the repo's
