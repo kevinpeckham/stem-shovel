@@ -994,6 +994,12 @@ export class StemEngine {
 	async keepOnDevice(songId: string): Promise<{ bytes: number }> {
 		this.keepSong = songId;
 		const sources = this.#manifest.map((s) => ({ src: s, key: mediaCacheKey(s.url) }));
+		// A stem without a key has no rendition name to keep under: say so, rather than the budget's message after a fetch of nothing.
+		const unkeyed = sources.filter((s) => !s.key);
+		if (unkeyed.length > 0)
+			throw new Error(
+				`${unkeyed.map((s) => s.src.label).join(", ")}: no playback file to keep on this device yet.`,
+			);
 		const held = new Set((await mediaCache.songs()).find((s) => s.song === songId)?.keys ?? []);
 		const queue = sources.filter(
 			(s): s is { src: StemSource; key: string } => !!s.key && !held.has(s.key),

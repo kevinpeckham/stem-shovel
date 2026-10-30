@@ -10,6 +10,18 @@ describe("mediaCacheKey", () => {
 			),
 		).toBe("stem_AbC-play-1730000000000");
 	});
+	it("keys the real rendition name, a dot before 'play' and all (server/transcode.ts)", () => {
+		expect(
+			mediaCacheKey(
+				"https://x.public.blob.vercel-storage.com/accounts/R7q44bgkS7krZBX6dVoic/songs/V3dfR8ggR5eRPyLfgi6g6/liIKVYQWNcVHGNSnYD81h.play-mtz1sw6k.m4a",
+			),
+		).toBe("liIKVYQWNcVHGNSnYD81h.play-mtz1sw6k");
+	});
+	it("never names the cache's own files", () => {
+		expect(mediaCacheKey("https://blob/a/b/index.json.m4a")).toBeNull();
+		expect(mediaCacheKey("https://blob/a/b/x.part.m4a")).toBeNull();
+		expect(mediaCacheKey("https://blob/a/b/....m4a")).toBeNull();
+	});
 	it("ignores the query string a presigned URL carries", () => {
 		const a = mediaCacheKey("https://blob/accounts/a/songs/s/st1-play-9.m4a?sig=one&exp=1");
 		const b = mediaCacheKey("https://blob/accounts/a/songs/s/st1-play-9.m4a?sig=two&exp=2");

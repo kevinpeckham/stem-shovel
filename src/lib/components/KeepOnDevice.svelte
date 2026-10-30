@@ -1,4 +1,5 @@
 <script lang="ts">
+	import InfoTip from "#lib/components/InfoTip.svelte";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 
 	/**
@@ -12,6 +13,8 @@
 		available: boolean;
 		/** What this device keeps of the song (engine.keptOnDevice), or null when nothing. */
 		kept: { bytes: number; missing: number } | null;
+		/** About how much the song's playback files weigh (duration × stems × the rendition bitrate), for the offer. */
+		estimate?: number;
 		/** A keep in progress (engine.keeping). */
 		keeping: { done: number; total: number } | null;
 		/** Keep the song, or fetch the stems the kept copy lacks. */
@@ -20,7 +23,8 @@
 		onremove: () => void;
 	}
 
-	let { available, kept, keeping, onkeep, onremove }: Props = $props();
+	let { available, kept, estimate = 0, keeping, onkeep, onremove }: Props = $props();
+	const about = $derived(estimate > 0 ? ` (about ${formatBytes(estimate)})` : "");
 </script>
 
 {#if available}
@@ -33,9 +37,14 @@
 			<button
 				class="link"
 				type="button"
-				title="Keep the stems' playback files on this device so the song opens without downloading them again. The page itself still needs a connection."
+				title="Keep the stems' playback files on this device so the song opens without downloading them again"
 				onclick={onkeep}>keep on this device</button
 			>
+			<InfoTip
+				label="About keeping a song on this device"
+				class="ml-1 align-[-2px]"
+				text="Keeps this song's playback files{about} in this browser's own storage, so the song opens without downloading them again: handy on a slow connection, or before a rehearsal. The page itself still needs a connection, nothing changes on the server, and you can remove the copy any time. Your browser may clear it after a while without a visit."
+			/>
 		{/if}
 	</span>
 {/if}

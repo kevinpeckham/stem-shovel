@@ -209,7 +209,7 @@ describe("StemPlayer", () => {
 			expect(engine.keepSong).toBeNull();
 			const keep = screen.getByRole("button", { name: "keep on this device" });
 			expect(keep).toHaveClass("link");
-			expect(keep.title).toMatch(/The page itself still needs a connection/);
+			expect(keep.title).toMatch(/without downloading them again/);
 			fetchSpy.mockClear();
 			cache.songs.mockImplementation(async () => [{ song: "song1", bytes: 42 * MB, keys }]);
 			const keepSpy = vi.spyOn(engine, "keepOnDevice");

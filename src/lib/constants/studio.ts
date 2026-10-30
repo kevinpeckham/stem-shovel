@@ -76,3 +76,6 @@ export const CLIP_ANCHORS = ["seconds", "beats"] as const;
 /** How far a clip can be stretched or squeezed by hand: a quarter to four times its length (the WSOLA's comfortable range). */
 export const WARP_RATIO_MIN = 0.25;
 export const WARP_RATIO_MAX = 4;
+
+/** What a stem's playback rendition weighs a second, for the "keep on this device" estimate: AAC at 192 kbps (server/transcode.ts `BITRATE.stereo`), 24 000 bytes. */
+export const STEM_RENDITION_BYTES_PER_SECOND = 24_000;

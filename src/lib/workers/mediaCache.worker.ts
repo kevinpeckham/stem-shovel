@@ -1,3 +1,4 @@
+import { isMediaCacheKey } from "#lib/utils/isMediaCacheKey.js";
 import { STEM_MEDIA_CACHE_BYTES } from "#lib/constants/studio.js";
 import { cacheBudget } from "#lib/utils/cacheBudget.js";
 import { createSliceQueue } from "#lib/utils/createSliceQueue.js";
@@ -74,7 +75,7 @@ type SyncFileHandle = FileSystemFileHandle & {
 
 const INDEX = "index.json";
 /** A key is a rendition's file name without its extension (utils/mediaCacheKey.ts); a song is its id. Nothing that could name the index, a part file or leave the directory. */
-const KEY = /^[\w-]{1,64}$/;
+
 const PART = ".part";
 /** A write's slice: about 25 ms of a phone's disk. */
 const SLICE_BYTES = 8 * 1024 * 1024;
@@ -139,7 +140,7 @@ const isEntry = (e: unknown): e is MediaCacheEntry =>
 	typeof (e as MediaCacheEntry).bytes === "number" &&
 	typeof (e as MediaCacheEntry).used === "number" &&
 	typeof (e as MediaCacheEntry).song === "string" &&
-	KEY.test((e as MediaCacheEntry).song);
+	isMediaCacheKey((e as MediaCacheEntry).song);
 
 /** The index, read once and squared with the directory: a file it lacks goes (a cut-off write, a part file), and so does an entry without a file or a song. */
 async function loadIndex(): Promise<Index> {
@@ -153,7 +154,7 @@ async function loadIndex(): Promise<Index> {
 	).entries()) {
 		if (name === INDEX || handle.kind !== "file") continue;
 		const entry = saved[name];
-		if (isEntry(entry) && KEY.test(name)) next[name] = entry;
+		if (isEntry(entry) && isMediaCacheKey(name)) next[name] = entry;
 		else stray.push(name);
 	}
 	for (const name of stray) await d.removeEntry(name).catch(() => undefined);
@@ -334,16 +335,17 @@ const handlers: { [O in Op]: Handler<O> } = {
 	songs: (req) => songs(req.id),
 	estimate: (req) => estimate(req.id),
 	clear: (req) => clear(req.id),
-	forgetSong: (req) => (KEY.test(req.song) ? forgetSong(req.id, req.song) : bad(req.id, "song")),
+	forgetSong: (req) =>
+		isMediaCacheKey(req.song) ? forgetSong(req.id, req.song) : bad(req.id, "song"),
 	prune: (req) =>
-		KEY.test(req.song) && Array.isArray(req.keep)
+		isMediaCacheKey(req.song) && Array.isArray(req.keep)
 			? forgetSong(req.id, req.song, req.keep)
 			: bad(req.id, "song"),
-	stat: (req) => (KEY.test(req.key) ? stat(req.id, req.key) : bad(req.id, "key")),
-	read: (req) => (KEY.test(req.key) ? read(req.id, req.key) : bad(req.id, "key")),
-	forget: (req) => (KEY.test(req.key) ? forget(req.id, req.key) : bad(req.id, "key")),
+	stat: (req) => (isMediaCacheKey(req.key) ? stat(req.id, req.key) : bad(req.id, "key")),
+	read: (req) => (isMediaCacheKey(req.key) ? read(req.id, req.key) : bad(req.id, "key")),
+	forget: (req) => (isMediaCacheKey(req.key) ? forget(req.id, req.key) : bad(req.id, "key")),
 	write: (req, slice) =>
-		KEY.test(req.key) && KEY.test(req.song)
+		isMediaCacheKey(req.key) && isMediaCacheKey(req.song)
 			? write(req.id, req.key, req.bytes, req.song, slice)
 			: bad(req.id, "key or song"),
 };

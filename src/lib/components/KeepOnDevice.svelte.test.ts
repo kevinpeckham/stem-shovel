@@ -20,7 +20,7 @@ describe("KeepOnDevice", () => {
 		render(KeepOnDevice, { props: p });
 		const keep = screen.getByRole("button", { name: "keep on this device" });
 		expect(keep).toHaveClass("link");
-		expect(keep.title).toMatch(/The page itself still needs a connection/);
+		expect(keep.title).toMatch(/without downloading them again/);
 		await userEvent.click(keep);
 		expect(p.onkeep).toHaveBeenCalledTimes(1);
 	});

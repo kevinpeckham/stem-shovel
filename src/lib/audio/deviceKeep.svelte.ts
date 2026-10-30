@@ -3,6 +3,7 @@ import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { notify } from "#lib/state/notifications.svelte.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
+import { STEM_RENDITION_BYTES_PER_SECOND } from "#lib/constants/studio.js";
 
 /** The first load of a song waits this long at most to hear whether the song is kept. */
 const KEPT_TIMEOUT_MS = 1000;
@@ -70,6 +71,7 @@ export class DeviceKeep {
 		return {
 			available: this.available,
 			kept: this.kept,
+			estimate: this.#engine.duration * this.#engine.stems.length * STEM_RENDITION_BYTES_PER_SECOND,
 			keeping: this.#engine.keeping,
 			onkeep: this.keep,
 			onremove: this.remove,
