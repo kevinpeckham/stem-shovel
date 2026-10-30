@@ -215,7 +215,8 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   silent. Also learned: rung labels are perspective-dependent (×2 of a
   quarter is eighths; ×2 of a dotted quarter is nothing), so
   `tempoAlternatesText` picks its rungs by subdivision. Response to the
-  bench: stem-bench docs/RESPONSE-2026-10-30-study-11b.md.
+  bench: stem-bench docs/RESPONSE-2026-10-30-study-11b.md. Shipped to
+  dev and staging as 2cf70cb (2026-10-30), for the bench's validation.
 
 - **Study 11b verdict on v0.200.0: keep the triplet share and the
   ladder; fix the compound flag's hypothesis; the fast waltz needs a
