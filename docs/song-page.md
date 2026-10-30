@@ -57,11 +57,25 @@ step so it shrinks with the page and still fails on anything new.
    - `components/SongSectionsTab.svelte`: the markup in three snippets
      (`actions`, `answerCard`, `rows`); its `link-dim` links became
      `link` (the shortcut is deprecated), the only markup change.
-3. **Details**, **Demos** and **Options** tabs: the same shape, one tab
-   a step.
-4. **The uploads and downloads menu** (the `actionButtons` snippet).
-5. **Comments**: the popover, the two cards and the ⌘-click menus.
-6. Then the page is the layout, the floating panels and the data.
+3. **Details tab** (2026-10-30, done): the page lost 334 lines.
+   - `state/songDetails.svelte.ts`, `SongDetails`: the settings form's
+     readers (`title`, `slug`, `description`, `writtenOn`, `version`,
+     `frameRate`, `startAtText`, `endAtText`, `settingsDirty` as getters
+     over `updateSong.fields`), the start/end entries and
+     `positionError`, `preparePositions` (the seconds written into the
+     hidden fields before submit), `reset` (`clearForm` plus the
+     entries), and the credits (`creditDraft`, `creditBusy`,
+     `addCredit`, `removeCredit`). The page read none of those outside
+     the tab, so nothing on it points at the instance; `bump` (the
+     stems-changed version offer) stays on the page.
+   - `components/SongDetailsTab.svelte`: the form with its
+     `updateSong.enhance` spread, in six snippets; the issue lists and
+     the Start/End fields each became one parameterized snippet (Fallow
+     flagged them as clones once they stood alone), `link-dim` → `link`.
+4. **Demos** and **Options** tabs: the same shape.
+5. **The uploads and downloads menu** (the `actionButtons` snippet).
+6. **Comments**: the popover, the two cards and the ⌘-click menus.
+7. Then the page is the layout, the floating panels and the data.
 
 ## Effect on the client, as a pilot
 

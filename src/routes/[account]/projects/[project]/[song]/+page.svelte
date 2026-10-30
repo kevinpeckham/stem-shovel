@@ -3,9 +3,11 @@
 	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "#lib/utils/docMonoPreference.js";
 	import SongTempoKeyTab from "#lib/components/SongTempoKeyTab.svelte";
 	import SongSectionsTab from "#lib/components/SongSectionsTab.svelte";
+	import SongDetailsTab from "#lib/components/SongDetailsTab.svelte";
 	import { SongChanges, POSITION_PLACEHOLDER } from "#lib/state/songChanges.svelte.js";
 	import { SongCheck } from "#lib/state/songCheck.svelte.js";
 	import { SongSections } from "#lib/state/songSections.svelte.js";
+	import { SongDetails } from "#lib/state/songDetails.svelte.js";
 	import { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
@@ -48,14 +50,11 @@
 	import { unreadCount } from "#lib/utils/groupChat.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { copyShortLink } from "#lib/utils/copyShortLink.js";
-	import { FRAME_RATES } from "#lib/constants/frameRates.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { formatKhz } from "#lib/utils/formatKhz.js";
 	import { artistLine } from "#lib/utils/artistLine.js";
-	import { CREDIT_ROLE_LABELS } from "#lib/constants/creditRoles.js";
-	import { CREDIT_ROLES, type CreditRole } from "#lib/val/CreditRoleSchema.js";
+	import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
 	import { formatMonth } from "#lib/utils/formatMonth.js";
-	import { POSITION_MODE_LABELS } from "#lib/constants/positionModes.js";
 	import { STEM_TINTS, type StemTint } from "#lib/constants/stemTints.js";
 	import { decodedStemBytes } from "#lib/utils/decodedStemBytes.js";
 	import { SONG_CHANGE_KINDS } from "#lib/constants/songChanges.js";
@@ -66,9 +65,7 @@
 
 	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 	import { demoContentType } from "#lib/utils/demoContentType.js";
-	import { clearForm } from "#lib/utils/clearForm.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
-	import { slugify } from "#lib/utils/slugify.js";
 	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
 	import { STEM_ACCEPT, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 	import {
@@ -82,12 +79,10 @@
 		uploadStemFile,
 	} from "#lib/upload.js";
 	import {
-		addSongCredit,
 		deleteDemo,
 		deleteSong,
 		deleteStem,
 		removeDemoById,
-		removeSongCredit,
 		removeStemMidi,
 		renameStem,
 		reorderStems,
@@ -98,7 +93,6 @@
 		setSongVersion,
 		setStemTint,
 		shareSong,
-		updateSong,
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
@@ -106,7 +100,7 @@
 
 	let { data } = $props();
 
-	// Settings form (title, URL, description) on the updateSong remote form.
+	// Song settings: a popover of tabs, each its own component.
 	let settingsPanel = $state<HTMLDivElement | null>(null);
 	/** The settings popover shows one panel at a time (too much at once otherwise, and unusable on a phone). */
 	const SETTINGS_TABS = [
@@ -123,11 +117,6 @@
 	const settingsTabLabel = $derived(
 		SETTINGS_TABS.find((t) => t.id === settingsTab)?.label ?? "Details",
 	);
-	const fields = updateSong.fields;
-	let title = $derived(fields.title.value() ?? data.song.title);
-	let slug = $derived(fields.slug.value() ?? data.song.slug);
-	let description = $derived(fields.description.value() ?? data.song.description);
-	let writtenOn = $derived(fields.writtenOn.value() ?? data.song.writtenOn ?? "");
 	// Positions read and are typed in the readout's format (time, timecode or bars);
 	// the form carries them as seconds, converted on the way in and out.
 	let posCtx = $derived({
@@ -142,14 +131,8 @@
 	});
 	let mode = $derived(changes.mode);
 	const showPos = (seconds: number) => formatPosition(mode, seconds, posCtx);
-	let startAtText = $derived(data.song.startAt === null ? "" : changes.editPos(data.song.startAt));
-	let endAtText = $derived(data.song.endAt === null ? "" : changes.editPos(data.song.endAt));
-	let startAtEntry = $state("");
-	let endAtEntry = $state("");
-	let startAt = $derived(startAtEntry);
-	let endAt = $derived(endAtEntry);
-	let frameRate = $derived(fields.frameRate.value() ?? String(data.song.frameRate));
-	let version = $derived(fields.version.value() ?? data.song.version);
+	/** The settings form (settings' Details tab): its entries, the start and end positions, and the credits. */
+	const details = new SongDetails({ song: () => data.song, changes, onsaved: refreshAll });
 
 	// After stems change, offer a version bump; the user decides, nothing bumps itself.
 	let versionOffer = $state(false);
@@ -166,17 +149,6 @@
 			versionOffer = false;
 		}
 	}
-	let positionError = $state<string | null>(null);
-	let settingsDirty = $derived(
-		title.trim() !== data.song.title ||
-			slug.trim() !== data.song.slug ||
-			description.trim() !== data.song.description ||
-			writtenOn !== (data.song.writtenOn ?? "") ||
-			startAt.trim() !== startAtText ||
-			endAt.trim() !== endAtText ||
-			frameRate !== String(data.song.frameRate) ||
-			version.trim() !== data.song.version,
-	);
 
 	// Demo recordings: uploaded from settings (no decoding, just the file),
 	// played and downloaded from the "Demos" popover in the download row.
@@ -262,40 +234,6 @@
 			.filter(Boolean)
 			.join(", "),
 	);
-
-	// The credits editor in song settings: a name per role, added on Enter or with the button.
-	let creditDraft = $state<Record<CreditRole, string>>({
-		performer: "",
-		composer: "",
-		producer: "",
-	});
-	let creditBusy = $state(false);
-	async function addCredit(role: CreditRole) {
-		const name = creditDraft[role].trim();
-		if (!name || creditBusy) return;
-		creditBusy = true;
-		try {
-			await addSongCredit({ songId: data.song.id, role, name });
-			creditDraft[role] = "";
-			await refreshAll();
-		} catch (e) {
-			notify(errorMessage(e), { kind: "error" });
-		} finally {
-			creditBusy = false;
-		}
-	}
-	async function removeCredit(id: string) {
-		if (creditBusy) return;
-		creditBusy = true;
-		try {
-			await removeSongCredit({ id });
-			await refreshAll();
-		} catch (e) {
-			notify(errorMessage(e), { kind: "error" });
-		} finally {
-			creditBusy = false;
-		}
-	}
 
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
 	/** While a demo's MP3 renders or its waveform is measured in the jobs function, the page refreshes itself (ten minutes at most). */
@@ -1535,12 +1473,9 @@
 			popover="auto"
 			onbeforetoggle={(e) => {
 				if (e.newState === "open") {
-					clearForm(updateSong); // saved values, not the last edit
-					positionError = null;
+					details.reset(); // saved values, not the last edit
 					sections.reset();
 					changes.reset();
-					startAtEntry = startAtText;
-					endAtEntry = endAtText;
 				}
 			}}
 			bind:this={settingsPanel}
@@ -1608,284 +1543,15 @@
 				</nav>
 				<div class="min-h-0 flex-1 overflow-y-auto sm:pr-2">
 					{#if settingsTab === "details"}
-						<form
-							{...updateSong.enhance(async ({ submit }) => {
-								positionError = null;
-								for (const [label, text, field, shown, stored] of [
-									["Start of bar 1", startAtEntry, fields.startAt, startAtText, data.song.startAt],
-									["End", endAtEntry, fields.endAt, endAtText, data.song.endAt],
-								] as const) {
-									const seconds = !text.trim()
-										? 0
-										: changes.rowSeconds({ time: text, shown, seconds: stored });
-									if (seconds === null) {
-										positionError = `${label}: ${changes.positionMessage(text)}`;
-										return;
-									}
-									field.set(text.trim() ? String(seconds) : "");
-								}
-								await submit();
-								if (!fields.allIssues()) {
-									notify("Song settings saved");
-									settingsPanel?.hidePopover();
-								}
-							})}
-						>
-							<input {...fields.id.as("hidden", data.song.id)} />
-							<div class="grid gap-4 sm:grid-cols-2">
-								<label class="block">
-									<span class="text-sm opacity-90">Title</span>
-									<input
-										class="mt-1 field"
-										{...fields.title.as("text", data.song.title)}
-										required
-									/>
-									{#each fields.title.issues() ?? [] as issue (issue.message)}
-										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-									{/each}
-								</label>
-								<label class="block">
-									<span class="text-sm opacity-90">URL</span>
-									<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
-										<span class="truncate pl-3 text-sm opacity-90"
-											>/projects/{data.song.project.slug}/</span
-										>
-										<input
-											class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
-											{...fields.slug.as("text", data.song.slug)}
-											required
-										/>
-									</span>
-									{#each fields.slug.issues() ?? [] as issue (issue.message)}
-										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-									{/each}
-									<span class="mt-1 block text-xs opacity-80"
-										>Change it and the old address keeps working as a redirect.</span
-									>
-									{#if slug !== slugify(title)}
-										<button
-											class="mt-1 text-xs link-dim"
-											type="button"
-											onclick={() => {
-												fields.slug.set(slugify(title));
-											}}>Use title</button
-										>
-									{/if}
-								</label>
-								<!-- Credits: artists from the account's directory (or new ones by name), one field per role, saved as you go. -->
-								{#each CREDIT_ROLES as role (role)}
-									{@const credits = data.song.credits.filter((c) => c.role === role)}
-									<div class="block">
-										<span class="text-sm opacity-90"
-											>{CREDIT_ROLE_LABELS[role].many}
-											<span class="opacity-60">(optional)</span></span
-										>
-										{#if credits.length > 0}
-											<ul
-												class="mt-1 flex flex-wrap gap-2"
-												aria-label={CREDIT_ROLE_LABELS[role].many}
-											>
-												{#each credits as c (c.id)}
-													<li
-														class="flex items-center gap-1 rounded border border-white/15 bg-white/5 py-0.5 pl-2 pr-1 text-sm"
-													>
-														{c.artist.name}
-														<button
-															class="grid h-5 w-5 place-items-center rounded hover:bg-white/10"
-															type="button"
-															aria-label="Remove {c.artist.name} as {CREDIT_ROLE_LABELS[
-																role
-															].one.toLowerCase()}"
-															disabled={creditBusy}
-															onclick={() => removeCredit(c.id)}
-														>
-															<span class="i-ph-x text-12px" aria-hidden="true"></span>
-														</button>
-													</li>
-												{/each}
-											</ul>
-										{/if}
-										<div class="mt-1 flex gap-2">
-											<input
-												class="field text-sm"
-												list="song-artist-names"
-												placeholder="Add {CREDIT_ROLE_LABELS[role].one.toLowerCase()}, then Enter"
-												aria-label="Add {CREDIT_ROLE_LABELS[role].one.toLowerCase()}"
-												autocomplete="off"
-												bind:value={creditDraft[role]}
-												disabled={creditBusy}
-												onkeydown={(e) => {
-													if (e.key === "Enter") {
-														e.preventDefault();
-														void addCredit(role);
-													}
-												}}
-											/>
-											<button
-												class="button button-xs shrink-0"
-												type="button"
-												disabled={creditBusy || !creditDraft[role].trim()}
-												onclick={() => addCredit(role)}>Add</button
-											>
-										</div>
-									</div>
-								{/each}
-								<datalist id="song-artist-names">
-									{#each data.artists as a (a.id)}
-										<option value={a.name}></option>
-									{/each}
-								</datalist>
-								<p class="text-xs opacity-70 sm:col-span-2">
-									Artists show under the title; with none, the account's name does. Composers make
-									the "Written by" line. <a class="link-dim" href="/{data.account.slug}/artists"
-										>Manage artists</a
-									>.
-								</p>
-								<label class="block">
-									<span class="text-sm opacity-90"
-										>First written <span class="opacity-60">(optional)</span></span
-									>
-									<!-- color-scheme dark: the browser draws the calendar icon light on the dark field. -->
-									<input
-										class="mt-1 field [color-scheme:dark]"
-										type="date"
-										{...fields.writtenOn.as("text", data.song.writtenOn ?? "")}
-									/>
-									{#each fields.writtenOn.issues() ?? [] as issue (issue.message)}
-										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-									{/each}
-								</label>
-								<label class="block">
-									<span class="text-sm opacity-90"
-										>Start of bar 1 <span class="opacity-60">(optional)</span></span
-									>
-									<span class="mt-1 flex items-center gap-2">
-										<input
-											class="field font-mono text-sm"
-											placeholder={POSITION_PLACEHOLDER[mode]}
-											autocomplete="off"
-											bind:value={startAtEntry}
-											aria-label="Start of bar 1"
-										/>
-										<input {...fields.startAt.as("hidden", "")} />
-										<button
-											class="button button-xs shrink-0"
-											type="button"
-											title="Use the transport's current position"
-											disabled={!playerEngine || playerEngine.status !== "ready"}
-											onclick={() => (startAtEntry = changes.editPos(playerEngine?.position ?? 0))}
-										>
-											Playhead
-										</button>
-									</span>
-									<span class="mt-1 block text-xs opacity-90"
-										>Leading silence or a count-in: bars are counted from here.</span
-									>
-									{#each fields.startAt.issues() ?? [] as issue (issue.message)}
-										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-									{/each}
-								</label>
-								<label class="block">
-									<span class="text-sm opacity-90"
-										>End <span class="opacity-60">(optional)</span></span
-									>
-									<span class="mt-1 flex items-center gap-2">
-										<input
-											class="field font-mono text-sm"
-											placeholder={POSITION_PLACEHOLDER[mode]}
-											autocomplete="off"
-											bind:value={endAtEntry}
-											aria-label="End"
-										/>
-										<input {...fields.endAt.as("hidden", "")} />
-										<button
-											class="button button-xs shrink-0"
-											type="button"
-											title="Use the transport's current position"
-											disabled={!playerEngine || playerEngine.status !== "ready"}
-											onclick={() => (endAtEntry = changes.editPos(playerEngine?.position ?? 0))}
-										>
-											Playhead
-										</button>
-									</span>
-									<span class="mt-1 block text-xs opacity-90"
-										>Where the song ends, for the bars total.</span
-									>
-									{#each fields.endAt.issues() ?? [] as issue (issue.message)}
-										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-									{/each}
-								</label>
-								<p
-									class="flex items-start gap-2 rounded border border-white/15 bg-blue-300/5 px-4 py-3 text-xs opacity-90 sm:col-span-2"
-								>
-									<span class="i-ph-info mt-px shrink-0 text-14px" aria-hidden="true"></span>
-									<span>
-										Positions read and are typed as {POSITION_MODE_LABELS[mode].toLowerCase()} — the transport's
-										readout sets the format. Any of time (1:23.4), timecode (01:23:15.72) or bars (12|3)
-										is accepted anywhere.
-									</span>
-								</p>
-								<label class="block">
-									<span class="text-sm opacity-90">Version</span>
-									<input
-										class="mt-1 field font-mono text-sm"
-										placeholder="0.0.1"
-										autocomplete="off"
-										{...fields.version.as("text", data.song.version)}
-									/>
-									<span class="mt-1 block text-xs opacity-90">
-										Yours to manage (major.minor.patch); after stems change you are offered a bump.
-									</span>
-									{#each fields.version.issues() ?? [] as issue (issue.message)}
-										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-									{/each}
-								</label>
-								<label class="block">
-									<span class="text-sm opacity-90"
-										>Frame rate <span class="opacity-60">(timecode)</span></span
-									>
-									<select
-										class="mt-1 field text-sm"
-										{...fields.frameRate.as(
-											"select",
-											String(data.song.frameRate) as `${(typeof FRAME_RATES)[number]}`,
-										)}
-									>
-										{#each FRAME_RATES as rate (rate)}
-											<option value={String(rate)}>{rate} fps</option>
-										{/each}
-									</select>
-								</label>
-								<label class="block sm:col-span-2">
-									<span class="text-sm opacity-90"
-										>Description <span class="opacity-60">(optional)</span></span
-									>
-									<textarea
-										class="mt-1 field text-sm"
-										rows="3"
-										{...fields.description.as("text", data.song.description)}></textarea>
-									{#each fields.description.issues() ?? [] as issue (issue.message)}
-										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-									{/each}
-								</label>
-							</div>
-							{#if positionError}
-								<p class="mt-2 text-sm text-red-400" role="alert">{positionError}</p>
-							{/if}
-							{#if slug.trim() !== data.song.slug}
-								<p class="mt-2 text-xs opacity-90">
-									Changing the URL breaks existing links to this song.
-								</p>
-							{/if}
-							<div class="mt-4">
-								<button
-									class="button-accent disabled:opacity-40"
-									disabled={!settingsDirty || !!updateSong.pending}
-								>
-									{updateSong.pending ? "Saving…" : "Save"}
-								</button>
-							</div>
-						</form>
+						<SongDetailsTab
+							{details}
+							{changes}
+							song={data.song}
+							artists={data.artists}
+							accountSlug={data.account.slug}
+							engine={playerEngine}
+							onsaved={() => settingsPanel?.hidePopover()}
+						/>
 					{/if}
 					{#if settingsTab === "sections"}
 						<SongSectionsTab {sections} {changes} {hasScore} aiAvailable={data.aiAvailable} />
