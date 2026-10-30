@@ -140,8 +140,11 @@ and the day:
   time, notify the members (inbox, email per their opt-ins); a
   day-before reminder rides the existing daily cron.
 - Dashboard: an **Upcoming** block in the Latest column (the next few
-  shows and practices, with countdown text), and past shows in Activity
-  when their notes or books are written up. Built 2026-10-28 (v0.199.0)
+  shows and practices, with countdown text), a **Your Shows** section in
+  the content column (2026-10-30: the next show first with its
+  countdown, then the played ones newest first, each under its day,
+  time, place, status and sets; no pin button yet), and past shows in
+  Activity when their notes or books are written up. Built 2026-10-28 (v0.199.0)
   with the day-before reminder (kind `event-reminder`, sent by the daily
   digest cron for tomorrow's events) and the ICS feed
   (`/cal/<token>.ics`, the account's `calendar_token`, made on demand

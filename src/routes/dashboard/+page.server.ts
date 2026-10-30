@@ -11,7 +11,8 @@ import {
 import { SESSION_KIND_LABELS } from "#lib/constants/sessionRecordings.js";
 import { STAGE_LABEL } from "#lib/constants/songStages.js";
 import type { Nudge } from "#lib/constants/dashboardActivity.js";
-import type { DashboardPinRow } from "#lib/server/data.js";
+import type { DashboardPinRow, EventListRow } from "#lib/server/data.js";
+import { EVENT_STATUS_LABELS } from "#lib/val/EventSchema.js";
 import { error } from "@sveltejs/kit";
 import { requireMember, requireSignedIn } from "#lib/server/access.js";
 import { background } from "#lib/server/background.js";
@@ -24,6 +25,7 @@ import {
 	accountQuota,
 	dashboardSeenAtOf,
 	listDashboardPins,
+	listEvents,
 	listInviteCodes,
 	logAudit,
 	membershipsOfUser,
@@ -45,6 +47,7 @@ import { listInbox } from "#lib/server/notifications.js";
 import { canViewProject, canViewSong, type Viewer } from "#lib/server/viewAccess.js";
 import { realMemberships, type Membership } from "#lib/utils/actingMemberships.js";
 import { activityText } from "#lib/utils/activityText.js";
+import { countdownText } from "#lib/utils/countdownText.js";
 import { formatWhen } from "#lib/utils/formatWhen.js";
 import { inboxDigest } from "#lib/utils/inboxDigest.js";
 import { nudgeText } from "#lib/utils/nudgeText.js";
@@ -64,6 +67,7 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		counts,
 		sessions,
 		setLists,
+		shows,
 		projectRows,
 		songRows,
 		songChats,
@@ -79,6 +83,8 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		recentRecordingSessions(m.accountId, DASHBOARD_LIST_CAP),
 		// Every member may open a set list (a viewer gets its show view), so there is nothing to filter.
 		recentSetLists(m.accountId, DASHBOARD_LIST_CAP),
+		// Every member may open a show too; the list is the account's whole calendar of shows, capped per account once ordered (`showEntries`).
+		listEvents(m.accountId, "show"),
 		recentProjects(m.accountId, DASHBOARD_LIST_CAP),
 		recentSongs(m.accountId, DASHBOARD_LIST_CAP),
 		unreadSongChats(m.accountId, m.slug, userId),
@@ -108,6 +114,7 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		songs,
 		sessions,
 		setLists,
+		shows,
 		songChats: songChats.filter((c) => canViewSong(c, who, [])),
 		sessionChats,
 		// A song's event or job shows only when the person may open the song; a session's shows to every member.
@@ -224,6 +231,47 @@ function setListEntries(tiles: Tile[]): DashboardEntry[] {
 			})),
 		)
 		.sort(newestFirst);
+}
+
+/** A show's place: its venue and city, or the legacy free text. */
+const showPlace = (s: EventListRow) =>
+	line(s.venue ? [s.venue.name, s.venue.city] : [s.venueText, s.cityText]);
+
+/**
+ * Your Shows: the person's shows across their accounts, the next one first
+ * (soonest, with how far off it is), then the past ones newest first,
+ * DASHBOARD_LIST_CAP an account; the title is the billing, else the venue;
+ * under it (the day sits at the row's end) the time, the place, the status when it is not merely
+ * planned, the sets attached and the account (with several). Canceled
+ * shows stay in the list under their label, since the calendar still says
+ * so. Not pinnable yet (the pin kinds are song, project, session, set list).
+ */
+function showEntries(tiles: Tile[], today: string): DashboardEntry[] {
+	const several = tiles.length > 1;
+	const upcoming = (s: EventListRow) => s.startsOn >= today;
+	return tiles.flatMap((t) => {
+		const byDay = (a: EventListRow, b: EventListRow) => a.startsOn.localeCompare(b.startsOn);
+		const next = t.shows.filter(upcoming).toSorted(byDay);
+		const past = t.shows
+			.filter((s) => !upcoming(s))
+			.toSorted(byDay)
+			.toReversed();
+		return [...next, ...past].slice(0, DASHBOARD_LIST_CAP).map((s) => ({
+			id: s.id,
+			title: s.title || s.venue?.name || s.venueText || "Show",
+			href: `/${t.slug}/events/${s.id}`,
+			when: new Date(`${s.startsOn}T12:00:00Z`),
+			account: t.slug,
+			meta: line([
+				upcoming(s) ? countdownText(s.startsOn, today) : "",
+				s.startsAt,
+				showPlace(s),
+				s.status === "planned" ? "" : EVENT_STATUS_LABELS[s.status],
+				s.setCount ? plural(s.setCount, "set") : "",
+				several ? t.name : "",
+			]),
+		}));
+	});
 }
 
 /** Activity: what happened across the person's accounts in the last DASHBOARD_ACTIVITY_DAYS, newest first; the title is the song or session, the line under it who did what (and the account, with several). */
@@ -498,6 +546,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		songs: songEntries(tiles),
 		sessions: sessionEntries(tiles),
 		setLists: setListEntries(tiles),
+		shows: showEntries(tiles, today),
 		ideas: ideaEntries(ideaRows, () => "/idea-recorder"),
 		loops: ideaEntries(loopRows, () => "/looper"),
 		multitracks: ideaEntries(

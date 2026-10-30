@@ -194,6 +194,17 @@
 					{...pinProps}
 				/>
 				<DashboardIdeas
+					id="dashboard-shows"
+					heading="Your Shows"
+					accounts={data.accounts}
+					tip="Your shows, the next one first, then the ones played: each with its day, time and place, and the set lists attached. Add and edit them on the account's Shows page."
+					ideas={data.shows}
+					empty="No shows yet."
+					action={{ label: "Add a show", href: at("/shows") }}
+					all={{ label: "All shows", href: at("/shows") }}
+					search="Search shows"
+				/>
+				<DashboardIdeas
 					id="dashboard-set-lists"
 					heading="Your Set Lists"
 					accounts={data.accounts}

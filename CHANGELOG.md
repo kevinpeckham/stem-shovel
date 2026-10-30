@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Your Shows on the dashboard.** A section in the content column lists your shows across your accounts, the next one first with how far off it is, then the ones played, each with its day, time, place, status and the set lists attached, with a search and a link to the account's Shows page.
+
 ## [0.200.2] - 2026-10-30
 
 ### Added

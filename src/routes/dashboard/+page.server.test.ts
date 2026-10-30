@@ -150,6 +150,7 @@ const PER_ACCOUNT = [
 	"accountCounts",
 	"recentRecordingSessions",
 	"recentSetLists",
+	"listEvents",
 	"recentProjects",
 	"recentSongs",
 	"unreadSongChats",
@@ -173,6 +174,7 @@ beforeEach(() => {
 	data.accountCounts.mockResolvedValue({ projects: 0, songs: 0 });
 	data.recentRecordingSessions.mockResolvedValue([]);
 	data.recentSetLists.mockResolvedValue([]);
+	data.listEvents.mockResolvedValue([]);
 	data.recentProjects.mockResolvedValue([]);
 	data.recentSongs.mockResolvedValue([]);
 	data.unreadSongChats.mockResolvedValue([]);
@@ -583,6 +585,76 @@ describe("dashboard load: set lists", () => {
 		data.recentSetLists.mockResolvedValue([setListRow(fakeId("l-a2"), day(2))]);
 		const r = await run([member(ACCOUNT)]);
 		expect(r.setLists[0].meta).toBe("12 rows · by Kevin");
+	});
+});
+
+describe("dashboard load: shows", () => {
+	const showRow = (id: string, startsOn: string, overrides: Row = {}): Row => ({
+		id,
+		kind: "show",
+		title: "",
+		status: "planned",
+		startsOn,
+		startsAt: "20:00",
+		venue: { id: fakeId("venue"), name: "The Hall", city: "Springfield" },
+		location: null,
+		venueText: "",
+		cityText: "",
+		setCount: 0,
+		sessionCount: 0,
+		posterThumbnailUrl: null,
+		posterUrl: null,
+		createdAt: day(1),
+		updatedAt: day(1),
+		...overrides,
+	});
+
+	it("the next show first with its countdown, then the played ones newest first; the venue names an unbilled show", async () => {
+		// The loader's today is the real one; far-off days keep the split stable.
+		data.listEvents.mockImplementation(async (accountId: string) =>
+			accountId === ACCOUNT
+				? [
+						showRow(fakeId("s-old"), "2020-03-01", { status: "played", setCount: 2 }),
+						showRow(fakeId("s-older"), "2019-06-15", { status: "played" }),
+						showRow(fakeId("s-later"), "2031-01-20", { title: "with The Night Shift" }),
+						showRow(fakeId("s-next"), "2030-09-05", { status: "confirmed" }),
+					]
+				: [
+						showRow(fakeId("s-two"), "2030-10-01", {
+							venue: null,
+							venueText: "The garage",
+							cityText: "",
+						}),
+					],
+		);
+		const one = member(ACCOUNT);
+		const r = await run([one, member(OTHER_ACCOUNT)]);
+		expect(data.listEvents).toHaveBeenCalledWith(ACCOUNT, "show");
+		expect(ids(r.shows)).toEqual([
+			fakeId("s-next"),
+			fakeId("s-later"),
+			fakeId("s-old"),
+			fakeId("s-older"),
+			fakeId("s-two"),
+		]);
+		expect(r.shows[0]).toMatchObject({
+			account: one.slug,
+			title: "The Hall",
+			href: `/${one.slug}/events/${fakeId("s-next")}`,
+		});
+		expect(r.shows[0].meta).toMatch(/^In .+ · 20:00 · The Hall · Springfield · Confirmed · One$/);
+		expect(r.shows[0].pin).toBeUndefined();
+		expect(r.shows[1].title).toBe("with The Night Shift");
+		expect(r.shows[2].meta).toMatch(/^20:00 · The Hall · Springfield · Played · 2 sets · One$/);
+		expect(r.shows[2].meta).not.toMatch(/^In /);
+		expect(r.shows[4].title).toBe("The garage");
+		expect(r.shows[4].meta).toMatch(/The garage · Two$/);
+	});
+
+	it("with one account, no account name; a planned show carries no status", async () => {
+		data.listEvents.mockResolvedValue([showRow(fakeId("s-next"), "2030-09-05")]);
+		const r = await run([member(ACCOUNT)]);
+		expect(r.shows[0].meta).toMatch(/^In .+ · 20:00 · The Hall · Springfield$/);
 	});
 });
 
