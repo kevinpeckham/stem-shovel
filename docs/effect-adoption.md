@@ -263,3 +263,17 @@ provoked on dev and seen in Sentry with their tags.
 - 2026-10-25: proposed; Kevin: "go ahead with Phase 0 and start the
   pilot". Both landed the same day. Go/no-go on Phase 2 after the
   evaluation.
+- 2026-10-30: the first client pilot, on the song page's chord
+  detect/check/draft class (`src/lib/state/songChordDraft.svelte.ts`),
+  at Kevin's ask to consider Effect "where appropriate" (docs/song-page.md
+  "Effect on the client, as a pilot"). The rewrite worked (fibers for
+  runs, `Fiber.interrupt` for Cancel, `tryPromise` with the signal,
+  `ensuring` for cleanup; the tests passed unchanged) and cost the song
+  page node 57.0 → 68.6 kB gzip (+20%), inlined into that page's chunk
+  only, to replace six `cancelled()` checks and one error class.
+  **Reverted**: not worth the cost or the new idiom for one class. The
+  two behavior tests it added (a second Detect stops the first; Cancel
+  during the draft drops its answer) stay, since they pass on the token
+  code. Reconsider only as one move covering the song check's 409 retry
+  and the alignment's 90 s timeout too, which would share the one copy;
+  the server stays Effect's home.

@@ -61,9 +61,10 @@ Kevin asked (2026-10-30) that it be considered where appropriate here
 too. The one client shape that fits is `SongChordDraft`: a pipeline
 (transcribe → match → AI check → draft) with hand-rolled cancellation
 tokens, beside the song check's 409 retry loop and the alignment's 90 s
-timeout. The pilot swaps those for Effect's interruption, `retry` and
-`timeout` in that class alone and measures the built song page chunk
-against its baseline (57 kB gzip on 2026-10-30, `nodes/15.*.js`, no
-Effect in any client chunk); it stays only if the code reads better for
-the cost. Pure extractions never carry a new runtime, so their diffs stay
-reviewable.
+timeout. The pilot (2026-10-30) swapped those for Effect's interruption
+and `ensuring` in that class alone: it worked, the tests passed unchanged,
+and the built song page node went from 57.0 to 68.6 kB gzip (+20%),
+inlined into that page only. Reverted as not worth the cost for six
+checks (docs/effect-adoption.md "Decision record"); its two behavior
+tests stay. Pure extractions never carry a new runtime, so their diffs
+stay reviewable.

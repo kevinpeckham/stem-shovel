@@ -115,6 +115,38 @@ describe("SongChordDraft", () => {
 		expect(cd.chordBusy).toBeNull();
 	});
 
+	test("a second run stops the first: only the second's chords land", async () => {
+		let first!: (v: unknown) => void;
+		remote.songNotes.mockReturnValueOnce(new Promise((r) => (first = r)));
+		remote.reconcileChords.mockResolvedValue({ chords: null });
+		const cd = make();
+		const one = cd.detectChords();
+		const two = cd.detectChords();
+		await two;
+		expect(cd.chordSegments?.map((s) => s.chord)).toEqual(["D", "A", "G"]);
+		first({ complete: true, notes: NOTES.slice(0, 4), doneSeconds: 8, duration: 8 });
+		await one;
+		expect(cd.chordSegments?.map((s) => s.chord)).toEqual(["D", "A", "G"]);
+		expect(cd.chordBusy).toBeNull();
+		expect(remote.reconcileChords).toHaveBeenCalledTimes(1);
+	});
+
+	test("Cancel during the draft drops its answer without an error", async () => {
+		const cd = make();
+		await cd.detectChords();
+		let answer!: (v: unknown) => void;
+		remote.draftChart.mockReturnValueOnce(new Promise((r) => (answer = r)));
+		const run = cd.draftFromChords();
+		expect(cd.draftBusy).toBe(true);
+		cd.cancelDraft();
+		expect(cd.draftBusy).toBe(false);
+		answer(DRAFT);
+		await run;
+		expect(cd.draft).toBeNull();
+		expect(cd.chordError).toBeNull();
+		expect(notify).not.toHaveBeenCalledWith(expect.stringMatching(/failed/), expect.anything());
+	});
+
 	test("the panel's button detects first, then drafts; Dismiss clears both", async () => {
 		const cd = make();
 		await cd.draftFromPanel();

@@ -1667,3 +1667,22 @@ From writing `.rpp` files and having Reaper open them under Xvfb (`bun run inter
 - **Colors** are `PEAKCOL 0x1000000 | (b << 16) | (g << 8) | r` on Linux (and Windows); Reaper's `ColorFromNative` gave the RGB back as written. (macOS keeps RGB the other way round; a file moved between platforms shows its colors swapped, a known Reaper quirk not handled here.)
 - **GUIDs are optional:** a `<TRACK` or `<ITEM` without `TRACKID`, `IGUID` or `GUID` lines opens fine; Reaper assigns them and writes them on save.
 - **`Main_openProject("noprompt:" .. path)`** opens without the save-changes prompt; **`Main_OnCommand(42230, 0)`** renders with the current settings and closes the dialog, the settings set through `GetSetProjectInfo` (`RENDER_BOUNDSFLAG` 0 with `RENDER_STARTPOS`/`RENDER_ENDPOS`, `RENDER_FILE` and `RENDER_PATTERN` through the `_String` form, `RENDER_FORMAT` `ZXZhdxgAAQ==` for 24-bit WAV); **`GetSetProjectNotes(0, false, "")`** returns the notes as its one value; **`GetTrackUIVolPan`** returns (ok, volume, pan).
+
+## Effect 4 on the client costs the page that imports it about 11.6 kB gzip, inlined (2026-10-30)
+
+Measured on the song page's chord-draft class pilot (docs/effect-adoption.md
+"Decision record"): deep imports of `effect/Effect` and `effect/Fiber`
+for `runFork`, `Fiber.interrupt`, `Fiber.await`, `tryPromise`, `ensuring`,
+`catch` and `orElseSucceed` grew the page's own node from 57.0 to 68.6 kB
+gzip; no shared chunk appeared and no other page changed. So Effect's
+client cost lands on the page that imports it, once, and further uses on
+the same page are nearly free. Things the pilot confirmed on the way:
+`Effect.runFork` starts the fiber synchronously (a `$state` write in the
+program's first step is visible right after the call); a plain
+`tryPromise(thunk)` wraps failures in `Cause.UnknownError`, so keep the
+original error with `{ try, catch: (e) => e }`; the thunk gets the
+AbortSignal only when it declares the parameter; `ensuring` cleanup runs
+on interrupt too, so an interrupted run's cleanup must be idempotent with
+what Cancel writes; `Effect.catch` sees typed failures only, so a throw
+inside `Effect.sync` rejects the run instead. The rewritten class is kept
+out of the tree; the token version stayed.
