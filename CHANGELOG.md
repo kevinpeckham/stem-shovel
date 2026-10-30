@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.201.2] - 2026-10-30
+
 ### Fixed
 
 - **The chart is recognized as its own recording.** The alignment's same-piece test was set from synthetic renders and, on real recordings, called the band's own correct charts a mismatch and marked every placement approximate (stem-bench Study 14). It is set from the real recordings now, and when the chart fits, the first section starts at the recording's first sound and the last at its last sound less the chart's length for it, which repairs the intro and outro misses the bench measured.
