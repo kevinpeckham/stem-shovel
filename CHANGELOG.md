@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.200.1] - 2026-10-30
+
 ### Fixed
 
 - **The tempo ladder's gates are the song's own time signature, never the detector's.** stem-bench Study 11b caught the detector's compound flag firing at a two-thirds-wrong pulse on a real recording (145 heard as 96.7, whose third is the true eighth), where it let the ladder call the declared 145 an agreement at ×1.5 and silenced the offer. The 3:2 rungs now open only when the song's time signature is compound, and the time signature joins the agreement at those rungs.
