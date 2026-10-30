@@ -17,6 +17,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **And the Uploads and Downloads menus**, the downloads, mixes, Dawn hand-off and default-mix save in a `SongDownloads` class: step 5, 354 lines off the page (2,868 left).
 - **And the comments**, the popover and the cards in a `SongComments` class, with the card, fields and delete button shared with the mix page and the Sessions page: step 6, 272 lines off the page (2,596 left).
 - **And the per-stem actions**, rename, tint, replace, MIDI upload, reorder and the version offer in a `StemActions` class with the `⋯` menu and the banner as components: step 7, 313 lines off the page (2,283 left).
+- **And the Docs panel's state and the mix uploads**, in `SongDocs` and `MixUploads` classes: step 8, 276 lines off the page. After eight steps the page is 2,007 lines, from 4,928 this morning, with no change for the user.
 
 ### Fixed
 

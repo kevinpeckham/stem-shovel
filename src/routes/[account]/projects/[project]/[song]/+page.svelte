@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
-	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "#lib/utils/docMonoPreference.js";
+	import {
+		DOC_HINTS,
+		DOC_KINDS,
+		DOC_LABELS,
+		DOC_VIEWS,
+		type PanelMode,
+		SongDocs,
+	} from "#lib/state/songDocs.svelte.js";
+	import { MixUploads } from "#lib/state/mixUploads.svelte.js";
 	import { SongChanges } from "#lib/state/songChanges.svelte.js";
 	import { SongCheck } from "#lib/state/songCheck.svelte.js";
 	import { SongSections } from "#lib/state/songSections.svelte.js";
@@ -25,7 +33,6 @@
 	import StemMenu from "#lib/components/StemMenu.svelte";
 	import StemVersionOffer from "#lib/components/StemVersionOffer.svelte";
 	import { StemActions } from "#lib/state/stemActions.svelte.js";
-	import { MAX_MIXES_PER_SONG, MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
 	import MixList from "#lib/components/MixList.svelte";
@@ -59,21 +66,18 @@
 	import type { StemState } from "#lib/audio/types.js";
 
 	import { DEMO_ACCEPT, DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
-	import { demoContentType } from "#lib/utils/demoContentType.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
-	import { STEM_ACCEPT, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
-	import { postJson, uploadMixFile } from "#lib/upload.js";
+	import { STEM_ACCEPT } from "#lib/constants/stemFormats.js";
 	import {
 		deleteStem,
 		removeDemoById,
 		saveChartDraft,
-		saveDoc,
 		saveSections,
 		shareSong,
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
-	import { onDestroy, onMount, tick, type ComponentProps, untrack } from "svelte";
+	import { onDestroy, onMount, tick } from "svelte";
 
 	let { data } = $props();
 
@@ -101,8 +105,6 @@
 
 	/** Demo recordings, uploaded from settings, the Demos view and the stem actions menu. */
 	const demos = new DemoUploads({ song: () => data.song, onuploaded: refreshAll });
-	/** The Chart tab's notation mode; the Uploads menu and the panel's ⋯ menu open its picker. */
-	let notationPanel = $state<SongNotationPanel | null>(null);
 	/** The Docs panel's Attachments tab; the Uploads menu and the panel's ⋯ menu open its picker. */
 	let filesPanel = $state<SongFilesPanel | null>(null);
 
@@ -156,7 +158,6 @@
 	});
 	// The mixes view (docs/mixes.md): the song's mixes, the chosen one from ?mix= (a notification's or a share's link).
 	let readyMixes = $derived(data.song.mixes.filter((m) => m.status === "ready" && m.url));
-	let mixList = $state<MixList | null>(null);
 	const mixPath = (id: string) =>
 		`/${data.account.slug}/projects/${data.song.project.slug}/${data.song.slug}/mixes/${id}`;
 	let mixCommentCounts = $derived(
@@ -165,77 +166,16 @@
 			new Map<string, number>(),
 		),
 	);
-	let mixJobs = $state<{ name: string; percent: number; error?: string; decoding?: boolean }[]>([]);
-	let mixBusy = $state(false);
-	let mixCtx: AudioContext | null = null;
-	/** Mixes picked in the panel or the Uploads menu: checked, uploaded one at a time (decoded here for the waveform), then the page refreshes on the newest. */
-	async function uploadMixes(picked: File[]) {
-		if (picked.length === 0 || mixBusy) return;
-		const unsupported = picked.filter((f) => !demoContentType(f.name));
-		const tooBig = picked.filter((f) => f.size > STEM_MAX_BYTES);
-		const room = Math.max(0, MAX_MIXES_PER_SONG - data.song.mixes.length);
-		if (unsupported.length) {
-			notify(
-				`Not a supported format (${MIX_FORMAT_LIST}): ${unsupported.map((f) => f.name).join(", ")}`,
-				{ kind: "error" },
-			);
-			return;
-		}
-		if (tooBig.length) {
-			notify(
-				`Over the ${formatBytes(STEM_MAX_BYTES)} limit: ${tooBig.map((f) => f.name).join(", ")}`,
-				{ kind: "error" },
-			);
-			return;
-		}
-		if (picked.length > room) {
-			notify(
-				`Only ${room} more ${room === 1 ? "mix" : "mixes"} fit on this song (${MAX_MIXES_PER_SONG} max).`,
-				{ kind: "error" },
-			);
-			return;
-		}
-		mixBusy = true;
-		mixJobs = picked.map((f) => ({ name: f.name, percent: 0 }));
-		mixCtx ??= new AudioContext();
-		let last: string | null = null;
-		for (const [i, file] of picked.entries()) {
-			try {
-				const { mixId } = await uploadMixFile(
-					file,
-					() =>
-						postJson<{
-							mixId: string;
-							version: number;
-							pathname: string;
-							access?: "public" | "private";
-						}>("/api/mixes", { songId: data.song.id, filename: file.name, sizeBytes: file.size }),
-					{
-						ctx: mixCtx,
-						onProgress: (percent) => (mixJobs[i].percent = percent),
-						onDecoding: () => (mixJobs[i].decoding = true),
-					},
-				);
-				last = mixId;
-			} catch (e) {
-				mixJobs[i].error = errorMessage(e);
-			}
-		}
-		mixBusy = false;
-		if (mixJobs.every((j) => !j.error)) mixJobs = [];
-		if (last) {
-			notify(picked.length === 1 ? "Mix uploaded" : `${picked.length} mixes uploaded`);
-			// The new mix's own page (docs/mixes.md, "Phase 2").
-			await goto(mixPath(last));
-		} else await refreshAll();
-	}
-	/** The Uploads menu's Upload Mix: the player on the mixes, then the picker. */
-	async function pickMix() {
-		if (playerMode === "minimised") togglePlayer();
-		showView("mixes");
-		await tick();
-		mixList?.pick();
-	}
+	/** Mixes uploaded from the Mixes view or the Uploads menu; the newest opens on its own page. */
+	const mixUploads = new MixUploads({
+		song: () => data.song,
+		onuploaded: refreshAll,
+		open: (id) => goto(mixPath(id)),
+		showMixes: () => {
+			if (playerMode === "minimised") togglePlayer();
+			showView("mixes");
+		},
+	});
 	/** An older link (?view=mixes&mix=<id>): the mix's own page now, else the Mixes view. */
 	function openMixFromUrl() {
 		const url = new URL(page.url.href);
@@ -302,15 +242,6 @@
 		if (view !== "stems") playerEngine?.pause();
 		if (view !== "demos") demoPanel?.pause();
 	}
-
-	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
-	// Lyrics first, the panel's default tab (Kevin, 2026-10-06).
-	const DOC_KINDS = ["lyrics", "chart", "notes"] as const;
-	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
-	// The Docs panel holds the documents; the comments, the chat and the attachments are panels of their own (Kevin).
-	const PANELS = [...DOC_KINDS] as const;
-	type Panel = (typeof PANELS)[number];
-	const PANEL_LABELS = { ...DOC_LABELS } as const;
 	/** The Comments panel (docs/mixes.md, "Phase 2" sibling): closed until the Comments row's button opens it, or a comment notification's link (?open=comments). */
 	let commentsOpen = $state(false);
 	/** The Attachments panel (docs/uploads-and-blob.md): closed until the toolbar's button opens it; the Uploads menu opens it to pick. */
@@ -402,58 +333,16 @@
 	let notationCount = $derived(
 		data.song.notation.filter((n) => n.status === "ready").length + notationPdfs.length,
 	);
-	let chartCount = $derived(notationCount || (data.docs.chart ? 1 : 0));
-	const tabLabel = (kind: Panel) => {
-		const count = kind === "chart" ? chartCount : 0;
-		return count ? `${PANEL_LABELS[kind]} (${count})` : PANEL_LABELS[kind];
-	};
-	/** Switch the right-hand panel, closing an open editor first. */
-	async function showPanel(kind: Panel) {
-		if (kind === panel) return;
-		if (docEditing) await docPanel?.close();
-		docEditing = false;
-		panel = kind;
-	}
-	let panel = $state<Panel>("lyrics");
-	let showing = $derived(panel);
-
-	/**
-	 * The Docs panel (chart, lyrics, notes, comments, PDFs): docked in its
-	 * column, popped out into a floating panel from lg, or minimized to the
-	 * action row's Docs button, which brings it back the way it was (Kevin,
-	 * as the Idea Recorder's panels). Remembered per browser.
-	 */
-	type DocsMode = "docked" | "floating" | "minimised";
-	let docsMode = $state<DocsMode>("docked");
-	let docsRestore: Exclude<DocsMode, "minimised"> = "docked";
-	const DOCS_MODE_KEY = "stemshovel.song.docs-mode";
-	async function setDocsMode(mode: DocsMode) {
-		if (mode === "minimised") {
-			if (docsMode !== "minimised") docsRestore = docsMode;
-			// The panel unmounts: an open editor flushes first.
-			if (docEditing) await docPanel?.close();
-			docEditing = false;
-		}
-		docsMode = mode;
-		try {
-			localStorage.setItem(DOCS_MODE_KEY, mode);
-		} catch {
-			// Private mode: the choice lasts for this page only.
-		}
-	}
-	function toggleDocs() {
-		void setDocsMode(docsMode === "minimised" ? docsRestore : "minimised");
-	}
 	/**
 	 * The player (the stems or the demos, with their tabs) the same way (Kevin):
 	 * docked, floating from lg, or minimized to the action row's Player button,
 	 * the panel kept mounted so decoded stems and playback survive; the button
 	 * lights while it plays minimized. Remembered per browser.
 	 */
-	let playerMode = $state<DocsMode>("docked");
-	let playerRestore: Exclude<DocsMode, "minimised"> = "docked";
+	let playerMode = $state<PanelMode>("docked");
+	let playerRestore: Exclude<PanelMode, "minimised"> = "docked";
 	const PLAYER_MODE_KEY = "stemshovel.song.player-mode";
-	function setPlayerMode(mode: DocsMode) {
+	function setPlayerMode(mode: PanelMode) {
 		if (mode === "minimised" && playerMode !== "minimised") playerRestore = playerMode;
 		playerMode = mode;
 		try {
@@ -471,36 +360,6 @@
 		await tick();
 		filesPanel?.pick();
 	}
-	/**
-	 * The Chart tab shows the chart's text, or the song's notation files
-	 * (MusicXML engraved in the browser) on a Text / Notation toggle (Kevin);
-	 * remembered per browser, notation first when there is no chart text but
-	 * there is notation.
-	 */
-	type ChartMode = "text" | "notation";
-	let chartChoice = $state<ChartMode | null>(null);
-	let chartMode = $derived<ChartMode>(
-		chartChoice ?? (!data.docs.chart && notationCount > 0 ? "notation" : "text"),
-	);
-	const CHART_MODE_KEY = "stemshovel.song.chart-mode";
-	async function setChartMode(mode: ChartMode) {
-		if (mode === chartMode) return;
-		if (docEditing) await docPanel?.close();
-		docEditing = false;
-		chartChoice = mode;
-		try {
-			localStorage.setItem(CHART_MODE_KEY, mode);
-		} catch {
-			// Private mode: the choice lasts for this page only.
-		}
-	}
-	let notationShown = $derived(panel === "chart" && chartMode === "notation");
-	/**
-	 * The Notes tab shows the project's notes, or the signed-in user's own
-	 * private note on the song (Kevin: a notepad of one's own), on a Project /
-	 * Mine toggle; remembered per browser. Signed out there is only the
-	 * project's.
-	 */
 	/** The history panel's subject: a document (the project's or the user's own note) or a comment (docs/data-model.md). */
 	let history = $state<
 		| { kind: "doc"; songId: string; doc: SongDocSaveKind; label: string; current?: string }
@@ -516,32 +375,6 @@
 		}
 		return false;
 	});
-	let notesChoice = $state(false);
-	/** Signed in, a note of one's own exists to show, empty until the first save. */
-	let canHaveNote = $derived(!!data.user);
-	let myNote = $derived(data.myNote ?? { markdown: "", html: "", version: 0 });
-	let notesMine = $derived(panel === "notes" && notesChoice && canHaveNote);
-	const NOTES_MINE_KEY = "stemshovel.song.notes-mine";
-	async function setNotesMine(on: boolean) {
-		if (on === notesChoice) return;
-		if (docEditing) await docPanel?.close();
-		docEditing = false;
-		notesChoice = on;
-		try {
-			localStorage.setItem(NOTES_MINE_KEY, on ? "1" : "0");
-		} catch {
-			// Private mode: the choice lasts for this page only.
-		}
-	}
-	/** The notation picker, from the Uploads menu: the panel back, the Chart tab in notation mode, then the picker. */
-	async function pickNotation() {
-		if (docsMode === "minimised") await setDocsMode(docsRestore);
-		await showPanel("chart");
-		await setChartMode("notation");
-		await tick();
-		notationPanel?.pick();
-	}
-
 	// Comments: who may do what, and the popover form (one popover, create or edit).
 	const comments = new SongComments({
 		user: () => data.user,
@@ -592,132 +425,15 @@
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
 		if (demoMenuAt && !(e.target as HTMLElement).closest("[data-demo-context]")) demoMenuAt = null;
 	}
-	let doc = $derived(showing ?? "lyrics");
-	// In-panel editing (SongDocPanel): whether the shown document is open for editing.
-	// The panel autosaves; closing goes through its close(), which flushes first.
-	let docEditing = $state(false);
-	let docPanel = $state<SongDocPanel | null>(null);
-	/** Monospace or regular text per document kind, this browser's choice (docMonoPreference). */
-	let docMono = $state({ ...DEFAULT_DOC_MONO });
 	onMount(() => {
-		docMono = loadDocMono();
+		docs.load();
 		try {
-			const mode = localStorage.getItem(DOCS_MODE_KEY);
-			if (mode === "docked" || mode === "floating" || mode === "minimised") docsMode = mode;
 			const pm = localStorage.getItem(PLAYER_MODE_KEY);
 			if (pm === "docked" || pm === "floating" || pm === "minimised") playerMode = pm;
-			const cm = localStorage.getItem(CHART_MODE_KEY);
-			if (cm === "text" || cm === "notation") chartChoice = cm;
-			notesChoice = localStorage.getItem(NOTES_MINE_KEY) === "1";
 		} catch {
 			// Private mode: docked.
 		}
 	});
-	function toggleDocMono(kind: keyof typeof docMono) {
-		docMono = { ...docMono, [kind]: !docMono[kind] };
-		saveDocMono(docMono);
-	}
-	/** The editor pane while editing in the panel, chosen in that menu. */
-	let docView = $state<"rendered" | "markdown">("rendered");
-	/** A document save in flight (the panel saves through the shared remote form). */
-	const docSaving = $derived(!!saveDoc.pending);
-	const DOC_VIEWS = [
-		{ id: "rendered", name: "Rich Text" },
-		{ id: "markdown", name: "Markdown" },
-	] as const;
-	/** The Docs panel's ⋯ menu: monospace for a document, the chart's AI draft, the PDFs' upload; a placeholder when empty, so the toolbar never shifts. (The editor's pane is the toggle on the panel.) */
-	type MenuItems = NonNullable<ComponentProps<typeof ContextMenu>["items"]>;
-	let docsMenuItems = $derived.by((): MenuItems => {
-		const nothing: MenuItems = [
-			{ id: "nothing", kind: "notice", notice: "Nothing to do here yet" },
-		];
-		if (notationShown)
-			return data.canEdit
-				? [
-						{
-							id: "upload-notation",
-							label: "Upload Notation",
-							iconClass: "i-ph-music-notes-simple",
-							title: "MusicXML or PDF: one or more files",
-							action: () => notationPanel?.pick(),
-						},
-					]
-				: nothing;
-		const items: MenuItems = [
-			{
-				id: "mono",
-				label: "Monospace",
-				iconClass: docMono[doc] ? "i-ph-check" : "i-ph-check invisible",
-				title: "Fixed-width text, so chord grids line up",
-				action: () => toggleDocMono(doc),
-			},
-			{
-				id: "history",
-				label: "History",
-				iconClass: "i-ph-clock-counter-clockwise",
-				title: "Earlier versions of this text, to view or restore",
-				action: () => {
-					history = {
-						kind: "doc",
-						songId: data.song.id,
-						doc: notesMine ? "mynotes" : doc,
-						label: notesMine ? "your notes" : `the ${doc}`,
-						// The text as saved now, for "Changes" on a version (DocHistoryPanel.svelte).
-						current: notesMine ? myNote.markdown : DOC_TEXT[doc],
-					};
-				},
-			},
-		];
-		if (panel === "chart" && data.aiAvailable) {
-			items.push({ id: "ai", kind: "divider" });
-			if (chordDraft.draftBusy || chordDraft.chordBusy) {
-				items.push({
-					id: "busy",
-					kind: "notice",
-					notice: chordDraft.draftBusy ? "Drafting…" : String(chordDraft.chordBusy),
-				});
-				items.push({
-					id: "cancel",
-					label: "Cancel",
-					iconClass: "i-ph-x",
-					action: () => chordDraft.cancelDraft(),
-				});
-			} else
-				items.push({
-					id: "draft",
-					label: "Draft chart with AI",
-					iconClass: "i-ph-sparkle",
-					disabled: !playerEngine || playerEngine.status !== "ready" || !posCtx.grid,
-					title: !posCtx.grid
-						? "Needs a tempo and a time signature first (song settings)"
-						: playerEngine?.status !== "ready"
-							? "Available once every stem has decoded"
-							: "Transcribe the stems and have the AI draft sections, progressions and a chart",
-					action: () => chordDraft.draftFromPanel(),
-				});
-		}
-		return items;
-	});
-	const DOC_HINTS = {
-		chart:
-			"Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept.",
-		lyrics:
-			"Lyrics. One line per lyric line; a blank line starts a new section, and a heading names it (Verse, Chorus).",
-		notes: "Notes. Anything about the song — ideas, references, production to-dos, who plays what.",
-	} as const;
-	let DOC_TEXT = $derived({
-		chart: data.song.chartMarkdown,
-		lyrics: data.song.lyricsMarkdown,
-		notes: data.song.notesMarkdown,
-	});
-	let DOC_VERSION = $derived({
-		chart: data.song.chartVersion,
-		lyrics: data.song.lyricsVersion,
-		notes: data.song.notesVersion,
-	});
-	// Start on the first document with content.
-	panel = untrack(() => DOC_KINDS.find((k) => data.docs[k]) ?? "lyrics");
-
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
 	let uploadJobs = $state<UploadJob[]>([]);
 	/** Whichever uploader is on the page (the panel's or the menu's; they share the jobs), for "Retry failed". */
@@ -780,10 +496,7 @@
 	async function reviewRead() {
 		const file = notationPdfs[0];
 		if (!file) return;
-		panel = "chart";
-		chartChoice = "notation";
-		await tick();
-		void notationPanel?.showRead(file.id);
+		await docs.showRead(file.id);
 	}
 
 	// The MIDI badge toggles a piano roll in place of the row's waveform; files
@@ -848,6 +561,20 @@
 		engine: () => playerEngine,
 		grid: () => posCtx.grid,
 		aiAvailable: () => data.aiAvailable,
+	});
+	/** The Docs panel: the document shown, its editor, the Chart's Text / Notation, the Notes' Mine, the panel's mode and ⋯ menu. */
+	const docs = new SongDocs({
+		song: () => data.song,
+		docs: () => data.docs,
+		myNote: () => data.myNote,
+		signedIn: () => !!data.user,
+		canEdit: () => data.canEdit,
+		aiAvailable: () => data.aiAvailable,
+		notationCount: () => notationCount,
+		chordDraft: () => chordDraft,
+		engineStatus: () => playerEngine?.status ?? null,
+		hasGrid: () => !!posCtx.grid,
+		onhistory: (target) => (history = target),
 	});
 	/** Scan stems, the uploader's detection and the AI's song check (the Tempo & key tab). */
 	const check = new SongCheck({
@@ -996,14 +723,14 @@
 					<span class="block i-ph-waveform" aria-hidden="true"></span>
 				</button>
 				<button
-					class="button button-sm {docsMode === 'minimised'
+					class="button button-sm {docs.mode === 'minimised'
 						? 'bg-blue-300/5 border-current/40 hover-border-accent'
 						: 'bg-accent text-oxford border-accent opacity-100'}"
 					type="button"
-					aria-pressed={docsMode !== "minimised"}
-					title={docsMode === "minimised" ? "Show the docs" : "Minimise the docs"}
-					aria-label={docsMode === "minimised" ? "Show the docs" : "Minimise the docs"}
-					onclick={toggleDocs}
+					aria-pressed={docs.mode !== "minimised"}
+					title={docs.mode === "minimised" ? "Show the docs" : "Minimise the docs"}
+					aria-label={docs.mode === "minimised" ? "Show the docs" : "Minimise the docs"}
+					onclick={() => docs.toggle()}
 				>
 					<span class="block i-ph-files" aria-hidden="true"></span>
 				</button>
@@ -1152,7 +879,7 @@
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
 	<section
-		class="grid grid-cols-1 place-content-start gap-y-5 {docsMode === 'docked' &&
+		class="grid grid-cols-1 place-content-start gap-y-5 {docs.mode === 'docked' &&
 		playerMode === 'docked'
 			? 'min-h-560px'
 			: 'xl:col-span-2'}"
@@ -1290,14 +1017,14 @@
 				<!-- The mixes (docs/mixes.md): a list; each opens on its own page to listen, comment and download. -->
 				<div>
 					<MixList
-						bind:this={mixList}
+						bind:this={mixUploads.list}
 						mixes={readyMixes}
 						commentCounts={mixCommentCounts}
 						hrefOf={mixPath}
 						minHeight={Math.max(560, stemBoxHeight)}
 						canEdit={data.canEdit}
-						jobs={mixJobs}
-						onfiles={(files) => void uploadMixes(files)}
+						jobs={mixUploads.jobs}
+						onfiles={(files) => void mixUploads.upload(files)}
 					/>
 				</div>
 			{:else if data.manifest.stems.length > 0}
@@ -1401,16 +1128,16 @@
 			engine={playerEngine}
 			{ready}
 			{readyDemos}
-			{mixBusy}
+			mixBusy={mixUploads.busy}
 			{mixDirty}
 			{fadersDirty}
 			bind:jobs={uploadJobs}
 			bind:notice={uploadNotice}
 			bind:uploader
 			onuploaded={stemActions.offer}
-			onpickmix={() => void pickMix()}
+			onpickmix={() => void mixUploads.pick()}
 			onpickfiles={() => void pickFiles()}
-			onpicknotation={() => void pickNotation()}
+			onpicknotation={() => void docs.pickNotation()}
 			onshowdemos={() => showView("demos")}
 			onresetmix={() => player?.resetMix()}
 		/>
@@ -1503,24 +1230,24 @@
 		{/if}
 	</section>
 
-	<!-- 3. the Docs panel: chart, lyrics, notes, comments and PDFs (Kevin). Docked in this column, floating from lg, or minimized to the action row's Docs button (docsMode); its tabs and menus in the panel's header. Away from the column the player takes both. -->
+	<!-- 3. the Docs panel: chart, lyrics, notes, comments and PDFs (Kevin). Docked in this column, floating from lg, or minimized to the action row's Docs button (docs.mode); its tabs and menus in the panel's header. Away from the column the player takes both. -->
 	<section
-		class="{docsMode === 'docked'
+		class="{docs.mode === 'docked'
 			? `h-full min-h-560px ${playerMode === 'docked' ? '' : 'xl:col-span-2'}`
-			: docsMode === 'floating'
+			: docs.mode === 'floating'
 				? 'xl:col-span-2 xl:h-0 xl:min-h-0'
 				: 'hidden'} max-w-full"
 		aria-label="Chart, lyrics, notes, comments and PDFs"
 	>
 		<FloatingPanel
-			open={docsMode !== "minimised"}
-			floating={docsMode === "floating"}
+			open={docs.mode !== "minimised"}
+			floating={docs.mode === "floating"}
 			title="Docs"
 			storageKey="stemshovel.song.docs-panel"
 			width={640}
 			height={720}
 			extraClass="h-full"
-			onminimise={() => void setDocsMode("minimised")}
+			onminimise={() => void docs.setMode("minimised")}
 		>
 			{#snippet controls()}
 				<!-- A dropdown on a phone, the segmented control from sm up. -->
@@ -1528,13 +1255,13 @@
 					ariaLabel="Document"
 					buttonBaseClasses="button button-xs sm:hidden"
 					iconClass="i-ph-caret-down"
-					label={tabLabel(panel)}
+					label={docs.tabLabel(docs.panel)}
 					position="bottom left"
-					items={PANELS.map((kind) => ({
+					items={DOC_KINDS.map((kind) => ({
 						id: kind,
-						label: tabLabel(kind),
-						iconClass: panel === kind ? "i-ph-check" : "i-ph-check invisible",
-						action: () => showPanel(kind),
+						label: docs.tabLabel(kind),
+						iconClass: docs.panel === kind ? "i-ph-check" : "i-ph-check invisible",
+						action: () => docs.show(kind),
 					}))}
 				/>
 				<div
@@ -1542,95 +1269,95 @@
 					role="tablist"
 					aria-label="Document"
 				>
-					{#each PANELS as kind, index (kind)}
+					{#each DOC_KINDS as kind, index (kind)}
 						<button
 							type="button"
 							role="tab"
-							aria-selected={panel === kind}
-							class="{panel === kind
+							aria-selected={docs.panel === kind}
+							class="{docs.panel === kind
 								? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
 								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} inline-flex items-center min-h-7 {index ===
 							0
 								? 'rounded-r-none border-r-none'
-								: index === PANELS.length - 1
+								: index === DOC_KINDS.length - 1
 									? 'rounded-l-none'
 									: 'rounded-none border-r-none'}"
-							onclick={() => showPanel(kind)}>{tabLabel(kind)}</button
+							onclick={() => docs.show(kind)}>{docs.tabLabel(kind)}</button
 						>
 					{/each}
 				</div>
-				<div class="flex items-stretch gap-2 {data.canEdit || notesMine ? '' : 'hidden'}">
-					{#if notationShown}
+				<div class="flex items-stretch gap-2 {data.canEdit || docs.notesMine ? '' : 'hidden'}">
+					{#if docs.notationShown}
 						<button
 							class="button button-xs flex items-center"
 							type="button"
 							title="Upload notation: MusicXML files"
 							aria-label="Upload notation"
-							onclick={() => notationPanel?.pick()}
+							onclick={() => docs.notation?.pick()}
 						>
 							<span class="i-ph-plus"></span>
 						</button>
 					{:else}
 						<button
-							class="button button-xs flex items-center {docEditing
+							class="button button-xs flex items-center {docs.editing
 								? 'bg-blue-300 text-oxford border-blue-300'
 								: ''}"
 							type="button"
-							title={docEditing
-								? `Done editing ${notesMine ? "your notes" : `the ${doc}`}`
-								: `Edit ${notesMine ? "your notes" : `the ${doc}`} here`}
-							aria-label={docEditing
-								? `Done editing ${notesMine ? "your notes" : `the ${doc}`}`
-								: `Edit ${notesMine ? "your notes" : `the ${doc}`}`}
-							aria-pressed={docEditing}
+							title={docs.editing
+								? `Done editing ${docs.notesMine ? "your notes" : `the ${docs.doc}`}`
+								: `Edit ${docs.notesMine ? "your notes" : `the ${docs.doc}`} here`}
+							aria-label={docs.editing
+								? `Done editing ${docs.notesMine ? "your notes" : `the ${docs.doc}`}`
+								: `Edit ${docs.notesMine ? "your notes" : `the ${docs.doc}`}`}
+							aria-pressed={docs.editing}
 							onclick={async () => {
-								if (docEditing) await docPanel?.close();
-								else docEditing = true;
+								if (docs.editing) await docs.editor?.close();
+								else docs.editing = true;
 							}}
 						>
 							<span
-								class={docEditing
-									? docSaving
+								class={docs.editing
+									? docs.saving
 										? "i-ph-circle-notch animate-spin"
 										: "i-ph-check"
-									: (notesMine ? myNote.html : data.docs[doc])
+									: (docs.notesMine ? docs.myNote.html : data.docs[docs.doc])
 										? "i-ph-pencil"
 										: "i-ph-plus"}
 							></span>
 						</button>
 					{/if}
 					<ContextMenu
-						ariaLabel="{PANEL_LABELS[panel]} menu"
+						ariaLabel="{DOC_LABELS[docs.panel]} menu"
 						title="More"
 						buttonBaseClasses="button button-xs"
 						iconClass={chordDraft.draftBusy || chordDraft.chordBusy
 							? "i-ph-circle-notch animate-spin"
 							: "i-ph-dots-three-outline-vertical-fill"}
 						position="bottom left"
-						items={docsMenuItems}
+						items={docs.menuItems}
 					/>
 				</div>
 				<button
 					class="button button-xs hidden lg-inline-flex"
 					type="button"
-					title={docsMode === "floating"
+					title={docs.mode === "floating"
 						? "Put the docs back in their column"
 						: "Pop the docs out into a panel"}
-					aria-label={docsMode === "floating" ? "Dock the docs" : "Pop out the docs"}
-					onclick={() => void setDocsMode(docsMode === "floating" ? "docked" : "floating")}
+					aria-label={docs.mode === "floating" ? "Dock the docs" : "Pop out the docs"}
+					onclick={() => void docs.setMode(docs.mode === "floating" ? "docked" : "floating")}
 				>
 					<span
-						class={docsMode === "floating" ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+						class={docs.mode === "floating" ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
 						aria-hidden="true"
 					></span>
 				</button>
 			{/snippet}
-			{#if panel === "chart" || (panel === "notes" && canHaveNote) || docEditing}
+			{#if docs.panel === "chart" || (docs.panel === "notes" && docs.canHaveNote) || docs.editing}
 				<!-- Stuck to the panel's top right: the editor's pane while a document is edited, Text / Notation on the Chart tab, Project / Mine on the Notes tab (Kevin). -->
 				<div
 					class="sticky top-0 z-10 flex items-start justify-end gap-2 h-0 overflow-visible pointer-events-none"
 				>
-					{#if docEditing && !notationShown}
+					{#if docs.editing && !docs.notationShown}
 						<div
 							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
 							role="radiogroup"
@@ -1640,19 +1367,19 @@
 								<button
 									type="button"
 									role="radio"
-									aria-checked={docView === v.id}
-									class="{docView === v.id
+									aria-checked={docs.view === v.id}
+									class="{docs.view === v.id
 										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
 										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
 									0
 										? 'rounded-r-none border-r-none'
 										: 'rounded-l-none'}"
-									onclick={() => (docView = v.id)}>{v.name}</button
+									onclick={() => (docs.view = v.id)}>{v.name}</button
 								>
 							{/each}
 						</div>
 					{/if}
-					{#if panel === "notes" && canHaveNote}
+					{#if docs.panel === "notes" && docs.canHaveNote}
 						<div
 							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
 							role="radiogroup"
@@ -1662,22 +1389,22 @@
 								<button
 									type="button"
 									role="radio"
-									aria-checked={notesChoice === m.id}
+									aria-checked={docs.notesChoice === m.id}
 									title={m.id
 										? "A private note of your own on this song"
 										: "The notes everyone on the project sees"}
-									class="{notesChoice === m.id
+									class="{docs.notesChoice === m.id
 										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
 										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
 									0
 										? 'rounded-r-none border-r-none'
 										: 'rounded-l-none'}"
-									onclick={() => void setNotesMine(m.id)}>{m.label}</button
+									onclick={() => void docs.setNotesMine(m.id)}>{m.label}</button
 								>
 							{/each}
 						</div>
 					{/if}
-					{#if panel === "chart"}
+					{#if docs.panel === "chart"}
 						<div
 							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
 							role="radiogroup"
@@ -1687,24 +1414,25 @@
 								<button
 									type="button"
 									role="radio"
-									aria-checked={chartMode === m.id}
-									class="{chartMode === m.id
+									aria-checked={docs.chartMode === m.id}
+									class="{docs.chartMode === m.id
 										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
 										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
 									0
 										? 'rounded-r-none border-r-none'
 										: 'rounded-l-none'}"
-									onclick={() => void setChartMode(m.id as ChartMode)}>{m.label}</button
+									onclick={() => void docs.setChartMode(m.id as "text" | "notation")}
+									>{m.label}</button
 								>
 							{/each}
 						</div>
 					{/if}
 				</div>
 			{/if}
-			{#if notationShown}
+			{#if docs.notationShown}
 				<!-- The notation files (docs/uploads-and-blob.md, "Notation"): MusicXML engraved in the browser. -->
 				<SongNotationPanel
-					bind:this={notationPanel}
+					bind:this={docs.notation}
 					songId={data.song.id}
 					songTitle={data.song.title}
 					notation={data.song.notation}
@@ -1713,40 +1441,40 @@
 					aiAvailable={data.aiAvailable && !data.song.noAi && !data.song.project.noAi}
 					oncheck={() => void check.askAiWithScore()}
 				/>
-			{:else if notesMine}
+			{:else if docs.notesMine}
 				<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->
-				{#key `mynotes:${myNote.version}`}
+				{#key `mynotes:${docs.myNote.version}`}
 					<SongDocPanel
-						bind:this={docPanel}
+						bind:this={docs.editor}
 						songId={data.song.id}
 						kind="mynotes"
 						label="My notes"
 						hint="Your own notepad for this song. Nobody else sees it."
-						markdown={myNote.markdown}
-						html={myNote.html}
-						version={myNote.version}
+						markdown={docs.myNote.markdown}
+						html={docs.myNote.html}
+						version={docs.myNote.version}
 						canEdit={true}
-						bind:editing={docEditing}
-						view={docView}
-						mono={docMono.notes}
+						bind:editing={docs.editing}
+						view={docs.view}
+						mono={docs.mono.notes}
 					/>
 				{/key}
 			{:else}
-				{#key doc}
+				{#key docs.doc}
 					<SongDocPanel
-						bind:this={docPanel}
+						bind:this={docs.editor}
 						songId={data.song.id}
-						kind={doc}
-						label={DOC_LABELS[doc]}
-						hint={DOC_HINTS[doc]}
-						markdown={DOC_TEXT[doc]}
-						html={data.docs[doc]}
-						version={DOC_VERSION[doc]}
+						kind={docs.doc}
+						label={DOC_LABELS[docs.doc]}
+						hint={DOC_HINTS[docs.doc]}
+						markdown={docs.text}
+						html={data.docs[docs.doc]}
+						version={docs.version}
 						canEdit={data.canEdit}
-						bind:editing={docEditing}
-						view={docView}
-						mono={docMono[doc]}
-						above={panel === "chart" ? draftInPanel : undefined}
+						bind:editing={docs.editing}
+						view={docs.view}
+						mono={docs.mono[docs.doc]}
+						above={docs.panel === "chart" ? draftInPanel : undefined}
 					/>
 				{/key}
 			{/if}
@@ -1891,11 +1619,7 @@
 				scores={data.song.notation}
 				canEdit={data.canEdit}
 				onnotation={async (files) => {
-					if (docsMode === "minimised") await setDocsMode(docsRestore);
-					await showPanel("chart");
-					await setChartMode("notation");
-					await tick();
-					await notationPanel?.upload(files);
+					await docs.uploadNotation(files);
 				}}
 			/>
 		</FloatingPanel>

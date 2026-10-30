@@ -8,7 +8,7 @@ popovers and menus behind them. On 2026-10-30 it was 4,928 lines (the
 script to line 2037, 86 `$state` variables, 74 functions), and Fallow
 scored its template at cyclomatic 320 the day a parser-hiding expression
 was replaced (FINDINGS.md). Kevin asked for it to be broken up with more
-components and shared utilities; this is the plan and the record.
+components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page is 2,007 lines (script 630, 28 `$state`), down from 4,928.
 
 ## The principle: extract by state ownership
 
@@ -133,7 +133,21 @@ step so it shrinks with the page and still fails on anything new.
      the one-line `stemMenu` snippet the player takes.
      `components/StemVersionOffer.svelte`: the banner, `link-dim` →
      `link` on Keep.
-8. Then the page is the layout, the floating panels and the data.
+8. **The Docs panel state and the mix uploads** (2026-10-30, done):
+   the page lost 276 lines.
+   - `state/songDocs.svelte.ts`, `SongDocs`: the document shown (first
+     with content, lyrics first), the docked/floating/minimized mode,
+     the editor and notation instances bound onto it, `editing`, `view`,
+     `mono` with the remembered preference, the chart's text/notation
+     mode, the Notes tab's Project/Mine choice, the ⋯ `menuItems`, the
+     notation picker and upload, `showRead`; `DOC_KINDS`, `DOC_LABELS`,
+     `DOC_HINTS`, `DOC_VIEWS` exported from it. The player's view switch
+     (`showView`), the history panel and the URL openers stay on the
+     page: they cross panels.
+   - `state/mixUploads.svelte.ts`, `MixUploads`: `jobs`, `busy`, the
+     `MixList` instance, `upload(picked)` one at a time with the format,
+     size and room refusals, `pick()` through the page's `showMixes`.
+9. Then the page is the layout, the floating panels and the data.
 
 ## Effect on the client, as a pilot
 
