@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.201.1] - 2026-10-30
+
 ### Fixed
 
 - **Keep on this device shows on the song page.** The link shipped in 0.201.0 only in the player's own status box, which the song page hides in favor of its header line; it now sits in that line, after the decoded size.
