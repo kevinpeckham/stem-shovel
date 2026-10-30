@@ -106,9 +106,19 @@ research program. That is the raw material of a small open standard:
   the spec and a live "paste a chart, see the bars" validator.
 - **License**: spec CC-BY, reference code MIT, following ChordPro's
   posture.
-- **Name**: Kevin's call; working options that search clean enough —
-  "bargrid", "chartline", "barchart notation" (the bench offers no
-  strong opinion and notes the name is the only blocking decision).
+- **Name: DECIDED 2026-10-30 — "barmark"** (bar + markdown). Kevin is
+  purchasing barmark.dev (docs/tooling) and barmark.music (alias) and
+  provisioning the repository; npm "barmark" verified free at
+  decision time. File extension: `.chart.md` (a double extension — a
+  barmark file IS a markdown file, so every markdown toolchain keeps
+  working). Prior art found during naming and to be addressed by the
+  spec site: **ChartDown** (github.com/ChartDown/parser, active,
+  spec 0.10) — a Nashville Number System plain-text chart notation
+  with play-order expansion. Differentiation: barmark is absolute
+  chord-symbol bar grids with Logic-style qualities,
+  machine-validated against real recordings, with a shipping
+  production parser/aligner behind it; a barmark↔Nashville converter
+  is a natural future package, not a rivalry.
 - **Relationship to the app**: the User Docs page (deliverable 1)
   describes stem-shovel's dialect; if the standard happens, the page
   links to it and the dialect becomes "the standard, plus headings".
