@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.201.0] - 2026-10-30
+
 ### Added
 
 - **Keep a song on this device.** The stem player's status line offers to store the stems' playback files in the browser's own file store (OPFS, as Dawn keeps its sources), so a kept song opens without downloading its audio again and plays through a weak connection once the page has loaded; the line shows the size, offers to remove the copy, and offers an update when a stem was replaced. Kept songs are a cache: the browser may clear them, and the song downloads again.
