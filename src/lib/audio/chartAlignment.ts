@@ -1,3 +1,8 @@
+import {
+	ALIGNMENT_SOUND_FLOOR,
+	ALIGNMENT_SOUND_WINDOW_SEC,
+} from "#lib/constants/chartAlignment.js";
+import { chartBarSeconds } from "#lib/utils/chartBarSeconds.js";
 import type { ChartBar } from "#lib/utils/chartBars.js";
 import { chordPitchClasses } from "#lib/utils/chordPitchClasses.js";
 import { fft } from "./analysis.js";
@@ -30,6 +35,10 @@ export interface Alignment {
 	localCost: number[];
 	/** Seconds per chroma frame. */
 	hopSec: number;
+	/** Seconds in the recording where the first audible window starts (`audibleSpan`); 0 when nothing is. */
+	firstSound: number;
+	/** Seconds in the recording where the last audible window ends; the recording's length when nothing is. */
+	lastSound: number;
 }
 
 type PadBar = Pick<ChartBar, "chords" | "bpm" | "meter">;
@@ -42,20 +51,6 @@ const HIGH_HZ = 2200;
 /** The warping's step table is a byte a cell: past this (a song of about 17 minutes) it is not worth the memory. */
 const MAX_CELLS = 150_000_000;
 const NO_CHORD = /^n\.?c\.?$/i;
-
-/**
- * Seconds in a bar: the numerator's beats at the bpm, where a beat is the
- * meter's bottom note, as the song's changes count it everywhere
- * (`audio/measures.ts`: 6/8 at 120 is 120 eighths a minute, three seconds
- * a bar). The bench's `barSeconds` counted a compound meter's dotted beat
- * instead; the chart's defaults come from the song's changes, so the
- * app's rule holds here, or a 6/8 song would render three times too
- * short and fall outside the warp's slopes.
- */
-function barSeconds(meter: string, bpm: number): number {
-	const top = Number(/^\s*(\d+)\s*\//.exec(meter)?.[1] ?? 4) || 4;
-	return (top * 60) / bpm;
-}
 
 const midiHz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
@@ -110,7 +105,7 @@ export function renderChartPads(
 	bars: PadBar[],
 	sampleRate: number,
 ): { samples: Float32Array; barStarts: number[] } {
-	const lengths = bars.map((b) => barSeconds(b.meter, b.bpm));
+	const lengths = bars.map((b) => chartBarSeconds(b.meter, b.bpm));
 	const samples = new Float32Array(Math.ceil(lengths.reduce((a, b) => a + b, 0) * sampleRate));
 	const barStarts: number[] = [];
 	let at = 0;
@@ -340,8 +335,41 @@ function barCosts(starts: number[], frameCost: Float32Array, hopSec: number): nu
 }
 
 /**
+ * Where sound starts and ends in a recording (stem-bench Study 14's
+ * FIRST-ONSET and LAST-SOUND anchors): the RMS of each
+ * `ALIGNMENT_SOUND_WINDOW_SEC` window, and the first window's start and
+ * the last window's end whose RMS reaches `ALIGNMENT_SOUND_FLOOR` of the
+ * loudest one's. Accurate to a window. A silent recording gives 0 and its
+ * length.
+ */
+export function audibleSpan(
+	samples: Float32Array,
+	sampleRate: number,
+): { first: number; last: number } {
+	const size = Math.max(1, Math.round(ALIGNMENT_SOUND_WINDOW_SEC * sampleRate));
+	const rms: number[] = [];
+	for (let from = 0; from < samples.length; from += size) {
+		const to = Math.min(samples.length, from + size);
+		let sum = 0;
+		for (let i = from; i < to; i++) sum += samples[i]! * samples[i]!;
+		rms.push(Math.sqrt(sum / (to - from)));
+	}
+	const peak = rms.reduce((a, b) => Math.max(a, b), 0);
+	const length = samples.length / sampleRate;
+	if (peak <= 0) return { first: 0, last: length };
+	const floor = ALIGNMENT_SOUND_FLOOR * peak;
+	const first = rms.findIndex((v) => v >= floor);
+	const last = rms.findLastIndex((v) => v >= floor);
+	return {
+		first: (first * size) / sampleRate,
+		last: Math.min(length, ((last + 1) * size) / sampleRate),
+	};
+}
+
+/**
  * The chart's bars placed in the recording (mono, at `sampleRate`), with
- * the path's cost, the tritone control's and each bar's local cost.
+ * the path's cost, the tritone control's, each bar's local cost and where
+ * the recording's sound starts and ends.
  * Throws with a reason a page can show when there is nothing to align or
  * the chart cannot fit (more than twice the recording's length, or half).
  */
@@ -358,11 +386,14 @@ export function alignChart(bars: PadBar[], recording: Float32Array, sampleRate: 
 	if (!Number.isFinite(right.normalizedCost))
 		throw new Error("The chart runs more than twice as long as the recording; check its tempo");
 	const control = dtwAlign(tritone(ref.frames), rec.frames, ref.hopSec, { subsequence: true });
+	const sound = audibleSpan(recording, sampleRate);
 	return {
 		barStarts: barStarts.map(right.mapSeconds),
 		cost: right.normalizedCost,
 		controlCost: control.normalizedCost,
 		localCost: barCosts(barStarts, right.frameCost, ref.hopSec),
 		hopSec: ref.hopSec,
+		firstSound: sound.first,
+		lastSound: sound.last,
 	};
 }

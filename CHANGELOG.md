@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The chart is recognized as its own recording.** The alignment's same-piece test was set from synthetic renders and, on real recordings, called the band's own correct charts a mismatch and marked every placement approximate (stem-bench Study 14). It is set from the real recordings now, and when the chart fits, the first section starts at the recording's first sound and the last at its last sound less the chart's length for it, which repairs the intro and outro misses the bench measured.
+- **Keep on this device keeps the song.** The link fetched nothing and then reported that the device would not keep every stem: the playback files' real names carry a dot, which the cache's key rule refused. The rule now keys every rendition, and the offer says about how much the song will take and, through an info button, what keeping does and does not do.
+
 ## [0.201.1] - 2026-10-30
 
 ### Fixed

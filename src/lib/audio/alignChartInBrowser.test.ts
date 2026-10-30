@@ -17,6 +17,8 @@ const alignment: Alignment = {
 	controlCost: 0.5,
 	localCost: [0.1],
 	hopSec: 0.1,
+	firstSound: 0,
+	lastSound: 2,
 };
 const bars = [{ measure: 1, chords: ["D"], bpm: 120, meter: "4/4", key: null, section: null }];
 

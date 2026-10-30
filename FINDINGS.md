@@ -276,6 +276,36 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   Safari also purges script-writable storage after seven days without a
   visit, which is why every copy is a cache and the UI says so.
 
+- **A threshold set on synthetic data is a guess until the real domain
+  is measured: the alignment's same-piece ratio** (2026-10-30, stem-bench
+  Study 14, `constants/chartAlignment.ts`). The tritone-control ratio
+  for a correct chart was 24–49 on synthetic renders, so 3 looked
+  conservative; on the two real recordings correct charts scored 2.04
+  and 2.53 and wrong charts 1.17 and 1.24. The separation holds on real
+  audio, just a factor of ~1.6 instead of an order of magnitude, and the
+  shipped 3 would have told the band their own chart "does not seem to
+  match" on every song. Caught the same day by the bench's validation
+  of the shipped port (Study 14, G2), before a user met it. Third
+  appearance of the home-field effect in this program (Studies 11b, 13,
+  14); the standing rule is that a constant gating real recordings is
+  provisional until the bench has measured it on real recordings, and
+  the code comment says which it is.
+
+- **A cache keyed by file name must be tested against a real file
+  name** (2026-10-30, "keep on this device", `utils/mediaCacheKey.ts`).
+  The key was the rendition's basename without its extension, matched
+  against `[\w-]`, and every test used an invented `stem-play-123.m4a`.
+  The real renditions are `<stemId>.play-<stamp>.m4a` (a DOT before
+  `play`, server/transcode.ts), so the key kept the dot, failed the
+  pattern, and `keepOnDevice` had no stem to fetch: it wrote nothing,
+  pruned nothing, found the song absent and reported "This device would
+  not keep every stem of the song; its storage may be full", a message
+  about the wrong cause. Kevin hit it on the release day; the OPFS check
+  that had passed used made-up keys too. Two lessons: a fixture for a
+  name-derived key is the real name copied from the network tab, and a
+  "nothing happened" path (an empty fetch queue) needs its own message,
+  not the budget's.
+
 - **Fallow's Svelte template parser can skip a whole page over one
   expression, and the page's complexity then surfaces as "introduced"
   the day the expression changes** (2026-10-30, the chord check on the

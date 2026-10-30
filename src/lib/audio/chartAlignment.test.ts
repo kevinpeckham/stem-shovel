@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vite-plus/test";
-import { alignChart, chromagram, dtwAlign, renderChartPads } from "./chartAlignment.js";
+import {
+	alignChart,
+	audibleSpan,
+	chromagram,
+	dtwAlign,
+	renderChartPads,
+} from "./chartAlignment.js";
 
 const RATE = 22050;
 const PROGRESSION = ["D", "A", "Bm", "G", "Em", "F#m", "C", "E7", "Dsus4", "Am", "Bb", "F"];
@@ -102,8 +108,34 @@ describe("alignChart", () => {
 		expect(alignment.controlCost).toBeGreaterThan(0.1);
 	});
 
+	test("the recording's first and last sound come with the alignment", () => {
+		expect(alignment.firstSound).toBeLessThanOrEqual(0.05);
+		expect(Math.abs(alignment.lastSound - truth.samples.length / RATE)).toBeLessThanOrEqual(0.05);
+	});
+
 	test("nothing to align, or a chart that cannot fit, is an error with a reason", () => {
 		expect(() => alignChart([], truth.samples, RATE)).toThrow("no bars");
 		expect(() => alignChart(barsAt(40), truth.samples, RATE)).toThrow("twice as long");
+	});
+});
+
+describe("audibleSpan", () => {
+	test("a silence-padded tone gives the tone's bounds within one window", () => {
+		const samples = new Float32Array(5 * RATE);
+		for (let i = 1.3 * RATE; i < 3.7 * RATE; i++)
+			samples[i] = 0.5 * Math.sin((2 * Math.PI * 220 * i) / RATE);
+		const { first, last } = audibleSpan(samples, RATE);
+		expect(Math.abs(first - 1.3)).toBeLessThanOrEqual(0.05);
+		expect(Math.abs(last - 3.7)).toBeLessThanOrEqual(0.05);
+	});
+
+	test("noise under the floor is not sound; silence gives 0 and the length", () => {
+		const samples = Float32Array.from({ length: 2 * RATE }, (_, i) => (i % 2 ? 0.001 : -0.001));
+		for (let i = 0.5 * RATE; i < RATE; i++)
+			samples[i] = 0.5 * Math.sin((2 * Math.PI * 220 * i) / RATE);
+		const span = audibleSpan(samples, RATE);
+		expect(Math.abs(span.first - 0.5)).toBeLessThanOrEqual(0.05);
+		expect(Math.abs(span.last - 1)).toBeLessThanOrEqual(0.05);
+		expect(audibleSpan(new Float32Array(RATE), RATE)).toEqual({ first: 0, last: 1 });
 	});
 });

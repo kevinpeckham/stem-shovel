@@ -772,12 +772,33 @@ and the song-check's key and tempo changes.
   each bar that begins one (the first snapped to 0 within a quarter
   second), a key or tempo change at each bar whose value differs from
   the bar before, `ratio = controlCost / cost` and `samePiece = ratio >=
-  ALIGNMENT_SAME_PIECE_RATIO` (constants/chartAlignment.ts, 3,
-  provisional: well under the bench's 8.6× floor for another song's
-  chart, awaiting its measurement of this transposed-control form). A
-  placement is hedged at the first and last sections, in a bar whose
-  local cost is over twice the median (the chart stopped matching there)
-  and everywhere when the chart is not this recording.
+  ALIGNMENT_SAME_PIECE_RATIO` (constants/chartAlignment.ts). The
+  constant is **1.6** since stem-bench Study 14 (2026-10-30): the first
+  value, 3, came from synthetic renders where correct charts score 24 to
+  49, but on the two real recordings the band's own correct charts
+  score 2.04 and 2.53 and another song's chart 1.17 and 1.24, so at 3
+  every correct chart read as "not this recording" and everything was
+  hedged (the home-field lesson, third appearance: measure on the
+  domain production sees). 1.6 is the real-domain midpoint, from two
+  songs of one band; the per-bar local-cost median separates further and
+  is the next refinement. A placement is hedged at the first and last
+  sections, in a bar whose local cost is over twice the median (the
+  chart stopped matching there) and everywhere when the chart is not
+  this recording.
+- **The edges, repaired when the chart is this recording** (Study 14's
+  arm D). The aligner also reports the recording's first and last
+  audible sound (`audibleSpan`: the RMS of 50 ms windows against
+  `ALIGNMENT_SOUND_FLOOR`, 2 % of the loudest window's, about 34 dB
+  under the peak). When `samePiece`, FIRST-ONSET puts a first section
+  that begins at the chart's first bar at the first sound (the bench:
+  7.15 s → 0.00 and 2.41 → 0.00 on the two real intros), and
+  LAST-SOUND puts the last section at the last sound minus the chart's
+  length for that section (`utils/chartBarSeconds.ts`, one copy for the
+  renderer and the rule; the bench: a 9.11 s outro miss → 0.03 s), never
+  within a bar of the section before. Both stay hedged, and both are
+  off when the chart is not this recording, because LAST-SOUND inherits
+  the chart's outro length (it would have worsened the song whose chart
+  guessed it wrong). Key and tempo changes are not moved by either.
 - **On the page.** "Place from chart" beside "Detect" on the Sections
   tab (`utils/sectionsFromPlacements.ts` turns the placements into the
   same answer shape Detect produces, with a note that names the hedges,
@@ -792,8 +813,10 @@ and the song-check's key and tempo changes.
 - **Not done.** MusicXML (its summary is the same form, but
   `scoreForAi` returns the file; a later pass can read it through the
   same parser), three or more endings, D.S. and coda jumps, a tempo map
-  from the alignment itself (the bench's candidates memo), and the
-  bench's measurement of the ratio threshold.
+  from the alignment itself (the bench's candidates memo), and a
+  local-cost check beside the ratio. Study 14 also confirmed the two
+  parsers reproduce the bench's transcriptions bar for bar (76/76,
+  86/86) and the summary form to its spec, so the bench can feed them.
 
 ## The detected chords checked (2026-10-30)
 
