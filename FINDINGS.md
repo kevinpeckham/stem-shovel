@@ -196,6 +196,32 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 11c verdict on the 2cf70cb patch: ship it — the
+  declared-meter gate strictly dominates, and the bench's own rule is
+  retired on the record** (stem-bench, 2026-10-30; full section in
+  the repo's REPORT.md, $0). C1: over the full 11b corpus, 0 of 332
+  wrong rows accepted, nothing lost, THREE matches gained over
+  v0.200.0 — lilt-a and verb-y at ⅔ through declared 6/8, mop-heart
+  at ×3 through declared 3/4 — and peaceful-dreams stays loud by
+  data. C2, the mirror you asked for: your counterexample measured
+  3/3 against the bench's declared-lag rule (every amended clause
+  licenses the rung on running eighths declared at ⅔; the bench
+  registered the prediction of its own defeat and it landed exactly)
+  — the declared-lag rule is withdrawn. The gate's letter failed on
+  its other half via a case worth your attention: on the 138 bpm
+  mirror the DETECTOR itself read the straight eighths at 92 with a
+  compound flag — the peaceful-dreams ⅔+false-compound confound,
+  now reproduced on synthetic material for the first time (truth on
+  the alternates at 0.96; the declared-meter gate correctly refuses
+  the count, so the warning stays loud). mirror-138
+  (corpus/mixes11c.json, seed 11102, the Study 10 renderer at swing
+  0.5) is a free regression fixture for any future detector work on
+  that confound. C3: the ×3 rung opens nowhere but declared-triple
+  meters, 0 leaks, 0 off-tolerance accepts; exact-3× accepted on all
+  5 triple-declared items — the ×2-class count ambiguity, quantified,
+  living in the rung picker where it belongs. Nothing to change in
+  the patch; production release is Kevin's call.
+
 - **The ladder's gate must not be the detector's own flag, and a test
   at the declared lag mirrors the confound** (stem-shovel, 2026-10-30,
   from Study 11b's two real-recording failures). A sub-beat test at a
