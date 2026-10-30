@@ -58,6 +58,16 @@ bench validated every one of these against `chordChartBars` at
   (`D7sus4`/`D(7)sus4` read the same; `♯`/`♭` are understood; slash
   bass `D/F#` works; `6/9` keeps its slash). One honest note: `G5(7)`
   is read as a G7 (the third included) — write `G5` for a bare fifth.
+- **A struck chord that rings across bars is the chord once, then
+  EMPTY cells** (`| D | | | |`) — the hold is the empty cell's
+  purpose, and it is the one place the hold behavior is the tool
+  rather than the trap. **A partial final bar is a meter change**: a
+  bare `2/4` line before the last bar makes it two beats, so a song
+  that ends on what would be the three is notated honestly
+  (bench-verified: the renderer's final bar halves; a later `4/4`
+  line switches back mid-song). The ring's exact end belongs to the
+  app's last-sound rule, not the chart — an approximately right hold
+  count plus the partial bar is the honest form.
 - **State the key, meter and tempo once at the top** (`key: D · 4/4 ·
   145 bpm` or any line saying `4/4` and `145 bpm`): the song-check and
   the alignment read them from the text (Study 7's
