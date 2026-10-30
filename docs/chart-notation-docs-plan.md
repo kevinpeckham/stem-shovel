@@ -97,3 +97,42 @@ research program. That is the raw material of a small open standard:
 The bench's part if this goes ahead: the conformance fixtures (the
 round-trip corpus already exists in stem-bench) and a registered
 validation of the reference parser against the shipped one.
+
+## Deliverable 3 (added 2026-10-30): the define-once form, and a warning until it exists
+
+Kevin's original charts use the form musicians actually write: each
+unique section ONCE under a numbered heading (`## I - Intro`), and a
+Structure line giving the play order by numeral. The bench verified
+two things against the shipped parser:
+
+- Numbered headings survive intact ("I - Intro" comes through as the
+  section name), so the numerals can keep tying chart sections to the
+  app's sections data. No change needed there.
+- **The Structure line is silently ignored** — a define-once chart
+  parses with zero warnings into the wrong linear form (every section
+  once, outline unexpanded). Fed to the alignment, that produces
+  garbage placements or a false mismatch on a correctly written
+  chart. Silence here is worse than an error.
+
+Asks, in order:
+
+1. **Now (one line): warn on an unexpanded outline.** A line matching
+   a structure outline (a label like "Structure"/"Form"/"Order"
+   followed by section numerals or names) should add a warning —
+   "this chart lists a structure the app does not yet expand; write
+   the sections in play order" — so the failure is loud until the
+   feature ships.
+2. **The feature: expansion at parse time.** Proposed semantics for
+   `chordChartBars` (chartBars already plays repeats in play order,
+   so this brings the two parsers to parity): a heading may carry an
+   identifier (`## I - Intro`, `## II - Verse`); a Structure line
+   (`Structure: I II III II III IV V II VI VII`, separators flexible)
+   expands the chart in that order at parse time; a chart without a
+   Structure line stays linear exactly as today; an unknown numeral
+   in the outline is a warning and the outline is not applied (never
+   half-applied). The revised Peaceful Dreams chart is the natural
+   acceptance fixture — written define-once it should parse to the
+   same 140-plus bars as its linear form.
+3. The User Docs page (deliverable 1) then documents BOTH forms, with
+   define-once as the recommended one for songs with repeating
+   sections.
