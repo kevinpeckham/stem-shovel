@@ -228,3 +228,12 @@ Three idiom details it surfaced for the parser work:
    distinct names** (Chorus - 2, Chorus - 3 in the sections data) —
    expansion by numeral/name, with the sections data free to name
    each play.
+4. **Structure tokens need tolerant matching, not string equality**:
+   the band's Structure says `Outro` where the section label is
+   `Out`, and the sections data says `Part I` where the chart says
+   `Part 1`. The bench's mechanical expansion (a thirty-line
+   prototype of this parse: unescape, lift bold labels, expand the
+   Structure with per-token xN) resolved these by prefix match and
+   reproduced the full 71-bar, nine-section, grid-exact result on
+   the stored text — the semantics are proven; only the tolerance
+   rules need deciding.
