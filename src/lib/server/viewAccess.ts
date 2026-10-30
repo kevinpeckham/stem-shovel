@@ -41,9 +41,9 @@ export const isAccountAdmin = (role: string | null | undefined) =>
 export const SHARE_COOKIE = "share";
 const MAX_REMEMBERED = 10;
 
-/** Codes the visitor carries: `?share=` first, then the cookie. */
-export function shareCodesFrom(url: URL, cookies: Pick<Cookies, "get">): string[] {
-	const fromUrl = url.searchParams.get("share")?.trim() ?? "";
+/** Codes the visitor carries: `?share=` first, then the cookie (no URL, as inside a remote query: the cookie alone). */
+export function shareCodesFrom(url: URL | null, cookies: Pick<Cookies, "get">): string[] {
+	const fromUrl = url?.searchParams.get("share")?.trim() ?? "";
 	const fromCookie = (cookies.get(SHARE_COOKIE) ?? "").split(",").filter(Boolean);
 	return [...new Set([fromUrl, ...fromCookie].filter(Boolean))].slice(0, MAX_REMEMBERED);
 }

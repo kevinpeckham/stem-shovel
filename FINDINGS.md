@@ -1716,3 +1716,42 @@ on interrupt too, so an interrupted run's cleanup must be idempotent with
 what Cancel writes; `Effect.catch` sees typed failures only, so a throw
 inside `Effect.sync` rejects the run instead. The rewritten class is kept
 out of the tree; the token version stayed.
+
+## A remote form's dirty fields survive `clearForm`, and a dirty field with no stored value renders empty (2026-10-30)
+
+SvelteKit 3's `form()` keeps, beside the stored values, a set of DIRTY
+field names (every field the person typed in, `handle_input`), and the
+field spread's `value` getter is `read(fallback)`: the stored value, else
+the default passed to `.as(type, default)`, EXCEPT when the field is dirty,
+when it is `undefined` → `""` (`src/runtime/form-utils.js`, `read`). The
+intent is that a field someone emptied stays empty instead of springing
+back to its default. Our `clearForm` set the store to `{}` but could not
+touch the dirty set, which only a native `reset` event on the form element
+clears (`handle_reset`) or a new element attaching. So in every edit
+popover: type in a field, save (the popover closes), reopen: the field is
+blank while its neighbors show the saved values, and a second save writes
+the blank. Found by the headless pass over the song page's Details tab
+(Description emptied by the second save); the markup had been the same
+since before the day's refactor, so this was live in production. Fix:
+`clearForm(form, element?)` also calls `HTMLFormElement.prototype.reset`
+on the element (the prototype, as SvelteKit does, against DOM clobbering);
+`SongDetails` binds its form element for it, and the project, blog post
+and docs settings popovers pass theirs from `onbeforetoggle`. The remote
+form itself resets the element after a successful submit, which is why
+the first save looked right and only the reopen showed it. The inline
+short-link editor (`ShortLinkRow`) unmounts its form when closed, so it
+cannot reset it before it renders; a field typed in, canceled and reopened
+there shows blank until saved (minor, left).
+
+## `event.url` inside a remote `query` throws (2026-10-30)
+
+`getRequestEvent().url` inside a `query()` fails with SvelteKit's
+`remote_request_property` ("Cannot access event.url in a query"): queries
+can be batched and have no URL of their own. `songViewerOf` read it for
+the `?share=` code, so the Docs panel's History ("Could not load the
+history: Internal Error") and every other query gated by it failed for
+everyone, since 2026-10-28. Commands and forms may read it. Fix: a
+`requestUrlOrNull` helper (try/catch around `event.url`) and
+`shareCodesFrom(url | null, cookies)`: inside a query the cookie set on
+the visit with the share link stands in for the URL. Found by the same
+headless pass; the dev server's log named the line.

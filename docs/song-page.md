@@ -8,7 +8,7 @@ popovers and menus behind them. On 2026-10-30 it was 4,928 lines (the
 script to line 2037, 86 `$state` variables, 74 functions), and Fallow
 scored its template at cyclomatic 320 the day a parser-hiding expression
 was replaced (FINDINGS.md). Kevin asked for it to be broken up with more
-components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page is 2,007 lines (script 630, 28 `$state`), down from 4,928.
+components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page is 2,007 lines (script 630, 28 `$state`), down from 4,928. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
 
 ## The principle: extract by state ownership
 

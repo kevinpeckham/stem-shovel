@@ -171,14 +171,29 @@ const {
  * on a song, like their private note. 401 signed out, 404 otherwise, like
  * memberOf. Returns the song's account id.
  */
+/**
+ * The request's URL, or null inside a remote `query`, where SvelteKit
+ * refuses `event.url` (queries can be batched and have no URL of their
+ * own: `remote_request_property`). A share code carried only in the URL
+ * is then not seen; the cookie set on the visit with it still is
+ * (FINDINGS.md "event.url inside a remote query", 2026-10-30).
+ */
+function requestUrlOrNull(event: ReturnType<typeof getRequestEvent>): URL | null {
+	try {
+		return event.url;
+	} catch {
+		return null;
+	}
+}
+
 export async function songViewerOf(locals: App.Locals, songId: string) {
 	const user = requireUser(locals);
 	const row = await songViewRow(songId);
 	if (!row) error(404, "Not found");
-	const { url, cookies } = getRequestEvent();
+	const event = getRequestEvent();
 	const [roles, grants] = await Promise.all([
 		projectRolesOf(row.accountId, user.id),
-		openShareLinks(shareCodesFrom(url, cookies)),
+		openShareLinks(shareCodesFrom(requestUrlOrNull(event), event.cookies)),
 	]);
 	if (!canViewSong(row, viewerOf(locals, row.accountId, roles), grants)) error(404, "Not found");
 	const m = locals.memberships.find((m) => m.accountId === row.accountId);

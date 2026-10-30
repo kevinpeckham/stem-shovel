@@ -78,6 +78,17 @@ describe("SongDetails", () => {
 		expect(details.settingsDirty).toBe(true);
 	});
 
+	test("reset also resets the bound form element natively, so the remote form's dirty fields clear", () => {
+		const { details } = make();
+		const reset = vi.spyOn(HTMLFormElement.prototype, "reset");
+		const element = document.createElement("form");
+		details.form = element;
+		details.reset();
+		expect(reset).toHaveBeenCalledTimes(1);
+		expect(reset.mock.instances[0]).toBe(element);
+		reset.mockRestore();
+	});
+
 	test("a changed start is dirty; reset puts the entries and the form back", () => {
 		const { details, changes } = make();
 		details.reset();

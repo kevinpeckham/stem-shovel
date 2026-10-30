@@ -366,7 +366,7 @@
 			onbeforetoggle={(e) => {
 				// Open on what is saved, not on what was last typed.
 				if (e.newState === "open") {
-					clearForm(updateProject);
+					clearForm(updateProject, e.currentTarget.querySelector("form"));
 				}
 			}}
 			bind:this={settingsPanel}

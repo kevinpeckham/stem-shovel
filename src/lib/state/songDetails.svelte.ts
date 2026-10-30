@@ -101,9 +101,12 @@ export class SongDetails {
 		);
 	}
 
+	/** The `<form>` element (SongDetailsTab binds it): reset natively with the store, so fields someone typed in come back as the song has them (clearForm). */
+	form: HTMLFormElement | null = null;
+
 	/** The form as the song has it: the saved values, not the last edit (the popover opening). */
 	reset = () => {
-		clearForm(updateSong);
+		clearForm(updateSong, this.form);
 		this.positionError = null;
 		this.startAtEntry = this.startAtText;
 		this.endAtEntry = this.endAtText;

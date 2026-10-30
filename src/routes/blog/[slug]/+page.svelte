@@ -81,7 +81,7 @@
 			popover="auto"
 			bind:this={settingsPanel}
 			onbeforetoggle={(e) => {
-				if (e.newState === "open") clearForm(updateUserDoc);
+				if (e.newState === "open") clearForm(updateUserDoc, e.currentTarget.querySelector("form"));
 			}}
 			class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 		>

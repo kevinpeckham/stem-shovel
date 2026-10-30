@@ -14,6 +14,10 @@ import {
 } from "./viewAccess";
 
 describe("shareCodesFrom", () => {
+	test("without a URL (a remote query), the cookie alone", () => {
+		expect(shareCodesFrom(null, { get: () => "OLD1,NEW1" })).toEqual(["OLD1", "NEW1"]);
+		expect(shareCodesFrom(null, { get: () => undefined })).toEqual([]);
+	});
 	test("the URL's code comes first, then the cookie's, without repeats", () => {
 		const url = new URL("https://x.test/a?share=NEW1");
 		expect(shareCodesFrom(url, { get: () => "OLD1,NEW1,OLD2" })).toEqual(["NEW1", "OLD1", "OLD2"]);

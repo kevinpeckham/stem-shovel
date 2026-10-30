@@ -21,6 +21,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **A song's Description (and any settings field you had typed in) came back blank the next time Song settings opened, and saving again wrote the blank.** The form's reopen now resets it to the saved values. The same fix covers the project, blog post and docs settings popovers.
+- **"Could not load the history: Internal Error"** on a document's History: the version list loads again.
 - **Two missing spaces** in the comment card's date line ("Sep 16, 2026 · 32 | 3") and the demo comment popover's title ("Add a comment on demo …").
 
 ## [0.201.2] - 2026-10-30

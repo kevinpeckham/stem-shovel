@@ -245,6 +245,7 @@
 {/snippet}
 
 <form
+	bind:this={details.form}
 	{...updateSong.enhance(async ({ submit }) => {
 		if (!details.preparePositions()) return;
 		await submit();
