@@ -7,18 +7,18 @@
 	import { SongDetails } from "#lib/state/songDetails.svelte.js";
 	import { DemoUploads } from "#lib/state/demoUploads.svelte.js";
 	import SongSettingsPopover from "#lib/components/SongSettingsPopover.svelte";
+	import SongActionsMenu from "#lib/components/SongActionsMenu.svelte";
+	import { SongDownloads } from "#lib/state/songDownloads.svelte.js";
 	import { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
-	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
 	import { STAGE_LABEL, STAGE_PHASE } from "#lib/constants/songStages.js";
 	import { songStage } from "#lib/utils/songStage.js";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
 	import { createComment, deleteComment, updateComment } from "#lib/remote/comments.remote.js";
-	import { importSongStems } from "#lib/remote/studio.remote.js";
 	import { MAX_MIXES_PER_SONG, MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
@@ -26,7 +26,6 @@
 	import SongFilesPanel from "#lib/components/SongFilesPanel.svelte";
 	import SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
-	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
 	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
@@ -34,10 +33,8 @@
 	import { metronome } from "#lib/audio/metronome.svelte.js";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import { type MidiSummary, parseMidi } from "#lib/audio/midi.js";
-	import StemReplacer from "#lib/components/StemReplacer.svelte";
 	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, secondsAtBar } from "#lib/audio/measures.js";
-	import { type MixMode, mixQuery, saveMix, saveStemsZip } from "#lib/audio/downloads.js";
 	import { bumpVersion } from "#lib/utils/bumpVersion.js";
 	import { midiContentType } from "#lib/utils/midiContentType.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
@@ -59,7 +56,7 @@
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemState } from "#lib/audio/types.js";
 
-	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+	import { DEMO_ACCEPT, DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
 	import { demoContentType } from "#lib/utils/demoContentType.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
@@ -79,7 +76,6 @@
 		renameStem,
 		reorderStems,
 		saveChartDraft,
-		saveDefaultMix,
 		saveDoc,
 		saveSections,
 		setSongVersion,
@@ -291,25 +287,6 @@
 			await refreshAll();
 		} catch (e) {
 			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
-		}
-	}
-	/** The song's ready stems into a new Dawn song (docs/multitrack-recorder.md, "A song's stems in"), then Dawn opens on it. */
-	let openingInDawn = $state(false);
-	async function openInDawn() {
-		openingInDawn = true;
-		try {
-			const made = await importSongStems({ songId: data.song.id });
-			notify(`${made.tracks} ${made.tracks === 1 ? "stem" : "stems"} loaded into Dawn`);
-			if (made.left)
-				notify(
-					`${made.left} ${made.left === 1 ? "stem" : "stems"} left behind: a Dawn song holds at most ${made.tracks} tracks`,
-					{ kind: "error" },
-				);
-			await goto(`/multitrack-recorder?song=${made.ideaId}`);
-		} catch (e) {
-			notify(`Could not load the stems into Dawn: ${errorMessage(e)}`, { kind: "error" });
-		} finally {
-			openingInDawn = false;
 		}
 	}
 	/** The stem player's box as last shown; the demos box is at least that tall (560 is the empty box's minimum). */
@@ -674,9 +651,6 @@
 	function closeStemContext(e: Event) {
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
 		if (demoMenuAt && !(e.target as HTMLElement).closest("[data-demo-context]")) demoMenuAt = null;
-		for (const menu of [uploadsMenuEl, downloadsMenuEl]) {
-			if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
-		}
 	}
 	let doc = $derived(showing ?? "lyrics");
 	// In-panel editing (SongDocPanel): whether the shown document is open for editing.
@@ -703,9 +677,6 @@
 		docMono = { ...docMono, [kind]: !docMono[kind] };
 		saveDocMono(docMono);
 	}
-	/** The Uploads and Downloads menus in the player's action row, closed the same way. */
-	let uploadsMenuEl = $state<HTMLDetailsElement | null>(null);
-	let downloadsMenuEl = $state<HTMLDetailsElement | null>(null);
 	/** The editor pane while editing in the panel, chosen in that menu. */
 	let docView = $state<"rendered" | "markdown">("rendered");
 	/** A document save in flight (the panel saves through the shared remote form). */
@@ -870,13 +841,6 @@
 	// The database row behind a player stem (filename, size, url).
 	let stemRows = $derived(new Map(data.song.stems.map((s) => [s.id, s])));
 
-	// Download every ready stem as one zip, built in the browser from the Blob
-	// files (they allow cross-origin reads). Stored, not compressed: audio
-	// does not shrink and stored entries stream straight through.
-	let zipping = $state<string | null>(null);
-
-	// MP3 mixdown: "original" is every stem at unity (cached on the server);
-	// "custom" is what the player has audible right now — mute, solo and faders.
 	/** The song has a chart the AI can read with the mix: a score (MusicXML, or a PDF or image marked as notation) or its own chord chart document (docs/audio-engine.md, "The score as the AI's chart", "The chord chart as the AI's chart"). */
 	let hasScore = $derived(notationCount > 0 || !!data.docs.chart);
 	/** The model's chords ("D5 % A5 …") as chart lines, four bars each. */
@@ -1087,90 +1051,16 @@
 	);
 	/** The faders and pans alone differ from the default: there is a new default to save. */
 	let fadersDirty = $derived(!!playerEngine && playerEngine.stems.some(stemDirty));
-	let savingMix = $state(false);
-	async function saveMixAsDefault() {
-		if (!playerEngine || savingMix) return;
-		if (
-			!confirm(
-				"Save these fader levels and pans as the default mix for everyone who opens this song?",
-			)
-		)
-			return;
-		savingMix = true;
-		try {
-			await saveDefaultMix({
-				id: data.song.id,
-				gains: playerEngine.stems.map((s) => ({
-					id: s.id,
-					gain: Math.round(s.gain * 1000) / 1000,
-					pan: Math.round(s.pan * 100) / 100,
-				})),
-			});
+	/** The Downloads menu and the mix actions beside it (the stems zip, the MP3 mixes, Dawn, the default mix). */
+	const downloads = new SongDownloads({
+		song: () => data.song,
+		ready: () => ready,
+		engine: () => playerEngine,
+		onmixsaved: async () => {
 			player?.forgetLocalMix();
 			await refreshAll();
-			notify("Saved as the default mix; the original mixdown is re-rendering");
-		} catch (e) {
-			notify(`Could not save the mix: ${errorMessage(e)}`, { kind: "error" });
-		} finally {
-			savingMix = false;
-		}
-	}
-	let mixing = $state<MixMode | null>(null);
-	let mixError = $state<string | null>(null);
-	/** `project-song-v1.2.3`: every download names the song version it was made from. */
-	let downloadStem = $derived(`${data.song.project.slug}-${data.song.slug}-v${data.song.version}`);
-
-	async function downloadMix(mixMode: MixMode, engine?: StemEngine) {
-		if (mixing) return;
-		mixError = null;
-		const query = mixQuery(mixMode, engine);
-		if (query === null) {
-			mixError = "Nothing is audible — unmute a stem first.";
-			return;
-		}
-		mixing = mixMode;
-		try {
-			await saveMix(data.song.id, downloadStem, mixMode, query);
-		} catch (e) {
-			mixError = errorMessage(e);
-		} finally {
-			mixing = null;
-		}
-	}
-	// The zip takes a while on a big song and the menu closes on the click (Kevin), so a notice
-	// follows the work: which stem is going in, then the hand-off to the browser's download.
-	async function downloadAll() {
-		if (ready.length === 0 || zipping) return;
-		zipping = "Preparing…";
-		const id = "stems-zip";
-		const count = `${ready.length} ${ready.length === 1 ? "stem" : "stems"}`;
-		notify(`Preparing the stems zip (${count})…`, {
-			id,
-			kind: "info",
-			timeout: null,
-			dismissable: false,
-		});
-		try {
-			await saveStemsZip(ready, downloadStem, (done, total) => {
-				zipping = `Preparing… ${done} of ${total}`;
-				if (done < total)
-					notify(
-						`Preparing the stems zip: ${ready[done]?.label ?? ""} (${done + 1} of ${total})…`,
-						{
-							id,
-							kind: "info",
-							timeout: null,
-							dismissable: false,
-						},
-					);
-			});
-			notify(`Stems zip ready (${count}): your browser is saving it`, { id, kind: "success" });
-		} catch (e) {
-			notify(`Could not prepare the stems zip: ${errorMessage(e)}`, { id, kind: "error" });
-		} finally {
-			zipping = null;
-		}
-	}
+		},
+	});
 </script>
 
 <svelte:window
@@ -1662,7 +1552,29 @@
 			{/if}
 		</FloatingPanel>
 
-		{@render actionButtons?.(playerEngine ?? undefined)}
+		<SongActionsMenu
+			{downloads}
+			{demos}
+			{check}
+			song={data.song}
+			docs={data.docs}
+			canEdit={data.canEdit}
+			engine={playerEngine}
+			{ready}
+			{readyDemos}
+			{mixBusy}
+			{mixDirty}
+			{fadersDirty}
+			bind:jobs={uploadJobs}
+			bind:notice={uploadNotice}
+			bind:uploader
+			onuploaded={() => (versionOffer = true)}
+			onpickmix={() => void pickMix()}
+			onpickfiles={() => void pickFiles()}
+			onpicknotation={() => void pickNotation()}
+			onshowdemos={() => showView("demos")}
+			onresetmix={() => player?.resetMix()}
+		/>
 
 		{#if versionOffer && data.canEdit}
 			<div
@@ -2256,272 +2168,6 @@
 		</FloatingPanel>
 	</div>
 </main>
-
-{#snippet actionButtons(engine?: StemEngine)}
-	<div
-		class="flex flex-wrap items-center gap-3 w-full border py-4 px-3 rounded-md border-current/40 bg-blue-300/5 text-15px"
-	>
-		{#if data.canEdit}
-			<!-- Uploads: add or replace stems, upload demo recordings. -->
-			<details class="relative" bind:this={uploadsMenuEl}>
-				<summary
-					class="button button-sm list-none [&::-webkit-details-marker]:hidden"
-					title="Add or replace stems, upload demo recordings and PDFs"
-				>
-					<span class="i-ph-upload-simple" aria-hidden="true"></span>
-					Uploads
-					<span class="i-ph-caret-down ml-1 text-10px" aria-hidden="true"></span>
-				</summary>
-				<div
-					class="absolute top-full left-0 z-20 mt-1 min-w-52 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
-					role="menu"
-					tabindex="-1"
-					onclick={() => {
-						if (uploadsMenuEl) uploadsMenuEl.open = false;
-					}}
-					onkeydown={(e) => {
-						if (e.key === "Escape" && uploadsMenuEl) uploadsMenuEl.open = false;
-					}}
-				>
-					<StemUploader
-						bind:this={uploader}
-						songId={data.song.id}
-						stemCount={data.song.stems.length}
-						decodedBytes={decodedStemBytes(data.song.stems)}
-						bind:jobs={uploadJobs}
-						bind:notice={uploadNotice}
-						onuploaded={() => (versionOffer = true)}
-						onanalysis={check.applyDetection}
-						menu
-					/>
-					{#if data.song.stems.length > 0}
-						<StemReplacer
-							songId={data.song.id}
-							stems={data.song.stems.map((s) => ({
-								id: s.id,
-								label: s.label,
-								filename: s.filename,
-							}))}
-							bind:jobs={uploadJobs}
-							bind:notice={uploadNotice}
-							onuploaded={() => (versionOffer = true)}
-							onanalysis={check.applyDetection}
-							menu
-						/>
-					{/if}
-					<label
-						class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10 {demos.busy
-							? 'opacity-50 pointer-events-none'
-							: ''}"
-						title="Phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
-					>
-						<span class="i-ph-microphone mr-2" aria-hidden="true"></span>
-						{demos.busy ? "Uploading…" : "Upload Demos"}
-						<input
-							class="sr-only"
-							type="file"
-							accept={DEMO_ACCEPT}
-							multiple
-							disabled={demos.busy || readyDemos.length >= MAX_DEMOS_PER_SONG}
-							onchange={(e) => demos.upload(e.currentTarget)}
-						/>
-					</label>
-					<button
-						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 {mixBusy
-							? 'opacity-50 pointer-events-none'
-							: ''}"
-						type="button"
-						role="menuitem"
-						title="A bounce for the band to hear and comment on ({MIX_FORMAT_LIST})"
-						onclick={() => void pickMix()}
-					>
-						<span class="i-ph-waveform mr-2" aria-hidden="true"></span>
-						{mixBusy ? "Uploading…" : "Upload Mix"}
-					</button>
-					<button
-						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-						type="button"
-						role="menuitem"
-						title="PDFs, images, audio scraps, text, MIDI: one or more files"
-						onclick={() => void pickFiles()}
-					>
-						<span class="i-ph-paperclip mr-2" aria-hidden="true"></span>
-						Upload Attachments
-					</button>
-					<button
-						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-						type="button"
-						role="menuitem"
-						title="MusicXML notation, as Dorico and the rest export it; engraved on the Chart tab"
-						onclick={() => void pickNotation()}
-					>
-						<span class="i-ph-music-notes-simple mr-2" aria-hidden="true"></span>
-						Upload Notation
-					</button>
-					<a
-						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-						role="menuitem"
-						href="/idea-recorder?song={data.song.id}"
-						title="Idea recorder: record a riff, a melody or a demo for this song"
-					>
-						<span class="i-ph-record-fill mr-2 text-red-500" aria-hidden="true"></span>
-						Record Demo
-					</a>
-					<a
-						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-						role="menuitem"
-						href="/drum-machine?song={data.song.id}"
-						title="Drum machine: a beat at this song's tempo, saved to the song or added as a demo"
-					>
-						<span class="mr-2 inline-block align-[-2px]"><IconDrumKit /></span>
-						Drum Machine
-					</a>
-				</div>
-			</details>
-		{/if}
-		{#if ready.length > 0 || readyDemos.length > 0 || data.docs.lyrics || data.docs.chart || data.docs.notes}
-			<!-- Downloads: the stems, the two mixes, the demo recordings, the documentation PDF. -->
-			<details class="relative" bind:this={downloadsMenuEl}>
-				<summary
-					class="button button-sm list-none [&::-webkit-details-marker]:hidden"
-					title="Download the stems, a mix or the demo recordings"
-				>
-					<span class="i-ph-download-simple" aria-hidden="true"></span>
-					Downloads
-					<span class="i-ph-caret-down ml-1 text-10px" aria-hidden="true"></span>
-				</summary>
-				<div
-					class="absolute top-full left-0 z-20 mt-1 min-w-52 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
-					role="menu"
-					tabindex="-1"
-					onclick={() => {
-						if (downloadsMenuEl) downloadsMenuEl.open = false;
-					}}
-					onkeydown={(e) => {
-						if (e.key === "Escape" && downloadsMenuEl) downloadsMenuEl.open = false;
-					}}
-				>
-					{#if ready.length > 0}
-						<button
-							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
-							type="button"
-							role="menuitem"
-							disabled={!!zipping}
-							onclick={downloadAll}
-							title="Every stem as one zip"
-						>
-							<span class="i-ph-file-zip mr-2" aria-hidden="true"></span>
-							{zipping ?? "Download Stems"}
-						</button>
-						<button
-							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
-							type="button"
-							role="menuitem"
-							disabled={!!mixing}
-							onclick={() => downloadMix("original", engine)}
-							title="An MP3 of the song's default mix"
-						>
-							<span class="i-ph-music-note mr-2" aria-hidden="true"></span>
-							{mixing === "original" ? "Rendering…" : "Original Stem Mix (MP3)"}
-						</button>
-						<button
-							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
-							type="button"
-							role="menuitem"
-							disabled={!!mixing}
-							onclick={() => downloadMix("custom", engine)}
-							title="An MP3 of what is audible now (mute, solo, faders)"
-						>
-							<span class="i-ph-sliders-horizontal mr-2" aria-hidden="true"></span>
-							{mixing === "custom" ? "Rendering…" : "Custom Stem Mix (MP3)"}
-						</button>
-						{#if data.canEdit}
-							<button
-								class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
-								type="button"
-								role="menuitem"
-								disabled={openingInDawn}
-								onclick={() => void openInDawn()}
-								title="The stems as they are now, each on a track of a new Dawn song"
-							>
-								<span class="i-ph-sliders-horizontal mr-2" aria-hidden="true"></span>
-								{openingInDawn ? "Loading into Dawn…" : "Open stems in Dawn"}
-							</button>
-						{/if}
-					{/if}
-					{#if data.docs.lyrics || data.docs.chart || data.docs.notes}
-						<button
-							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-							type="button"
-							role="menuitem"
-							title="The lyrics, chart and notes as one PDF, with the notation after them"
-							onclick={() =>
-								downloadBuilt(
-									`/api/songs/${data.song.id}/documentation.pdf`,
-									"the documentation PDF",
-									`${data.song.title}.pdf`,
-								)}
-						>
-							<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
-							Song Documentation (PDF)
-						</button>
-					{/if}
-					{#if readyDemos.length > 0}
-						<button
-							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-							type="button"
-							role="menuitem"
-							onclick={() => showView("demos")}
-							title="Show the demo recordings in the player"
-						>
-							<span class="i-ph-microphone mr-2" aria-hidden="true"></span>
-							Demos ({readyDemos.length})
-						</button>
-					{/if}
-				</div>
-			</details>
-		{/if}
-		{#if data.canEdit}
-			<a
-				class="button button-sm"
-				href="/idea-recorder?song={data.song.id}"
-				title="Idea recorder: record a riff, a melody or a demo for this song"
-			>
-				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
-				Record Demo
-			</a>
-		{/if}
-		{#if engine && mixDirty}
-			<button
-				class="button button-sm lg-button-xs"
-				type="button"
-				onclick={() => player?.resetMix()}
-				title="Back to the song's default mix (your own levels are kept in this browser only)"
-			>
-				<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
-				Reset Mix
-			</button>
-		{/if}
-		{#if data.canEdit && engine && fadersDirty}
-			<button
-				class="button button-sm lg-button-xs"
-				type="button"
-				disabled={savingMix}
-				onclick={saveMixAsDefault}
-				title="Save these fader levels as the default mix for every listener"
-			>
-				<span class="i-ph-floppy-disk" aria-hidden="true"></span>
-				{savingMix ? "Saving…" : "Save as Default Mix"}
-			</button>
-		{/if}
-		{#if mixError}
-			<p class="w-full text-sm text-red-400" role="alert">{mixError}</p>
-		{/if}
-		{#if demos.notice}
-			<p class="w-full text-sm text-red-400" role="alert">{demos.notice}</p>
-		{/if}
-	</div>
-{/snippet}
 
 <!-- Song info: what the header used to spell out, for anyone who opens it. -->
 <div

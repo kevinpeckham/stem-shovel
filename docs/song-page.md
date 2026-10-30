@@ -86,7 +86,23 @@ step so it shrinks with the page and still fails on anything new.
      check wants Tempo & key; the Details tab's save closes the popover
      from inside; the phone tab menu closes on its own
      `<svelte:window onpointerdown>`.
-5. **The uploads and downloads menu** (the `actionButtons` snippet).
+5. **The uploads and downloads menus** (2026-10-30, done): the page
+   lost 354 lines.
+   - `state/songDownloads.svelte.ts`, `SongDownloads`: `downloadAll`
+     (`zipping`), `downloadMix` (`mixing`, `mixError`), `openInDawn`
+     (`openingInDawn`), `saveMixAsDefault` (`savingMix`), the download
+     `name` getter; the engine and the ready stems come in as functions.
+     What the player or the mix list also writes (`mixBusy`, `mixDirty`,
+     `fadersDirty`, `resetMix`) stays on the page and comes in as props
+     or callbacks.
+   - `components/SongActionsMenu.svelte`: the two `<details>` menus in
+     two snippets, closing on an outside click through their own
+     `<svelte:window onpointerdown>`; `uploadJobs`, `uploadNotice` and
+     the `StemUploader` instance stay bound through the component
+     (`bind:jobs`, `bind:notice`, `bind:uploader`) because the empty
+     player's uploader shares them and the page renders the job list and
+     Retry failed; `versionOffer`/`bump` stay with the page's
+     stems-changed flow.
 6. **Comments**: the popover, the two cards and the ⌘-click menus.
 7. Then the page is the layout, the floating panels and the data.
 

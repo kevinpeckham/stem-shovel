@@ -3,7 +3,7 @@
 	"finding_counts": {
 		"src/routes/[account]/projects/[project]/[song]/+page.svelte": {
 			"complexity_critical": {
-				"count": 5
+				"count": 4
 			},
 			"complexity_high": {
 				"count": 1
@@ -12,10 +12,10 @@
 				"count": 3
 			},
 			"crap_high": {
-				"count": 3
+				"count": 2
 			},
 			"crap_moderate": {
-				"count": 12
+				"count": 10
 			}
 		}
 	},

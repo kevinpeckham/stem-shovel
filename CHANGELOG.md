@@ -14,6 +14,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **The Sections tab is its own component too**, its rows, detection and Place from chart in a `SongSections` class: step 2, another 249 lines off the page.
 - **And the Details tab**, the settings form with its credits and positions, in a `SongDetails` class: step 3, 334 lines off the page (3,499 left of 4,928).
 - **And the whole settings popover**, with the Demos and Options tabs and a `DemoUploads` class for the demo uploads the stem menu shares: step 4, 277 lines off the page (3,222 left).
+- **And the Uploads and Downloads menus**, the downloads, mixes, Dawn hand-off and default-mix save in a `SongDownloads` class: step 5, 354 lines off the page (2,868 left).
 
 ## [0.201.2] - 2026-10-30
 
