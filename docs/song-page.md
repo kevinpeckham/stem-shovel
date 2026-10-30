@@ -103,8 +103,24 @@ step so it shrinks with the page and still fails on anything new.
      player's uploader shares them and the page renders the job list and
      Retry failed; `versionOffer`/`bump` stay with the page's
      stems-changed flow.
-6. **Comments**: the popover, the two cards and the ⌘-click menus.
-7. Then the page is the layout, the floating panels and the data.
+6. **Comments** (2026-10-30, done): the page lost 272 lines.
+   - `state/songComments.svelte.ts`, `SongComments`: `draft`, `error`,
+     `demoTarget`, `isAdmin`, `canEdit(c)`, `canDelete(c)`, `open`,
+     `edit`, `editDemo`, `close`; the popover element is bound onto the
+     instance (`bind:this={comments.panel}`), so `open()` shows it with
+     no page plumbing. `locatedComments` stays on the page for the
+     player's timeline.
+   - `components/SongCommentPopover.svelte` (the form with its
+     `.enhance`), `SongCommentCard.svelte` (one component for the
+     timeline and demo cards, which differed only in how a position
+     reads, where Go to seeks and which edit opens; the page keeps a
+     one-line `card` snippet per list).
+   - Moving the markup exposed three-way clones with the mix page and
+     the Sessions page, so the shared parts became `CommentCard.svelte`,
+     `CommentFields.svelte` and `CommentDeleteButton.svelte`, used by all
+     three; the mix and Sessions pages lost their copies and their Go
+     to, Edit and Delete links went from `link-dim` to `link`.
+7. **The stem menu** (`stemMenuBody`), then the page is the layout, the floating panels and the data.
 
 ## Effect on the client, as a pilot
 

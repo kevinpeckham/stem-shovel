@@ -15,6 +15,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **And the Details tab**, the settings form with its credits and positions, in a `SongDetails` class: step 3, 334 lines off the page (3,499 left of 4,928).
 - **And the whole settings popover**, with the Demos and Options tabs and a `DemoUploads` class for the demo uploads the stem menu shares: step 4, 277 lines off the page (3,222 left).
 - **And the Uploads and Downloads menus**, the downloads, mixes, Dawn hand-off and default-mix save in a `SongDownloads` class: step 5, 354 lines off the page (2,868 left).
+- **And the comments**, the popover and the cards in a `SongComments` class, with the card, fields and delete button shared with the mix page and the Sessions page: step 6, 272 lines off the page (2,596 left).
+
+### Fixed
+
+- **Two missing spaces** in the comment card's date line ("Sep 16, 2026 · 32 | 3") and the demo comment popover's title ("Add a comment on demo …").
 
 ## [0.201.2] - 2026-10-30
 

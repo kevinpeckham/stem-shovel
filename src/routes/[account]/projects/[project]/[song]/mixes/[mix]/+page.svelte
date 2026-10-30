@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { afterNavigate, goto, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
+	import CommentCard from "#lib/components/CommentCard.svelte";
+	import CommentFields from "#lib/components/CommentFields.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import MixPanel, { type MixComment, type PanelMix } from "#lib/components/MixPanel.svelte";
@@ -177,6 +179,11 @@
 		f.position.set(commentDraft.at);
 		commentPanel?.showPopover();
 	}
+	/** The comment form's Playhead: where the mix is playing. */
+	const commentPlayhead = $derived({
+		disabled: !mixPanel,
+		read: () => mixPos(mixPanel?.currentPosition() ?? 0),
+	});
 	function editComment(c: MixComment) {
 		openComment({ id: c.id, title: c.title, body: c.body, at: c.at === null ? "" : mixPos(c.at) });
 	}
@@ -445,30 +452,12 @@
 
 {#snippet commentCard(id: string)}
 	{@const c = data.mixComments.find((x) => x.id === id)}
-	{#if c}
-		<div class="flex items-baseline justify-between gap-3">
-			<h3 class="font-600">{c.title}</h3>
-			{#if c.editedAt}<span
-					class="rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
-					>edited</span
-				>{/if}
-		</div>
-		<p class="mt-1 text-12px opacity-70">
-			{c.authorName} · {formatDate(c.createdAt)}{#if c.at !== null}
-				· {formatTime(c.at, 1)}{/if}
-		</p>
-		<p class="mt-2 whitespace-pre-line">{c.body}</p>
-		<div class="mt-3 flex gap-3 text-12px">
-			{#if c.at !== null}
-				<button type="button" class="link-dim" onclick={() => mixPanel?.seekTo(c.at ?? 0)}
-					>Go to</button
-				>
-			{/if}
-			{#if data.user?.id === c.userId}
-				<button type="button" class="link-dim" onclick={() => editComment(c)}>Edit</button>
-			{/if}
-		</div>
-	{/if}
+	{#if c}<CommentCard
+			comment={c}
+			pos={(s) => formatTime(s, 1)}
+			onseek={(s) => mixPanel?.seekTo(s)}
+			onedit={data.user?.id === c.userId ? () => editComment(c) : undefined}
+		/>{/if}
 {/snippet}
 
 {#if menuAt && mix}
@@ -545,7 +534,13 @@
 				})}
 			>
 				<input {...remoteForm.fields.id.as("hidden", commentDraft.id)} />
-				{@render commentFields(remoteForm)}
+				<CommentFields
+					fields={remoteForm.fields}
+					draft={commentDraft}
+					hint="optional, as time"
+					placeholder="1:23.4"
+					playhead={commentPlayhead}
+				/>
 				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
 					>{remoteForm.pending ? "Saving…" : "Save"}</button
 				>
@@ -564,7 +559,13 @@
 			>
 				<input {...remoteForm.fields.songId.as("hidden", data.song.id)} />
 				<input {...remoteForm.fields.mixId.as("hidden", mix.id)} />
-				{@render commentFields(remoteForm)}
+				<CommentFields
+					fields={remoteForm.fields}
+					draft={commentDraft}
+					hint="optional, as time"
+					placeholder="1:23.4"
+					playhead={commentPlayhead}
+				/>
 				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
 					>{remoteForm.pending ? "Posting…" : "Post comment"}</button
 				>
@@ -572,53 +573,6 @@
 		{/if}
 	</div>
 {/if}
-
-{#snippet commentFields(remoteForm: typeof createComment | typeof updateComment)}
-	<label class="block">
-		<span class="text-sm opacity-80">Title</span>
-		<input
-			class="mt-1 field"
-			{...remoteForm.fields.title.as("text", commentDraft.title)}
-			required
-		/>
-		{#each remoteForm.fields.title.issues() ?? [] as issue (issue.message)}
-			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-		{/each}
-	</label>
-	<label class="block">
-		<span class="text-sm opacity-80">Comment</span>
-		<textarea
-			class="mt-1 field text-sm"
-			rows="5"
-			{...remoteForm.fields.body.as("text", commentDraft.body)}
-			required></textarea>
-		{#each remoteForm.fields.body.issues() ?? [] as issue (issue.message)}
-			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-		{/each}
-	</label>
-	<label class="block">
-		<span class="text-sm opacity-80"
-			>Position <span class="opacity-60">(optional, as time)</span></span
-		>
-		<span class="mt-1 flex items-center gap-2">
-			<input
-				class="field font-mono text-sm"
-				placeholder="1:23.4"
-				{...remoteForm.fields.position.as("text", commentDraft.at)}
-			/>
-			<button
-				class="button button-xs shrink-0"
-				type="button"
-				disabled={!mixPanel}
-				onclick={() => remoteForm.fields.position.set(mixPos(mixPanel?.currentPosition() ?? 0))}
-				>Playhead</button
-			>
-		</span>
-		{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
-			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-		{/each}
-	</label>
-{/snippet}
 
 {#if data.canEdit && mix}
 	<!-- Share this mix by email; the viewing links made here land on it (docs/mixes.md). -->

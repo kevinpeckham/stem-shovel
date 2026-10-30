@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "#lib/utils/docMonoPreference.js";
-	import { SongChanges, POSITION_PLACEHOLDER } from "#lib/state/songChanges.svelte.js";
+	import { SongChanges } from "#lib/state/songChanges.svelte.js";
 	import { SongCheck } from "#lib/state/songCheck.svelte.js";
 	import { SongSections } from "#lib/state/songSections.svelte.js";
 	import { SongDetails } from "#lib/state/songDetails.svelte.js";
 	import { DemoUploads } from "#lib/state/demoUploads.svelte.js";
 	import SongSettingsPopover from "#lib/components/SongSettingsPopover.svelte";
 	import SongActionsMenu from "#lib/components/SongActionsMenu.svelte";
+	import SongCommentPopover from "#lib/components/SongCommentPopover.svelte";
+	import SongCommentCard from "#lib/components/SongCommentCard.svelte";
+	import CommentDeleteButton from "#lib/components/CommentDeleteButton.svelte";
+	import { SongComments } from "#lib/state/songComments.svelte.js";
 	import { SongDownloads } from "#lib/state/songDownloads.svelte.js";
 	import { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
@@ -18,7 +22,6 @@
 	import { songStage } from "#lib/utils/songStage.js";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
-	import { createComment, deleteComment, updateComment } from "#lib/remote/comments.remote.js";
 	import { MAX_MIXES_PER_SONG, MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
@@ -536,7 +539,7 @@
 		if (history?.kind === "comment") {
 			const id = history.commentId;
 			const c = data.comments.find((x) => x.id === id);
-			return !!c && (canEditComment(c) || canDeleteComment(c));
+			return !!c && (comments.canEdit(c) || comments.canDelete(c));
 		}
 		return false;
 	});
@@ -566,57 +569,21 @@
 		notationPanel?.pick();
 	}
 
-	// Comments: who may do what, the located ones for the timeline, and the
-	// popover form (one popover, create or edit).
-	let membership = $derived(data.memberships?.find((m) => m.accountId === data.account.id));
-	let isAdmin = $derived(membership?.role === "owner" || membership?.role === "admin");
-	const canEditComment = (c: { userId: string }) => data.user?.id === c.userId;
-	const canDeleteComment = (c: { userId: string }) => canEditComment(c) || isAdmin;
+	// Comments: who may do what, and the popover form (one popover, create or edit).
+	const comments = new SongComments({
+		user: () => data.user,
+		memberships: () => data.memberships,
+		accountId: () => data.account.id,
+		readyDemos: () => readyDemos,
+		editPos: (seconds) => changes.editPos(seconds),
+	});
+	/** The located comments, for the player's comment row. */
 	let locatedComments = $derived(
 		data.comments
 			.filter((c) => c.at !== null)
 			.map((c) => ({ id: c.id, title: c.title, at: c.at ?? 0 }))
 			.sort((a, b) => a.at - b.at),
 	);
-	let commentPanel = $state<HTMLDivElement | null>(null);
-	let commentDraft = $state<{
-		id: string | null;
-		title: string;
-		body: string;
-		at: string;
-		/** A comment on a demo recording (docs/uploads-and-blob.md, "Sessions" review): its id; "" for the song's stream. */
-		demoId: string;
-	}>({ id: null, title: "", body: "", at: "", demoId: "" });
-	let commentError = $state<string | null>(null);
-	let demoTarget = $derived(readyDemos.find((d) => d.id === commentDraft.demoId) ?? null);
-	function openComment(draft: Partial<typeof commentDraft> = {}) {
-		commentDraft = { id: null, title: "", body: "", at: "", demoId: "", ...draft };
-		commentError = null;
-		// The form fields keep what was last typed; push the draft into them explicitly.
-		const f = commentDraft.id ? updateComment.fields : createComment.fields;
-		f.title.set(commentDraft.title);
-		f.body.set(commentDraft.body);
-		f.position.set(commentDraft.at);
-		commentPanel?.showPopover();
-	}
-	function editComment(c: (typeof data.comments)[number]) {
-		openComment({
-			id: c.id,
-			title: c.title,
-			body: c.body,
-			at: c.at === null ? "" : changes.editPos(c.at),
-		});
-	}
-	/** A demo's comment: positions are time, the demo panel's playhead (docs/uploads-and-blob.md, "Sessions" review). */
-	function editDemoComment(c: (typeof data.demoComments)[number]) {
-		openComment({
-			id: c.id,
-			demoId: c.demoId,
-			title: c.title,
-			body: c.body,
-			at: c.at === null ? "" : formatTime(c.at, 2),
-		});
-	}
 	/** The ⌘-click menu on a demo's waveform: Seek here, Comment here. */
 	let demoMenuAt = $state<{
 		demo: { id: string; label: string };
@@ -1419,7 +1386,7 @@
 						comments={data.demoComments}
 						canComment={data.canComment}
 						card={demoCommentCard}
-						oncomment={(d) => openComment({ demoId: d.id })}
+						oncomment={(d) => comments.open({ demoId: d.id })}
 						oncontext={(d, seconds, x, y) => (demoMenuAt = { demo: d, seconds, x, y })}
 					/>
 					{#if data.sessionRecordings.length > 0}
@@ -1970,7 +1937,7 @@
 						type="button"
 						title="Add a comment"
 						aria-label="Add a comment"
-						onclick={() => openComment()}
+						onclick={() => comments.open()}
 					>
 						<span class="i-ph-plus"></span>
 					</button>
@@ -1984,7 +1951,6 @@
 				{:else}
 					<ol class="grid gap-4">
 						{#each data.comments as c (c.id)}
-							{@const remove = deleteComment.for(c.id)}
 							<li
 								class="rounded-md border border-white/10 bg-black/20 px-4 py-3"
 								id="comment-{c.id}"
@@ -2014,26 +1980,15 @@
 									</button>
 								{/if}
 								<p class="mt-2 whitespace-pre-line text-15px">{c.body}</p>
-								{#if canEditComment(c) || canDeleteComment(c)}
+								{#if comments.canEdit(c) || comments.canDelete(c)}
 									<div class="mt-2 flex gap-3 text-12px">
-										{#if canEditComment(c)}
-											<button type="button" class="link-dim" onclick={() => editComment(c)}
+										{#if comments.canEdit(c)}
+											<button type="button" class="link-dim" onclick={() => comments.edit(c)}
 												>Edit</button
 											>
 										{/if}
-										{#if canDeleteComment(c)}
-											<form
-												{...remove.enhance(async ({ submit }) => {
-													if (!confirm(`Delete the comment "${c.title}"?`)) return;
-													await submit();
-													notify("Comment deleted");
-												})}
-											>
-												<input {...remove.fields.id.as("hidden", c.id)} />
-												<button class="link-dim" disabled={!!remove.pending}>
-													{remove.pending ? "Deleting…" : "Delete"}
-												</button>
-											</form>
+										{#if comments.canDelete(c)}
+											<CommentDeleteButton id={c.id} title={c.title} key={c.id} />
 										{/if}
 									</div>
 								{/if}
@@ -2060,7 +2015,7 @@
 					bind:messages={chatMessages}
 					bind:readAt={chatReadAt}
 					me={data.user ? { id: data.user.id, name: data.user.name } : null}
-					{isAdmin}
+					isAdmin={comments.isAdmin}
 					canWrite={data.canComment}
 					onseek={(s) => playerEngine?.seek(s)}
 				/>
@@ -2275,222 +2230,26 @@
 {/if}
 
 {#if data.canEdit}
-	<!-- One popover for posting and editing a comment. -->
-	<div
-		id="song-comment"
-		popover="auto"
-		bind:this={commentPanel}
-		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
-	>
-		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">
-				{commentDraft.id ? "Edit comment" : "Add a comment"}{#if demoTarget}
-					on demo "{demoTarget.label}"{/if}
-			</h2>
-			<button
-				class="button button-xs"
-				type="button"
-				popovertarget="song-comment"
-				popovertargetaction="hide"
-			>
-				Close
-			</button>
-		</div>
-		{#if commentDraft.id}
-			{@const remoteForm = updateComment}
-			<form
-				class="grid gap-3"
-				{...remoteForm.enhance(async ({ submit }) => {
-					commentError = null;
-					await submit();
-					if (!remoteForm.fields.allIssues()) {
-						notify("Comment updated");
-						commentPanel?.hidePopover();
-					}
-				})}
-			>
-				<input {...remoteForm.fields.id.as("hidden", commentDraft.id)} />
-				<label class="block">
-					<span class="text-sm opacity-80">Title</span>
-					<input
-						class="mt-1 field"
-						{...remoteForm.fields.title.as("text", commentDraft.title)}
-						required
-					/>
-					{#each remoteForm.fields.title.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-					{/each}
-				</label>
-				<label class="block">
-					<span class="text-sm opacity-80">Comment</span>
-					<textarea
-						class="mt-1 field text-sm"
-						rows="5"
-						{...remoteForm.fields.body.as("text", commentDraft.body)}
-						required></textarea>
-					{#each remoteForm.fields.body.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-					{/each}
-				</label>
-				<label class="block">
-					<span class="text-sm opacity-80">Position <span class="opacity-60">(optional)</span></span
-					>
-					<span class="mt-1 flex items-center gap-2">
-						<input
-							class="field font-mono text-sm"
-							placeholder={commentDraft.demoId ? "0:00.0" : POSITION_PLACEHOLDER[mode]}
-							{...remoteForm.fields.position.as("text", commentDraft.at)}
-						/>
-						{#if commentDraft.demoId}
-							<button
-								class="button button-xs shrink-0"
-								type="button"
-								disabled={!demoPanel}
-								onclick={() =>
-									remoteForm.fields.position.set(formatTime(demoPanel?.currentPosition() ?? 0, 2))}
-								>Playhead</button
-							>
-						{:else}
-							<button
-								class="button button-xs shrink-0"
-								type="button"
-								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() =>
-									remoteForm.fields.position.set(changes.editPos(playerEngine?.position ?? 0))}
-								>Playhead</button
-							>
-						{/if}
-					</span>
-					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-					{/each}
-				</label>
-				{#if commentError}<p class="text-sm text-red-400" role="alert">{commentError}</p>{/if}
-				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
-					>{remoteForm.pending ? "Saving…" : "Save"}</button
-				>
-			</form>
-		{:else}
-			{@const remoteForm = createComment}
-			<form
-				class="grid gap-3"
-				{...remoteForm.enhance(async ({ submit }) => {
-					commentError = null;
-					await submit();
-					if (!remoteForm.fields.allIssues()) {
-						notify("Comment posted");
-						commentsOpen = true;
-						commentPanel?.hidePopover();
-					}
-				})}
-			>
-				<input {...remoteForm.fields.songId.as("hidden", data.song.id)} />
-				<input {...remoteForm.fields.demoId.as("hidden", commentDraft.demoId)} />
-				<label class="block">
-					<span class="text-sm opacity-80">Title</span>
-					<input
-						class="mt-1 field"
-						{...remoteForm.fields.title.as("text", commentDraft.title)}
-						required
-					/>
-					{#each remoteForm.fields.title.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-					{/each}
-				</label>
-				<label class="block">
-					<span class="text-sm opacity-80">Comment</span>
-					<textarea
-						class="mt-1 field text-sm"
-						rows="5"
-						{...remoteForm.fields.body.as("text", commentDraft.body)}
-						required></textarea>
-					{#each remoteForm.fields.body.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-					{/each}
-				</label>
-				<label class="block">
-					<span class="text-sm opacity-80">Position <span class="opacity-60">(optional)</span></span
-					>
-					<span class="mt-1 flex items-center gap-2">
-						<input
-							class="field font-mono text-sm"
-							placeholder={commentDraft.demoId ? "0:00.0" : POSITION_PLACEHOLDER[mode]}
-							{...remoteForm.fields.position.as("text", commentDraft.at)}
-						/>
-						{#if commentDraft.demoId}
-							<button
-								class="button button-xs shrink-0"
-								type="button"
-								disabled={!demoPanel}
-								onclick={() =>
-									remoteForm.fields.position.set(formatTime(demoPanel?.currentPosition() ?? 0, 2))}
-								>Playhead</button
-							>
-						{:else}
-							<button
-								class="button button-xs shrink-0"
-								type="button"
-								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() =>
-									remoteForm.fields.position.set(changes.editPos(playerEngine?.position ?? 0))}
-								>Playhead</button
-							>
-						{/if}
-					</span>
-					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-					{/each}
-				</label>
-				{#if commentError}<p class="text-sm text-red-400" role="alert">{commentError}</p>{/if}
-				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
-					>{remoteForm.pending ? "Posting…" : "Post comment"}</button
-				>
-			</form>
-		{/if}
-	</div>
+	<SongCommentPopover
+		{comments}
+		songId={data.song.id}
+		{changes}
+		engine={playerEngine}
+		{demoPanel}
+		onposted={() => (commentsOpen = true)}
+	/>
 {/if}
 
 {#snippet demoCommentCard(id: string)}
 	{@const c = data.demoComments.find((x) => x.id === id)}
-	{#if c}
-		{@const remove = deleteComment.for(`demo:${c.id}`)}
-		<div class="flex items-baseline justify-between gap-3">
-			<h3 class="font-600">{c.title}</h3>
-			{#if c.editedAt}<span
-					class="rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
-					>edited</span
-				>{/if}
-		</div>
-		<p class="mt-1 text-12px opacity-70">
-			{c.authorName} · {formatDate(c.createdAt)}{#if c.at !== null}
-				· {formatTime(c.at, 1)}{/if}
-		</p>
-		<p class="mt-2 whitespace-pre-line">{c.body}</p>
-		<div class="mt-3 flex gap-3 text-12px">
-			{#if c.at !== null}
-				<button type="button" class="link-dim" onclick={() => demoPanel?.seekTo(c.at ?? 0)}
-					>Go to</button
-				>
-			{/if}
-			{#if canEditComment(c)}
-				<button type="button" class="link-dim" onclick={() => editDemoComment(c)}>Edit</button>
-			{/if}
-			{#if canDeleteComment(c)}
-				<form
-					{...remove.enhance(async ({ submit }) => {
-						if (!confirm(`Delete the comment "${c.title}"?`)) return;
-						await submit();
-						notify("Comment deleted");
-					})}
-				>
-					<input {...remove.fields.id.as("hidden", c.id)} />
-					<button class="link-dim" disabled={!!remove.pending}
-						>{remove.pending ? "Deleting…" : "Delete"}</button
-					>
-				</form>
-			{/if}
-		</div>
-	{/if}
+	{#if c}<SongCommentCard
+			comment={c}
+			{comments}
+			list="demo"
+			pos={(s) => formatTime(s, 1)}
+			onseek={(s) => demoPanel?.seekTo(s)}
+			onedit={() => comments.editDemo(c)}
+		/>{/if}
 {/snippet}
 
 {#if demoMenuAt}
@@ -2525,7 +2284,7 @@
 					const at = formatTime(demoMenuAt?.seconds ?? 0, 2);
 					const demoId = demoMenuAt?.demo.id ?? "";
 					demoMenuAt = null;
-					openComment({ at, demoId });
+					comments.open({ at, demoId });
 				}}
 			>
 				<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
@@ -2565,7 +2324,7 @@
 				onclick={() => {
 					const at = changes.editPos(stemMenuAt?.seconds ?? 0);
 					stemMenuAt = null;
-					openComment({ at });
+					comments.open({ at });
 				}}
 			>
 				<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
@@ -2576,45 +2335,14 @@
 
 {#snippet commentCard(id: string)}
 	{@const c = data.comments.find((x) => x.id === id)}
-	{#if c}
-		{@const remove = deleteComment.for(`timeline:${c.id}`)}
-		<div class="flex items-baseline justify-between gap-3">
-			<h3 class="font-600">{c.title}</h3>
-			{#if c.editedAt}<span
-					class="rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
-					>edited</span
-				>{/if}
-		</div>
-		<p class="mt-1 text-12px opacity-70">
-			{c.authorName} · {formatDate(c.createdAt)}{#if c.at !== null}
-				· {showPos(c.at)}{/if}
-		</p>
-		<p class="mt-2 whitespace-pre-line">{c.body}</p>
-		<div class="mt-3 flex gap-3 text-12px">
-			{#if c.at !== null}
-				<button type="button" class="link-dim" onclick={() => playerEngine?.seek(c.at ?? 0)}
-					>Go to</button
-				>
-			{/if}
-			{#if canEditComment(c)}
-				<button type="button" class="link-dim" onclick={() => editComment(c)}>Edit</button>
-			{/if}
-			{#if canDeleteComment(c)}
-				<form
-					{...remove.enhance(async ({ submit }) => {
-						if (!confirm(`Delete the comment "${c.title}"?`)) return;
-						await submit();
-						notify("Comment deleted");
-					})}
-				>
-					<input {...remove.fields.id.as("hidden", c.id)} />
-					<button class="link-dim" disabled={!!remove.pending}
-						>{remove.pending ? "Deleting…" : "Delete"}</button
-					>
-				</form>
-			{/if}
-		</div>
-	{/if}
+	{#if c}<SongCommentCard
+			comment={c}
+			{comments}
+			list="timeline"
+			pos={showPos}
+			onseek={(s) => playerEngine?.seek(s)}
+			onedit={() => comments.edit(c)}
+		/>{/if}
 {/snippet}
 
 {#snippet draftCard()}

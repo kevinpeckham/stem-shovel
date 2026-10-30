@@ -2,6 +2,8 @@
 	import { afterNavigate, goto, invalidateAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import ComboBox from "#lib/components/ComboBox.svelte";
+	import CommentCard from "#lib/components/CommentCard.svelte";
+	import CommentFields from "#lib/components/CommentFields.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
@@ -364,6 +366,15 @@
 		at: string;
 	}>({ id: null, recordingId: "", title: "", body: "", at: "" });
 	const commentTarget = $derived(recordingOf(commentDraft.recordingId));
+	/** The comment form's Playhead: where the recording being commented on is playing, once it plays. */
+	const commentPlayhead = $derived({
+		disabled: !player || current !== commentDraft.recordingId,
+		title:
+			current === commentDraft.recordingId
+				? "Where the recording is playing"
+				: "Play the recording to take its position",
+		read: () => formatTime(player?.currentPosition() ?? 0, 2),
+	});
 	function openComment(draft: Partial<typeof commentDraft> & { recordingId: string }) {
 		commentDraft = { id: null, title: "", body: "", at: "", ...draft };
 		const f = commentDraft.id ? updateSessionComment.fields : createSessionComment.fields;
@@ -1295,33 +1306,14 @@
 	{@const c = data.comments.find((x) => x.id === id)}
 	{#if c}
 		{@const r = recordingOf(c.recordingId)}
+		{@const s = r ? sessionOf(r) : null}
 		{@const remove = deleteSessionComment.for(c.id)}
-		<div class="flex items-baseline justify-between gap-3">
-			<h3 class="font-600">{c.title}</h3>
-			{#if c.editedAt}<span
-					class="rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
-					>edited</span
-				>{/if}
-		</div>
-		<p class="mt-1 text-12px opacity-70">
-			{c.authorName} · {formatDate(c.createdAt)}{#if c.at !== null}
-				· {formatTime(c.at, 1)}{/if}
-		</p>
-		<p class="mt-2 whitespace-pre-line">{c.body}</p>
-		<div class="mt-3 flex gap-3 text-12px">
-			{#if c.at !== null && r}
-				{@const s = sessionOf(r)}
-				<button
-					type="button"
-					class="link-dim"
-					onclick={() => {
-						if (s) void seekIn(s, r, c.at ?? 0);
-					}}>Go to</button
-				>
-			{/if}
-			{#if canEditComment(c)}
-				<button type="button" class="link-dim" onclick={() => editComment(c)}>Edit</button>
-			{/if}
+		<CommentCard
+			comment={c}
+			pos={(seconds) => formatTime(seconds, 1)}
+			onseek={r && s ? (seconds) => void seekIn(s, r, seconds) : undefined}
+			onedit={canEditComment(c) ? () => editComment(c) : undefined}
+		>
 			{#if canDeleteComment(c)}
 				<form
 					{...remove.enhance(async ({ submit }) => {
@@ -1337,12 +1329,12 @@
 					})}
 				>
 					<input {...remove.fields.id.as("hidden", c.id)} />
-					<button class="link-dim" disabled={!!remove.pending}
+					<button class="link" disabled={!!remove.pending}
 						>{remove.pending ? "Deleting…" : "Delete"}</button
 					>
 				</form>
 			{/if}
-		</div>
+		</CommentCard>
 	{/if}
 {/snippet}
 
@@ -1572,7 +1564,13 @@
 				})}
 			>
 				<input {...remoteForm.fields.id.as("hidden", commentDraft.id)} />
-				{@render commentFields(remoteForm)}
+				<CommentFields
+					fields={remoteForm.fields}
+					draft={commentDraft}
+					hint="optional, as time"
+					placeholder="1:23.4"
+					playhead={commentPlayhead}
+				/>
 				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
 					>{remoteForm.pending ? "Saving…" : "Save"}</button
 				>
@@ -1593,7 +1591,13 @@
 				})}
 			>
 				<input {...remoteForm.fields.recordingId.as("hidden", commentDraft.recordingId)} />
-				{@render commentFields(remoteForm)}
+				<CommentFields
+					fields={remoteForm.fields}
+					draft={commentDraft}
+					hint="optional, as time"
+					placeholder="1:23.4"
+					playhead={commentPlayhead}
+				/>
 				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
 					>{remoteForm.pending ? "Posting…" : "Post comment"}</button
 				>
@@ -1601,54 +1605,3 @@
 		{/if}
 	</div>
 {/if}
-
-{#snippet commentFields(remoteForm: typeof createSessionComment | typeof updateSessionComment)}
-	<label class="block">
-		<span class="text-sm opacity-80">Title</span>
-		<input
-			class="mt-1 field"
-			{...remoteForm.fields.title.as("text", commentDraft.title)}
-			required
-		/>
-		{#each remoteForm.fields.title.issues() ?? [] as issue (issue.message)}
-			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-		{/each}
-	</label>
-	<label class="block">
-		<span class="text-sm opacity-80">Comment</span>
-		<textarea
-			class="mt-1 field text-sm"
-			rows="5"
-			{...remoteForm.fields.body.as("text", commentDraft.body)}
-			required></textarea>
-		{#each remoteForm.fields.body.issues() ?? [] as issue (issue.message)}
-			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-		{/each}
-	</label>
-	<label class="block">
-		<span class="text-sm opacity-80"
-			>Position <span class="opacity-60">(optional, as time)</span></span
-		>
-		<span class="mt-1 flex items-center gap-2">
-			<input
-				class="field font-mono text-sm"
-				placeholder="1:23.4"
-				{...remoteForm.fields.position.as("text", commentDraft.at)}
-			/>
-			<button
-				class="button button-xs shrink-0"
-				type="button"
-				disabled={!player || current !== commentDraft.recordingId}
-				title={current === commentDraft.recordingId
-					? "Where the recording is playing"
-					: "Play the recording to take its position"}
-				onclick={() =>
-					remoteForm.fields.position.set(formatTime(player?.currentPosition() ?? 0, 2))}
-				>Playhead</button
-			>
-		</span>
-		{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
-			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-		{/each}
-	</label>
-{/snippet}
