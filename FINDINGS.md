@@ -243,6 +243,25 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   Safari also purges script-writable storage after seven days without a
   visit, which is why every copy is a cache and the UI says so.
 
+- **Porting a bench method means porting the app's conventions, not
+  the bench's** (2026-10-30, the chart alignment,
+  `audio/chartAlignment.ts`). stem-bench Study 12's `barSeconds` counts
+  a compound meter's dotted beat (6/8 at 120 is two beats, one second a
+  bar); the stem player's song changes count the meter's bottom note
+  everywhere (6/8 at 120 is six eighths, three seconds a bar,
+  `audio/measures.ts`). The alignment's default tempo comes from the
+  song's changes, so the bench's rule would have rendered a 6/8 song
+  three times too short and the warp, whose steps allow slopes of ½ to
+  2, would have failed outright with "cannot fit". The porting agent
+  flagged the clash in its report rather than picking a side; the fix
+  was one line and a test. Two more from the same port: the tritone
+  control need not be re-rendered, rotating the reference chromagram by
+  six pitch classes is the same thing for chroma and saves a second of
+  synthesis; and DTW over a 4096-sample window at 22 050 Hz is a
+  seconds-long window, so the window is scaled to the recording's rate
+  as a power of two (8192 at 44.1 and 48 kHz) so render and recording
+  share a hop.
+
 - **Study 12 verdict: chart placement in seconds is a solved,
   model-free problem — ship alignment behind a path-cost gate and an
   edge flag** (stem-bench, 2026-10-30; full section in the repo's

@@ -20,6 +20,11 @@
 	} from "#lib/audio/chords.js";
 	import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
 	import type { AiAnswer, SectionsAnswer } from "#lib/server/aiDetect.js";
+	import { alignChartInBrowser } from "#lib/audio/alignChartInBrowser.js";
+	import { alignedPlacements } from "#lib/utils/alignedPlacements.js";
+	import { placedSections, type AlignedChart } from "#lib/utils/placedSections.js";
+	import { sectionsSourceWords } from "#lib/utils/sectionsSourceWords.js";
+	import { placeAnswerByAlignment, type PlacedAnswer } from "#lib/utils/placeAnswerByAlignment.js";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
@@ -117,6 +122,7 @@
 	import {
 		addSongCredit,
 		askAiAboutSong,
+		chartBarsOf,
 		deleteDemo,
 		deleteSong,
 		deleteStem,
@@ -1081,8 +1087,11 @@
 	// (docs/audio-engine.md, "Detect sections"); saved at once when the song has none, else offered.
 	let sectionsBusy = $state(false);
 	let sectionsAnswer = $state<SectionsAnswer | null>(null);
+	/** Where the offered sections came from: the listening model, or the chart aligned to the stems. */
+	let sectionsSource = $state<"ai" | "chart">("ai");
 	async function detectSongSections() {
 		sectionsBusy = true;
+		sectionsSource = "ai";
 		sectionsAnswer = null;
 		sectionError = null;
 		try {
@@ -1107,7 +1116,7 @@
 		if (!sectionsAnswer) return;
 		if (
 			data.song.sections.length > 0 &&
-			!confirm("Replace the song's sections with the detected ones?")
+			!confirm(`Replace the song's sections with the ${sectionsWords.ones} ones?`)
 		)
 			return;
 		// Each start to the bar line it was heard near, and onto a key change within a bar of it (docs/audio-engine.md, "Snapped to the bar").
@@ -1126,9 +1135,40 @@
 		await persistSections(sections);
 		if (!sectionError) {
 			sectionsAnswer = null;
-			notify(`${sections.length} sections set from the AI${hasScore ? " and the chart" : ""}`, {
-				timeout: 8000,
-			});
+			notify(`${sections.length} sections set from ${sectionsWords.from}`, { timeout: 8000 });
+		}
+	}
+	/**
+	 * The chart aligned to the decoded stems in a worker (stem-bench Study 12;
+	 * no AI): its placements and the chart parser's warnings, or why it could
+	 * not be aligned. A failure in the worker rejects; the callers handle it.
+	 */
+	async function alignChart(): Promise<AlignedChart> {
+		const chart = await chartBarsOf({ id: data.song.id });
+		if (chart.bars === null) return { reason: chart.reason };
+		if (playerEngine?.status !== "ready") return { reason: "audio" };
+		const alignment = await alignChartInBrowser(chart.bars, await playerEngine.decodedBuffers());
+		return { placements: alignedPlacements(chart.bars, alignment), warnings: chart.warnings };
+	}
+	// "Place from chart": the chart's own sections where the alignment puts them; saved at once
+	// when the song has none, else offered (as "Detect" does).
+	async function placeSectionsFromChart() {
+		sectionsBusy = true;
+		sectionsSource = "chart";
+		sectionsAnswer = null;
+		sectionError = null;
+		try {
+			const placed = placedSections(await alignChart());
+			if (typeof placed === "string") {
+				notify(placed, { kind: "info" });
+				return;
+			}
+			sectionsAnswer = placed;
+			if (data.song.sections.length === 0) await useSectionsAnswer();
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			sectionsBusy = false;
 		}
 	}
 	async function saveSectionRows() {
@@ -1255,6 +1295,8 @@
 	}
 	/** The song has a chart the AI can read with the mix: a score (MusicXML, or a PDF or image marked as notation) or its own chord chart document (docs/audio-engine.md, "The score as the AI's chart", "The chord chart as the AI's chart"). */
 	let hasScore = $derived(notationCount > 0 || !!data.docs.chart);
+	/** How the Sections tab names its offered answer ("the chart" / "placed", or the AI's). */
+	let sectionsWords = $derived(sectionsSourceWords(sectionsSource, hasScore));
 	async function scanStems() {
 		if (!playerEngine || playerEngine.status !== "ready") return;
 		// With a chart and the AI at hand, the AI reads the chart and listens; the stems only when it cannot.
@@ -1467,8 +1509,23 @@
 	// it reads its candidates back, docs/audio-engine.md "The song-check reads the chart").
 	// "Use these" puts the answer into the rows for the user to save.
 	let aiBusy = $state(false);
-	let aiAnswer = $state<AiAnswer | null>(null);
+	let aiAnswer = $state<PlacedAnswer | null>(null);
 	let aiError = $state<string | null>(null);
+	/**
+	 * The song-check: the model's answer, its key and tempo changes then placed by aligning
+	 * the chart to the stems when it can (stem-bench Study 12). The alignment never breaks the
+	 * check: when it cannot run or fails, the model's placement stays.
+	 */
+	async function checkSong(): Promise<PlacedAnswer> {
+		const answer = await askAiAboutSong({ id: data.song.id });
+		if (!hasScore) return answer;
+		try {
+			const aligned = await alignChart();
+			return "placements" in aligned ? placeAnswerByAlignment(answer, aligned.placements) : answer;
+		} catch {
+			return answer;
+		}
+	}
 	/** The answer came unasked: Scan stems or an upload on a song with a chart. */
 	let aiAuto = $state(false);
 	async function askAi() {
@@ -1476,7 +1533,7 @@
 		aiBusy = true;
 		aiError = null;
 		try {
-			aiAnswer = await askAiAboutSong({ id: data.song.id });
+			aiAnswer = await checkSong();
 		} catch (e) {
 			aiError = errorMessage(e);
 		} finally {
@@ -1495,7 +1552,7 @@
 		aiBusy = true;
 		aiError = null;
 		try {
-			aiAnswer = await askAiAboutSong({ id: data.song.id });
+			aiAnswer = await checkSong();
 			settingsTab = "tempo";
 			if (aiAnswer.warnings?.length)
 				// A doubtful read anchors nothing unasked (stem-bench Study 5): the card shows what looked wrong.
@@ -1558,7 +1615,7 @@
 		try {
 			for (let attempt = 1; ; attempt++) {
 				try {
-					aiAnswer = await askAiAboutSong({ id: data.song.id });
+					aiAnswer = await checkSong();
 					settingsTab = "tempo";
 					aiBusy = false;
 					await useAiAnswer();
@@ -2548,7 +2605,19 @@
 											onclick={detectSongSections}
 										>
 											<span class="i-ph-sparkle" aria-hidden="true"></span>
-											{sectionsBusy ? "Listening…" : "Detect"}
+											{sectionsBusy && sectionsSource === "ai" ? "Listening…" : "Detect"}
+										</button>
+									{/if}
+									{#if hasScore}
+										<button
+											class="button button-xs"
+											type="button"
+											disabled={sectionsBusy}
+											title="Place the chart's sections in the recording by aligning the chart to the stems (no AI)"
+											onclick={placeSectionsFromChart}
+										>
+											<span class="i-ph-music-notes" aria-hidden="true"></span>
+											{sectionsBusy && sectionsSource === "chart" ? "Placing…" : "Place from chart"}
 										</button>
 									{/if}
 									<button
@@ -2578,7 +2647,11 @@
 							</p>
 							{#if sectionsAnswer}
 								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									{hasScore ? "The AI read the chart and listened. It finds" : "AI hears"}
+									{sectionsSource === "chart"
+										? "Aligned to the recording, the chart places"
+										: hasScore
+											? "The AI read the chart and listened. It finds"
+											: "AI hears"}
 									<strong
 										>{sectionsAnswer.sections
 											.map((s) => `${s.name} at ${editPos(s.at)}`)
@@ -2809,6 +2882,9 @@
 											.map((c) => `${c.key} at ${editPos(c.at)}`)
 											.join(", ")}{/if}
 									{aiAnswer.notes ? ` — ${aiAnswer.notes}` : ""}
+									{#if aiAnswer.placedByAlignment}
+										<span class="ml-1 text-xs opacity-70">placed by alignment</span>
+									{/if}
 									{#if aiAnswer.warnings?.length}
 										<!-- The chart read looked wrong (utils/chartReadWarnings.ts): said before the answer is used, with the read a click away. -->
 										<span class="mt-1 block text-amber-300" role="alert">

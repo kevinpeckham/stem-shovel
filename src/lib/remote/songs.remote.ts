@@ -67,6 +67,8 @@ import {
 	draftChartWithAi,
 } from "#lib/server/aiDetect.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
+import { chartBars } from "#lib/utils/chartBars.js";
+import { chordChartBars } from "#lib/utils/chordChartBars.js";
 import { withSongMentions } from "#lib/server/songMentions.js";
 import { ChartDraftSchema, ChartSaveSchema } from "#lib/val/ChartDraftSchema.js";
 import { MY_NOTES_KIND } from "#lib/val/SongDocKindSchema.js";
@@ -349,6 +351,44 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 			score,
 		),
 	);
+});
+
+/** The song's tempo and time signature at 0:00, the defaults a chart's bars take before its own marks. */
+function chartDefaults(changes: { kind: string; start: number; value: string }[]) {
+	const at0 = (kind: string) =>
+		changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
+	const tempo = Number(at0("tempo"));
+	return { tempo: tempo > 0 ? tempo : null, meter: at0("meter") };
+}
+
+/** The bars of a band's chart or a score's chart read; undefined when the score has no read yet. */
+function barsOfScore(
+	score: { kind: "chart"; markdown: string } | { kind: "pdf" | "image"; chartRead: string | null },
+	defaults: ReturnType<typeof chartDefaults>,
+) {
+	if (score.kind === "chart") return chordChartBars(score.markdown, defaults);
+	return score.chartRead ? chartBars(score.chartRead, defaults) : undefined;
+}
+
+/**
+ * The song's chart as the bars it plays, for aligning to the recording in
+ * the browser (audio/chartAlignment.ts; stem-bench Study 12), any member.
+ * The band's chord chart, else a PDF or image score's stored chart read;
+ * never calls the model. A MusicXML score is not read here yet, a score
+ * with no read waits for one, and a chart that gives no tempo (with the
+ * song's own as the default) or no bars has nothing to render.
+ */
+export const chartBarsOf = query(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	const [song, score] = await Promise.all([songForMix(id), scoreForAi(accountId, id)]);
+	if (!song || song.accountId !== accountId) error(404, "Song not found");
+	if (!score) return { bars: null, reason: "none" as const };
+	if (score.kind === "musicxml") return { bars: null, reason: "musicxml" as const };
+	const read = barsOfScore(score, chartDefaults(song.changes));
+	if (read === undefined) return { bars: null, reason: "unread" as const };
+	if (read === null) return { bars: null, reason: "no-bars" as const };
+	return { ...read, source: score.kind === "chart" ? ("chart" as const) : ("summary" as const) };
 });
 
 /** Asks the listening model where the song's sections begin, with its score when it has one (members; a few per hour). */

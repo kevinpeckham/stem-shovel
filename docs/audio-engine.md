@@ -709,3 +709,88 @@ stems, the upload check and the buttons' titles follow. What is not yet
 measured: a chord chart has no bars and the model aligns by ear, so the
 key-change placement may be looser than the lead sheet's four seconds;
 a stem-bench arm with the markdown chart would tell.
+
+## The chart placed by alignment (2026-10-30)
+
+stem-bench Study 12 (FINDINGS.md) showed that a chart rendered as plain
+chord pads at its own tempo and aligned to the recording by dynamic
+time warping over chroma places every bar in seconds without a model:
+95 % of bar starts within a quarter second on synthetic mixes, every
+section boundary within half a second, mid-song boundaries on a real
+recording within a tenth; the first and last boundaries are the weak
+ones (the chart stops describing the intro and the outro's tail), and a
+wrong chart's path cost runs 8.6 to 16.3 times the right one's. The app
+now does the same in the browser, from the stems the player already
+holds, and uses it in two places: the Sections tab's "Place from chart"
+and the song-check's key and tempo changes.
+
+- **Bars from the chart** (pure, `utils/chartBars.ts` and
+  `utils/chordChartBars.ts`, both to `ChartBar {measure, chords, bpm,
+  meter, key, section}` plus warnings). The stored AI read of a notation
+  file (`m<n> key … tempo … |: :| ending <n>: <chords>`) is expanded in
+  play order: repeats and first and second endings are followed, D.S.,
+  D.C., coda and fine are not (a warning each), a measure the read left
+  out holds its harmony (`chords: []`), tempo and meter marks apply from
+  their measure on with the song's own values before the first, and a
+  rehearsal mark or a quoted word that names a section
+  (`utils/chartSectionName.ts`: Intro, Verse 2, Pre-chorus, Solo, Outro…)
+  starts one. The band's markdown chart follows the user doc's tips:
+  `## Heading` (or `[Chorus]`, `Chorus:`) starts a section, `| D | A |`
+  grids and bare chord lines give a bar a cell or a symbol, two symbols
+  in a cell split the bar, `%` and `/` hold, `N.C.` is silence, `x2`
+  after a line or in a heading repeats it (capped at eight), `|: :|`
+  across lines repeats once, lyric lines are skipped (a line is chords
+  only when every token parses), and "Key: Bm" or "120 bpm" apply from
+  the next bar. Either returns null with no tempo or no bars.
+- **The query** `chartBarsOf` (songs.remote.ts, members): the song's
+  score through `scoreForAi`; the chord chart or a notation file's
+  stored read gives `{bars, warnings, source: "chart" | "summary"}`;
+  otherwise `{bars: null, reason: "none" | "musicxml" | "unread" |
+  "no-bars"}`. It never calls the model: "unread" means the song-check
+  has not yet read the file.
+- **The aligner** (`audio/chartAlignment.ts`, pure, run in
+  `workers/alignChart.worker.ts`; `audio/alignChartInBrowser.ts` mixes
+  the player's decoded buffers to mono at the first buffer's rate,
+  posts, waits 90 s at most and terminates the worker). The bench's
+  math ported: `renderChartPads` sums a sine per chord tone
+  (`utils/chordPitchClasses.ts`: root and triad by quality, sevenths,
+  sixths, ninths, a slash bass) for each bar's seconds, where a bar is
+  the numerator's beats at the bpm and a beat is the meter's bottom
+  note, as the song's changes count it everywhere (the bench counted a
+  compound meter's dotted beat; a 6/8 song's default tempo would have
+  rendered three times too short); `chromagram` folds 55–2200 Hz into
+  twelve classes over a Hann window the bench's length in seconds
+  (8192 samples at 44.1 or 48 kHz, hop half), L2-normalized;
+  `dtwAlign` is cosine-distance DTW with steps (1,1), (1,2), (2,1),
+  free start and end in the recording, three cost rows and a byte a
+  cell of steps (a ceiling of 150 M cells, about seventeen minutes of
+  song), normalized cost and a per-frame step cost. `alignChart` maps
+  each bar start through the path and runs the same alignment with the
+  reference chroma rotated six classes as the tritone control; a
+  four-minute song renders in about a second and aligns in about three.
+- **Placements** (`utils/alignedPlacements.ts`, pure): a section at
+  each bar that begins one (the first snapped to 0 within a quarter
+  second), a key or tempo change at each bar whose value differs from
+  the bar before, `ratio = controlCost / cost` and `samePiece = ratio >=
+  ALIGNMENT_SAME_PIECE_RATIO` (constants/chartAlignment.ts, 3,
+  provisional: well under the bench's 8.6× floor for another song's
+  chart, awaiting its measurement of this transposed-control form). A
+  placement is hedged at the first and last sections, in a bar whose
+  local cost is over twice the median (the chart stopped matching there)
+  and everywhere when the chart is not this recording.
+- **On the page.** "Place from chart" beside "Detect" on the Sections
+  tab (`utils/sectionsFromPlacements.ts` turns the placements into the
+  same answer shape Detect produces, with a note that names the hedges,
+  so the existing offer and confirm apply; a song without sections saves
+  at once). The song-check runs the alignment after the model answers
+  and, when the chart is the recording, replaces the model's key and
+  tempo placements with the aligned ones
+  (`utils/placeAnswerByAlignment.ts`); a chart that does not fit keeps
+  the model's placement and says so. `utils/alignmentReason.ts` is the
+  sentence for each reason the chart gave no bars. Nothing here calls
+  the model or counts against the AI limit.
+- **Not done.** MusicXML (its summary is the same form, but
+  `scoreForAi` returns the file; a later pass can read it through the
+  same parser), three or more endings, D.S. and coda jumps, a tempo map
+  from the alignment itself (the bench's candidates memo), and the
+  bench's measurement of the ratio threshold.

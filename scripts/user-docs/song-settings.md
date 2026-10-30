@@ -20,6 +20,8 @@ A score is a MusicXML file, or a PDF or image marked as notation on the Attachme
 
 A section has a **numeral** (I, II, III …), a **name** (Intro, Verse, Chorus …) and a **start** position. Sections show as a row above the stems; the numeral is what you see, and the name appears on hover. **Detect** sends the mix to a model that listens and marks where each section begins, naming them the way your other songs do; when the song has a score attached, the chart's rehearsal marks and section words lead. A song with no sections gets them at once; one that has some is shown the answer first, with **Use these** to replace them.
 
+**Place from chart** does the same without AI: it reads the song's chart (the chord chart you wrote, or a notation file the AI check has read), plays it to itself as plain chords at the chart's tempo, lines that up with the stems in your browser and puts each section where the chart's bar lands. Mid-song this is good to a tenth of a second; the first and last sections are marked approximate, since a chart rarely describes the intro or the end of the outro, and so is any section where the chart stops matching what was played. It needs a tempo and chord symbols in the chart, and the stems decoded in the player. The AI check uses the same alignment to place the key and tempo changes it finds, when the chart fits the recording; when it does not, the card says so.
+
 ## Start and end markers
 
 If the audio has silence before the first bar, set where **bar 1** starts so the bars readout lines up. An **end** marker trims silence at the end of the timeline.
