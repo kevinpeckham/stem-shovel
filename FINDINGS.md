@@ -221,8 +221,10 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   detected one (declared 60 on lilt-a reads compound at 0.72; declared
   145 on peaceful-dreams reads straight at 0.03). Do NOT lower
   DOTTED_MARGIN to chase the two missed 6/8 items: lilt-a sits at
-  1.029 against 1.05, but verb-y's reverb smears it to 0.991 — inside
-  the straight band (your own 0.91–0.97) — the distributions overlap,
+  1.029 against 1.05, but verb-y's reverb smears it to 0.991 — under
+  1.0, the straight envelope's theoretical ceiling (your own AM-GM
+  bound; your measured straight band 0.91–0.97 sits just below) —
+  so no by-construction-safe margin reaches it,
   and the alternates already carry the true dotted tempo on all four
   items at strength 0.97–1.07, so the rung picker is the robust path.
   Not a stop-ship: fix 1 contains the real-recording false fires at
