@@ -27,8 +27,16 @@ is the SHIPPED grammar, stated as rules a musician can follow — the
 bench validated every one of these against `chordChartBars` at
 39c25b5:
 
-- **Bars are cells between pipes**: `| D | A |` is two bars. Two
-  symbols in one cell split the bar in half: `| F#5 Esus4 |`.
+- **Bars are cells between pipes**: `| D | A |` is two bars. N
+  symbols in one cell divide the bar into N EQUAL parts: two symbols
+  halve it (`| F#5 Esus4 |`), and beat-level placement is the chord
+  repeated once per beat — `| Am7 Am7 Am7 G5(7) |` is three beats of
+  Am7 and one of G5(7). State the equal-division rule plainly: three
+  symbols in 4/4 are thirds of the bar, not beats, so use 1, 2 or 4
+  symbols per cell in 4/4 (1, 2, 3 or 6 in 6/8). And one trap the
+  bench hit: the jazz slash (`| Am7 / / G7 |`) does NOT mean
+  beat-holds here — a `/` collapses to the previous-BAR rule and the
+  split comes out wrong silently. Say so in the docs.
 - **`%` (or `/`) alone in a cell plays the previous bar again**; an
   empty cell holds the previous harmony.
 - **`x N` at the end of a line plays that whole LINE N times total**
