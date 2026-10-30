@@ -206,3 +206,25 @@ strike bar (`| Em |`) with no hold bars — the machine's last-sound rule
 already finds the fade's end, and counting unplayed bars is false
 precision. The bench will validate the directive against the Em outro
 case when it lands.
+
+## Fixture notes from the band's revised Eat All the Clocks (2026-10-30)
+
+The band rewrote Eat All the Clocks in the define-once idiom, and the
+bench verified the CONTENT is perfect (all nine sections grid-match
+the declared starts exactly; expanded and aligned: ratio 2.63, median
+local cost 0.207, every section placed within 0.4 s — the Study 12
+−26 s mystery was the old transcription's wrong repeat readings, now
+resolved). The stored text parses to null today, making it the ideal
+step-1 acceptance fixture: 71 bars, 9 sections, numbers pre-validated.
+Three idiom details it surfaced for the parser work:
+
+1. **Section names are arbitrary**: "Part 1", "Part 2", "Out" — the
+   bold-label idiom must accept any name (the numeral carries
+   identity); do not filter through chartSectionName's fixed
+   vocabulary there.
+2. **A trailing pipe is sometimes missing** (`\| C | D | A | A`) —
+   tolerate an unclosed grid row.
+3. **Structure's `Chorus x2` maps to two declared sections with
+   distinct names** (Chorus - 2, Chorus - 3 in the sections data) —
+   expansion by numeral/name, with the sections data free to name
+   each play.
