@@ -136,3 +136,24 @@ Asks, in order:
 3. The User Docs page (deliverable 1) then documents BOTH forms, with
    define-once as the recommended one for songs with repeating
    sections.
+
+## Deliverable 4 (added 2026-10-30): Logic-style parentheticals — the 5 chord keeps no third
+
+Kevin writes `G5(7)` in the Logic Pro sense: base quality 5 (no
+third), parenthesized tones added — G, D, F. The shipped
+`chordPitchClasses` almost agrees (parentheticals already add) except
+the seventh piece brings the major third with it, so `G5(7)` comes
+out G, B, D, F. The ask, one rule stated once: **the base quality
+defines the triad — and `5` means no third — then parenthesized tones
+are added to it.** `G5(7)` → root, fifth, flat seven; `F#(5)(7)` →
+F#, C#, E; plain `G5` and `G7` unchanged; `no3`/`omit3` spellings
+remain unnecessary. Backward compatible (nothing that parses today
+changes except the 5-with-additions family, which currently parses
+WRONG against the author's intent), Logic-compatible (a real-world
+authority for the semantics, worth citing in the User Docs page and
+the standard if it happens), and it retroactively corrects the band's
+existing charts without an edit. chordPitchClasses.test.ts gains the
+cases. The bench will mirror the rule in its grading allowances when
+it registers the chord path next (the Study 13 power-chord allowance
+extends naturally: an `X5(7)` truth accepts X7, X5 and X at the same
+root).
