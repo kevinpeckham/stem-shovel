@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.200.2] - 2026-10-30
+
 ### Added
 
 - **Research in the footer.** The More row links to Lightning Jar's stem-bench research page, the studies behind the audio features.
