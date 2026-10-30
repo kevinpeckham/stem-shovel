@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "#lib/utils/docMonoPreference.js";
-	import type { SectionsAnswer } from "#lib/server/aiDetect.js";
-	import { placedSections } from "#lib/utils/placedSections.js";
-	import { sectionsSourceWords } from "#lib/utils/sectionsSourceWords.js";
 	import SongTempoKeyTab from "#lib/components/SongTempoKeyTab.svelte";
+	import SongSectionsTab from "#lib/components/SongSectionsTab.svelte";
 	import { SongChanges, POSITION_PLACEHOLDER } from "#lib/state/songChanges.svelte.js";
 	import { SongCheck } from "#lib/state/songCheck.svelte.js";
+	import { SongSections } from "#lib/state/songSections.svelte.js";
 	import { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
@@ -39,14 +38,7 @@
 	import { type MidiSummary, parseMidi } from "#lib/audio/midi.js";
 	import StemReplacer from "#lib/components/StemReplacer.svelte";
 	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
-	import {
-		barGrid,
-		barSecondsAt,
-		formatPosition,
-		secondsAtBar,
-		snapToAnchor,
-		snapToDownbeat,
-	} from "#lib/audio/measures.js";
+	import { barGrid, formatPosition, secondsAtBar } from "#lib/audio/measures.js";
 	import { type MixMode, mixQuery, saveMix, saveStemsZip } from "#lib/audio/downloads.js";
 	import { bumpVersion } from "#lib/utils/bumpVersion.js";
 	import { midiContentType } from "#lib/utils/midiContentType.js";
@@ -64,10 +56,8 @@
 	import { CREDIT_ROLES, type CreditRole } from "#lib/val/CreditRoleSchema.js";
 	import { formatMonth } from "#lib/utils/formatMonth.js";
 	import { POSITION_MODE_LABELS } from "#lib/constants/positionModes.js";
-	import { toRoman } from "#lib/utils/toRoman.js";
 	import { STEM_TINTS, type StemTint } from "#lib/constants/stemTints.js";
 	import { decodedStemBytes } from "#lib/utils/decodedStemBytes.js";
-	import type { SongSection } from "#lib/val/SongSectionSchema.js";
 	import { SONG_CHANGE_KINDS } from "#lib/constants/songChanges.js";
 	import { formatSongChange } from "#lib/utils/formatSongChange.js";
 	import { keyLine } from "#lib/utils/keyLine.js";
@@ -96,7 +86,6 @@
 		deleteDemo,
 		deleteSong,
 		deleteStem,
-		detectSections,
 		removeDemoById,
 		removeSongCredit,
 		removeStemMidi,
@@ -1018,129 +1007,8 @@
 
 	// MP3 mixdown: "original" is every stem at unity (cached on the server);
 	// "custom" is what the player has audible right now — mute, solo and faders.
-	// Song sections: the list in settings edits index, name and start. (The player
-	// can also offer "Add section at playhead" via its onaddsection prop; off for now.)
-	let sectionRows = $state<
-		{ index: string; name: string; time: string; shown: string; seconds: number | null }[]
-	>([]);
-	let sectionError = $state<string | null>(null);
-	let sectionsSaving = $state(false);
-	function resetSectionRows() {
-		sectionRows = data.song.sections.map((s) => ({
-			index: s.index ?? "",
-			name: s.name,
-			time: changes.editPos(s.start),
-			shown: changes.editPos(s.start),
-			seconds: s.start,
-		}));
-	}
-	async function persistSections(next: SongSection[]) {
-		sectionError = null;
-		sectionsSaving = true;
-		try {
-			await saveSections({ id: data.song.id, sections: next });
-			await refreshAll();
-			resetSectionRows();
-			notify("Sections saved");
-		} catch (e) {
-			sectionError = errorMessage(e);
-		} finally {
-			sectionsSaving = false;
-		}
-	}
-	// "Detect": the listening model splits the mix into sections, with the song's score when it has one
-	// (docs/audio-engine.md, "Detect sections"); saved at once when the song has none, else offered.
-	let sectionsBusy = $state(false);
-	let sectionsAnswer = $state<SectionsAnswer | null>(null);
-	/** Where the offered sections came from: the listening model, or the chart aligned to the stems. */
-	let sectionsSource = $state<"ai" | "chart">("ai");
-	async function detectSongSections() {
-		sectionsBusy = true;
-		sectionsSource = "ai";
-		sectionsAnswer = null;
-		sectionError = null;
-		try {
-			const answer = await detectSections({ id: data.song.id });
-			if (answer.sections.length === 0) {
-				notify("The AI could not tell the sections apart", { kind: "info" });
-				return;
-			}
-			if (data.song.sections.length === 0) {
-				sectionsAnswer = answer;
-				await useSectionsAnswer();
-			} else sectionsAnswer = answer;
-		} catch (e) {
-			const status = (e as { status?: unknown }).status;
-			sectionError =
-				status === 409 ? "The mix is still rendering; try again in a moment" : errorMessage(e);
-		} finally {
-			sectionsBusy = false;
-		}
-	}
-	async function useSectionsAnswer() {
-		if (!sectionsAnswer) return;
-		if (
-			data.song.sections.length > 0 &&
-			!confirm(`Replace the song's sections with the ${sectionsWords.ones} ones?`)
-		)
-			return;
-		// Each start to the bar line it was heard near, and onto a key change within a bar of it (docs/audio-engine.md, "Snapped to the bar").
-		const grid = posCtx.grid;
-		const keyStarts = data.song.changes.filter((c) => c.kind === "key").map((c) => c.start);
-		const snap = (at: number) => {
-			if (!grid) return at;
-			const bar = snapToDownbeat(grid, at);
-			return snapToAnchor(bar, keyStarts, barSecondsAt(grid, bar));
-		};
-		const sections = sectionsAnswer.sections.map((s, i) => ({
-			index: toRoman(i + 1),
-			name: s.name,
-			start: Math.round(snap(s.at) * 10) / 10,
-		}));
-		await persistSections(sections);
-		if (!sectionError) {
-			sectionsAnswer = null;
-			notify(`${sections.length} sections set from ${sectionsWords.from}`, { timeout: 8000 });
-		}
-	}
-	// "Place from chart": the chart's own sections where the alignment puts them; saved at once
-	// when the song has none, else offered (as "Detect" does).
-	async function placeSectionsFromChart() {
-		sectionsBusy = true;
-		sectionsSource = "chart";
-		sectionsAnswer = null;
-		sectionError = null;
-		try {
-			const placed = placedSections(await check.alignChart());
-			if (typeof placed === "string") {
-				notify(placed, { kind: "info" });
-				return;
-			}
-			sectionsAnswer = placed;
-			if (data.song.sections.length === 0) await useSectionsAnswer();
-		} catch (e) {
-			notify(errorMessage(e), { kind: "error" });
-		} finally {
-			sectionsBusy = false;
-		}
-	}
-	async function saveSectionRows() {
-		const parsed: SongSection[] = [];
-		for (const row of sectionRows) {
-			const start = changes.rowSeconds(row);
-			if (start === null) {
-				sectionError = changes.positionMessage(row.time);
-				return;
-			}
-			parsed.push({ index: row.index, name: row.name, start });
-		}
-		await persistSections(parsed);
-	}
-
 	/** The song has a chart the AI can read with the mix: a score (MusicXML, or a PDF or image marked as notation) or its own chord chart document (docs/audio-engine.md, "The score as the AI's chart", "The chord chart as the AI's chart"). */
 	let hasScore = $derived(notationCount > 0 || !!data.docs.chart);
-	/** How the Sections tab names its offered answer ("the chart" / "placed", or the AI's). */
-	let sectionsWords = $derived(sectionsSourceWords(sectionsSource, hasScore));
 	/** The model's chords ("D5 % A5 …") as chart lines, four bars each. */
 	function aiChordLines(chords: string): string {
 		const cells = chords.split(/\s+/).filter(Boolean);
@@ -1168,7 +1036,7 @@
 				})),
 			});
 			await refreshAll();
-			resetSectionRows();
+			sections.reset();
 			notify("Sections saved from the draft");
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
@@ -1307,6 +1175,18 @@
 		changes,
 		onsaved: refreshAll,
 		showTab: () => (settingsTab = "tempo"),
+	});
+	/**
+	 * The song's sections (settings' Sections tab): the rows, Detect and Place from chart. (The player
+	 * can also offer "Add section at playhead" via its onaddsection prop; off for now.)
+	 */
+	const sections = new SongSections({
+		song: () => data.song,
+		grid: () => posCtx.grid,
+		hasScore: () => hasScore,
+		changes,
+		alignChart: () => check.alignChart(),
+		onsaved: refreshAll,
 	});
 	/** A member dragged the rows into a new order: it becomes the song's order, for everyone. */
 	async function saveStemOrder(ids: string[]) {
@@ -1657,7 +1537,7 @@
 				if (e.newState === "open") {
 					clearForm(updateSong); // saved values, not the last edit
 					positionError = null;
-					resetSectionRows();
+					sections.reset();
 					changes.reset();
 					startAtEntry = startAtText;
 					endAtEntry = endAtText;
@@ -2008,140 +1888,7 @@
 						</form>
 					{/if}
 					{#if settingsTab === "sections"}
-						<div>
-							<div class="flex flex-wrap items-center justify-between gap-3">
-								<h3 class="text-15px font-700">Sections</h3>
-								<div class="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
-									{#if data.aiAvailable}
-										<button
-											class="button button-xs"
-											type="button"
-											disabled={sectionsBusy}
-											title={hasScore
-												? "Send the mix and the chart to a model that marks where each section begins"
-												: "Send the mix to a model that listens and marks where each section begins"}
-											onclick={detectSongSections}
-										>
-											<span class="i-ph-sparkle" aria-hidden="true"></span>
-											{sectionsBusy && sectionsSource === "ai" ? "Listening…" : "Detect"}
-										</button>
-									{/if}
-									{#if hasScore}
-										<button
-											class="button button-xs"
-											type="button"
-											disabled={sectionsBusy}
-											title="Place the chart's sections in the recording by aligning the chart to the stems (no AI)"
-											onclick={placeSectionsFromChart}
-										>
-											<span class="i-ph-music-notes" aria-hidden="true"></span>
-											{sectionsBusy && sectionsSource === "chart" ? "Placing…" : "Place from chart"}
-										</button>
-									{/if}
-									<button
-										class="button button-xs"
-										type="button"
-										onclick={() =>
-											(sectionRows = [
-												...sectionRows,
-												{
-													index: toRoman(sectionRows.length + 1),
-													name: "",
-													time: changes.editPos(0),
-													shown: "",
-													seconds: null,
-												},
-											])}
-									>
-										<span class="i-ph-plus" aria-hidden="true"></span>
-										Add row
-									</button>
-								</div>
-							</div>
-							<p class="mt-1 text-sm opacity-90">
-								Song structure for the timeline above the stems: a short index (roman numerals,
-								shown on the timeline; the name shows on hover), a name, and where it starts — time,
-								timecode or bars.
-							</p>
-							{#if sectionsAnswer}
-								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									{sectionsSource === "chart"
-										? "Aligned to the recording, the chart places"
-										: hasScore
-											? "The AI read the chart and listened. It finds"
-											: "AI hears"}
-									<strong
-										>{sectionsAnswer.sections
-											.map((s) => `${s.name} at ${changes.editPos(s.at)}`)
-											.join(", ")}</strong
-									>
-									{sectionsAnswer.notes ? ` — ${sectionsAnswer.notes}` : ""}
-									<button
-										class="ml-2 link-dim"
-										type="button"
-										disabled={sectionsSaving}
-										onclick={useSectionsAnswer}>{sectionsSaving ? "Saving…" : "Use these"}</button
-									>
-									<button
-										class="ml-2 link-dim"
-										type="button"
-										onclick={() => (sectionsAnswer = null)}>Dismiss</button
-									>
-								</p>
-							{/if}
-							{#if sectionRows.length > 0}
-								<div class="mt-3 grid gap-2">
-									{#each sectionRows as row, i (i)}
-										<!-- Two lines on a phone (index + name, start + remove), one from sm up. -->
-										<div
-											class="mb-2 grid grid-cols-[4rem_1fr_auto] items-center gap-2 sm:mb-0 sm:grid-cols-[4rem_1fr_7rem_auto]"
-										>
-											<input
-												class="field font-mono text-sm"
-												placeholder="I"
-												bind:value={row.index}
-												aria-label="Section index"
-												title="Short index shown on the timeline (roman numerals); the name shows on hover"
-											/>
-											<input
-												class="field col-span-2 sm:col-span-1"
-												placeholder="Intro"
-												bind:value={row.name}
-												aria-label="Section name"
-											/>
-											<input
-												class="field col-span-2 font-mono text-sm sm:col-span-1"
-												placeholder={POSITION_PLACEHOLDER[mode]}
-												bind:value={row.time}
-												aria-label="Start time"
-											/>
-											<button
-												class="link-dim text-xs justify-self-start"
-												type="button"
-												onclick={() => (sectionRows = sectionRows.filter((_, j) => j !== i))}
-												>Remove</button
-											>
-										</div>
-									{/each}
-								</div>
-							{/if}
-							{#if sectionError}
-								<p class="mt-2 text-sm text-red-400" role="alert">{sectionError}</p>
-							{/if}
-							<div class="mt-3 flex items-center gap-3">
-								<button
-									class="button-accent disabled:opacity-40"
-									type="button"
-									disabled={sectionsSaving}
-									onclick={saveSectionRows}
-								>
-									{sectionsSaving ? "Saving…" : "Save sections"}
-								</button>
-								<button class="link-dim text-xs" type="button" onclick={resetSectionRows}
-									>Discard changes</button
-								>
-							</div>
-						</div>
+						<SongSectionsTab {sections} {changes} {hasScore} aiAvailable={data.aiAvailable} />
 					{/if}
 					{#if settingsTab === "tempo"}
 						<SongTempoKeyTab

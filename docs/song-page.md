@@ -47,11 +47,21 @@ step so it shrinks with the page and still fails on anything new.
    - `components/SongTempoKeyTab.svelte`: the tab's markup, verbatim, in
      six snippets Fallow scores apart; the page passes its `draftCard`
      snippet in so the Docs panel and the tab share one card.
-2. **Sections tab**, then **Details**, **Demos** and **Options**: the
-   same shape, one tab a step.
-3. **The uploads and downloads menu** (the `actionButtons` snippet).
-4. **Comments**: the popover, the two cards and the ⌘-click menus.
-5. Then the page is the layout, the floating panels and the data.
+2. **Sections tab** (2026-10-30, done): the page lost 249 lines.
+   - `state/songSections.svelte.ts`, `SongSections`: the section rows
+     (`rows`, `error`, `saving`, `busy`, `answer`, `source`, the `words`
+     getter; `reset`, `add`, `remove`, `detect`, `useAnswer`,
+     `placeFromChart`, `save`), with the grid for snapping and
+     `check.alignChart` passed in as functions and the position checks
+     through `SongChanges`.
+   - `components/SongSectionsTab.svelte`: the markup in three snippets
+     (`actions`, `answerCard`, `rows`); its `link-dim` links became
+     `link` (the shortcut is deprecated), the only markup change.
+3. **Details**, **Demos** and **Options** tabs: the same shape, one tab
+   a step.
+4. **The uploads and downloads menu** (the `actionButtons` snippet).
+5. **Comments**: the popover, the two cards and the ⌘-click menus.
+6. Then the page is the layout, the floating panels and the data.
 
 ## Effect on the client, as a pilot
 
