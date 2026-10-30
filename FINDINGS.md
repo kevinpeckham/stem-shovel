@@ -196,6 +196,33 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 13 verdict: chord drafts on real audio are a 38 % feature —
+  and a one-cent text-only reconciler pass lifts them 16 points with
+  zero breaks** (stem-bench, 2026-10-30; full section in the repo's
+  REPORT.md; ≈ $0.60). The first real-recording measurement of the
+  chord path: Basic Pitch + the v0.142 matcher — 95.8 % on the
+  synthetic bench, the Study 10 winner — reads letter-lands at
+  29/76 bars (38.2 %) against the chart, even with a registered
+  power-chord allowance doing 9 bars of work. The binding constraint
+  is the TRANSCRIPTION on real timbres (sustained synths, guitar
+  voicings — the Study 1 fixture gotcha, now measured in production
+  conditions), not the matcher and not any model. Two consequences:
+  (1) the chord-hint feature's honest quality bar on real songs is
+  far below what synthetic numbers suggested — worth a UI hedge now;
+  (2) the registered reconciler gate passed for BOTH models — one
+  text-only pass over the key, the detected chords and your own
+  describeBars note lines took claude-fable-5-1 from 29 to 41 of 76
+  (fixes 12, breaks 0 — the anti-agreement-trap clause, fixes ≥ 2×
+  breaks, passed at infinity) and gemini-3.5-flash to 36 (7/0). Ship
+  shape: reconcile inside the chart-draft job, symbols in symbols
+  out, keep the detector's chord when the model's output does not
+  parse, and cap output generously — all four first pilot cells
+  truncated at 4000 tokens mid-narration (the Study 8 Amendment 1
+  class; 16000 worked, though gemini still burned the full budget
+  narrating the longer song and never answered it). Reconciled 54 %
+  is better, not good: if chord drafts matter, the next investment is
+  a stronger transcription on real timbres, not more model.
+
 - **OPFS reads need no sync access handle, which lets a second worker
   read the cache without a lock** (2026-10-30, the stem player's
   "keep on this device", `workers/mediaCache.worker.ts`). Dawn's PCM
