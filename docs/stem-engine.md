@@ -316,7 +316,10 @@ no connection at all, and it is not built.
   component's three calls; `audio/deviceKeep.svelte.ts` holds the
   player's kept state and handlers and `KeepOnDevice.svelte` is the
   control (both kept out of the player, whose template Fallow already
-  scores at its ceiling).
+  scores at its ceiling). The song page hides the player's status box
+  and draws its own line in the player header, so it renders the
+  control there itself through the player's exported `keepProps()`;
+  the first release left it only in the hidden box.
   Eviction (`utils/mediaCacheEvictions.ts`, pure) removes whole songs,
   least recently used first, never the song being written unless it
   alone is over the budget (`utils/cacheBudget.ts`, shared with the PCM

@@ -239,6 +239,10 @@
 		void loadStems(manifest.stems, to === "auto" ? null : to);
 	}
 	const keep = new DeviceKeep(engine, () => songId); // "keep on this device" (audio/deviceKeep.svelte.ts)
+	/** The "keep on this device" line's props, for a page that draws the player's status itself (the song page hides the box). */
+	export function keepProps() {
+		return keep.props;
+	}
 	/** Load the stems, once the keep knows whether the song is kept, with the listener's own mix on top of the default (load() sets up the stems synchronously). */
 	const loadStems = (stems: StemManifest["stems"], choice: StemModeChoice | null) =>
 		keep.load(() => {

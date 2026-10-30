@@ -25,6 +25,7 @@
 	import { placedSections, type AlignedChart } from "#lib/utils/placedSections.js";
 	import { sectionsSourceWords } from "#lib/utils/sectionsSourceWords.js";
 	import { placeAnswerByAlignment, type PlacedAnswer } from "#lib/utils/placeAnswerByAlignment.js";
+	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
@@ -1931,6 +1932,9 @@
 		}
 	}
 	let player = $state<StemPlayer | null>(null);
+	/** The "keep on this device" line for the header's status (the player's own box is hidden); nothing until the player mounts. */
+	const NO_KEEP = { available: false, kept: null, keeping: null, onkeep() {}, onremove() {} };
+	let keepProps = $derived(player?.keepProps() ?? NO_KEEP);
 	/** The song's default mix per stem; the faders start here for everyone. */
 	let defaultGains = $derived(new Map(data.manifest.stems.map((s) => [s.id, s.gain ?? 1])));
 	let defaultPans = $derived(new Map(data.manifest.stems.map((s) => [s.id, s.pan ?? 0])));
@@ -3210,6 +3214,7 @@
 									>
 								{/if}
 							{/if}
+							<KeepOnDevice {...keepProps} />
 						{/if}
 					</span>
 				{/if}
