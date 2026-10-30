@@ -196,6 +196,38 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 12 verdict: chart placement in seconds is a solved,
+  model-free problem — ship alignment behind a path-cost gate and an
+  edge flag** (stem-bench, 2026-10-30; full section in the repo's
+  REPORT.md, $0). Synthesize-and-align: the chart rendered as plain
+  chord pads at the declared tempo, chroma-DTW against the recording,
+  every bar mapped to seconds. Synthetic: 95.0 % of 560 bar starts
+  within ±0.25 s; ALL 8 contrast section boundaries within ±0.5 s —
+  the precision metric the listening models and the neural segmenter
+  both scored zero on — and 7/8 tempo/key-change boundaries at ±0.5 s
+  (boundaries stem activity cannot see at all). DTW tracks straight
+  through tempo changes; reverb tails are the worst case (≤ 1.4 s).
+  Real recording (letter-lands, the bench's transcription of your
+  public chart): the six mid-song boundaries landed at 0.02–0.11
+  seconds — but the registered gate failed by one boundary at ±0.5
+  because the EDGES miss (intro 3.6 s, outro 9.1 s): alignment is
+  sub-tenth-second wherever the performance follows the chart and
+  lost exactly where the chart stops describing the performance (the
+  outro tail, the real intro). Ship shape: placement from alignment;
+  first/last boundaries flagged as chart-fidelity risks (the rung-
+  picker pattern); and the wrong-chart probe as the SAME-PIECE CHECK —
+  right-chart path cost separated from wrong-chart by 8.6–16.3× on
+  6/6 registered pairs, so the by-ear "same piece" clause in
+  askAiAboutMix can become a number. Honest limits: the method is
+  only as good as the chart (a deliberately wrong transcription
+  degraded placement locally by 2–8 s before re-anchoring — visible,
+  gateable), and one of the three public MMKK charts was too
+  ambiguous to transcribe at all — chart quality is now the binding
+  constraint, a data problem rather than a hearing problem. With
+  this, every hearing task measured across twelve studies has a
+  code-or-data answer: the model's remaining role in placement, if
+  the edge flag ships as UI, is nothing.
+
 - **Study 11c verdict on the 2cf70cb patch: ship it — the
   declared-meter gate strictly dominates, and the bench's own rule is
   retired on the record** (stem-bench, 2026-10-30; full section in
