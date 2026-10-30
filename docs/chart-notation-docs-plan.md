@@ -181,3 +181,28 @@ cases. The bench will mirror the rule in its grading allowances when
 it registers the chord path next (the Study 13 power-chord allowance
 extends naturally: an `X5(7)` truth accepts X7, X5 and X at the same
 root).
+
+## Deliverable 5 (added 2026-10-30): the unmeasured ring-out
+
+The grammar is entirely measured, and a final struck chord that rings
+until inaudible is musically UNMEASURED — the band's songs end this
+way (an Em strike, the recording ending when it dies), and notating it
+as hold bars plus a partial-bar meter change asserts a precision the
+player never intended. Proposed syntax, two spellings of one
+semantics:
+
+- A words-line directive after the final bar: `let ring` (accept
+  `ring out` and `l.v.`), or
+- an ellipsis on the final chord: `| Em... |` (ASCII or `…`).
+
+Semantics, defined once: the chart's final harmony continues for an
+UNMEASURED span — the reference renders a nominal ring (say two bars)
+for the chroma's sake; the alignment's free end and LAST-SOUND own the
+true endpoint; the ring is excluded from bar-count arithmetic (the
+duration check treats the chart total as a minimum); and the final
+section's end is reported from audibleSpan, hedged as an edge like
+everything else. Until this ships, the honest interim form is a single
+strike bar (`| Em |`) with no hold bars — the machine's last-sound rule
+already finds the fade's end, and counting unplayed bars is false
+precision. The bench will validate the directive against the Em outro
+case when it lands.
