@@ -43,6 +43,15 @@ describe("settingsChartDisagreement", () => {
 		);
 	});
 
+	test("a waltz counted in beats against one counted in bars agrees only with a meter of three", () => {
+		expect(
+			settingsChartDisagreement({ tempo: "224", meter: "3/4" }, { tempo: 74.7, meter: null }),
+		).toBeNull();
+		expect(
+			settingsChartDisagreement({ tempo: "224", meter: "4/4" }, { tempo: 74.7, meter: null }),
+		).toMatch(/224 bpm but the chart marks 74.7/);
+	});
+
 	test("a differing tempo and meter are both named", () => {
 		expect(
 			settingsChartDisagreement({ tempo: "120", meter: "4/4" }, { tempo: 96, meter: "3/4" }),

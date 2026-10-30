@@ -1,4 +1,5 @@
 import { isCompoundMeter } from "./isCompoundMeter.js";
+import { isTripleMeter } from "./isTripleMeter.js";
 import { tempoLadderMatch } from "./tempoLadderMatch.js";
 
 /**
@@ -10,9 +11,11 @@ import { tempoLadderMatch } from "./tempoLadderMatch.js";
  * chart's own values (`chartStatedValues`) in; the warning, or null when
  * they agree or either side states nothing. Tempos within 2 % (at least
  * 3 bpm) agree, and so do tempos on the same ladder: 224 against a chart's
- * 112 is the same grid counted in eighths, and 120 against 80 when either
- * meter is compound is the same grid counted in quarters
- * (`tempoLadderMatch`, docs/tempo-grid-plan.md).
+ * 112 is the same grid counted in eighths, 120 against 80 when either
+ * meter is compound is the same grid counted in quarters, and 224 against
+ * 74.7 when either meter is three to the bar is a fast waltz counted in
+ * beats against one counted in bars (`tempoLadderMatch`,
+ * docs/tempo-grid-plan.md).
  */
 export function settingsChartDisagreement(
 	settings: { tempo: string | null; meter: string | null },
@@ -25,6 +28,7 @@ export function settingsChartDisagreement(
 		chart.tempo !== null &&
 		tempoLadderMatch(setTempo, chart.tempo, {
 			compound: isCompoundMeter(settings.meter) || isCompoundMeter(chart.meter),
+			triple: isTripleMeter(settings.meter) || isTripleMeter(chart.meter),
 			tolerance: Math.max(3, 0.02 * chart.tempo),
 		}) === null;
 	const meterDiffers = !!settings.meter && !!chart.meter && settings.meter !== chart.meter;

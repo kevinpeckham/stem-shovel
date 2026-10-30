@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The tempo ladder's gates are the song's own time signature, never the detector's.** stem-bench Study 11b caught the detector's compound flag firing at a two-thirds-wrong pulse on a real recording (145 heard as 96.7, whose third is the true eighth), where it let the ladder call the declared 145 an agreement at ×1.5 and silenced the offer. The 3:2 rungs now open only when the song's time signature is compound, and the time signature joins the agreement at those rungs.
+- **A ×3 rung for the fast waltz.** A song declared 224 in 3/4 is now heard at its bar (75 bpm in 6/8), which matched nothing; it reads "the stems agree with your 224 bpm (heard as 75, counted three to the bar)" and the ×3 rung shows among the alternates.
+- **Alternates named from the right side of the beat.** On a compound beat the tail shows "counted three to the bar" and "counted in quarters" instead of an eighths count that was twice a dotted quarter.
+
 ## [0.200.0] - 2026-10-29
 
 ### Added

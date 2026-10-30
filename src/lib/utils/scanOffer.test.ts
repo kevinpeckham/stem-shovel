@@ -70,12 +70,38 @@ describe("scanOffer", () => {
 		);
 	});
 
-	it("allows the 3:2 rungs only for a compound beat or meter", () => {
+	it("allows the 3:2 rungs only for a compound meter the song declares, never the detector's flag", () => {
 		const rows = [tempo("97")];
 		expect(scanOffer(detection(97), rows, [tempo("145")]).ladder).toBeNull();
-		expect(scanOffer(detection(97, "4/4", 3), rows, [tempo("145")]).ladder?.factor).toBe(1.5);
-		expect(scanOffer(detection(97, "6/8"), rows, [tempo("145")]).ladder?.factor).toBe(1.5);
+		expect(scanOffer(detection(97, "4/4", 3), rows, [tempo("145")]).ladder).toBeNull();
+		expect(scanOffer(detection(97, "6/8"), rows, [tempo("145")]).ladder).toBeNull();
 		expect(scanOffer(detection(97), rows, [tempo("145"), meter("6/8")]).ladder?.factor).toBe(1.5);
+	});
+
+	it("keeps the warning when the detector's compound flag fires at a wrong pulse (Peaceful Dreams)", () => {
+		const peaceful: Pick<Detection, "tempo" | "meter"> = {
+			tempo: { bpm: 96.7, confidence: 0.5, subdivision: 3, alternates: [] },
+			meter: { value: "6/8", confidence: 0.5 },
+		};
+		const rows = [tempo("97"), meter("6/8"), key(0, "G major")];
+		const offer = scanOffer(peaceful, rows, [tempo("145"), meter("4/4")]);
+		expect(offer).toEqual({ values: rows, ladder: null, agrees: [] });
+	});
+
+	it("matches a fast waltz whose bar the stems hear as the beat at ×3, meter and all (Mop Heart)", () => {
+		const rows = [tempo("75"), meter("6/8"), key(0, "A minor")];
+		const offer = scanOffer(detection(74.7, "6/8", 3), rows, [tempo("224"), meter("3/4")]);
+		expect(offer.ladder).toEqual({ factor: 3, declared: 224 });
+		expect(offer.agrees).toEqual(expect.arrayContaining(["tempo", "meter"]));
+		expect(offer.values).toEqual([key(0, "A minor")]);
+	});
+
+	it("matches a 6/8 song read as straight quarters at 2/3, and its meter agrees", () => {
+		const rows = [tempo("90"), meter("4/4")];
+		const offer = scanOffer(detection(90, "4/4", 2), rows, [tempo("60"), meter("6/8")]);
+		expect(offer.ladder?.factor).toBe(2 / 3);
+		expect(offer.agrees).toEqual(["tempo", "meter"]);
+		expect(offer.values).toEqual([]);
 	});
 
 	it("reads a declared tempo with decimals", () => {

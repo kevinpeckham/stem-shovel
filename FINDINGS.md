@@ -196,6 +196,27 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **The ladder's gate must not be the detector's own flag, and a test
+  at the declared lag mirrors the confound** (stem-shovel, 2026-10-30,
+  from Study 11b's two real-recording failures). A sub-beat test at a
+  ⅔-wrong pulse fires because that pulse's third is the song's eighth;
+  the same test at the declared lag fires on a straight song with
+  running eighths whose declared value is ⅔ wrong, because that lag's
+  third is again the eighth. Both are "a third of a three-eighths lag
+  is the eighth", seen from either side; neither can tell a dotted
+  quarter from three eighths without the grouping evidence (3e against
+  4e), which is exactly the margin the bench measured as overlapping
+  (1.029, 0.991 against a straight band under 1.0). So the ladder's
+  3:2 and ×3 rungs open on the declared time signature only
+  (`isCompoundMeter`, `isTripleMeter`), a strict subset of v0.200.0's
+  gate; `tempoLadderMatch` carries the reasoning. The detector's
+  acoustic flag is still right to decide its own 6/8 output, where the
+  cost of a miss is a label the user sees, not a warning that goes
+  silent. Also learned: rung labels are perspective-dependent (×2 of a
+  quarter is eighths; ×2 of a dotted quarter is nothing), so
+  `tempoAlternatesText` picks its rungs by subdivision. Response to the
+  bench: stem-bench docs/RESPONSE-2026-10-30-study-11b.md.
+
 - **Study 11b verdict on v0.200.0: keep the triplet share and the
   ladder; fix the compound flag's hypothesis; the fast waltz needs a
   ×3 rung** (stem-bench, 2026-10-29, shipped rule validated verbatim

@@ -162,6 +162,9 @@ describe("subdivision and the tempo ladder", { timeout: 30_000 }, () => {
 		expect(d.tempo.subdivision).toBe(3);
 		expect(d.meter.value).toBe("6/8");
 		expect(Math.abs(rung(d, 1.5)!.bpm - 120)).toBeLessThan(3);
+		// The eighths of the 6/8 at 80, three to the dotted beat.
+		expect(Math.abs(rung(d, 3)!.bpm - 240)).toBeLessThan(3);
+		expect(rung(d, 3)!.strength).toBeGreaterThan(0.5);
 	});
 	test("6/8 at 80 where the autocorrelation picks two eighths (120) first: re-picked to 80", () => {
 		// Louder eighths: the bare peak sits at two eighths, 1.5× the dotted beat; the super-beat test re-picks.
@@ -170,6 +173,8 @@ describe("subdivision and the tempo ladder", { timeout: 30_000 }, () => {
 		expect(Math.abs(d.tempo.bpm - 80)).toBeLessThan(1.5);
 		expect(d.tempo.subdivision).toBe(3);
 		expect(d.meter.value).toBe("6/8");
+		expect(Math.abs(rung(d, 3)!.bpm - 240)).toBeLessThan(3);
+		expect(rung(d, 3)!.strength).toBeGreaterThan(0.5);
 	});
 	test("swung 4/4 at 100 (off-beats at two thirds): subdivision 2, 4/4", () => {
 		const hits: [number, number][] = [0, 1, 2, 3].flatMap((b): [number, number][] => [

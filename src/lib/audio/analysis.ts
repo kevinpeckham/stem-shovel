@@ -27,7 +27,7 @@ export interface Features {
 export type Subdivision = 2 | 3;
 /** Another rung of the tempo ladder: the same grid counted at a different level. */
 export interface TempoRung {
-	/** The rung's bpm over the detected one (2 = counted in eighths, 0.5 = in half notes, …). */
+	/** The rung's bpm over the detected one (2 = counted in eighths, 0.5 = in half notes, 3 = three to the bar, …). */
 	factor: number;
 	bpm: number;
 	/** The autocorrelation at the rung's lag over the detected beat's, 0..1.5. */

@@ -15,6 +15,12 @@ describe("tempoLadderMatch", () => {
 		expect(tempoLadderMatch(145, 96.7, { compound: true })).toEqual({ factor: 1.5 });
 		expect(tempoLadderMatch(80, 120, { compound: true })).toEqual({ factor: 2 / 3 });
 	});
+	test("the ×3 rung only for a meter of three to the bar", () => {
+		expect(tempoLadderMatch(224, 74.7, { triple: true })).toEqual({ factor: 3 });
+		expect(tempoLadderMatch(224, 74.7)).toBeNull();
+		expect(tempoLadderMatch(224, 74.7, { compound: true })).toBeNull();
+		expect(tempoLadderMatch(145, 96.7, { triple: true })).toBeNull();
+	});
 	test("tolerance is absolute bpm", () => {
 		expect(tempoLadderMatch(125, 120)).toBeNull();
 		expect(tempoLadderMatch(125, 120, { tolerance: 5 })).toEqual({ factor: 1 });

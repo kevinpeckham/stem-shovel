@@ -279,21 +279,38 @@ are deferred until a tempo map for drifting live recordings wants them.
   constants carry these numbers with their reasons; the 1.05 margin is
   the one to watch for false 6/8 on real recordings, which stem-bench
   Study 11 measures.
-- **Alternates.** `tempo.alternates` lists the rungs ×2, ×½, ×1.5 and
-  ×⅔ of the chosen bpm with the autocorrelation at each rung's lag
+- **Alternates.** `tempo.alternates` lists the rungs ×2, ×½, ×1.5, ×⅔
+  and ×3 of the chosen bpm with the autocorrelation at each rung's lag
   relative to the chosen one as `strength`; the song page shows the
   strong ones ("112 bpm, or 224 counted in eighths") through
-  `utils/tempoRungText.ts`, which leaves the ×1.5 and ×⅔ rungs out of
-  the text unless the subdivision is 3 (straight running eighths
-  correlate at three eighths too, 1.02–1.10 on a 4/4 at 120, and "or 80
-  counted in dotted quarters" would mislead on a straight song; the
-  array keeps all four).
+  `utils/tempoRungText.ts`, whose labels follow the beat's
+  perspective: a straight beat (a quarter) shows ×2 "counted in
+  eighths" and ×½ "in half notes"; a compound beat (a dotted quarter)
+  shows ×3 "counted three to the bar" (its eighths) and ×1.5 "in
+  quarters" (the hemiola). The other rungs are left out of the text on
+  each side (straight running eighths correlate at three eighths too,
+  1.02–1.10 on a 4/4 at 120, so "or 80 counted in dotted quarters"
+  would mislead on a straight song; and twice a dotted quarter is
+  nothing a musician counts, which v0.200.0 printed as "or 149 counted
+  in eighths" on a 6/8 at 75). The array keeps every rung.
 - **One comparison, three surfaces.** `utils/tempoLadderMatch.ts`
   decides whether a declared tempo and a detected one are the same
-  grid: direct, ×2 and ×½ always, ×1.5 and ×⅔ only with compound
-  evidence (`utils/isCompoundMeter.ts` on either meter, or subdivision
-  3), since a two-thirds reading on a straight meter is a real error.
-  It sits behind `settingsChartDisagreement` (a chart marked ♩ = 112
+  grid: direct, ×2 and ×½ always; ×1.5 and ×⅔ only when the song's
+  own time signature is compound (`utils/isCompoundMeter.ts`); ×3,
+  "counted three to the bar" (224 in 3/4 against a detected 74.7, the
+  bar heard as one beat), only when it is triple
+  (`utils/isTripleMeter.ts`). The gates are the declared meter's and
+  never the detector's own subdivision flag: stem-bench Study 11b
+  (2026-10-29) caught that flag firing at a two-thirds-wrong pulse
+  whose third is the song's true eighth (145 heard as 96.7), where it
+  excused exactly the gap the warning exists for; and a test at the
+  declared tempo's lag, the bench's first proposal, mirrors the same
+  confound on a straight song with running eighths declared at two
+  thirds (the declared lag's third is again the eighth grid). A gate
+  on the band's own meter has no acoustic confound and is a strict
+  subset of what shipped in v0.200.0. At a 3:2 or ×3 rung the time
+  signature counts as agreeing too (6/8 against 3/4 is the count
+  difference itself). It sits behind `settingsChartDisagreement` (a chart marked ♩ = 112
   against settings of 224 no longer warns; the tolerance is the larger
   of 3 bpm and 2 %), the Scan stems offer (the
   stems "agree with your 224 bpm, heard as 112 counted in eighths" and
