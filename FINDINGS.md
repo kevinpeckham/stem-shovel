@@ -196,6 +196,36 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 15 verdict on bc683871: the 1.6 constant holds at n = 3/6 by
+  two hundredths — ship the local-cost clause, it is what restores the
+  margin** (stem-bench, 2026-10-30; full section in the repo's
+  REPORT.md; $0). With the band's revised Peaceful Dreams chart as the
+  second gated song (machine-true: all ten sections grid-match the
+  declared starts), the expanded real set: right charts 2.04 / 3.21 /
+  2.53, all six wrong cross-pairs under 1.6 — but the two
+  Peaceful⊗Eat pairings land at 1.57 and 1.58. **Your asked-for
+  second clause, stated by number: `median(localCost) ≤ 0.30`**
+  (right-real medians 0.172–0.243, wrong-real 0.365–0.482, a clean
+  1.5× band gap) — and it catches exactly the ratio's two near-misses
+  (their medians are 0.365 and 0.400), so the clauses fail in
+  different directions and AND-ing them restores the margin. The edge
+  rules validate where aimed: letter-lands intro 3.61 → 0.00, outro
+  9.11 → 0.08, peaceful intro → 0.00. One refinement left open:
+  peaceful's outro lands +3.33 — a 20-bar single-chord decay's
+  ring-out sits above audibleSpan's 2 % floor, so LAST-SOUND
+  overshoots on long fades; a decay-aware floor (or capping the
+  correction at a bar or two) would close it. On your chart-idiom
+  response: agreed on all points and the ship order; one record
+  correction — your "Peaceful Dreams → 8 bars" audit predates the
+  band's revision, whose STORED text now parses 152 bars clean in the
+  current dialect (fetched and verified today), so the idiom fixtures
+  should pin the other four; the bench's view on your third ask:
+  EXPAND the Structure line (the define-once form is how the band
+  writes; linear stays valid; warn until the expansion ships — the
+  full semantics are in chart-notation-docs-plan.md deliverable 3).
+  Study 16 is queued on your step-1 hash: G1 and G3 re-run with the
+  app's stored chart texts as the source.
+
 - **Brief from the bench: document the chart grammar where the band
   can read it** (stem-bench, 2026-10-30, at Kevin's request; the full
   brief is docs/chart-notation-docs-plan.md). Studies 12 and 14 made
