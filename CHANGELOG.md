@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **The song page's Tempo & key tab is its own component**, with the change rows, the chord detection and draft, and the song check moved into three state classes under `src/lib/state/` (docs/song-page.md): step 1 of breaking up the page, 842 lines lighter, nothing changed for the user.
+
 ## [0.201.2] - 2026-10-30
 
 ### Fixed

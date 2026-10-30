@@ -1,30 +1,13 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
-	import {
-		analyse,
-		combineFeatures,
-		extractFeatures,
-		combineKeySegments,
-		detectKeys,
-		extractKeySegments,
-		type KeyChange,
-		type Detection,
-	} from "#lib/audio/analysis.js";
 	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "#lib/utils/docMonoPreference.js";
-	import {
-		chordChart,
-		chordsPerBar,
-		describeBars,
-		type ChordSegment,
-		type Note,
-	} from "#lib/audio/chords.js";
-	import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
-	import type { AiAnswer, SectionsAnswer } from "#lib/server/aiDetect.js";
-	import { alignChartInBrowser } from "#lib/audio/alignChartInBrowser.js";
-	import { alignedPlacements } from "#lib/utils/alignedPlacements.js";
-	import { placedSections, type AlignedChart } from "#lib/utils/placedSections.js";
+	import type { SectionsAnswer } from "#lib/server/aiDetect.js";
+	import { placedSections } from "#lib/utils/placedSections.js";
 	import { sectionsSourceWords } from "#lib/utils/sectionsSourceWords.js";
-	import { placeAnswerByAlignment, type PlacedAnswer } from "#lib/utils/placeAnswerByAlignment.js";
+	import SongTempoKeyTab from "#lib/components/SongTempoKeyTab.svelte";
+	import { SongChanges, POSITION_PLACEHOLDER } from "#lib/state/songChanges.svelte.js";
+	import { SongCheck } from "#lib/state/songCheck.svelte.js";
+	import { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
@@ -60,7 +43,6 @@
 		barGrid,
 		barSecondsAt,
 		formatPosition,
-		parsePosition,
 		secondsAtBar,
 		snapToAnchor,
 		snapToDownbeat,
@@ -72,8 +54,6 @@
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { dayText } from "#lib/utils/sessionName.js";
 	import { unreadCount } from "#lib/utils/groupChat.js";
-	import { parseBarsText } from "#lib/utils/parseBarsText.js";
-	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { copyShortLink } from "#lib/utils/copyShortLink.js";
 	import { FRAME_RATES } from "#lib/constants/frameRates.js";
@@ -88,18 +68,9 @@
 	import { STEM_TINTS, type StemTint } from "#lib/constants/stemTints.js";
 	import { decodedStemBytes } from "#lib/utils/decodedStemBytes.js";
 	import type { SongSection } from "#lib/val/SongSectionSchema.js";
-	import { type SongChange } from "#lib/val/SongChangeSchema.js";
-	import {
-		SONG_CHANGE_KINDS,
-		SONG_CHANGE_LABELS,
-		type SongChangeKind,
-	} from "#lib/constants/songChanges.js";
+	import { SONG_CHANGE_KINDS } from "#lib/constants/songChanges.js";
 	import { formatSongChange } from "#lib/utils/formatSongChange.js";
 	import { keyLine } from "#lib/utils/keyLine.js";
-	import { keyWindows } from "#lib/utils/keyWindows.js";
-	import { scanOffer, type ScanLadder, type ScanOffer } from "#lib/utils/scanOffer.js";
-	import { tempoAlternatesText, tempoRungText } from "#lib/utils/tempoRungText.js";
-	import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemState } from "#lib/audio/types.js";
 
@@ -107,8 +78,6 @@
 	import { demoContentType } from "#lib/utils/demoContentType.js";
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
-	import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
-	import { chordsByBarSummary } from "#lib/utils/chordsByBarSummary.js";
 	import { slugify } from "#lib/utils/slugify.js";
 	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
 	import { STEM_ACCEPT, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
@@ -124,20 +93,15 @@
 	} from "#lib/upload.js";
 	import {
 		addSongCredit,
-		askAiAboutSong,
-		chartBarsOf,
 		deleteDemo,
 		deleteSong,
 		deleteStem,
 		detectSections,
-		draftChart,
-		reconcileChords,
 		removeDemoById,
 		removeSongCredit,
 		removeStemMidi,
 		renameStem,
 		reorderStems,
-		saveChanges,
 		saveChartDraft,
 		saveDefaultMix,
 		saveDoc,
@@ -145,7 +109,6 @@
 		setSongVersion,
 		setStemTint,
 		shareSong,
-		songNotes,
 		updateSong,
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
@@ -182,22 +145,16 @@
 		fps: data.song.frameRate,
 		grid: barGrid(data.song.changes, data.song.startAt),
 	});
-	let mode = $derived(readoutMode(!!posCtx.grid));
+	/** The tempo, key and time signature rows (settings' Tempo & key tab), and the position helpers every editor shares. */
+	const changes = new SongChanges({
+		song: () => data.song,
+		posCtx: () => posCtx,
+		onsaved: refreshAll,
+	});
+	let mode = $derived(changes.mode);
 	const showPos = (seconds: number) => formatPosition(mode, seconds, posCtx);
-	// Editors show full precision (milliseconds, beat fractions) so a row that
-	// is saved unedited keeps its exact seconds; see rowSeconds.
-	const editPos = (seconds: number) => formatPosition(mode, seconds, posCtx, { precise: true });
-	/** The exact stored seconds when the text was not touched, else what the text says (null = not a position). */
-	const rowSeconds = (row: { time: string; shown: string; seconds: number | null }) =>
-		row.seconds !== null && row.time.trim() === row.shown ? row.seconds : readPos(row.time);
-	const readPos = (text: string) => parsePosition(text, posCtx);
-	/** Why `text` did not parse: bars typed on a song without a tempo and meter get their own message. */
-	const positionMessage = (text: string) =>
-		parseBarsText(text) && !posCtx.grid
-			? `"${text}" is in bars, but bars need a tempo and a time signature — add both under "Tempo, key and time signature" first, or enter the position as time (1:23.4) or timecode (01:23:15.72).`
-			: `"${text}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
-	let startAtText = $derived(data.song.startAt === null ? "" : editPos(data.song.startAt));
-	let endAtText = $derived(data.song.endAt === null ? "" : editPos(data.song.endAt));
+	let startAtText = $derived(data.song.startAt === null ? "" : changes.editPos(data.song.startAt));
+	let endAtText = $derived(data.song.endAt === null ? "" : changes.editPos(data.song.endAt));
 	let startAtEntry = $state("");
 	let endAtEntry = $state("");
 	let startAt = $derived(startAtEntry);
@@ -221,7 +178,6 @@
 		}
 	}
 	let positionError = $state<string | null>(null);
-	const POSITION_PLACEHOLDER = { time: "0:00.0", timecode: "00:00:00.00", bars: "1|1" } as const;
 	let settingsDirty = $derived(
 		title.trim() !== data.song.title ||
 			slug.trim() !== data.song.slug ||
@@ -808,7 +764,12 @@
 		commentPanel?.showPopover();
 	}
 	function editComment(c: (typeof data.comments)[number]) {
-		openComment({ id: c.id, title: c.title, body: c.body, at: c.at === null ? "" : editPos(c.at) });
+		openComment({
+			id: c.id,
+			title: c.title,
+			body: c.body,
+			at: c.at === null ? "" : changes.editPos(c.at),
+		});
 	}
 	/** A demo's comment: positions are time, the demo panel's playhead (docs/uploads-and-blob.md, "Sessions" review). */
 	function editDemoComment(c: (typeof data.demoComments)[number]) {
@@ -939,17 +900,17 @@
 		];
 		if (panel === "chart" && data.aiAvailable) {
 			items.push({ id: "ai", kind: "divider" });
-			if (draftBusy || chordBusy) {
+			if (chordDraft.draftBusy || chordDraft.chordBusy) {
 				items.push({
 					id: "busy",
 					kind: "notice",
-					notice: draftBusy ? "Drafting…" : String(chordBusy),
+					notice: chordDraft.draftBusy ? "Drafting…" : String(chordDraft.chordBusy),
 				});
 				items.push({
 					id: "cancel",
 					label: "Cancel",
 					iconClass: "i-ph-x",
-					action: () => cancelDraft(),
+					action: () => chordDraft.cancelDraft(),
 				});
 			} else
 				items.push({
@@ -962,7 +923,7 @@
 						: playerEngine?.status !== "ready"
 							? "Available once every stem has decoded"
 							: "Transcribe the stems and have the AI draft sections, progressions and a chart",
-					action: () => draftFromPanel(),
+					action: () => chordDraft.draftFromPanel(),
 				});
 		}
 		return items;
@@ -1068,8 +1029,8 @@
 		sectionRows = data.song.sections.map((s) => ({
 			index: s.index ?? "",
 			name: s.name,
-			time: editPos(s.start),
-			shown: editPos(s.start),
+			time: changes.editPos(s.start),
+			shown: changes.editPos(s.start),
 			seconds: s.start,
 		}));
 	}
@@ -1142,18 +1103,6 @@
 			notify(`${sections.length} sections set from ${sectionsWords.from}`, { timeout: 8000 });
 		}
 	}
-	/**
-	 * The chart aligned to the decoded stems in a worker (stem-bench Study 12;
-	 * no AI): its placements and the chart parser's warnings, or why it could
-	 * not be aligned. A failure in the worker rejects; the callers handle it.
-	 */
-	async function alignChart(): Promise<AlignedChart> {
-		const chart = await chartBarsOf({ id: data.song.id });
-		if (chart.bars === null) return { reason: chart.reason };
-		if (playerEngine?.status !== "ready") return { reason: "audio" };
-		const alignment = await alignChartInBrowser(chart.bars, await playerEngine.decodedBuffers());
-		return { placements: alignedPlacements(chart.bars, alignment), warnings: chart.warnings };
-	}
 	// "Place from chart": the chart's own sections where the alignment puts them; saved at once
 	// when the song has none, else offered (as "Detect" does).
 	async function placeSectionsFromChart() {
@@ -1162,7 +1111,7 @@
 		sectionsAnswer = null;
 		sectionError = null;
 		try {
-			const placed = placedSections(await alignChart());
+			const placed = placedSections(await check.alignChart());
 			if (typeof placed === "string") {
 				notify(placed, { kind: "info" });
 				return;
@@ -1178,9 +1127,9 @@
 	async function saveSectionRows() {
 		const parsed: SongSection[] = [];
 		for (const row of sectionRows) {
-			const start = rowSeconds(row);
+			const start = changes.rowSeconds(row);
 			if (start === null) {
-				sectionError = positionMessage(row.time);
+				sectionError = changes.positionMessage(row.time);
 				return;
 			}
 			parsed.push({ index: row.index, name: row.name, start });
@@ -1188,287 +1137,10 @@
 		await persistSections(parsed);
 	}
 
-	// Tempo / key / time signature changes: rows of time (m:ss.s), kind and value.
-	let changeRows = $state<
-		{ time: string; shown: string; seconds: number | null; kind: SongChangeKind; value: string }[]
-	>([]);
-	let changeError = $state<string | null>(null);
-	let changesSaving = $state(false);
-	function resetChangeRows() {
-		changeRows = data.song.changes.map((c) => ({
-			time: editPos(c.start),
-			shown: editPos(c.start),
-			seconds: c.start,
-			kind: c.kind,
-			value: c.value,
-		}));
-	}
-	// "Scan stems": the upload-time detector again, on the buffers the player already
-	// holds. Fills empty settings straight away; offers to replace filled ones.
-	let scanning = $state(false);
-	let scanResult = $state<{
-		detection: Detection;
-		/** The keys through the song, a change each (one for a song that stays put). */
-		keys: KeyChange[];
-		/** The rows a Replace writes: all of them, or only those that differ when the tempo sits on the declared one's ladder. */
-		values: SongChange[];
-		/** The declared tempo matched on its ladder (docs/tempo-grid-plan.md), with the declared bpm; null when it did not or there is none. */
-		ladder: ScanLadder | null;
-		summary: string;
-		/** The detection's other rungs ("or 224 counted in eighths"), when the tempo is among the values. */
-		alternates: string;
-		current: string;
-		applied: boolean;
-	} | null>(null);
-	/** What a scan would write: tempo and time signature at 0:00, and the keys where each begins. */
-	function scanChanges(d: Detection, keys: KeyChange[]): SongChange[] {
-		return [
-			...(d.tempo.bpm
-				? [{ kind: "tempo" as const, start: 0, value: String(Math.round(d.tempo.bpm)) }]
-				: []),
-			...keys.map((k) => ({ kind: "key" as const, start: k.start, value: k.value })),
-			...(d.tempo.bpm ? [{ kind: "meter" as const, start: 0, value: d.meter.value }] : []),
-		];
-	}
-	/** "counted in eighths": how the declared tempo counts the heard grid at this rung. */
-	const countedAs = (factor: number) => tempoRungText(0, factor).replace(/^\S+\s+/, "");
-	/** "The stems agree with your 224 bpm (heard as 112, counted in eighths)." */
-	function agreementText(ladder: ScanLadder, d: Detection): string {
-		if (ladder.factor === 1) return `The stems agree with your ${ladder.declared} bpm.`;
-		return `The stems agree with your ${ladder.declared} bpm (heard as ${Math.round(d.tempo.bpm)}, ${countedAs(ladder.factor)}).`;
-	}
-	/** "112 bpm · D major · 4/4 (or 224 counted in eighths)": the summary with the tempo's other rungs. */
-	function withAlternates(summary: string, d: Detection): string {
-		const alt = tempoAlternatesText(d.tempo);
-		return alt ? `${summary} (${alt})` : summary;
-	}
-	/** The upload-time notice for a song that keeps its own settings. */
-	function keptNotice(summary: string, ladder: ScanLadder | null): string {
-		if (!ladder) return `Detected ${summary}; the song's own settings are kept`;
-		if (ladder.factor === 1)
-			return `Detected ${summary}: it agrees with the song's settings (kept)`;
-		return `Detected ${summary}: it agrees with the song's ${ladder.declared} bpm ${countedAs(ladder.factor)} (kept)`;
-	}
-	/** The scan result for the card: what is offered (or was applied), described. */
-	function scanResultOf(
-		detection: Detection,
-		keys: KeyChange[],
-		offer: ScanOffer,
-		applied: boolean,
-	) {
-		const kinds = new Set(offer.values.map((r) => r.kind));
-		return {
-			detection,
-			keys,
-			values: offer.values,
-			ladder: offer.ladder,
-			summary: describe(offer.values),
-			alternates: kinds.has("tempo") ? tempoAlternatesText(detection.tempo) : "",
-			current: applied ? "" : describe(data.song.changes.filter((c) => kinds.has(c.kind))),
-			applied,
-		};
-	}
-	/** "Tempo, key and time signature", for the kinds among the rows. */
-	function kindsText(rows: SongChange[]): string {
-		const names = SONG_CHANGE_KINDS.filter((k) => rows.some((r) => r.kind === k)).map((k) =>
-			SONG_CHANGE_LABELS[k].toLowerCase(),
-		);
-		const list =
-			names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? "");
-		return list.charAt(0).toUpperCase() + list.slice(1);
-	}
-	/** "120 bpm · C major (also A♭ major) · 4/4", one entry per kind. */
-	const describe = (rows: SongChange[]) =>
-		SONG_CHANGE_KINDS.map((kind) => {
-			if (kind === "key") return keyLine(rows);
-			const c = rows.find((r) => r.kind === kind && r.start === 0);
-			return c ? formatSongChange(c) : "";
-		})
-			.filter((x) => x !== "")
-			.join(" · ") || "nothing";
-	/**
-	 * Where the keys are read: at the song's sections when it has two or more
-	 * (a key change lands on a section line as a rule), else every half
-	 * minute, which finds a change in a song without sections at the cost of
-	 * a coarser start.
-	 */
-	function keyBoundaries(): number[] {
-		const sections = data.song.sections.map((s) => s.start).filter((t) => t > 0);
-		if (sections.length >= 1 && data.song.sections.length >= 2) return [0, ...sections];
-		return keyWindows(playerEngine?.duration ?? 0);
-	}
 	/** The song has a chart the AI can read with the mix: a score (MusicXML, or a PDF or image marked as notation) or its own chord chart document (docs/audio-engine.md, "The score as the AI's chart", "The chord chart as the AI's chart"). */
 	let hasScore = $derived(notationCount > 0 || !!data.docs.chart);
 	/** How the Sections tab names its offered answer ("the chart" / "placed", or the AI's). */
 	let sectionsWords = $derived(sectionsSourceWords(sectionsSource, hasScore));
-	async function scanStems() {
-		if (!playerEngine || playerEngine.status !== "ready") return;
-		// With a chart and the AI at hand, the AI reads the chart and listens; the stems only when it cannot.
-		if (hasScore && data.aiAvailable && !aiBusy) {
-			const answered = await askAiWithScore();
-			if (answered) return;
-		}
-		scanning = true;
-		scanResult = null;
-		try {
-			// Yield first so the button repaints; the analysis blocks the thread for a moment.
-			await new Promise((r) => setTimeout(r, 30));
-			const buffers = await playerEngine.decodedBuffers();
-			const combined = combineFeatures(buffers.map((b) => extractFeatures(b)));
-			if (!combined) return;
-			const detection = analyse(combined);
-			// The key per section (or half minute), so a song that moves through keys gets each where it begins (docs/audio-engine.md, "Several keys").
-			const boundaries = keyBoundaries();
-			const keys = detectKeys(
-				combineKeySegments(buffers.map((b) => extractKeySegments(b, boundaries))),
-			);
-			const values = scanChanges(detection, keys);
-			if (values.length === 0) {
-				notify("Nothing could be detected from these stems", { kind: "info" });
-				return;
-			}
-			// On the declared tempo's ladder the tempo agrees: offer only what differs (docs/tempo-grid-plan.md). Read before a first fill saves the rows.
-			const offer = scanOffer(detection, values, data.song.changes);
-			const fresh = data.song.changes.length === 0;
-			if (fresh) {
-				await saveChanges({ id: data.song.id, changes: values });
-				await refreshAll();
-				resetChangeRows();
-				notify("Tempo, key and time signature set from the stems");
-			}
-			scanResult = scanResultOf(detection, keys, offer, fresh);
-		} catch (e) {
-			notify(errorMessage(e), { kind: "error" });
-		} finally {
-			scanning = false;
-		}
-	}
-	// "Detect chords": Basic Pitch on the tonal stems, one chord per bar on the
-	// song's grid; then "Draft chart with AI" turns them into sections, a
-	// progression per section and a chart, each saved on request.
-	let chordBusy = $state<string | null>(null);
-	let chordSegments = $state<ChordSegment[] | null>(null);
-	let chordBars = $state<{ bar: number; notes: string }[]>([]);
-	/** How many bars the AI corrected from the notes; null when it did not check them. */
-	let chordsChecked = $state<{ changed: number } | null>(null);
-	let chordError = $state<string | null>(null);
-	let draft = $state<(ChartDraftAnswer & { chartHtml: string }) | null>(null);
-	let draftBusy = $state(false);
-	/** Bumped by Cancel: a run whose number no longer matches drops its result. */
-	let draftRun = 0;
-	class DraftCancelled extends Error {}
-	function cancelDraft() {
-		draftRun++;
-		chordBusy = null;
-		draftBusy = false;
-		notify("Canceled", { kind: "info" });
-	}
-	async function detectChords(run = ++draftRun) {
-		const grid = posCtx.grid;
-		if (!playerEngine || playerEngine.status !== "ready" || !grid) return;
-		const cancelled = () => run !== draftRun;
-		chordBusy = "Listening…";
-		chordError = null;
-		chordSegments = null;
-		chordsChecked = null;
-		draft = null;
-		try {
-			const duration = playerEngine.duration;
-			// The server transcribes after upload; use its notes when they cover the song,
-			// otherwise transcribe here (the server copy keeps growing in the background).
-			const stored = await songNotes({ id: data.song.id }).catch(() => null);
-			if (cancelled()) return;
-			let notes: Note[];
-			if (stored?.complete) {
-				notes = stored.notes;
-			} else {
-				chordBusy =
-					stored && stored.doneSeconds > 0
-						? `Listening… (server ${Math.round((100 * stored.doneSeconds) / Math.max(1, stored.duration))}% done)`
-						: "Listening…";
-				const { transcribeNotes } = await import("#lib/audio/transcribe.js");
-				const buffers = await playerEngine.decodedBuffers();
-				const features = buffers.map((b) => extractFeatures(b, 30));
-				const top = Math.max(...features.map((f) => f.tonal), 1e-9);
-				notes = await transcribeNotes(
-					buffers.map((buffer, i) => ({ buffer, weight: features[i].tonal / top })),
-					duration,
-					(p) => {
-						if (cancelled()) throw new DraftCancelled();
-						chordBusy = `Listening… ${Math.round(p * 100)}%`;
-					},
-				);
-			}
-			if (cancelled()) return;
-			const barStarts: number[] = [];
-			for (let bar = 1; bar < 2000; bar++) {
-				const t = secondsAtBar(grid, bar);
-				if (t > duration) break;
-				barStarts.push(t);
-			}
-			barStarts.push(Math.min(duration, secondsAtBar(grid, barStarts.length + 1)));
-			if (import.meta.env.DEV)
-				(window as unknown as { __stemNotes?: unknown }).__stemNotes = { notes, barStarts };
-			chordSegments = chordsPerBar(notes, barStarts);
-			chordBars = describeBars(notes, barStarts);
-			if (chordSegments.length === 0)
-				chordError = "No bars to read; check the tempo and time signature.";
-			await checkChords(run);
-		} catch (e) {
-			if (cancelled() || e instanceof DraftCancelled) return;
-			chordError = errorMessage(e);
-			notify(`Chord detection failed: ${chordError}`, { kind: "error" });
-		} finally {
-			if (!cancelled()) chordBusy = null;
-		}
-	}
-	/**
-	 * The detected chords checked against their notes by the AI (stem-bench
-	 * Study 13: the matcher reads about 38 % of bars right on a real
-	 * recording, 54 % after this pass). Any failure keeps the detector's
-	 * chords, without a word: they are still shown.
-	 */
-	async function checkChords(run: number) {
-		const segments = chordSegments;
-		if (!data.aiAvailable || !segments?.length) return;
-		chordBusy = "Checking the chords with AI…";
-		const answer = await reconcileChords({
-			id: data.song.id,
-			chords: segments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
-			bars: chordBars,
-		}).catch(() => null);
-		if (run !== draftRun || !answer?.chords) return;
-		const fixed = reconciledSegments(segments, answer.chords);
-		chordSegments = fixed.segments;
-		chordsChecked = { changed: fixed.changed };
-	}
-	/** The chart panel's button: detect chords first when that has not run, then draft. */
-	async function draftFromPanel() {
-		const run = ++draftRun;
-		if (!chordSegments) await detectChords(run);
-		if (chordSegments && run === draftRun) await draftFromChords(run);
-	}
-	async function draftFromChords(run = ++draftRun) {
-		if (!chordSegments) return;
-		const cancelled = () => run !== draftRun;
-		draftBusy = true;
-		chordError = null;
-		try {
-			const answer = await draftChart({
-				id: data.song.id,
-				chords: chordSegments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
-				bars: chordBars,
-			});
-			if (cancelled()) return;
-			draft = answer;
-		} catch (e) {
-			if (cancelled()) return;
-			chordError = errorMessage(e);
-			notify(`The draft failed: ${chordError}`, { kind: "error" });
-		} finally {
-			if (!cancelled()) draftBusy = false;
-		}
-	}
 	/** The model's chords ("D5 % A5 …") as chart lines, four bars each. */
 	function aiChordLines(chords: string): string {
 		const cells = chords.split(/\s+/).filter(Boolean);
@@ -1478,6 +1150,7 @@
 		return lines.join("\n");
 	}
 	async function saveDraftSections() {
+		const draft = chordDraft.draft;
 		const grid = posCtx.grid;
 		if (!draft || !grid) return;
 		if (
@@ -1502,6 +1175,7 @@
 		}
 	}
 	async function saveDraftChart() {
+		const draft = chordDraft.draft;
 		if (!draft) return;
 		const hasChart = !!data.docs.chart;
 		if (hasChart && !confirm("Replace the song's chart with the drafted one?")) return;
@@ -1513,160 +1187,6 @@
 			notify(errorMessage(e), { kind: "error" });
 		}
 	}
-	async function replaceFromScan() {
-		if (!scanResult) return;
-		const values = scanResult.values;
-		const replaced = new Set(values.map((r) => r.kind));
-		// The scan's keys cover the whole song, so every key change goes; tempo and meter only at 0:00, as before.
-		const kept = data.song.changes.filter(
-			(c) => !(replaced.has(c.kind) && (c.kind === "key" || c.start === 0)),
-		);
-		try {
-			await saveChanges({ id: data.song.id, changes: [...kept, ...values] });
-			await refreshAll();
-			resetChangeRows();
-			notify(`${kindsText(values)} replaced from the stems`);
-			scanResult = { ...scanResult, applied: true };
-		} catch (e) {
-			notify(errorMessage(e), { kind: "error" });
-		}
-	}
-
-	// "Ask AI to check": the model reads the song's score beside the rendered mix and places its
-	// keys, time signature and tempo marks (src/lib/server/aiDetect.ts; it needs the score: blind,
-	// it reads its candidates back, docs/audio-engine.md "The song-check reads the chart").
-	// "Use these" puts the answer into the rows for the user to save.
-	let aiBusy = $state(false);
-	let aiAnswer = $state<PlacedAnswer | null>(null);
-	let aiError = $state<string | null>(null);
-	/**
-	 * The song-check: the model's answer, its key and tempo changes then placed by aligning
-	 * the chart to the stems when it can (stem-bench Study 12). The alignment never breaks the
-	 * check: when it cannot run or fails, the model's placement stays.
-	 */
-	async function checkSong(): Promise<PlacedAnswer> {
-		const answer = await askAiAboutSong({ id: data.song.id });
-		if (!hasScore) return answer;
-		try {
-			const aligned = await alignChart();
-			return "placements" in aligned ? placeAnswerByAlignment(answer, aligned.placements) : answer;
-		} catch {
-			return answer;
-		}
-	}
-	/** The answer came unasked: Scan stems or an upload on a song with a chart. */
-	let aiAuto = $state(false);
-	async function askAi() {
-		aiAuto = false;
-		aiBusy = true;
-		aiError = null;
-		try {
-			aiAnswer = await checkSong();
-		} catch (e) {
-			aiError = errorMessage(e);
-		} finally {
-			aiBusy = false;
-		}
-	}
-	/**
-	 * "Scan stems" on a song with a score: the AI reads the chart and listens
-	 * to the mix, and the answer is set at once when the song has no settings
-	 * yet, else offered under the rows. False when it could not answer (the
-	 * mix not rendered yet, the gateway down), so the stems are scanned instead.
-	 */
-	async function askAiWithScore(): Promise<boolean> {
-		notify("This song has a chart; asking the AI to read it and listen", { kind: "info" });
-		aiAuto = true;
-		aiBusy = true;
-		aiError = null;
-		try {
-			aiAnswer = await checkSong();
-			settingsTab = "tempo";
-			if (aiAnswer.warnings?.length)
-				// A doubtful read anchors nothing unasked (stem-bench Study 5): the card shows what looked wrong.
-				notify(
-					`The AI's reading of the chart looks off: ${aiAnswer.warnings[0]} Open settings to review it.`,
-					{ kind: "error" },
-				);
-			else if (data.song.changes.length === 0) await useAiAnswer();
-			else
-				notify(`The AI read the chart: ${aiLine(aiAnswer)}; open settings to use its answer`, {
-					kind: "info",
-					timeout: 12_000,
-				});
-			return true;
-		} catch (e) {
-			const status = (e as { status?: unknown }).status;
-			notify(
-				status === 409
-					? "The mix is still rendering; scanning the stems meanwhile"
-					: `${errorMessage(e)}; scanning the stems instead`,
-				{ kind: "info" },
-			);
-			aiAuto = false;
-			return false;
-		} finally {
-			aiBusy = false;
-		}
-	}
-	/** An answer as one line: "96 bpm · C major (also A♭ major, F major) · 4/4"; tempo and meter only where the chart states them. */
-	function aiLine(a: AiAnswer): string {
-		const keys = [a.key, ...a.keyChanges.map((c) => c.key)].filter(
-			(k, i, all) => k && all.indexOf(k) === i,
-		);
-		const key = keys.length > 1 ? `${keys[0]} (also ${keys.slice(1).join(", ")})` : (keys[0] ?? "");
-		return [
-			a.tempo === null ? null : `${Math.round(a.tempo)} bpm`,
-			key,
-			a.meter === "free" ? "no meter" : a.meter,
-		]
-			.filter(Boolean)
-			.join(" · ");
-	}
-	/** After an upload the mix renders in the background; the check waits for it this long. */
-	const MIX_WAIT_TRIES = 18;
-	const MIX_WAIT_MS = 10_000;
-	/**
-	 * After the detector has set an uploaded song's settings and the song has
-	 * a chart: the AI reads the chart beside the mix once it is rendered, and
-	 * its answer replaces the detector's (the detector's replaced nothing: the
-	 * song had no settings before this upload). The old close-call check on a
-	 * scoreless song is gone: blind, the model only read the detector's meter
-	 * back (docs/audio-engine.md, "The song-check reads the chart").
-	 */
-	async function checkWithScore() {
-		if (!data.aiAvailable || aiBusy || !hasScore) return;
-		notify("This song has a chart; asking the AI to read it and listen", { kind: "info" });
-		aiAuto = true;
-		aiBusy = true;
-		aiError = null;
-		try {
-			for (let attempt = 1; ; attempt++) {
-				try {
-					aiAnswer = await checkSong();
-					settingsTab = "tempo";
-					aiBusy = false;
-					await useAiAnswer();
-					return;
-				} catch (e) {
-					// 409: the mix is not rendered yet (renditions still transcoding after an upload).
-					const status = (e as { status?: unknown }).status;
-					if (status !== 409 || attempt >= MIX_WAIT_TRIES) throw e;
-					await new Promise((r) => setTimeout(r, MIX_WAIT_MS));
-				}
-			}
-		} catch (e) {
-			const status = (e as { status?: unknown }).status;
-			if (status === 409) {
-				notify("The mix is still rendering; use Ask AI to check once it is ready", {
-					kind: "info",
-				});
-			} else aiError = errorMessage(e);
-			aiAuto = false;
-		} finally {
-			aiBusy = false;
-		}
-	}
 	/** The chart read opened for correction (docs/audio-engine.md, "The chart read is stored"): the Chart tab's notation view, then the first score's read. */
 	async function reviewRead() {
 		const file = notationPdfs[0];
@@ -1675,117 +1195,6 @@
 		chartChoice = "notation";
 		await tick();
 		void notationPanel?.showRead(file.id);
-	}
-	/** Fill the rows from the model's answer and save at once (a bug report: filling alone looked like nothing happened). */
-	async function useAiAnswer() {
-		if (!aiAnswer) return;
-		// Rows at 0:00 for what the chart states (no row where it has no tempo mark or time
-		// signature, or marks no meter), plus a tempo row at each of its later marks; other rows stay.
-		const at0: { kind: SongChangeKind; value: string }[] = [
-			...(aiAnswer.tempo === null
-				? []
-				: [{ kind: "tempo" as const, value: String(Math.round(aiAnswer.tempo)) }]),
-			...(aiAnswer.key ? [{ kind: "key" as const, value: aiAnswer.key }] : []),
-			...(aiAnswer.meter === null || aiAnswer.meter === "free"
-				? []
-				: [{ kind: "meter" as const, value: aiAnswer.meter }]),
-		];
-		const replaced = new Set(at0.map((r) => r.kind));
-		// The model places a change by ear, often a beat early (a chord on the "and" of four); snap each to the bar
-		// line on the grid the answer itself makes (docs/audio-engine.md, "Snapped to the bar").
-		const grid = barGrid(
-			[
-				...at0.map((r) => ({ ...r, start: 0 })),
-				...aiAnswer.tempoChanges.map((c) => ({
-					kind: "tempo" as const,
-					start: c.at,
-					value: String(Math.round(c.bpm)),
-				})),
-			],
-			data.song.startAt,
-		);
-		// … and a key change within a bar of a section's start belongs to that section (they line up in practice).
-		const sectionStarts = data.song.sections.map((s) => s.start);
-		const snap = (at: number) => {
-			if (!grid) return at;
-			const bar = snapToDownbeat(grid, at);
-			return snapToAnchor(bar, sectionStarts, barSecondsAt(grid, bar));
-		};
-		// Every earlier key change goes when the model names the keys through the song; the later tempo
-		// rows go only when the chart spoke about tempo at all (its tempo is null otherwise, and the song's own rows stay).
-		const keysToo = aiAnswer.keyChanges.length > 0;
-		const tempoToo = aiAnswer.tempo !== null;
-		const rows = changeRows.filter(
-			(r) =>
-				!(
-					(r.seconds === 0 && replaced.has(r.kind)) ||
-					(tempoToo && r.kind === "tempo" && r.seconds !== 0) ||
-					(keysToo && r.kind === "key")
-				),
-		);
-		for (const { kind, value } of at0) {
-			rows.push({ time: editPos(0), shown: editPos(0), seconds: 0, kind, value });
-		}
-		for (const c of aiAnswer.tempoChanges) {
-			const at = snap(c.at);
-			rows.push({
-				time: editPos(at),
-				shown: editPos(at),
-				seconds: at,
-				kind: "tempo",
-				value: String(Math.round(c.bpm)),
-			});
-		}
-		for (const c of aiAnswer.keyChanges) {
-			const at = snap(c.at);
-			rows.push({
-				time: editPos(at),
-				shown: editPos(at),
-				seconds: at,
-				kind: "key",
-				value: c.key,
-			});
-		}
-		const line = aiLine(aiAnswer);
-		const fromScore = aiAuto;
-		changeRows = rows;
-		await saveChangeRows();
-		if (changeError) notify(`Could not apply the AI's answer: ${changeError}`, { kind: "error" });
-		else {
-			aiAnswer = null;
-			if (fromScore)
-				notify(`The AI read the chart: ${line} — saved to the song's settings`, {
-					timeout: 12_000,
-				});
-		}
-	}
-	async function saveChangeRows() {
-		changeError = null;
-		const parsed: SongChange[] = [];
-		for (const row of changeRows) {
-			const start = rowSeconds(row);
-			if (start === null) {
-				changeError = positionMessage(row.time);
-				return;
-			}
-			const bad = songChangeValueError(row.kind, row.value);
-			if (bad) {
-				changeError = `${SONG_CHANGE_LABELS[row.kind]} at ${row.time}: ${bad}`;
-				return;
-			}
-			parsed.push({ kind: row.kind, start, value: row.value.trim() });
-		}
-		changesSaving = true;
-		try {
-			await saveChanges({ id: data.song.id, changes: parsed });
-			await refreshAll();
-			resetChangeRows();
-			notify("Tempo, key and time signature saved");
-		} catch (e) {
-			changeError = errorMessage(e);
-		} finally {
-			changesSaving = false;
-		}
 	}
 
 	// The MIDI badge toggles a piano roll in place of the row's waveform; files
@@ -1880,47 +1289,25 @@
 		}
 	}
 
-	/**
-	 * What the uploader heard in a batch of stems. A song with no tempo, key
-	 * or time signature yet gets them as its first changes; one that has them
-	 * only hears the detection, so nothing typed is overwritten.
-	 */
-	async function applyDetection(d: Detection, keys: KeyChange[] = []) {
-		// The keys through the song where it moves (every ten seconds of the batch), else the one key the whole batch gave.
-		const keyChanges = keys.length
-			? keys
-			: d.key.value
-				? [{ start: 0, value: d.key.value, confidence: d.key.confidence }]
-				: [];
-		const changes = scanChanges(d, keyChanges);
-		if (changes.length === 0) return;
-		const summary = describe(changes);
-		if (data.song.changes.length > 0) {
-			notify(keptNotice(summary, scanOffer(d, changes, data.song.changes).ladder), {
-				kind: "info",
-			});
-			return;
-		}
-		try {
-			await saveChanges({ id: data.song.id, changes });
-			await refreshAll();
-			resetChangeRows();
-			notify(
-				`Detected ${withAlternates(summary, d)} — set as the song's tempo, key and time signature. Change them in settings.`,
-				{
-					timeout: 12_000,
-				},
-			);
-			void checkWithScore();
-		} catch (e) {
-			notify(`Detected ${summary}, but it could not be saved: ${errorMessage(e)}`, {
-				kind: "error",
-			});
-		}
-	}
-
 	// The player's engine, for the custom mix (the download row lives outside the player).
 	let playerEngine = $state<StemEngine | null>(null);
+	/** Detect chords and the AI's chart draft (the Tempo & key tab, the Docs panel's ⋯ menu and draft card). */
+	const chordDraft = new SongChordDraft({
+		songId: () => data.song.id,
+		engine: () => playerEngine,
+		grid: () => posCtx.grid,
+		aiAvailable: () => data.aiAvailable,
+	});
+	/** Scan stems, the uploader's detection and the AI's song check (the Tempo & key tab). */
+	const check = new SongCheck({
+		song: () => data.song,
+		engine: () => playerEngine,
+		aiAvailable: () => data.aiAvailable,
+		hasScore: () => hasScore,
+		changes,
+		onsaved: refreshAll,
+		showTab: () => (settingsTab = "tempo"),
+	});
 	/** A member dragged the rows into a new order: it becomes the song's order, for everyone. */
 	async function saveStemOrder(ids: string[]) {
 		try {
@@ -2271,7 +1658,7 @@
 					clearForm(updateSong); // saved values, not the last edit
 					positionError = null;
 					resetSectionRows();
-					resetChangeRows();
+					changes.reset();
 					startAtEntry = startAtText;
 					endAtEntry = endAtText;
 				}
@@ -2350,9 +1737,9 @@
 								] as const) {
 									const seconds = !text.trim()
 										? 0
-										: rowSeconds({ time: text, shown, seconds: stored });
+										: changes.rowSeconds({ time: text, shown, seconds: stored });
 									if (seconds === null) {
-										positionError = `${label}: ${positionMessage(text)}`;
+										positionError = `${label}: ${changes.positionMessage(text)}`;
 										return;
 									}
 									field.set(text.trim() ? String(seconds) : "");
@@ -2506,7 +1893,7 @@
 											type="button"
 											title="Use the transport's current position"
 											disabled={!playerEngine || playerEngine.status !== "ready"}
-											onclick={() => (startAtEntry = editPos(playerEngine?.position ?? 0))}
+											onclick={() => (startAtEntry = changes.editPos(playerEngine?.position ?? 0))}
 										>
 											Playhead
 										</button>
@@ -2536,7 +1923,7 @@
 											type="button"
 											title="Use the transport's current position"
 											disabled={!playerEngine || playerEngine.status !== "ready"}
-											onclick={() => (endAtEntry = editPos(playerEngine?.position ?? 0))}
+											onclick={() => (endAtEntry = changes.editPos(playerEngine?.position ?? 0))}
 										>
 											Playhead
 										</button>
@@ -2660,7 +2047,7 @@
 												{
 													index: toRoman(sectionRows.length + 1),
 													name: "",
-													time: editPos(0),
+													time: changes.editPos(0),
 													shown: "",
 													seconds: null,
 												},
@@ -2685,7 +2072,7 @@
 											: "AI hears"}
 									<strong
 										>{sectionsAnswer.sections
-											.map((s) => `${s.name} at ${editPos(s.at)}`)
+											.map((s) => `${s.name} at ${changes.editPos(s.at)}`)
 											.join(", ")}</strong
 									>
 									{sectionsAnswer.notes ? ` — ${sectionsAnswer.notes}` : ""}
@@ -2757,257 +2144,19 @@
 						</div>
 					{/if}
 					{#if settingsTab === "tempo"}
-						<div>
-							<div class="flex flex-wrap items-center justify-between gap-3">
-								<h3 class="text-15px font-700">Tempo, key and time signature</h3>
-								<div class="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
-									<button
-										class="button button-xs"
-										type="button"
-										disabled={scanning || !playerEngine || playerEngine.status !== "ready"}
-										title={playerEngine?.status !== "ready"
-											? "Available once every stem has decoded"
-											: hasScore && data.aiAvailable
-												? "The song has a chart: the AI reads it and listens to the mix for its keys, and for tempo and time signature where the chart marks them"
-												: "Listen to the loaded stems for tempo, key and time signature"}
-										onclick={scanStems}
-									>
-										<span class="i-ph-waveform" aria-hidden="true"></span>
-										{scanning ? "Scanning…" : "Scan stems"}
-									</button>
-									{#if !data.noAi}
-										<button
-											class="button button-xs"
-											type="button"
-											disabled={!!chordBusy ||
-												!playerEngine ||
-												playerEngine.status !== "ready" ||
-												!posCtx.grid}
-											title={!posCtx.grid
-												? "Needs a tempo and a time signature first"
-												: "Transcribe the tonal stems and read a chord per bar (takes a while) — a rough read on real recordings"}
-											onclick={() => detectChords()}
-										>
-											<span class="i-ph-music-notes" aria-hidden="true"></span>
-											{chordBusy ?? "Detect chords"}
-										</button>
-										{#if chordBusy || draftBusy}
-											<button class="button button-xs" type="button" onclick={cancelDraft}
-												>Cancel</button
-											>
-										{/if}
-									{/if}
-									{#if data.aiAvailable}
-										<button
-											class="button button-xs"
-											type="button"
-											disabled={aiBusy || !hasScore}
-											title={hasScore
-												? "Send the rendered mix and the chart to a model that reads it beside the recording and places its keys, time signature and tempo marks"
-												: "Write the song's chart in the Chart tab, or attach its score (a MusicXML file, or a PDF or image marked as notation), first: the AI reads it beside the mix"}
-											onclick={askAi}
-										>
-											<span class="i-ph-sparkle" aria-hidden="true"></span>
-											{aiBusy ? "Listening…" : "Ask AI to check"}
-										</button>
-									{/if}
-									<button
-										class="button button-xs"
-										type="button"
-										onclick={() =>
-											(changeRows = [
-												...changeRows,
-												{
-													time: changeRows.length ? "" : editPos(0),
-													shown: "",
-													seconds: null,
-													kind: "tempo",
-													value: "",
-												},
-											])}
-									>
-										<span class="i-ph-plus" aria-hidden="true"></span>
-										Add change
-									</button>
-								</div>
-							</div>
-							{#if chordError}<p class="mt-2 text-sm text-red-400" role="alert">
-									{chordError}
-								</p>{/if}
-							{#if chordSegments}
-								<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									<div class="flex flex-wrap items-center justify-between gap-2">
-										<span>{chordsByBarSummary(chordSegments, chordsChecked?.changed ?? null)}</span>
-										<span class="flex items-center gap-3">
-											{#if data.aiAvailable}
-												<button
-													class="link-dim"
-													type="button"
-													disabled={draftBusy}
-													onclick={() => draftFromChords()}
-												>
-													{draftBusy ? "Drafting…" : "Draft chart with AI"}
-												</button>
-											{/if}
-											<button
-												class="link-dim"
-												type="button"
-												onclick={() => ((chordSegments = null), (draft = null))}>Dismiss</button
-											>
-										</span>
-									</div>
-									<p class="mt-1 text-12px text-dim">
-										A rough read: on a real recording about half the bars come out right, so check
-										these against your ears before you draft or save.
-									</p>
-									<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{chordChart(
-											chordSegments,
-										)}</pre>
-								</div>
-							{/if}
-							{#if draft}{@render draftCard()}{/if}
-							{#if scanResult}
-								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									{#if scanResult.applied}
-										Set from the stems: <strong>{scanResult.summary}</strong
-										>{#if scanResult.alternates}<span class="ml-1 text-dim"
-												>({scanResult.alternates})</span
-											>{/if}. Adjust below if the song knows better.
-									{:else}
-										{#if scanResult.ladder}
-											{agreementText(scanResult.ladder, scanResult.detection)}
-										{/if}
-										{#if scanResult.values.length > 0}
-											{scanResult.ladder ? "They" : "The stems"} suggest
-											<strong>{scanResult.summary}</strong>{#if scanResult.alternates}<span
-													class="ml-1 text-dim">({scanResult.alternates})</span
-												>{/if}; the song has {scanResult.current}. Replace?
-											<button class="ml-2 link" type="button" onclick={replaceFromScan}
-												>Replace</button
-											>
-											<button class="ml-2 link" type="button" onclick={() => (scanResult = null)}
-												>Keep current</button
-											>
-										{:else}
-											<button class="ml-2 link" type="button" onclick={() => (scanResult = null)}
-												>Dismiss</button
-											>
-										{/if}
-									{/if}
-								</p>
-							{/if}
-							{#if aiAnswer}
-								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									The AI read the chart and listened. It finds
-									<strong>{aiLine(aiAnswer)}</strong>{#if aiAnswer.tempoChanges.length > 0}
-										, then {aiAnswer.tempoChanges
-											.map((c) => `${Math.round(c.bpm)} bpm at ${editPos(c.at)}`)
-											.join(", ")}{/if}{#if aiAnswer.keyChanges.length > 0}
-										, then {aiAnswer.keyChanges
-											.map((c) => `${c.key} at ${editPos(c.at)}`)
-											.join(", ")}{/if}
-									{aiAnswer.notes ? ` — ${aiAnswer.notes}` : ""}
-									{#if aiAnswer.placedByAlignment}
-										<span class="ml-1 text-xs opacity-70">placed by alignment</span>
-									{/if}
-									{#if aiAnswer.warnings?.length}
-										<!-- The chart read looked wrong (utils/chartReadWarnings.ts): said before the answer is used, with the read a click away. -->
-										<span class="mt-1 block text-amber-300" role="alert">
-											{#each aiAnswer.warnings as w (w)}
-												<span class="block"
-													><span class="i-ph-warning align-text-bottom" aria-hidden="true"></span>
-													{w}</span
-												>
-											{/each}
-											{#if notationPdfs.length > 0 && data.canEdit}
-												<button class="link-dim" type="button" onclick={reviewRead}
-													>Review what the AI read</button
-												>
-											{/if}
-										</span>
-									{/if}
-									<button
-										class="ml-2 link-dim"
-										type="button"
-										disabled={changesSaving}
-										onclick={useAiAnswer}>{changesSaving ? "Saving…" : "Use these"}</button
-									>
-									<button class="ml-2 link-dim" type="button" onclick={() => (aiAnswer = null)}
-										>Dismiss</button
-									>
-								</p>
-							{/if}
-							{#if aiError}<p class="mt-2 text-sm text-red-400" role="alert">{aiError}</p>{/if}
-							<p class="mt-1 text-sm opacity-90">
-								Each from the time it starts (0:00.0 for the song's own tempo, key and time
-								signature; later rows are changes). They show on the timeline above the stems.
-							</p>
-							{#if changeRows.length > 0}
-								<div class="mt-3 grid gap-2">
-									{#each changeRows as row, i (i)}
-										<!-- Two lines on a phone (time + kind, value + remove), one from sm up. -->
-										<div
-											class="mb-2 grid grid-cols-[6rem_1fr_auto] items-center gap-2 sm:mb-0 sm:grid-cols-[6rem_9rem_1fr_auto]"
-										>
-											<input
-												class="field font-mono text-sm"
-												placeholder={POSITION_PLACEHOLDER[mode]}
-												bind:value={row.time}
-												aria-label="Change time"
-											/>
-											<select
-												class="field col-span-2 text-sm sm:col-span-1"
-												bind:value={row.kind}
-												aria-label="What changes"
-											>
-												{#each SONG_CHANGE_KINDS as kind (kind)}
-													<option value={kind}>{SONG_CHANGE_LABELS[kind]}</option>
-												{/each}
-											</select>
-											<input
-												class="field col-span-2 font-mono text-sm sm:col-span-1"
-												placeholder={row.kind === "tempo"
-													? "120"
-													: row.kind === "key"
-														? "F#m"
-														: "4/4"}
-												list={row.kind === "meter" ? "time-signatures" : undefined}
-												autocomplete="off"
-												bind:value={row.value}
-												aria-label="Value"
-											/>
-											<button
-												class="link-dim text-xs justify-self-start"
-												type="button"
-												onclick={() => (changeRows = changeRows.filter((_, j) => j !== i))}
-												>Remove</button
-											>
-										</div>
-									{/each}
-								</div>
-								<datalist id="time-signatures">
-									{#each ["4/4", "3/4", "6/8", "2/4", "5/4", "7/8", "12/8"] as ts (ts)}
-										<option value={ts}></option>
-									{/each}
-								</datalist>
-							{/if}
-							{#if changeError}
-								<p class="mt-2 text-sm text-red-400" role="alert">{changeError}</p>
-							{/if}
-							<div class="mt-3 flex items-center gap-3">
-								<button
-									class="button-accent disabled:opacity-40"
-									type="button"
-									disabled={changesSaving}
-									onclick={saveChangeRows}
-								>
-									{changesSaving ? "Saving…" : "Save changes"}
-								</button>
-								<button class="link-dim text-xs" type="button" onclick={resetChangeRows}
-									>Discard edits</button
-								>
-							</div>
-						</div>
+						<SongTempoKeyTab
+							{changes}
+							{chordDraft}
+							{check}
+							engine={playerEngine}
+							grid={posCtx.grid}
+							{hasScore}
+							aiAvailable={data.aiAvailable}
+							noAi={data.noAi}
+							canReview={notationPdfs.length > 0 && data.canEdit}
+							onreview={reviewRead}
+							{draftCard}
+						/>
 					{/if}
 					{#if settingsTab === "demos"}
 						<div>
@@ -3342,7 +2491,7 @@
 								bind:jobs={uploadJobs}
 								bind:notice={uploadNotice}
 								onuploaded={() => (versionOffer = true)}
-								onanalysis={applyDetection}
+								onanalysis={check.applyDetection}
 								label="Upload stems"
 								class="inline-flex items-center gap-2"
 							/>
@@ -3601,7 +2750,7 @@
 						ariaLabel="{PANEL_LABELS[panel]} menu"
 						title="More"
 						buttonBaseClasses="button button-xs"
-						iconClass={draftBusy || chordBusy
+						iconClass={chordDraft.draftBusy || chordDraft.chordBusy
 							? "i-ph-circle-notch animate-spin"
 							: "i-ph-dots-three-outline-vertical-fill"}
 						position="bottom left"
@@ -3709,7 +2858,7 @@
 					pdfs={notationPdfs}
 					canEdit={data.canEdit}
 					aiAvailable={data.aiAvailable && !data.song.noAi && !data.song.project.noAi}
-					oncheck={() => void askAiWithScore()}
+					oncheck={() => void check.askAiWithScore()}
 				/>
 			{:else if notesMine}
 				<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->
@@ -4006,7 +3155,7 @@
 						bind:jobs={uploadJobs}
 						bind:notice={uploadNotice}
 						onuploaded={() => (versionOffer = true)}
-						onanalysis={applyDetection}
+						onanalysis={check.applyDetection}
 						menu
 					/>
 					{#if data.song.stems.length > 0}
@@ -4020,7 +3169,7 @@
 							bind:jobs={uploadJobs}
 							bind:notice={uploadNotice}
 							onuploaded={() => (versionOffer = true)}
-							onanalysis={applyDetection}
+							onanalysis={check.applyDetection}
 							menu
 						/>
 					{/if}
@@ -4424,7 +3573,8 @@
 								class="button button-xs shrink-0"
 								type="button"
 								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
+								onclick={() =>
+									remoteForm.fields.position.set(changes.editPos(playerEngine?.position ?? 0))}
 								>Playhead</button
 							>
 						{/if}
@@ -4499,7 +3649,8 @@
 								class="button button-xs shrink-0"
 								type="button"
 								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
+								onclick={() =>
+									remoteForm.fields.position.set(changes.editPos(playerEngine?.position ?? 0))}
 								>Playhead</button
 							>
 						{/if}
@@ -4630,7 +3781,7 @@
 				type="button"
 				role="menuitem"
 				onclick={() => {
-					const at = editPos(stemMenuAt?.seconds ?? 0);
+					const at = changes.editPos(stemMenuAt?.seconds ?? 0);
 					stemMenuAt = null;
 					openComment({ at });
 				}}
@@ -4685,51 +3836,58 @@
 {/snippet}
 
 {#snippet draftCard()}
-	{#if draft}
+	{#if chordDraft.draft}
 		<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<span class="font-600">AI draft</span>
 				<span class="flex items-center gap-3">
 					<button class="link-dim" type="button" onclick={saveDraftSections}>Save sections</button>
 					<button class="link-dim" type="button" onclick={saveDraftChart}>Save as chart</button>
-					<button class="link-dim" type="button" onclick={() => (draft = null)}>Discard</button>
+					<button class="link-dim" type="button" onclick={() => (chordDraft.draft = null)}
+						>Discard</button
+					>
 				</span>
 			</div>
-			{#if draft.chords.trim()}
+			{#if chordDraft.draft.chords.trim()}
 				<details class="mt-2 text-12px">
 					<summary class="cursor-pointer text-dim">Chords by bar</summary>
 					<pre class="mt-1 whitespace-pre-wrap font-mono opacity-90">{aiChordLines(
-							draft.chords,
+							chordDraft.draft.chords,
 						)}</pre>
 				</details>
 			{/if}
 			<p class="mt-1 text-13px">
 				<!-- Unkeyed on purpose: a draft is replaced whole, and section names repeat (two verses). -->
-				{#each draft.sections as sec, i}{i > 0 ? " · " : ""}{sec.index}
+				{#each chordDraft.draft.sections as sec, i}{i > 0 ? " · " : ""}{sec.index}
 					{sec.name} @ bar {sec.bar}{/each}
 			</p>
 			<ul class="mt-1 text-13px opacity-90">
-				{#each draft.progressions as pr}
+				{#each chordDraft.draft.progressions as pr}
 					<li><span class="font-600">{pr.section}:</span> {pr.chords}</li>
 				{/each}
 			</ul>
-			{#if draft.notes}<p class="mt-1 text-12px text-dim">{draft.notes}</p>{/if}
+			{#if chordDraft.draft.notes}<p class="mt-1 text-12px text-dim">
+					{chordDraft.draft.notes}
+				</p>{/if}
 			<!-- The suggested chart as it would look once saved (the panel's chart-body typography). -->
 			<article class="mt-3 chart-body rounded-md border border-current/40 bg-blue-300/5 px-6 py-6">
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
-				{@html draft.chartHtml}
+				{@html chordDraft.draft.chartHtml}
 			</article>
 			<details class="mt-1 text-12px">
 				<summary class="cursor-pointer text-dim">Chart markdown</summary>
-				<pre class="mt-1 whitespace-pre-wrap rounded bg-black/20 p-2 opacity-90">{draft.chart}</pre>
+				<pre class="mt-1 whitespace-pre-wrap rounded bg-black/20 p-2 opacity-90">{chordDraft.draft
+						.chart}</pre>
 			</details>
 		</div>
 	{/if}
 {/snippet}
 
 {#snippet draftInPanel()}
-	{#if chordError}<p class="mb-4 text-sm text-red-400" role="alert">{chordError}</p>{/if}
-	{#if draft}
+	{#if chordDraft.chordError}<p class="mb-4 text-sm text-red-400" role="alert">
+			{chordDraft.chordError}
+		</p>{/if}
+	{#if chordDraft.draft}
 		<div class="mb-6">{@render draftCard()}</div>
 	{/if}
 {/snippet}
