@@ -44,7 +44,9 @@ describe("legacyChartToBarmark on the band's stored charts", () => {
 		const { result, parse } = converted("letter-lands");
 		expect(parse.bars).toHaveLength(76);
 		expect(parse.sections.map((s) => s.firstBar)).toEqual([1, 5, 13, 21, 29, 37, 45, 53, 61, 69]);
-		expect(starts(parse)[3]).toBe("II - Verse@21");
+		expect(starts(parse)[3]).toBe("Verse@21");
+		expect(result.text).not.toMatch(/^## [IVX]+ /m);
+		expect(result.ok && result.notes).toContain("roman numerals dropped from the section headings");
 		expect(result.text).toContain("key: F#, time: 4/4, tempo: 132");
 		expect(result.text).toContain("| B5(7) | B5(7) | F#5 | F#5 | C#5(7) | E5(7) |");
 		expect(result.text).not.toMatch(/\\|♯|Structure/);
@@ -76,16 +78,16 @@ describe("legacyChartToBarmark on the band's stored charts", () => {
 		const { result, parse } = converted("mop-heart");
 		expect(parse.bars).toHaveLength(140);
 		expect(starts(parse)).toEqual([
-			"I - Intro@1",
-			"II - Verse@5",
-			"III - Chorus@21",
-			"II - Verse@49",
-			"III - Chorus@65",
-			"II - Verse@93",
-			"IV - Outro@125",
+			"Intro@1",
+			"Verse@5",
+			"Chorus@21",
+			"Verse@49",
+			"Chorus@65",
+			"Verse@93",
+			"Outro@125",
 		]);
-		expect(result.text).toContain("## II - Verse x2");
-		expect(result.text).toContain("key: B\n## IV - Outro");
+		expect(result.text).toContain("## Verse x2");
+		expect(result.text).toContain("key: B\n## Outro");
 		expect(parse.bars[0]!.key).toEqual({ tonic: "A", mode: "major" });
 		expect(parse.bars[124]!.key).toEqual({ tonic: "B", mode: "major" });
 	});
@@ -94,12 +96,12 @@ describe("legacyChartToBarmark on the band's stored charts", () => {
 		const { result, parse } = converted("interbellum");
 		expect(parse.bars).toHaveLength(37);
 		expect(starts(parse)).toEqual([
-			"I - Verse@1",
-			"II - Chorus@9",
-			"III - Bridge@17",
-			"IV - Interlude@25",
-			"V - DAOM@27",
-			"VI - Outro@35",
+			"Verse@1",
+			"Chorus@9",
+			"Bridge@17",
+			"Interlude@25",
+			"DAOM@27",
+			"Outro@35",
 		]);
 		expect(result.ok && result.notes).toContain('Line 2: dropped the footnote mark "**"');
 		expect(result.text).toContain("| C | G C | x4\n");

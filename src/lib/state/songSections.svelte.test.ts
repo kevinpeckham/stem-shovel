@@ -49,27 +49,33 @@ beforeEach(() => {
 });
 
 describe("SongSections", () => {
-	test("reset fills the rows from the song; Add row numbers the next; Remove drops one", () => {
-		const { ss } = make([{ index: "I", name: "Intro", start: 0 }]);
+	test("reset fills the rows from the song; Add row adds an empty one; Remove drops one", () => {
+		const { ss } = make([{ name: "Intro", start: 0 }]);
 		ss.reset();
 		expect(ss.rows).toEqual([
-			{ index: "I", name: "Intro", time: "00:00:00.00", shown: "00:00:00.00", seconds: 0 },
+			{ name: "Intro", time: "00:00:00.00", shown: "00:00:00.00", seconds: 0 },
 		]);
 		ss.add();
-		expect(ss.rows[1]).toEqual({
-			index: "II",
-			name: "",
-			time: "00:00:00.00",
-			shown: "",
-			seconds: null,
-		});
+		expect(ss.rows[1]).toEqual({ name: "", time: "00:00:00.00", shown: "", seconds: null });
 		ss.remove(0);
-		expect(ss.rows.map((r) => r.index)).toEqual(["II"]);
+		expect(ss.rows.map((r) => r.name)).toEqual([""]);
+	});
+
+	test("a row saved with the old index loads and saves without it", async () => {
+		const old = { name: "Intro", start: 0 } as SongSection;
+		const { ss } = make([old]);
+		ss.reset();
+		expect(ss.rows[0]).not.toHaveProperty("index");
+		await ss.save();
+		expect(saveSections).toHaveBeenCalledWith({
+			id: "song1",
+			sections: [{ name: "Intro", start: 0 }],
+		});
 	});
 
 	test("save names a row that is not a position and saves nothing", async () => {
 		const { ss } = make([]);
-		ss.rows = [{ index: "I", name: "Intro", time: "soon", shown: "", seconds: null }];
+		ss.rows = [{ name: "Intro", time: "soon", shown: "", seconds: null }];
 		await ss.save();
 		expect(ss.error).toBe(
 			'"soon" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).',
@@ -78,15 +84,15 @@ describe("SongSections", () => {
 	});
 
 	test("save keeps an untouched row's exact seconds, refreshes and says so", async () => {
-		const { ss, onsaved } = make([{ index: "I", name: "Intro", start: 1.234 }]);
+		const { ss, onsaved } = make([{ name: "Intro", start: 1.234 }]);
 		ss.reset();
-		ss.rows.push({ index: "II", name: "Verse", time: "0:10.0", shown: "", seconds: null });
+		ss.rows.push({ name: "Verse", time: "0:10.0", shown: "", seconds: null });
 		await ss.save();
 		expect(saveSections).toHaveBeenCalledWith({
 			id: "song1",
 			sections: [
-				{ index: "I", name: "Intro", start: 1.234 },
-				{ index: "II", name: "Verse", start: 10 },
+				{ name: "Intro", start: 1.234 },
+				{ name: "Verse", start: 10 },
 			],
 		});
 		expect(onsaved).toHaveBeenCalled();
@@ -94,7 +100,7 @@ describe("SongSections", () => {
 		expect(ss.saving).toBe(false);
 	});
 
-	test("Detect on a song without sections saves the answer at once, numbered", async () => {
+	test("Detect on a song without sections saves the answer at once", async () => {
 		detectSections.mockResolvedValueOnce({
 			sections: [
 				{ at: 0, name: "Intro" },
@@ -107,8 +113,8 @@ describe("SongSections", () => {
 		expect(saveSections).toHaveBeenCalledWith({
 			id: "song1",
 			sections: [
-				{ index: "I", name: "Intro", start: 0 },
-				{ index: "II", name: "Verse", start: 12.3 },
+				{ name: "Intro", start: 0 },
+				{ name: "Verse", start: 12.3 },
 			],
 		});
 		expect(notify).toHaveBeenCalledWith("2 sections set from the AI", { timeout: 8000 });
@@ -118,7 +124,7 @@ describe("SongSections", () => {
 
 	test("Detect on a song with sections offers the answer; Use these asks first", async () => {
 		detectSections.mockResolvedValueOnce({ sections: [{ at: 5, name: "Chorus" }], notes: "" });
-		const { ss } = make([{ index: "I", name: "Intro", start: 0 }], { hasScore: true });
+		const { ss } = make([{ name: "Intro", start: 0 }], { hasScore: true });
 		await ss.detect();
 		expect(ss.answer?.sections).toEqual([{ at: 5, name: "Chorus" }]);
 		expect(saveSections).not.toHaveBeenCalled();

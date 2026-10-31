@@ -39,7 +39,7 @@ describe("ChartSaveSchema", () => {
 describe("ChartDraftAnswerSchema", () => {
 	const answer = {
 		chords: " D5 D5 A5 % ",
-		sections: [{ index: "A", name: " Verse ", bar: 1 }],
+		sections: [{ name: " Verse ", bar: 1 }],
 		progressions: [{ section: "Verse", chords: "D5 A5" }],
 		chart: "| D5 | A5 |",
 	};
@@ -51,8 +51,8 @@ describe("ChartDraftAnswerSchema", () => {
 		expect(parsed.notes).toBe("");
 	});
 	it("needs a section name, a bar from 1, and at most 64 sections", () => {
-		expect(okWith({ sections: [{ index: "A", name: " ", bar: 1 }] })).toBe(false);
-		expect(okWith({ sections: [{ index: "A", name: "Verse", bar: 0 }] })).toBe(false);
+		expect(okWith({ sections: [{ name: " ", bar: 1 }] })).toBe(false);
+		expect(okWith({ sections: [{ name: "Verse", bar: 0 }] })).toBe(false);
 		const sections = Array.from({ length: 65 }, (_, i) => ({
 			index: `${i}`,
 			name: "S",

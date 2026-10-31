@@ -526,10 +526,10 @@ export interface ChartDraftInput {
 	tempo: string | null;
 	key: string | null;
 	meter: string | null;
-	existingSections: { index: string; name: string; bar: number }[];
+	existingSections: { name: string; bar: number }[];
 	chords: ChordSegmentInput[];
 	bars: BarNotesInput[];
-	examples: { title: string; sections: { index: string; name: string }[]; chart: string }[];
+	examples: { title: string; sections: { name: string }[]; chart: string }[];
 }
 
 /**
@@ -555,18 +555,18 @@ export async function draftChartWithAi(
 	const examples = input.examples
 		.map(
 			(e, i) =>
-				`EXAMPLE ${i + 1}: "${e.title}"\nsections: ${e.sections.map((s) => `${s.index} ${s.name}`).join(", ")}\nchart:\n${e.chart}`,
+				`EXAMPLE ${i + 1}: "${e.title}"\nsections: ${e.sections.map((s) => s.name).join(", ")}\nchart:\n${e.chart}`,
 		)
 		.join("\n\n");
 	const system = `You are a music director preparing a chord chart for a band from a transcription of their recording.
 For each bar you get the notes an automatic transcriber (Spotify Basic Pitch) heard, lowest to highest, as pitch+octave×seconds sounding@loudness 0..1. The transcription is noisy: weak, short notes are often wrong; long, loud, low notes are reliable. A simple template matcher's guess follows each bar in brackets — a hint, not an answer. You also get the tempo, key and time signature, and the way this band writes its charts (examples). Do four things:
 0. Name the chord in every bar, in this band's chart notation (D, Bm, A7, G5, D7sus4, Dsus4, G/B); think like a rock musician reading a chart — simple, plausible progressions in the key over exotic spellings; power chords (5) and sus chords are common here. Give them as ONE space-separated string in bar order, "%" for a bar that repeats the previous chord and "N.C." for silence — e.g. "D7sus4 % % C5 G5 D7sus4 % %".
-1. Split the song into sections (Intro, Verse, Chorus, Bridge, Solo, Outro… reuse names the band uses). Each section gets a roman-numeral index in order (I, II, III…), a name, and the bar it starts on. If the song already has sections, keep their names and starts unless the chords plainly say otherwise.
-2. Write each section's chord progression as a compact line, one chord per bar, "|"-separated, with "x2"/"x4" for repeats, in the band's own notation (see the examples: e.g. "D(7)sus4 · D5 x2" or "| D | A | Bm | G |").
-3. Draft the chart in markdown in the same style as the examples: a heading per section, the progression under it, a short structure line at the top. Do not invent lyrics.
-Reply with JSON only, no prose before or after, keep the chart under 3000 characters: {"chords":"D7sus4 % % C5 G5 …","sections":[{"index":"I","name":"Intro","bar":1},…],"progressions":[{"section":"Intro","chords":"…"}],"chart":"markdown…","notes":"one sentence on anything uncertain"}`;
+1. Split the song into sections (Intro, Verse, Chorus, Bridge, Solo, Outro… reuse names the band uses; a section that comes back keeps the same name). Each section gets a name and the bar it starts on. If the song already has sections, keep their names and starts unless the chords plainly say otherwise.
+2. Write each section's chord progression as a compact line, one chord per bar, "|"-separated, with "x2"/"x4" for repeats, in the band's own notation (see the examples: e.g. "| D | A | Bm | G |").
+3. Draft the chart in barmark, the band's chart notation (see the examples): "key: D, time: 4/4, tempo: 120" first, a "## Name" heading per section with its bar lines under it ("| D | A | Bm | G |", "x2" after a line's closing pipe repeats it, "%" repeats a bar, "/" holds), written once each; then the form of the song as bare "## Name" headings in play order, each playing that section again ("## Chorus x2" twice). No structure line, no roman numerals in headings. Do not invent lyrics.
+Reply with JSON only, no prose before or after, keep the chart under 3000 characters: {"chords":"D7sus4 % % C5 G5 …","sections":[{"name":"Intro","bar":1},…],"progressions":[{"section":"Intro","chords":"…"}],"chart":"markdown…","notes":"one sentence on anything uncertain"}`;
 	const question = `SONG: "${input.title}"${input.tempo ? `, ${input.tempo} bpm` : ""}${input.key ? `, ${input.key}` : ""}${input.meter ? `, ${input.meter}` : ""}
-${input.existingSections.length ? `EXISTING SECTIONS: ${input.existingSections.map((s) => `${s.index} ${s.name} @ bar ${s.bar}`).join(", ")}\n` : ""}NOTES PER BAR:
+${input.existingSections.length ? `EXISTING SECTIONS: ${input.existingSections.map((s) => `${s.name} @ bar ${s.bar}`).join(", ")}\n` : ""}NOTES PER BAR:
 ${barLines}
 
 ${examples ? `THIS BAND'S CHARTS, FOR STYLE:\n${examples}` : "No example charts yet; use clear markdown with a heading per section."}`;

@@ -6,13 +6,11 @@ import type { SongChanges } from "#lib/state/songChanges.svelte.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { placedSections, type AlignedChart } from "#lib/utils/placedSections.js";
 import { sectionsSourceWords } from "#lib/utils/sectionsSourceWords.js";
-import { toRoman } from "#lib/utils/toRoman.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
 import type { SongSection } from "#lib/val/SongSectionSchema.js";
 
-/** One row of the editor: the index and name, and the start as typed (and as first shown, with its exact seconds). */
+/** One row of the editor: the name, and the start as typed (and as first shown, with its exact seconds). */
 interface SectionRow {
-	index: string;
 	name: string;
 	time: string;
 	shown: string;
@@ -37,7 +35,7 @@ export interface SongSectionsOptions {
 
 /**
  * The song settings' Sections tab (SongSectionsTab.svelte): the rows of
- * index, name and start, filled from the song, edited and saved; "Detect"
+ * name and start, filled from the song, edited and saved; "Detect"
  * (the listening model) and "Place from chart" (the chart aligned to the
  * stems), each saved at once when the song has no sections, else offered.
  */
@@ -64,7 +62,6 @@ export class SongSections {
 	reset = () => {
 		const { changes } = this.#opts;
 		this.rows = this.#opts.song().sections.map((s) => ({
-			index: s.index ?? "",
 			name: s.name,
 			time: changes.editPos(s.start),
 			shown: changes.editPos(s.start),
@@ -72,17 +69,11 @@ export class SongSections {
 		}));
 	};
 
-	/** "Add row": the next roman numeral, starting at the top. */
+	/** "Add row": an empty name, starting at the top. */
 	add = () => {
 		this.rows = [
 			...this.rows,
-			{
-				index: toRoman(this.rows.length + 1),
-				name: "",
-				time: this.#opts.changes.editPos(0),
-				shown: "",
-				seconds: null,
-			},
+			{ name: "", time: this.#opts.changes.editPos(0), shown: "", seconds: null },
 		];
 	};
 
@@ -149,8 +140,7 @@ export class SongSections {
 			const bar = snapToDownbeat(grid, at);
 			return snapToAnchor(bar, keyStarts, barSecondsAt(grid, bar));
 		};
-		const sections = offered.sections.map((s, i) => ({
-			index: toRoman(i + 1),
+		const sections = offered.sections.map((s) => ({
 			name: s.name,
 			start: Math.round(snap(s.at) * 10) / 10,
 		}));
@@ -193,7 +183,7 @@ export class SongSections {
 				this.error = changes.positionMessage(row.time);
 				return;
 			}
-			parsed.push({ index: row.index, name: row.name, start });
+			parsed.push({ name: row.name, start });
 		}
 		await this.#persist(parsed);
 	};

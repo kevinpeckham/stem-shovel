@@ -36,7 +36,6 @@ export const ChartDraftAnswerSchema = v.object({
 	sections: v.pipe(
 		v.array(
 			v.object({
-				index: v.pipe(v.string(), v.trim(), v.maxLength(8)),
 				name: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(40)),
 				bar: v.pipe(v.number(), v.integer(), v.minValue(1)),
 			}),

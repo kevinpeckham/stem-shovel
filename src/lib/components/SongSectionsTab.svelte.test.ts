@@ -13,7 +13,7 @@ function setup() {
 	const song = {
 		id: "song1",
 		changes: [],
-		sections: [{ index: "I", name: "Intro", start: 0 }],
+		sections: [{ name: "Intro", start: 0 }],
 	};
 	const changes = new SongChanges({
 		song: () => song,
@@ -40,7 +40,8 @@ describe("SongSectionsTab", () => {
 		expect(screen.getByRole("button", { name: "Detect" })).toBeEnabled();
 		expect(screen.getByRole("button", { name: "Place from chart" })).toBeEnabled();
 		expect(screen.getByLabelText("Section name")).toHaveValue("Intro");
-		expect(screen.getByLabelText("Section index")).toHaveValue("I");
+		expect(screen.getByLabelText("Start time")).toHaveValue("00:00:00.00");
+		expect(screen.queryByLabelText("Section index")).toBeNull();
 	});
 
 	test("the answer card with Use these when the instance holds an answer", () => {
@@ -59,12 +60,12 @@ describe("SongSectionsTab", () => {
 		expect(screen.getByRole("alert")).toHaveTextContent("Something went wrong");
 	});
 
-	test("Add row adds a numbered row", async () => {
+	test("Add row adds an empty row", async () => {
 		const { props } = setup();
 		render(SongSectionsTab, { props });
 		await fireEvent.click(screen.getByRole("button", { name: "Add row" }));
 		expect(
-			screen.getAllByLabelText("Section index").map((el) => (el as HTMLInputElement).value),
-		).toEqual(["I", "II"]);
+			screen.getAllByLabelText("Section name").map((el) => (el as HTMLInputElement).value),
+		).toEqual(["Intro", ""]);
 	});
 });

@@ -30,6 +30,7 @@ import { parseChart } from "barmark";
 import { chartDefaults } from "../src/lib/utils/chartDefaults";
 import { chordChartBars } from "../src/lib/utils/chordChartBars";
 import { legacyChartToBarmark } from "../src/lib/utils/legacyChartToBarmark";
+import { stripSectionNumerals } from "../src/lib/utils/stripSectionNumerals";
 import { libsqlUrl } from "../src/lib/utils/libsqlUrl";
 
 const args = process.argv.slice(2);
@@ -88,8 +89,22 @@ const parseChanges = (json: string) => {
 	}
 };
 
+/** The legacy converter; a chart already in barmark only loses the roman numerals from its headings (applied once, before the numerals went). */
+const convert = (markdown: string): ReturnType<typeof legacyChartToBarmark> => {
+	const legacy = legacyChartToBarmark(markdown);
+	if (legacy.ok || parseChart(markdown).bars.length === 0) return legacy;
+	const text = stripSectionNumerals(markdown);
+	return text === markdown
+		? { ok: false, reasons: ["already barmark; nothing to change"], text: null }
+		: {
+				ok: true,
+				text,
+				notes: ["already barmark; roman numerals dropped from the section headings"],
+			};
+};
+
 const results = rows.map((r) => {
-	const result = legacyChartToBarmark(r.chart_markdown);
+	const result = convert(r.chart_markdown);
 	const before = chordChartBars(r.chart_markdown, chartDefaults(parseChanges(r.changes)));
 	const after = result.text ? parseChart(result.text).bars.length : null;
 	const base = fileBase(r);

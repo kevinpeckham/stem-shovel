@@ -456,7 +456,7 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
 	const grid = barGrid(song.changes, song.startAt);
 	const existingSections = grid
-		? song.sections.map((s) => ({ index: s.index, name: s.name, bar: barAt(grid, s.start).bar }))
+		? song.sections.map((s) => ({ name: s.name, bar: barAt(grid, s.start).bar }))
 		: [];
 	const answer = await aiOrError(
 		draftChartWithAi(
@@ -470,7 +470,7 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 				bars,
 				examples: (await chartExamples(accountId, id)).map((e) => ({
 					title: e.title,
-					sections: e.sections.map((s) => ({ index: s.index, name: s.name })),
+					sections: e.sections.map((s) => ({ name: s.name })),
 					chart: e.chart,
 				})),
 			},

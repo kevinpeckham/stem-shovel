@@ -1465,7 +1465,6 @@ export async function updateSongSections(
 ): Promise<SaveSectionsResult> {
 	const sections = input
 		.map((s) => ({
-			index: (s.index ?? "").trim(),
 			name: s.name.trim(),
 			start: Math.round(s.start * 10_000) / 10_000, // a tenth of a millisecond: finer than a Logic subframe
 		}))

@@ -50,7 +50,7 @@ function make({ ai = true, grid = GRID } = {}) {
 }
 
 const DRAFT = {
-	sections: [{ index: "I", name: "Verse", bar: 1 }],
+	sections: [{ name: "Verse", bar: 1 }],
 	progressions: [{ section: "Verse", chords: "D A G" }],
 	chords: "D % A G",
 	chart: "## Verse",

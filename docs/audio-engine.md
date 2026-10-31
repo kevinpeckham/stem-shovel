@@ -46,10 +46,14 @@ fields are `$state`, so components read `engine.position` directly.
 - **Sections timeline** (`SectionTimeline.svelte`): when a song has
   sections (`song.sections`, `[{ name, start }]` in seconds), a row above
   the stems shows a block per section on the same grid as a stem row, so
-  the blocks sit over the waveforms, labeled with the section's `index`
-  (roman numerals by default, the name on hover — the column is narrow);
-  the block containing `engine.position`
-  is highlighted and clicking one seeks to its start. Members edit index,
+  the blocks sit over the waveforms, labeled with a short form of the
+  section's name (`utils/sectionLabels.ts`: In, V1, Ch1, V2, Br, Out —
+  `sectionAbbreviation` plus an occurrence number when a name recurs; the
+  full name when the block is wide, by a container query, and on hover).
+  The name is the section's identity, the chart's `## Name` heading
+  (the roman-numeral `index` the rows once carried is gone: barmark
+  identifies a section by its name); the block containing `engine.position`
+  is highlighted and clicking one seeks to its start. Members edit
   names and start positions (in any position format, see below) in song
   settings; the `saveSections` command sorts by start and refuses two at
   the same time.

@@ -247,14 +247,14 @@ describe("setSongVersion", () => {
 describe("updateSongSections", () => {
 	test("trims, rounds to a tenth of a millisecond and sorts by start", async () => {
 		const result = await updateSongSections("a1", "s1", [
-			{ index: " B ", name: " Chorus ", start: 30.00004 },
-			{ index: "", name: "Verse", start: 10.12345 },
+			{ name: " Chorus ", start: 30.00004 },
+			{ name: "Verse", start: 10.12345 },
 		]);
 		expect(result).toEqual({
 			ok: true,
 			sections: [
-				{ index: "", name: "Verse", start: 10.1235 },
-				{ index: "B", name: "Chorus", start: 30 },
+				{ name: "Verse", start: 10.1235 },
+				{ name: "Chorus", start: 30 },
 			],
 		});
 		expect(fake.rows("song")[0].sections).toEqual(result.ok && result.sections);
@@ -262,11 +262,11 @@ describe("updateSongSections", () => {
 	test("two sections at one time, or a song of another account, are errors", async () => {
 		expect(
 			await updateSongSections("a1", "s1", [
-				{ index: "", name: "A", start: 5 },
-				{ index: "", name: "B", start: 5 },
+				{ name: "A", start: 5 },
+				{ name: "B", start: 5 },
 			]),
 		).toEqual({ ok: false, error: "Two sections start at 5s." });
-		expect(await updateSongSections("a2", "s1", [{ index: "", name: "A", start: 0 }])).toEqual({
+		expect(await updateSongSections("a2", "s1", [{ name: "A", start: 0 }])).toEqual({
 			ok: false,
 			error: "Song not found.",
 		});

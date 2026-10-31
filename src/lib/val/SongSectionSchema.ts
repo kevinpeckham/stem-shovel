@@ -1,11 +1,13 @@
 import * as v from "valibot";
 
-/** One song section: a name, a short index for the timeline (roman numerals: "I", "VI"), and where it starts. */
+/**
+ * One song section: a name, its only identifier (it matches the chart's
+ * `## Name` headings, as barmark identifies sections), and where it starts.
+ * The timeline abbreviates the name (sectionLabels). Rows saved before
+ * carry an `index` (roman numerals); the column is read without this
+ * schema, and a save strips the key (v.object drops unknown keys).
+ */
 export const SongSectionSchema = v.object({
-	index: v.optional(
-		v.pipe(v.string(), v.trim(), v.maxLength(8, "Keep the index under 8 characters.")),
-		"",
-	),
 	name: v.pipe(
 		v.string(),
 		v.trim(),

@@ -471,11 +471,7 @@
 		try {
 			await saveSections({
 				id: data.song.id,
-				sections: draft.sections.map((s) => ({
-					index: s.index,
-					name: s.name,
-					start: secondsAtBar(grid, s.bar),
-				})),
+				sections: draft.sections.map((s) => ({ name: s.name, start: secondsAtBar(grid, s.bar) })),
 			});
 			await refreshAll();
 			sections.reset();
@@ -1889,8 +1885,7 @@
 			{/if}
 			<p class="mt-1 text-13px">
 				<!-- Unkeyed on purpose: a draft is replaced whole, and section names repeat (two verses). -->
-				{#each chordDraft.draft.sections as sec, i}{i > 0 ? " · " : ""}{sec.index}
-					{sec.name} @ bar {sec.bar}{/each}
+				{#each chordDraft.draft.sections as sec, i}{i > 0 ? " · " : ""}{sec.name} @ bar {sec.bar}{/each}
 			</p>
 			<ul class="mt-1 text-13px opacity-90">
 				{#each chordDraft.draft.progressions as pr}

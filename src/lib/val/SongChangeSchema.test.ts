@@ -28,14 +28,16 @@ describe("SongChangesSchema", () => {
 });
 
 describe("SongSectionsSchema", () => {
-	test("index is optional, name is required and short", () => {
+	test("name is required and short", () => {
 		expect(v.safeParse(SongSectionsSchema, [{ name: "Intro", start: 0 }]).success).toBe(true);
-		expect(v.safeParse(SongSectionsSchema, [{ index: "I", name: "", start: 0 }]).success).toBe(
-			false,
-		);
+		expect(v.safeParse(SongSectionsSchema, [{ name: "", start: 0 }]).success).toBe(false);
 		expect(v.safeParse(SongSectionsSchema, [{ name: "x".repeat(41), start: 0 }]).success).toBe(
 			false,
 		);
+	});
+	test("a row with the old index still parses, and the index is dropped", () => {
+		const parsed = v.safeParse(SongSectionsSchema, [{ index: "I", name: "Intro", start: 0 }]);
+		expect(parsed.success && parsed.output).toEqual([{ name: "Intro", start: 0 }]);
 	});
 });
 

@@ -4,6 +4,7 @@
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
 	import { formatSongChange } from "#lib/utils/formatSongChange.js";
+	import { sectionLabels } from "#lib/utils/sectionLabels.js";
 	import { timelineKinds } from "#lib/utils/timelineKinds.js";
 	import type { SongSection } from "#lib/val/SongSectionSchema.js";
 
@@ -53,11 +54,14 @@
 			.map((kind) => changes.findLast((c) => c.kind === kind && engine.position >= c.start))
 			.filter((c) => c !== undefined),
 	);
+	// Each block's short label (sectionLabels: "V1", "Ch2", "GS"), shown where the name would not fit.
+	let labels = $derived(sectionLabels(sections));
 	let blocks = $derived(
 		sections.map((s, i) => {
 			const end = sections[i + 1]?.start ?? duration;
 			return {
 				...s,
+				label: labels[i],
 				end,
 				left: (s.start / duration) * 100,
 				width: Math.max(0, ((end - s.start) / duration) * 100),
@@ -145,7 +149,7 @@
 					type="button"
 					role="tab"
 					aria-selected={i === currentIndex}
-					class="absolute top-0 h-full overflow-hidden rounded pl-4px text-left text-11px leading-tight whitespace-nowrap transition-colors disabled-cursor-default {i ===
+					class="absolute top-0 h-full overflow-hidden rounded pl-4px [container-type:inline-size] text-left text-11px leading-tight whitespace-nowrap transition-colors disabled-cursor-default {i ===
 					currentIndex
 						? 'border-accent bg-accent/20 text-neutral-100'
 						: 'border-white/15 bg-white/10 opacity-90 hover-bg-white/10 hover-text-neutral-100'} {isSelected(
@@ -156,7 +160,8 @@
 					data-selected={isSelected(b) || undefined}
 					style:left="{b.left}%"
 					style:width="calc({b.width}% - 2px)"
-					title="{b.index ? `${b.index} · ` : ''}{b.name} · {ctx.grid
+					aria-label={b.name}
+					title="{b.name} · {ctx.grid
 						? formatBarSpan(ctx.grid, b.start, b.end)
 						: `${at(b.start)} – ${at(b.end)}`}{isSelected(b)
 						? ' · selected (click again to clear)'
@@ -164,8 +169,9 @@
 					disabled={engine.status !== "ready"}
 					onclick={() => pick(b)}
 				>
-					<!-- the index (roman numerals) fits where a name would not; the name is the tooltip -->
-					{b.index || b.name}
+					<!-- the abbreviation fits where a name would not; the block is its own container, so from 7rem wide the full name shows instead (the name is also the tooltip) -->
+					<span class="@[7rem]-hidden" aria-hidden="true">{b.label}</span>
+					<span class="hidden @[7rem]-inline">{b.name}</span>
 				</button>
 			{/each}
 		</div>

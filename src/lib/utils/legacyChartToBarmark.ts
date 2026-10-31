@@ -10,7 +10,8 @@ import { chartStatedValues } from "./chartStatedValues.js";
  * a human. Converted: the editor's escapes; a trailing footnote mark on a
  * bar line (dropped, noted); the header (`key: F#maj・4/4・bpm 132`) as
  * `key: F#, time: 4/4, tempo: 132`; bold, numbered and lone section labels
- * as `## <label>`; dot-separated and bare chord lines as pipe lines; `x N`
+ * as `## <name>` (a roman numeral before the name is dropped: barmark
+ * identifies a section by its name); dot-separated and bare chord lines as pipe lines; `x N`
  * after a chord as that bar N times, after the closing pipe as a line
  * repeat; `%` or `/` alone as `%`; `--` as `--`; the Logic-style spellings
  * (`F♯(5)(7)` → `F#5(7)`, `D(7)Sus4` → `D7sus4`); a heading's
@@ -451,7 +452,7 @@ function trimmed(lines: string[]): string[] {
 }
 
 function written(section: Section, times: number): string[] {
-	const heading = `## ${section.label}${times > 1 ? ` x${times}` : ""}`;
+	const heading = `## ${section.name}${times > 1 ? ` x${times}` : ""}`;
 	return [...(section.before ? [section.before] : []), heading, ...trimmed(section.body)];
 }
 
@@ -494,9 +495,11 @@ function checkPlayOrder(s: State, plays: { section: Section; times: number }[]):
 				`Line ${line}: ${quote(section.label)} repeats in its heading and in the Structure`,
 			);
 	}
-	const keys = s.sections.map((x) => matchKey(x.label.replace(HEADING_REPEAT, "")));
+	const keys = s.sections.map((x) => matchKey(x.name));
 	if (new Set(keys).size !== keys.length)
-		s.reasons.push(`Line ${line}: two sections share a heading, so a replay could not say which`);
+		s.reasons.push(
+			`Line ${line}: two sections share a name once the numeral is dropped, so a replay could not say which`,
+		);
 	const change = plays.findIndex((p) => p.section.changes);
 	if (change >= 0) {
 		const from = plays[change]!.section.written;
@@ -519,7 +522,7 @@ function emit(s: State): string {
 	if (plays) {
 		const seen = new Set<Section>();
 		for (const { section, times } of plays) {
-			if (seen.has(section)) push([`## ${section.label}${times > 1 ? ` x${times}` : ""}`]);
+			if (seen.has(section)) push([`## ${section.name}${times > 1 ? ` x${times}` : ""}`]);
 			else push(written(section, times));
 			seen.add(section);
 		}
@@ -543,6 +546,8 @@ export function legacyChartToBarmark(markdown: string): LegacyChartConversion {
 	if (unescaped !== markdown) s.notes.push("the editor's escapes removed");
 	const lines = unescaped.split(/\r?\n/);
 	lines.forEach((line, i) => readLine(s, line, i + 1));
+	if (s.sections.some((x) => x.numeral))
+		s.notes.push("roman numerals dropped from the section headings");
 	if (s.outlinePending) s.reasons.push("a Structure label with no outline after it");
 	const text = emit(s);
 	if (s.reasons.length > 0) return { ok: false, reasons: s.reasons, text };

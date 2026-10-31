@@ -4,8 +4,10 @@
 
 	/**
 	 * The song settings' Sections tab: Detect, Place from chart and Add row
-	 * across the top, the offered answer's card, then the rows of index, name
-	 * and start. The state is the page's (SongSections in src/lib/state).
+	 * across the top, the offered answer's card, then the rows of name and
+	 * start. The name is the section's only identifier (it matches the
+	 * chart's `## Name` headings); the timeline abbreviates it. The state is
+	 * the page's (SongSections in src/lib/state).
 	 */
 	interface Props {
 		/** The section rows, the detection and the chart placement. */
@@ -87,17 +89,10 @@
 	{#if sections.rows.length > 0}
 		<div class="mt-3 grid gap-2">
 			{#each sections.rows as row, i (i)}
-				<!-- Two lines on a phone (index + name, start + remove), one from sm up. -->
+				<!-- Two lines on a phone (name, then start + remove), one from sm up. -->
 				<div
-					class="mb-2 grid grid-cols-[4rem_1fr_auto] items-center gap-2 sm:mb-0 sm:grid-cols-[4rem_1fr_7rem_auto]"
+					class="mb-2 grid grid-cols-[1fr_auto] items-center gap-2 sm:mb-0 sm:grid-cols-[1fr_7rem_auto]"
 				>
-					<input
-						class="field font-mono text-sm"
-						placeholder="I"
-						bind:value={row.index}
-						aria-label="Section index"
-						title="Short index shown on the timeline (roman numerals); the name shows on hover"
-					/>
 					<input
 						class="field col-span-2 sm:col-span-1"
 						placeholder="Intro"
@@ -105,7 +100,7 @@
 						aria-label="Section name"
 					/>
 					<input
-						class="field col-span-2 font-mono text-sm sm:col-span-1"
+						class="field font-mono text-sm"
 						placeholder={POSITION_PLACEHOLDER[changes.mode]}
 						bind:value={row.time}
 						aria-label="Start time"
@@ -127,8 +122,9 @@
 		{@render actions()}
 	</div>
 	<p class="mt-1 text-sm opacity-90">
-		Song structure for the timeline above the stems: a short index (roman numerals, shown on the
-		timeline; the name shows on hover), a name, and where it starts — time, timecode or bars.
+		Song structure for the timeline above the stems: a name, which matches the chart's section
+		headings, and where it starts — time, timecode or bars. The timeline abbreviates the name; the
+		full name shows on hover.
 	</p>
 	{@render answerCard()}
 	{@render rows()}

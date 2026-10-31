@@ -157,11 +157,11 @@ describe("editor-gated functions", () => {
 			arrange: () =>
 				data.updateSongSections.mockResolvedValue({
 					ok: true,
-					sections: [{ index: "", name: "Verse", start: 0 }],
+					sections: [{ name: "Verse", start: 0 }],
 				}),
 			dataFn: "updateSongSections",
-			args: [ACCOUNT, SONG, [{ index: "", name: "Verse", start: 0 }]],
-			outcome: [{ index: "", name: "Verse", start: 0 }],
+			args: [ACCOUNT, SONG, [{ name: "Verse", start: 0 }]],
+			outcome: [{ name: "Verse", start: 0 }],
 		},
 		{
 			name: "saveChanges",
