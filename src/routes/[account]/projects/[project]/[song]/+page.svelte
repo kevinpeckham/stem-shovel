@@ -600,7 +600,7 @@
 		onsaved: refreshAll,
 	});
 	let player = $state<StemPlayer | null>(null);
-	/** The "keep on this device" line for the header's status (the player's own box is hidden); nothing until the player mounts. */
+	/** The "keep on this device" line for the status under the player's header (the player's own box is hidden); nothing until the player mounts. */
 	const NO_KEEP = { available: false, kept: null, keeping: null, onkeep() {}, onremove() {} };
 	let keepProps = $derived(player?.keepProps() ?? NO_KEEP);
 	/** The song's default mix per stem; the faders start here for everyone. */
@@ -927,39 +927,6 @@
 						>
 					{/each}
 				</div>
-				{#if playerView === "stems" && playerEngine}
-					<!-- The player's status, as plain text in the header (the player's own box is hidden). -->
-					<span class="hidden sm:inline text-13px opacity-70" aria-live="polite">
-						{#if playerEngine.status === "loading"}
-							Decoding stem {Math.min(playerEngine.loaded + 1, playerEngine.total)} of {playerEngine.total}…
-						{:else if playerEngine.status === "ready"}
-							{data.manifest.stems.length}
-							{data.manifest.stems.length === 1 ? "stem" : "stems"},
-							{#if playerEngine.mode === "streamed"}
-								streamed{#if playerEngine.buffering}, buffering…{:else}
-									<span class="i-ph-check text-green-300 align-[-2px]"></span>{/if}
-								<button
-									class="link-dim ml-1"
-									type="button"
-									title="Decode every stem into memory instead: instant seeking, about 60 MB per four-minute stereo stem"
-									onclick={() => player?.switchMode("buffered")}>play buffered</button
-								>
-							{:else}
-								{formatBytes(playerEngine.decodedBytes)} decoded
-								<span class="i-ph-check text-green-300 align-[-2px]"></span>
-								{#if typeof AudioDecoder !== "undefined"}
-									<button
-										class="link-dim ml-1"
-										type="button"
-										title="Decode a window around the playhead instead of the whole song, so a song of any size fits"
-										onclick={() => player?.switchMode("streamed")}>stream</button
-									>
-								{/if}
-							{/if}
-							<KeepOnDevice {...keepProps} />
-						{/if}
-					</span>
-				{/if}
 				<button
 					class="button button-xs hidden lg-inline-flex"
 					type="button"
@@ -1030,6 +997,39 @@
 				</div>
 			{:else if data.manifest.stems.length > 0}
 				<div bind:clientHeight={stemBoxHeight}>
+					{#if playerEngine}
+						<!-- The player's status, the body's first line (the player's own box is hidden; the header has no room beside the views and the controls). -->
+						<p class="mb-2 text-13px opacity-70" aria-live="polite">
+							{#if playerEngine.status === "loading"}
+								Decoding stem {Math.min(playerEngine.loaded + 1, playerEngine.total)} of {playerEngine.total}…
+							{:else if playerEngine.status === "ready"}
+								{data.manifest.stems.length}
+								{data.manifest.stems.length === 1 ? "stem" : "stems"},
+								{#if playerEngine.mode === "streamed"}
+									streamed{#if playerEngine.buffering}, buffering…{:else}
+										<span class="i-ph-check text-green-300 align-[-2px]"></span>{/if}
+									<button
+										class="link ml-1"
+										type="button"
+										title="Decode every stem into memory instead: instant seeking, about 60 MB per four-minute stereo stem"
+										onclick={() => player?.switchMode("buffered")}>play buffered</button
+									>
+								{:else}
+									{formatBytes(playerEngine.decodedBytes)} decoded
+									<span class="i-ph-check text-green-300 align-[-2px]"></span>
+									{#if typeof AudioDecoder !== "undefined"}
+										<button
+											class="link ml-1"
+											type="button"
+											title="Decode a window around the playhead instead of the whole song, so a song of any size fits"
+											onclick={() => player?.switchMode("streamed")}>stream</button
+										>
+									{/if}
+								{/if}
+								<KeepOnDevice {...keepProps} />
+							{/if}
+						</p>
+					{/if}
 					{#if (stage === "mixing" || stage === "finished") && readyMixes.length > 0}
 						<!-- The stems are from an earlier stage (docs/mixes.md, "Phase 2"); the studio recording is in Mixes. -->
 						<p

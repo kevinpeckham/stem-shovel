@@ -1735,6 +1735,27 @@ inside `Effect.map` is a defect that `orElseSucceed` does not catch, so a
 fallible pure step that used to sit inside a try/catch stays inside the
 `tryPromise` thunk.
 
+## bun left eight nested copies of `@sentry/core` in node_modules, and the dev server served every one (2026-10-31)
+
+Kevin saw the song page's Stem Player "hang" on the dev server after the
+breakup release. Measured with Playwright (time to the first stem row,
+script requests): the current tree loaded 1,742 scripts and showed the
+rows at 2.8 s warm; a fresh `bun install --frozen-lockfile` of the same
+lockfile at v0.201.2 in a worktree loaded 663 and showed them at 2.2 s;
+over the exe.dev proxy from a browser, three times the requests is the
+hang. The difference was not the code: `find node_modules -path
+'*/@sentry/core/package.json'` found eight copies of the one version
+(11.9.0), nested under `@sentry/sveltekit`, `svelte`, `browser`,
+`replay`, `replay-canvas`, `feedback` and `cloudflare`, each a separate
+module graph of 174 files to the dev server (Vite serves node_modules
+unbundled except what its optimizer prebundles). The lockfile had not
+changed; some earlier install left the nesting behind, as the vite-plus
+bump did (the entry above). `rm -rf node_modules && bun install
+--frozen-lockfile` left one copy and the dev page back at 663 scripts.
+Production is bundled and was unaffected (first stem row at 0.8 s). A
+dev-server page that feels slower than it should: count the scripts and
+the copies first.
+
 ## The in-app markdown editor escapes a line's leading pipe and asterisks; a chart parser has to read them through (2026-10-31)
 
 woof-editor's Rendered view serializes a chord grid typed as `| F | G |`

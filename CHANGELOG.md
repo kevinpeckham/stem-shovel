@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The Stem Player's status line** ("5 stems, streamed · play buffered · keep on this device") moved from the widget's header, where it fought the view tabs and the controls for room, to the first line of the widget's body (Kevin, 2026-10-31). It shows on phones now too.
+
 ## [0.202.0] - 2026-10-31
 
 ### Added
