@@ -17,9 +17,10 @@ Press **Save** or **⌘S** / **Ctrl+S**. Each save that changes the text makes a
 
 ## Tips for charts
 
-- Put the key and tempo in the first line; the song's settings hold the exact values for the player.
+- How to write a chart the app can read: [Writing a chord chart](/docs/writing-a-chord-chart).
+- Put the key, time signature and tempo in the first line; the song's settings hold the exact values for the player.
 - One section per heading (`## Verse`) keeps the chart in step with the sections on the timeline.
-- Use a code block for grids:
+- A code block keeps a grid's spacing as typed:
 
 ```
 | D     | A     | Bm    | G     |

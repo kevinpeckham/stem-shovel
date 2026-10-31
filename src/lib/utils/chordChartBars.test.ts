@@ -138,6 +138,90 @@ Key of E major, 140 bpm, 3/4
 		).toBe("B♭ minor");
 	});
 
+	test("bold lines and numbered labels are headings; the numeral and a trailing parenthetical leave the name, a key change in it applies", () => {
+		const read = chordChartBars(
+			"**Intro**\n| D |\nII - Verse\n| G |\n**III  - Outro (key change -> Bmaj)**\n| B |",
+			{ tempo: 100, meter: null },
+		)!;
+		expect(read.bars.map((b) => [b.chords[0], b.section, b.key])).toEqual([
+			["D", "Intro", null],
+			["G", "Verse", null],
+			["B", "Outro", "B major"],
+		]);
+	});
+
+	test("the band's dots separate bars; x N after a chord plays that bar again, after the closing pipe the line", () => {
+		expect(chordsOf("A・D・E・A", { tempo: 100, meter: null })).toEqual(["A", "D", "E", "A"]);
+		expect(chordsOf("G x2・A x 3", { tempo: 100, meter: null })).toEqual(["G", "G", "A", "A", "A"]);
+		expect(chordsOf("| D5 x2 | A5 | x2", { tempo: 100, meter: null })).toEqual([
+			"D5",
+			"D5",
+			"A5",
+			"D5",
+			"D5",
+			"A5",
+		]);
+		expect(chordsOf("Dmaj x20", { tempo: 100, meter: null })).toHaveLength(20);
+		// A header line of dots is words, not a broken grid.
+		const read = chordChartBars("key: F#maj・4/4・bpm 132\n| F# |", none)!;
+		expect(read.warnings).toEqual([]);
+		expect([read.bars[0]!.key, read.bars[0]!.bpm]).toEqual(["F♯ major", 132]);
+	});
+
+	test("dashes hold; a word beside a chord in a bar is ignored with a warning; the editor's escapes and a footnote mark are read through", () => {
+		const read = chordChartBars("\\| E | -- | A riff x2 | \\*\\*\n\\* a note about it", {
+			tempo: 100,
+			meter: null,
+		})!;
+		expect(read.bars.map((b) => b.chords.join(" "))).toEqual(["E", "", "A", "A"]);
+		expect(read.warnings).toEqual(['Line 1: "riff" is not a chord; ignored']);
+	});
+
+	test("a Structure outline plays the sections in its order, by numeral, by name or by a prefix, with x2 per entry", () => {
+		const md = `**Structure**
+Intro・II・Chorus x2・Out
+**I - Intro**
+| D |
+**II - Verse**
+| G | A |
+**III - Chorus**
+| C |
+**IV - Outro**
+| E |`;
+		const read = chordChartBars(md, { tempo: 100, meter: null })!;
+		expect(read.bars.map((b) => [b.chords[0], b.section])).toEqual([
+			["D", "Intro"],
+			["G", "Verse"],
+			["A", null],
+			["C", "Chorus"],
+			["C", "Chorus"],
+			["E", "Outro"],
+		]);
+		expect(read.warnings).toEqual([]);
+		// The label with its outline on the same line, and a chart without one, read as written.
+		expect(chordsOf("Form: B, A\n## A\n| D |\n## B\n| G |", { tempo: 100, meter: null })).toEqual([
+			"G",
+			"D",
+		]);
+		expect(chordsOf("## A\n| D |\n## B\n| G |", { tempo: 100, meter: null })).toEqual(["D", "G"]);
+	});
+
+	test("an outline naming a section the chart does not define, or one that fits several, is a warning and the chart stays as written", () => {
+		const read = chordChartBars("Structure: Intro・Bridge\n## Intro\n| D |\n## Verse\n| G |", {
+			tempo: 100,
+			meter: null,
+		})!;
+		expect(read.bars.map((b) => b.chords[0])).toEqual(["D", "G"]);
+		expect(read.warnings).toEqual([
+			'Line 1: the Structure names "Bridge", which is no section of the chart; the chart is read in the order written',
+		]);
+		const two = chordChartBars("Structure: Verse\n## Verse 1\n| D |\n## Verse 2\n| G |", {
+			tempo: 100,
+			meter: null,
+		})!;
+		expect(two.warnings[0]).toContain("fits more than one section");
+	});
+
 	test("no tempo anywhere, or no bars, is nothing to render", () => {
 		expect(chordChartBars("| D | A |", none)).toBeNull();
 		expect(chordChartBars("120 bpm\nJust some words about the song", none)).toBeNull();

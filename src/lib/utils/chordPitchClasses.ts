@@ -2,12 +2,16 @@
  * The pitch classes a chord symbol names (stem-bench Study 12: the chart
  * rendered as plain pads for chroma alignment), roughly: the root (C = 0),
  * the triad its quality gives (major, m/min/−, dim/°, ø, aug/+, sus2,
- * sus4, a bare 5), the sixth, seventh and ninth its suffix asks for, the
+ * sus4, a 5), the sixth, seventh and ninth its suffix asks for, the
  * altered fifths and ninths, and a slash bass. An eleventh or thirteenth
  * adds its tone; anything finer is beside the point, since chroma only
  * needs roughly the right pitch classes. Null for N.C. and for anything
  * that is not a chord symbol (a lyric such as "Chorus" or "Bed"), so the
  * chart parsers can tell a chord line from a line of words.
+ *
+ * Parentheses add tones in the Logic Pro sense (stem-bench, 2026-10-30):
+ * the base quality sets the triad, and `5` means no third, so `G5(7)` and
+ * `F♯(5)(7)` are root, fifth and flat seven; `G5` and `G7` are as before.
  */
 const LETTER_PC: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
@@ -21,6 +25,9 @@ const PIECES = [
 	"sus2",
 	"sus4",
 	"sus",
+	"Sus2",
+	"Sus4",
+	"Sus",
 	"add9",
 	"add2",
 	"add11",
@@ -88,10 +95,10 @@ function piecesOf(suffix: string): string[] | null {
 }
 
 function thirdOf(pieces: string[]): number | null {
-	if (pieces.includes("sus2")) return 2;
-	if (pieces.includes("sus4") || pieces.includes("sus")) return 5;
-	// A bare 5 is a power chord: root and fifth.
-	if (pieces.length === 1 && pieces[0] === "5") return null;
+	if (pieces.includes("sus2") || pieces.includes("Sus2")) return 2;
+	if (pieces.some((p) => p === "sus4" || p === "sus" || p === "Sus4" || p === "Sus")) return 5;
+	// A 5 is a power chord, root and fifth, whatever else is added: G5(7) is G D F.
+	if (pieces.includes("5")) return null;
 	const minor = pieces.some((p) => MINOR.has(p) || p === "dim" || p === "°" || p === "ø");
 	return minor ? 3 : 4;
 }

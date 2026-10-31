@@ -31,6 +31,8 @@
 		comments: "Comments",
 	};
 	let panel = $state<Panel>("chart");
+	/** The chart readout's defaults: the demo carries no song settings, and a tempo in the chart's own text wins over these. */
+	const DEMO_CHART_DEFAULTS = { tempo: 120, meter: "4/4" };
 	/** The phone's document picker (a <details>): closed on a choice, a click elsewhere or Escape. */
 	let pickerEl = $state<HTMLDetailsElement | null>(null);
 	function closePicker(e: Event) {
@@ -134,6 +136,7 @@
 				canEdit
 				bind:editing
 				onlocalsave={(md) => keepLocal(doc, md)}
+				chartDefaults={DEMO_CHART_DEFAULTS}
 			/>
 		{/key}
 	{/if}

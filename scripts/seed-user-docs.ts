@@ -20,6 +20,7 @@ const ORDER = [
 	"stems-and-playback",
 	"song-settings",
 	"charts-lyrics-and-notes",
+	"writing-a-chord-chart",
 	"idea-recorder",
 	"drum-machine",
 	"piano",

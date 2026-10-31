@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChartReadout from "#lib/components/ChartReadout.svelte";
 	import MarkdownDocEditor from "#lib/components/MarkdownDocEditor.svelte";
 	import { saveDoc } from "#lib/remote/songs.remote.js";
 	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
@@ -35,6 +36,8 @@
 		mono?: boolean;
 		/** Keep the text on the page instead of saving it (the front page's demo): called with the markdown on every save. */
 		onlocalsave?: (markdown: string) => Promise<void> | void;
+		/** The song's tempo and meter at 0:00 (`chartDefaults`): given for the chart, a readout of what the chart parser reads shows under it. */
+		chartDefaults?: { tempo: number | null; meter: string | null };
 	}
 
 	let {
@@ -51,10 +54,14 @@
 		view = "rendered",
 		mono = false,
 		onlocalsave,
+		chartDefaults,
 	}: Props = $props();
 
 	const fields = saveDoc.fields;
 	let editor = $state<MarkdownEditorState | null>(null);
+	/** The chart readout's text: the editor's as it is typed (`markdownCurrent` is state), else the saved text. */
+	let readoutText = $derived(editing ? (editor?.markdownCurrent ?? markdown) : markdown);
+	let readoutDefaults = $derived(kind === "chart" ? chartDefaults : undefined);
 	/** The version the editor works from: the prop's, until a save here moves it on (a writable derived: a new prop value wins again). */
 	let savedVersion = $derived(version);
 	let confirmEmpty = $state(false);
@@ -129,101 +136,104 @@
 	});
 </script>
 
-{#if editing && canEdit && onlocalsave}
-	<!-- The demo's editor: the same editor, saving into the page's own state. -->
-	<div class="relative h-full min-h-full">
+<!-- The edit-mode badge, anchored to the box's corner, clear of the text. -->
+{#snippet badge(text: string)}
+	<div class="pointer-events-none absolute right-6 bottom-4" aria-hidden="true">
+		<span
+			class="rounded border border-current/40 bg-oxford px-2 py-1 text-11px font-600 tracking-wider uppercase text-dim"
+		>
+			{text}
+		</span>
+	</div>
+{/snippet}
+
+<!-- The document fills the panel; the chart readout, when there is one, takes its own row under it. -->
+<div class="grid h-full min-h-full grid-rows-[minmax(0,1fr)_auto]">
+	{#if editing && canEdit && onlocalsave}
+		<!-- The demo's editor: the same editor, saving into the page's own state. -->
+		<div class="relative h-full min-h-full">
+			<div
+				class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-16"
+			>
+				<MarkdownDocEditor
+					bind:editor
+					{markdown}
+					docKey="demo/{songId}/{kind}"
+					{label}
+					{hint}
+					backHref=""
+					backLabel=""
+					version={savedVersion}
+					pending={false}
+					confirmEmpty={false}
+					saveError={null}
+					mode="embedded"
+					{view}
+					{mono}
+					onsave={() => void saveLocal()}
+					onclose={() => void close()}
+				/>
+			</div>
+			{@render badge("Edit mode · demo")}
+		</div>
+	{:else if editing && canEdit}
+		<!-- The box scrolls inside; the edit-mode badge is anchored to its corner, clear of the text. -->
+		<div class="relative h-full min-h-full">
+			<form
+				bind:this={formEl}
+				class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-16"
+				{...enhanced}
+			>
+				<input {...fields.songId.as("hidden", songId)} />
+				<input {...fields.kind.as("hidden", kind)} />
+				<input {...fields.markdown.as("hidden", editor?.markdownCurrent ?? markdown)} />
+				<input {...fields.confirmEmpty.as("hidden", confirmEmpty ? "true" : "false")} />
+				<MarkdownDocEditor
+					bind:editor
+					{markdown}
+					docKey="{songId}/{kind}"
+					{label}
+					{hint}
+					backHref=""
+					backLabel=""
+					version={savedVersion}
+					pending={!!saveDoc.pending}
+					{confirmEmpty}
+					{saveError}
+					mode="embedded"
+					{view}
+					{mono}
+					onsave={() => formEl?.requestSubmit()}
+					onclose={() => void close()}
+				/>
+			</form>
+			{@render badge("Edit mode")}
+		</div>
+	{:else if html}
+		<article
+			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 {mono
+				? 'font-mono'
+				: ''}"
+		>
+			{@render above?.()}
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
+			{@html html}
+		</article>
+	{:else}
 		<div
-			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-16"
+			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 {mono
+				? 'font-mono'
+				: ''}"
 		>
-			<MarkdownDocEditor
-				bind:editor
-				{markdown}
-				docKey="demo/{songId}/{kind}"
-				{label}
-				{hint}
-				backHref=""
-				backLabel=""
-				version={savedVersion}
-				pending={false}
-				confirmEmpty={false}
-				saveError={null}
-				mode="embedded"
-				{view}
-				{mono}
-				onsave={() => void saveLocal()}
-				onclose={() => void close()}
-			/>
+			{@render above?.()}
+			<p>
+				No {kind === "mynotes" ? "notes of your own" : kind} yet.{#if canEdit}
+					<button class="ml-1 link-dim" type="button" onclick={() => (editing = true)}
+						>Write it.</button
+					>
+				{/if}
+			</p>
 		</div>
-		<div class="pointer-events-none absolute right-6 bottom-4" aria-hidden="true">
-			<span
-				class="rounded border border-current/40 bg-oxford px-2 py-1 text-11px font-600 tracking-wider uppercase text-dim"
-			>
-				Edit mode · demo
-			</span>
-		</div>
-	</div>
-{:else if editing && canEdit}
-	<!-- The box scrolls inside; the edit-mode badge is anchored to its corner, clear of the text. -->
-	<div class="relative h-full min-h-full">
-		<form
-			bind:this={formEl}
-			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-16"
-			{...enhanced}
-		>
-			<input {...fields.songId.as("hidden", songId)} />
-			<input {...fields.kind.as("hidden", kind)} />
-			<input {...fields.markdown.as("hidden", editor?.markdownCurrent ?? markdown)} />
-			<input {...fields.confirmEmpty.as("hidden", confirmEmpty ? "true" : "false")} />
-			<MarkdownDocEditor
-				bind:editor
-				{markdown}
-				docKey="{songId}/{kind}"
-				{label}
-				{hint}
-				backHref=""
-				backLabel=""
-				version={savedVersion}
-				pending={!!saveDoc.pending}
-				{confirmEmpty}
-				{saveError}
-				mode="embedded"
-				{view}
-				{mono}
-				onsave={() => formEl?.requestSubmit()}
-				onclose={() => void close()}
-			/>
-		</form>
-		<div class="pointer-events-none absolute right-6 bottom-4" aria-hidden="true">
-			<span
-				class="rounded border border-current/40 bg-oxford px-2 py-1 text-11px font-600 tracking-wider uppercase text-dim"
-			>
-				Edit mode
-			</span>
-		</div>
-	</div>
-{:else if html}
-	<article
-		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 {mono
-			? 'font-mono'
-			: ''}"
-	>
-		{@render above?.()}
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
-		{@html html}
-	</article>
-{:else}
-	<div
-		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 {mono
-			? 'font-mono'
-			: ''}"
-	>
-		{@render above?.()}
-		<p>
-			No {kind === "mynotes" ? "notes of your own" : kind} yet.{#if canEdit}
-				<button class="ml-1 link-dim" type="button" onclick={() => (editing = true)}
-					>Write it.</button
-				>
-			{/if}
-		</p>
-	</div>
-{/if}
+	{/if}
+	<ChartReadout markdown={readoutText} defaults={readoutDefaults} />
+</div>

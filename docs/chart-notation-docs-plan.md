@@ -1,8 +1,20 @@
 # Chart notation: a User Docs reference page and a tooltip — brief from the bench
 
-**Status: brief for the stem-shovel agent** (stem-bench, 2026-10-30,
-at Kevin's request). Two deliverables now, one proposal for Kevin's
-decision at the end.
+**Status (2026-10-31): deliverables 1–4 shipped**, 5 (the ring-out
+directive) and the public standard open for Kevin. The parser
+(`src/lib/utils/chordChartBars.ts`) reads the band's idiom with the
+five stored charts as fixtures (`chordChartBars.idiom.test.ts`); the
+readout under the chart editor and its tip (`SongDocPanel.svelte`,
+`utils/chartReadout.ts`) and the user-docs page
+`scripts/user-docs/writing-a-chord-chart.md` describe the grammar as
+shipped. Two rules below changed on the evidence of the real charts:
+`x N` right after a chord repeats that bar (after the closing pipe,
+the line), and the Structure line is expanded. The bench's record of
+the exchange is in stem-bench `docs/RESPONSE-2026-10-31-chart-idiom-shipped.md`.
+
+Original brief from the bench (stem-bench, 2026-10-30, at Kevin's
+request). Two deliverables now, one proposal for Kevin's decision at
+the end.
 
 ## Why (measured)
 

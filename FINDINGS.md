@@ -1735,6 +1735,21 @@ inside `Effect.map` is a defect that `orElseSucceed` does not catch, so a
 fallible pure step that used to sit inside a try/catch stays inside the
 `tryPromise` thunk.
 
+## The in-app markdown editor escapes a line's leading pipe and asterisks; a chart parser has to read them through (2026-10-31)
+
+woof-editor's Rendered view serializes a chord grid typed as `| F | G |`
+back to markdown as `\| F | G |` (a leading pipe would otherwise start
+a table), bold footnote marks as `\*\*`, and brackets as `\[`: three of
+the band's five stored charts carried the escapes, and `chordChartBars`
+read an escaped grid as null (a lyric line) with no warning. The same
+mechanism emptied the Releases page in 0.31.0 (the `\[x.y.z\]`
+entry above). Any parser of text people edit in the app must strip
+markdown's escapes (`\\([\\\`*_{}[\]()#+\-.!|<>~])`) before reading, as
+`chordChartBars` now does; the seed files in scripts/user-docs never
+carry them because nobody edits them in the app. Found by running the
+production parser over the stored charts on dev (the bench's Study 14
+had measured its own transcriptions, written in the parser's dialect).
+
 ## A remote form's dirty fields survive `clearForm`, and a dirty field with no stored value renders empty (2026-10-30)
 
 SvelteKit 3's `form()` keeps, beside the stored values, a set of DIRTY

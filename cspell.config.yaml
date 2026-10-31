@@ -22,6 +22,7 @@ ignoreRegExpList:
 words:
   - parentheticals
   - untranscribable
+  - onbeforetoggle
   - AUXVOLENV
   - bunx
   - retime

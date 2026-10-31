@@ -69,6 +69,7 @@ import {
 } from "#lib/server/aiDetect.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import { chartBars } from "#lib/utils/chartBars.js";
+import { chartDefaults } from "#lib/utils/chartDefaults.js";
 import { chordChartBars } from "#lib/utils/chordChartBars.js";
 import { withSongMentions } from "#lib/server/songMentions.js";
 import { ChartDraftSchema, ChartSaveSchema } from "#lib/val/ChartDraftSchema.js";
@@ -354,14 +355,6 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 		),
 	);
 });
-
-/** The song's tempo and time signature at 0:00, the defaults a chart's bars take before its own marks. */
-function chartDefaults(changes: { kind: string; start: number; value: string }[]) {
-	const at0 = (kind: string) =>
-		changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
-	const tempo = Number(at0("tempo"));
-	return { tempo: tempo > 0 ? tempo : null, meter: at0("meter") };
-}
 
 /** The bars of a band's chart or a score's chart read; undefined when the score has no read yet. */
 function barsOfScore(

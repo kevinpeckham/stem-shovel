@@ -26,6 +26,7 @@
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
+	import { chartDefaults } from "#lib/utils/chartDefaults.js";
 	import { STAGE_LABEL, STAGE_PHASE } from "#lib/constants/songStages.js";
 	import { songStage } from "#lib/utils/songStage.js";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
@@ -1475,6 +1476,7 @@
 						view={docs.view}
 						mono={docs.mono[docs.doc]}
 						above={docs.panel === "chart" ? draftInPanel : undefined}
+						chartDefaults={chartDefaults(data.song.changes)}
 					/>
 				{/key}
 			{/if}

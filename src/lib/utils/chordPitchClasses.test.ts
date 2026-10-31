@@ -41,6 +41,17 @@ describe("chordPitchClasses", () => {
 		expect(tones("C6/9")).toEqual([0, 2, 4, 7, 9]);
 	});
 
+	test("a 5 keeps no third whatever is added, in the Logic Pro sense; parentheses add; Sus in either case", () => {
+		expect(tones("G5(7)")).toEqual([2, 5, 7]);
+		expect(tones("F#(5)(7)")).toEqual([1, 4, 6]);
+		expect(tones("E5(7)")).toEqual([2, 4, 11]);
+		expect(tones("G7")).toEqual([2, 5, 7, 11]);
+		expect(tones("D(7)sus4")).toEqual([0, 2, 7, 9]);
+		expect(tones("D(7)Sus4")).toEqual([0, 2, 7, 9]);
+		expect(tones("Gsus2")).toEqual([2, 7, 9]);
+		expect(tones("C#(7)")).toEqual([1, 5, 8, 11]);
+	});
+
 	test("a slash bass adds its pitch class", () => {
 		expect(chordPitchClasses("C/E")).toEqual({ root: 0, tones: [0, 4, 7] });
 		expect(chordPitchClasses("D/F#")?.tones).toEqual([2, 6, 9]);

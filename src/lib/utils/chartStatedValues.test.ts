@@ -36,6 +36,16 @@ m17 tempo 88: Fm7 B♭sus4 B♭ E♭`;
 		});
 	});
 
+	test("the band's header: dots between the facts, the word bpm first", () => {
+		expect(chartStatedValues("key: F#maj・4/4・bpm 132\n| F# | E |")).toEqual({
+			tempo: 132,
+			tempoMarks: [132],
+			meter: "4/4",
+		});
+		expect(chartStatedValues("Key: Amaj・3/4・224 bpm").meter).toBe("3/4");
+		expect(chartStatedValues("Key: D · 145 bpm").tempo).toBe(145);
+	});
+
 	test("dates and fractions in words are not time signatures; a bare chord chart states nothing", () => {
 		expect(chartStatedValues("Written 10/12/2025\nhalf/1/2 time feel\n| D | G |").meter).toBeNull();
 		expect(chartStatedValues("# Intro\n| D | G | A | x2\n# Verse\n| Bm | G | D | A/C# |")).toEqual({
