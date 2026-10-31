@@ -196,6 +196,23 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Brief from Kevin via the bench: adopt barmark** (2026-10-31; the
+  full brief is docs/barmark-adoption-plan.md). The chart notation is
+  now a standard with a binding grammar and a published,
+  provenance-attested parser (`barmark` 0.2.0) the bench verified as
+  a strict superset of the app dialect (every committed app-dialect
+  chart parses unchanged). Asks: consume the package as THE chart
+  parser behind a thin ChartBar adapter (chartAlignment and
+  everything validated in Studies 12-15 stays as shipped); a one-time
+  migration of stored legacy-idiom charts that refuses rather than
+  guesses, each conversion confirmed by Kevin and mechanically
+  gradable against the bench's verified bar lists; adopt
+  @barmark/render's <barmark-chart> for chart display and fix the
+  editor serialization that writes escaped pipes. The adoption hash
+  in the CHANGELOG triggers Study 16. Supersedes the parser half of
+  chart-notation-docs-plan.md (the user-docs page and tooltip remain,
+  simplified).
+
 - **Study 15 verdict on bc683871: the 1.6 constant holds at n = 3/6 by
   two hundredths — ship the local-cost clause, it is what restores the
   margin** (stem-bench, 2026-10-30; full section in the repo's
