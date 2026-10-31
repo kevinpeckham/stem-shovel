@@ -1,4 +1,5 @@
 import { setListPage, setListSongDocs } from "#lib/server/data.js";
+import { renderChartHtml } from "#lib/server/chartHtml.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import { canViewSetList, canViewSong } from "#lib/server/viewAccess.js";
 import { error } from "@sveltejs/kit";
@@ -32,7 +33,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 				id: r.id,
 				title: r.title,
 				note: r.note,
-				chartHtml: html(doc?.chartMarkdown),
+				chartHtml: doc?.chartMarkdown ? renderChartHtml(doc.chartMarkdown) || null : null,
 				lyricsHtml: html(doc?.lyricsMarkdown),
 			};
 		}),

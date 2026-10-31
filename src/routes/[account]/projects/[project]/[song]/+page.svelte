@@ -25,6 +25,7 @@
 	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
+	import ChartHtml from "#lib/components/ChartHtml.svelte";
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
 	import { chartDefaults } from "#lib/utils/chartDefaults.js";
 	import { STAGE_LABEL, STAGE_PHASE } from "#lib/constants/songStages.js";
@@ -1899,10 +1900,9 @@
 			{#if chordDraft.draft.notes}<p class="mt-1 text-12px text-dim">
 					{chordDraft.draft.notes}
 				</p>{/if}
-			<!-- The suggested chart as it would look once saved (the panel's chart-body typography). -->
+			<!-- The suggested chart as it would look once saved. -->
 			<article class="mt-3 chart-body rounded-md border border-current/40 bg-blue-300/5 px-6 py-6">
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
-				{@html chordDraft.draft.chartHtml}
+				<ChartHtml html={chordDraft.draft.chartHtml} />
 			</article>
 			<details class="mt-1 text-12px">
 				<summary class="cursor-pointer text-dim">Chart markdown</summary>

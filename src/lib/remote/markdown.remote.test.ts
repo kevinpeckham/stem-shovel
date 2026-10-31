@@ -11,16 +11,28 @@ beforeEach(resetRemoteMocks);
 describe("renderPreview", () => {
 	it("renders for a visitor, counted against their address", async () => {
 		asSignedOut();
-		await expect(call(markdown.renderPreview, "# Hi")).resolves.toBe("<p># Hi</p>");
+		await expect(call(markdown.renderPreview, { markdown: "# Hi", kind: "text" })).resolves.toBe(
+			"<p># Hi</p>",
+		);
 		expect(rateLimited).toHaveBeenCalledWith("render:203.0.113.7", 60, 60_000);
 	});
 	it("429 once the limiter says so", async () => {
 		asSignedOut();
 		rateLimited.mockResolvedValue(true);
-		await expect(call(markdown.renderPreview, "# Hi")).rejects.toMatchObject(httpError(429));
+		await expect(
+			call(markdown.renderPreview, { markdown: "# Hi", kind: "text" }),
+		).rejects.toMatchObject(httpError(429));
 	});
 	it("refuses more than the schema allows", async () => {
 		asSignedOut();
-		await expect(call(markdown.renderPreview, "x".repeat(50_001))).rejects.toThrow();
+		await expect(
+			call(markdown.renderPreview, { markdown: "x".repeat(50_001), kind: "text" }),
+		).rejects.toThrow();
+	});
+	it("draws a chart with barmark's renderer", async () => {
+		asSignedOut();
+		await expect(
+			call(markdown.renderPreview, { markdown: "| D | A |", kind: "chart" }),
+		).resolves.toContain("<barmark-chart");
 	});
 });

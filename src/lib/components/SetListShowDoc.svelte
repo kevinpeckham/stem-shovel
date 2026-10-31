@@ -2,9 +2,12 @@
 	/**
 	 * A song's chart or lyrics opened in a set list's show view
 	 * (docs/band-plan.md, "Set list"): tabs between the two when the song
-	 * has both. The HTML is rendered and sanitized on the server
-	 * (renderMarkdown).
+	 * has both. The HTML is rendered on the server: the chart by barmark
+	 * (renderChartHtml, shown through ChartHtml), the lyrics sanitized
+	 * markdown (renderMarkdown).
 	 */
+	import ChartHtml from "#lib/components/ChartHtml.svelte";
+
 	interface Props {
 		title: string;
 		chartHtml: string | null;
@@ -39,5 +42,7 @@
 			{/each}
 		</div>
 	{/if}
-	<div class="chart-body text-18px">{@html html}</div>
+	<div class="chart-body text-18px">
+		{#if tab === "chart"}<ChartHtml {html} />{:else}{@html html}{/if}
+	</div>
 </div>

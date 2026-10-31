@@ -63,6 +63,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/gateway": "^4.0.127",
+		"@barmark/render": "0.1.0",
 		"@better-auth/passkey": "^1.7.14",
 		"@kevinpeckham/barkdown": "0.1.1",
 		"@kevinpeckham/woof-editor": "0.3.0",

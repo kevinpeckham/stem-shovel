@@ -1,3 +1,4 @@
+import { fontFaceCss } from "@barmark/render";
 import extractorSvelte from "@unocss/extractor-svelte";
 import presetWind4 from "@unocss/preset-wind4";
 import {
@@ -17,7 +18,10 @@ import {
  */
 export default defineConfig({
 	extractors: [extractorSvelte()],
-	preflights: [],
+	preflights: [
+		// barmark's chart font (Edwin, static/fonts/barmark), registered on the document: a browser ignores @font-face inside the chart's shadow root.
+		{ getCSS: () => fontFaceCss("/fonts/barmark/Edwin-Roman.otf") },
+	],
 	presets: [
 		presetWind4({ preflights: { reset: true } }),
 		// Phosphor icons as classes (`i-ph-play-fill`), as in replicator

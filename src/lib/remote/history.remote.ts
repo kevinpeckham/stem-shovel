@@ -10,6 +10,7 @@ import {
 	saveUserNote,
 	updateComment,
 } from "#lib/server/data.js";
+import { renderChartHtml, renderDocHtml } from "#lib/server/chartHtml.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import { withSongMentions } from "#lib/server/songMentions.js";
 import { isAccountAdmin } from "#lib/server/viewAccess.js";
@@ -47,7 +48,7 @@ export const docHistory = query(DocHistorySchema, async ({ songId, kind }) => {
 			id: r.id,
 			versionNumber: r.versionNumber,
 			markdown: r.markdown,
-			html: renderMarkdown(r.markdown),
+			html: renderDocHtml(kind, r.markdown),
 			createdAt: r.createdAt,
 			createdBy: r.createdBy,
 		})),
@@ -100,7 +101,11 @@ export const restoreDocVersion = command(
 		return {
 			version: result.version,
 			changed: result.changed,
-			html: await withSongMentions(accountId, songId, renderMarkdown(revision.markdown)),
+			// The chart is drawn by barmark; mentions link in the other documents' text.
+			html:
+				kind === "chart"
+					? renderChartHtml(revision.markdown)
+					: await withSongMentions(accountId, songId, renderMarkdown(revision.markdown)),
 		};
 	},
 );

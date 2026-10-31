@@ -1,5 +1,14 @@
 # Adopt barmark — brief from Kevin via the bench
 
+**Status (2026-10-31, evening): Scopes 1–3 on dev and staging.** The
+parser behind `utils/barmarkChartBars.ts` (371831a), the migration
+(`scripts/migrate-charts-barmark.ts`: Letter Lands, Mop Heart and
+Interbellum applied on dev and staging; Eat All the Clocks and Peaceful
+Dreams refused, for Kevin's hand), the renderer (`server/chartHtml.ts`,
+`components/ChartHtml.svelte`) and the rewritten user-docs page. Open:
+production (Kevin applies the three and refreshes the page), the two
+refused charts, then retiring `chordChartBars` and the fallbacks.
+
 **Status: brief for the stem-shovel agent** (2026-10-31). The chart
 notation this app pioneered is now a standard with its own repository
 (kevinpeckham/barmark), a binding grammar

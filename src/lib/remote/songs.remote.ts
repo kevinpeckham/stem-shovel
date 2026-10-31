@@ -67,7 +67,7 @@ import {
 	draftChartWithAi,
 	reconcileChordsWithAi,
 } from "#lib/server/aiDetect.js";
-import { renderMarkdown } from "#lib/server/markdown.js";
+import { renderChartHtml, renderDocHtml } from "#lib/server/chartHtml.js";
 import { chartBars } from "#lib/utils/chartBars.js";
 import { chartDefaults } from "#lib/utils/chartDefaults.js";
 import { chartBarsOfMarkdown } from "#lib/utils/chartBarsOfMarkdown.js";
@@ -141,7 +141,8 @@ export const saveDoc = form(
 		return {
 			version: result.version,
 			changed: result.changed,
-			html: await withSongMentions(accountId, songId, html),
+			// The chart is drawn by barmark; mentions link in the other documents' text.
+			html: kind === "chart" ? html : await withSongMentions(accountId, songId, html),
 		};
 	},
 );
@@ -168,7 +169,7 @@ async function saveSharedDoc(
 ) {
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
 	const result = await saveSongDoc(accountId, requireUser(locals).id, songId, kind, markdown, opts);
-	return { accountId, result, html: renderMarkdown(markdown) };
+	return { accountId, result, html: renderDocHtml(kind, markdown) };
 }
 
 /** New song in a project; lands on its page. */
@@ -477,7 +478,7 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 		),
 	);
 	// The chart is previewed with the panel's styling before it is saved.
-	return { ...answer, chartHtml: renderMarkdown(answer.chart) };
+	return { ...answer, chartHtml: renderChartHtml(answer.chart) };
 });
 
 /**

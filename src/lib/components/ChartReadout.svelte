@@ -27,8 +27,8 @@
 			{readout.summary}
 			<InfoTip label="About reading a chart" class="ml-1 align-[-2px]">
 				<p>
-					Bars in pipes or between dots; x2 after a chord repeats its bar, after the pipe the line;
-					a Structure line sets the play order.
+					Bars between pipes; ## Name starts a section, and a bare ## Name later plays it again; x2
+					after the closing pipe repeats the line; / holds, % repeats the bar.
 				</p>
 				<p class="mt-2">
 					<a class="link" href="/docs/writing-a-chord-chart">How to write a chart</a>

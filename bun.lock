@@ -6,6 +6,7 @@
       "name": "stem-player",
       "dependencies": {
         "@ai-sdk/gateway": "^4.0.127",
+        "@barmark/render": "0.1.0",
         "@better-auth/passkey": "^1.7.14",
         "@kevinpeckham/barkdown": "0.1.1",
         "@kevinpeckham/woof-editor": "0.3.0",
@@ -110,6 +111,8 @@
     "@babel/runtime": ["@babel/runtime@7.29.10", "", {}, "sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA=="],
 
     "@babel/types": ["@babel/types@7.29.11", "", { "dependencies": { "@babel/helper-string-parser": "^7.29.11", "@babel/helper-validator-identifier": "^7.29.7" } }, "sha512-WCsemW40Cpc6gouC1SrY6PBaZ+oLRlEVY9XBvZBI7il/HyUrb2nJ505wE1MHEFyDZNnrWDEuy4jL50WVHfTTSQ=="],
+
+    "@barmark/render": ["@barmark/render@0.1.0", "", { "dependencies": { "barmark": "^0.2.0" } }, "sha512-4XJipM9nEPGIFkrZbTc7dyeEQpQv7Vz+dj1lL/F2mXdmu+ltFGaFLzkFfMCCbGAoV+xf68niBmecQ38UyHz8Vg=="],
 
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@1.0.2", "", {}, "sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA=="],
 

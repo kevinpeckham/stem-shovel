@@ -754,7 +754,8 @@ and the song-check's key and tempo changes.
   to the old idiom parser (`utils/chordChartBars.ts`) when barmark reads
   no bars, with a warning that the chart will be migrated; the fallback
   and that parser go once the migration is confirmed. Either parser
-  returns null with no tempo or no bars.
+  returns null with no tempo or no bars. The chart's display is the
+  standard's too: `@barmark/render` draws it (docs/styling.md).
 - **The query** `chartBarsOf` (songs.remote.ts, members): the song's
   score through `scoreForAi`; the chord chart or a notation file's
   stored read gives `{bars, warnings, source: "chart" | "summary"}`;

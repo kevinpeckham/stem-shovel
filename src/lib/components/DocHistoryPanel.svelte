@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChartHtml from "#lib/components/ChartHtml.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import {
 		commentHistory,
@@ -184,7 +185,11 @@
 							</div>
 							{#if open?.id === v.id && open.mode === "view"}
 								<div class="chart-body border-t border-white/10 px-4 py-3 text-15px">
-									{@html v.html}
+									{#if target?.kind === "doc" && target.doc === "chart"}
+										<ChartHtml html={v.html} />
+									{:else}
+										{@html v.html}
+									{/if}
 								</div>
 							{:else if open?.id === v.id && open.mode === "changes"}
 								{@const rows = changesOf(v)}

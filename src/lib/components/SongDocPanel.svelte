@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChartHtml from "#lib/components/ChartHtml.svelte";
 	import ChartReadout from "#lib/components/ChartReadout.svelte";
 	import MarkdownDocEditor from "#lib/components/MarkdownDocEditor.svelte";
 	import { saveDoc } from "#lib/remote/songs.remote.js";
@@ -216,8 +217,12 @@
 				: ''}"
 		>
 			{@render above?.()}
-			<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
-			{@html html}
+			{#if kind === "chart"}
+				<ChartHtml {html} />
+			{:else}
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
+				{@html html}
+			{/if}
 		</article>
 	{:else}
 		<div

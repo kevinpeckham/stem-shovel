@@ -1,90 +1,155 @@
 # Writing a chord chart
 
-A song's **Chart** is yours to write however you like, but a chart the app can read does more for you. It lets **Place from chart** in Song settings › Sections put the sections on the recording with no AI, it lets the app recognize the chart as this song's own when the stems are scanned, and it gives the detected chords something to be checked against. The readout under the chart tells you how the app read it: the bars and sections it found, and a warning for anything it could not follow.
+A song's **Chart** is written in **barmark**, a plain-text notation for the bar grid musicians already write on paper. A chart the app can read lets **Place from chart** in Song settings › Sections put the sections on the recording with no AI, lets the app recognize the chart as this song's own when the stems are scanned, and gives the song check chords to compare against.
 
-## The header
+## The first lines
 
-Put the key, time signature and tempo on the first line, in any of these forms:
+Start with the key, the time signature and the tempo, one per line (`key: D`, `time: 4/4`, `tempo: 120`) or on one line with commas:
 
 ```
-key: F#maj · 4/4 · bpm 132
-Key: D · 145 bpm
-Key of E major, 140 bpm, 3/4
-♩ = 120
+key: F#, time: 4/4, tempo: 132
 ```
 
-Keys can be written `Bm`, `key of E♭`, `Amaj` or `Emin`. Without a tempo or time signature, the song's own settings apply. A later key, tempo or time signature line (`key change -> B`, or a bare `2/4` before a short last bar) applies from the next bar on. The song's settings still hold the exact values the player uses.
+The key is a root, plus `m` for minor or a mode word: `F#`, `Em`, `D mixolydian`. A bare root means major, so write `F#`, never `F#maj`. When the chart has no tempo or time signature, the app takes them from the song's settings; a `tempo:` in the chart wins over the song's. A `key:`, `time:` or `tempo:` line further down applies from the next bar on.
 
-## Sections
+## Title and sections
 
-Each section starts with a heading line. Any of these works:
+One `#` line is the title, and each `##` line starts a section that runs until the next one. Name sections whatever you like; a numeral is fine too.
 
-- A markdown heading: `## Verse`
-- A whole line in bold: `**Verse**`
-- A numbered label, bold or not: `II - Verse`, `2. Verse`
-- A section word on a line alone: `Chorus`, `Verse 2`, `[Bridge]`, `Outro:`, or `Intro: D A` with the chords after the colon
+```
+# Letter Lands
 
-With a heading, a numeral or bold, the name is up to you ("Part 1" is fine). A note in parentheses at the end leaves the name alone: `**IV - Outro (key change -> Bmaj)**` is a section called Outro, and the key change applies from there. `x2` in a heading plays the section twice.
+## Intro
+| F#5(7) Esus4 | x4
+
+## II - Verse
+| F#5(7) Esus4 | x8
+```
 
 ## Bars
 
-Write bars between pipes, `| D | A | Bm | G |` (the first or last pipe can be left out), between dots, `A・D・E・A` (`・`, `·` or `•`), or as a bare line of chords, one bar each.
+A line of bars starts and ends with a pipe, and each space between pipes is one bar. Four bars to a line reads well, but line length means nothing. An empty bar (`| |`) is an error: fill it with one of the symbols below.
 
-- **Splitting a bar**: two or more chords in one bar share it equally. `| Am7 G |` is half and half, and four chords are the four beats of 4/4. Three chords in 4/4 are thirds of the bar, not beats, so to put a chord on beats, repeat it once per beat: `| Am7 Am7 Am7 G |`.
-- **Repeating a bar**: `x N` right after a chord plays that bar N times (up to 64). `D x2` is two bars of D.
-- **Repeating a line**: `x N` after the closing pipe plays the whole line N times. The pipe before the `x` is the difference:
+Two or more chords in a bar share it equally: in 4/4, `| D A |` is two beats each. A `/` holds the chord before it for one more slot, so `| A / / G |` is A for three beats and G on four. Three slots in 4/4 are thirds of the bar, and the readout warns about them. Join chords with `_` to squeeze a quick run into one slot: `| D / / D_E_F#m |` plays all three inside beat four.
 
 ```
-| D | A x2 |      three bars: D, A, A
-| D | A | x2      four bars: D, A, D, A
+| D | A | Bm | G |
+| D A | G D | A / / G | D / / D_E_F#m |
 ```
 
-- **`%`** or **`/`** alone in a bar plays the previous bar again.
-- **`--`**, **`-`** or an **empty bar** holds the previous chord. An empty bar is not silence: `| G | | | G |` is four bars of G.
-- **`N.C.`** (or `NC`, `n.c.`) is silence, no chord at all: a drums-only break is `| N.C. | N.C. |`.
-- **`|:` … `:|`** around one or more lines plays them twice.
-- A word that is not a chord beside one (`| A5 riff |`) is ignored with a warning; a line of bars holding only words is left out, with a warning. Lines of lyrics or notes between the grids are skipped.
-- A fenced code block (three backticks) keeps a grid's spacing exactly as you typed it.
+## Symbols inside a bar
 
-## The Structure line
-
-Write each section once and list the order the band plays them in on a line of its own:
+- **`%`** alone in a bar plays the previous bar again, exactly: `| C G | % |` is C, G, C, G.
+- **`/`** holds whatever was sounding: `| C G | / |` lets G ring through the second bar.
+- **`--`** is silence: the whole band stops. A stop-time hit is `| G -- -- -- |`.
+- **`N.C.`** is no chord: the chord instruments drop out while the drums, a riff or a voice carry on.
+- **`?`** is a chord you have not worked out yet. It is allowed, and always warned about, so no gap goes unnoticed.
+- **`...`** alone in a bar is a fermata: the last chord rings on. It is not counted as a bar.
 
 ```
-Structure: Intro・Verse・Chorus x2・Verse・Chorus・Outro
+| G | A | D | ... |
+| N.C. | N.C. | A | ? |
 ```
 
-The line can start with Structure, Form, Order, Arrangement or Play order, bold or not, with the list on the same line after a colon or on the next line. Separate the entries with dots, commas, pipes or arrows. Each entry is a section's numeral (`II`), its name (`Verse`) or the start of its name (`Out` for Outro), with an optional `x2`. If an entry names no section in the chart, or fits more than one, you get a warning and the chart is read in the order written. Without a Structure line the chart plays as written.
+## A bar in another meter
+
+A time signature in square brackets at the start of a bar sets the meter for that bar alone; to change it for good, write a `time:` line.
+
+```
+| D | A | [2/4] G | D |
+```
+
+## Repeats
+
+- `x4` after a line's closing pipe plays the line four times.
+- `## Chorus x2` plays the whole section twice.
+- `|:` at the start of a line and `:|` at the end of one (in the same section) play the bars between them twice, or `:| x3` three times.
+- `x ...` is an open repeat: a vamp until the cue, or a fade-out at the end.
+
+```
+## Chorus
+|: D | A |
+| Bm | G :|
+| E7 | / | x ...
+| A | ... |
+```
+
+This chorus plays its four bars twice, vamps on E7 until the cue and ends on a ringing A.
+
+## The form of the song
+
+Write each section once, then list the headings in the order the band plays them. A `##` heading with no bars under it plays that section again.
+
+```
+## Verse
+| A | D | E | A | x4
+
+## Chorus
+| G | / | A | / |
+
+## Verse
+## Chorus
+## Verse x2
+```
+
+Capitals do not matter, but the rest of the name must match: `## Verse 2` is a new section, not a replay of `## Verse`, and an empty heading that names no earlier section is an error. Lyrics under a replay heading are fine.
 
 ## Chord symbols
 
-- A letter, an optional accidental (`#`, `b`, `♯`, `♭`) and a quality: `D`, `Am7`, `Cmaj7`, `Bdim`, `Dsus4`, `D(7)sus4`, `E5`, `C6/9`
-- A bass note after a slash: `G/B`
-- `sus` or `Sus`, either case
+- A capital letter, an optional `#` or `b`, and a quality: `C`, `Cm`, `C7`, `Cmaj7`, `Cm7`, `Cdim`, `Caug`, `C6`, `C9`, `C13`
+- `sus2` or `sus4` after the rest: `Csus4`, `C7sus4`
+- A bass note after a slash: `C/E`
+- Tones in parentheses are added exactly, as Logic reads them: `C(9)` is C, E, G and D; `Cm7(b5)` is half-diminished
+- `5` means no third: `C5` is C and G, `C5(7)` is C, G and B♭
 
-Parentheses add notes to the chord in front of them, and `5` means no third: `G5(7)` is G, D and F. Write `G5` for a bare fifth and `G7` for a seventh with the third.
+`C2` and `C4` are refused (players read them two ways); write `Csus2` or `C(9)`.
+
+## Lyrics and notes
+
+Any other line is text: lyrics, cues, a reminder about the ending. It stays in the chart but is never played or scanned for chords.
+
+```
+## Bridge
+Watch Kevin for the cutoff
+| Em7 | A7(b9) | Dmaj7 | Bm7 |
+```
+
+## When something will not read
+
+A line the app cannot read is shown underlined, with its message, and left out of what plays; the rest of the chart still reads. The readout under the chart lists what was read (the bars, the sections and the song's length) and any warnings, each with its line number.
 
 ## A worked example
 
 ```
-key: D · 4/4 · 120 bpm
+key: A, time: 3/4, tempo: 224
 
-Structure: Intro・Verse・Chorus・Verse・Chorus・Outro
+## Intro
+| A | D | E | A |
 
-**I - Intro**
-| D | A | Bm | G A |
+## Verse
+| A | D | E | A | x4
 
-**II - Verse**
-| D x2 | A | Bm |
-| G | A | D | -- |
+## Chorus
+| G | % | % | % |
+| A | % | % | % |
 
-**III - Chorus**
-| G | D | x4
+## Verse
+## Chorus
 
-**IV - Outro**
-| G | A | D | -- |
+key: B
+## Outro
+| B | E | F# | B | x2
+| B | ... |
 ```
 
-Each section is written once, and the last bar of the intro is half G, half A. The readout shows 40 bars in 6 sections: an intro of 4 bars, a verse of 8 (the D played twice, then the D held into the last bar), a chorus of 8 (its line played four times) and an outro of 4, in the Structure line's order.
+The readout shows 61 bars in 6 sections: an intro of 4, a verse of 16, a chorus of 8, the verse and chorus again, and an outro of 9 in B; the fermata adds no bar.
+
+## If you wrote charts before
+
+Charts in the app's earlier notation were converted where that was safe. If you know the old way: `Chorus:` or `[Bridge]` is now `## Chorus`; an empty bar is now `/`; a lone `/` that repeated the last bar is now `%`; `key: D · 4/4 · 120 bpm` is now `key: D, time: 4/4, tempo: 120`; and a Structure line is now a list of `##` headings. `N.C.` now means only that the chords stop; for the whole band stopping, write `--`.
 
 For the editor itself, notation uploads and earlier versions, see [Charts, lyrics and notes](/docs/charts-lyrics-and-notes).
+
+## The standard
+
+barmark is an open notation; its full grammar and tools live at [github.com/kevinpeckham/barmark](https://github.com/kevinpeckham/barmark).

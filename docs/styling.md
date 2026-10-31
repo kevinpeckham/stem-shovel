@@ -17,7 +17,15 @@ Rules:
   `chart-editor`. `chart-body` is written like replicator's `article-body`:
   direct-child selectors (`[&>h2]:(…)`) plus sibling rules for rhythm
   (`[&>p_+p]:mt-3`). Comments inside a shortcut go between the array's
-  strings, which are `.join(" ")`ed.
+  strings, which are `.join(" ")`ed. The chord chart itself is not
+  `chart-body` typography: `@barmark/render` draws it inside a shadow
+  root with its own stylesheet (`server/chartHtml.ts`,
+  `components/ChartHtml.svelte`), reading its palette from `--barmark-*`
+  custom properties on the host (`ChartHtml` sets the paper transparent so
+  the panel's surface shows through) and its font, Edwin, from the
+  document: the `preflights` entry in `uno.config.ts` registers the
+  `@font-face` (`static/fonts/barmark`, SIL Open Font License), because a
+  browser ignores one inside a shadow root.
 - **Page structure follows lj-website**: a `page` wrapper, an `app-page-heading` title,
   `heading-2` sections, `max-w-article` for prose.
 - **Semantic tokens** (`bg-panel`, `bg-row`, `text-dim`, `border-line`,

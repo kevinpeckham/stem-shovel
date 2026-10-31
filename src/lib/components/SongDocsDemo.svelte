@@ -66,7 +66,7 @@
 	let docPanel = $state<SongDocPanel | null>(null);
 	async function keepLocal(kind: Doc, markdown: string) {
 		try {
-			const html = await renderPreview(markdown);
+			const html = await renderPreview({ markdown, kind: kind === "chart" ? "chart" : "text" });
 			edits[kind] = { markdown, html, version: docs[kind].version + 1 };
 			notify("Saved on this page only; a reload brings the song's own text back");
 		} catch (e) {
