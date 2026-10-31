@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { Detection } from "#lib/audio/analysis.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import type { AiAnswer } from "#lib/server/aiDetect.js";
@@ -57,6 +57,12 @@ beforeEach(() => {
 	remote.chartBarsOf.mockResolvedValue({ bars: null, reason: "none" });
 	remote.saveChanges.mockResolvedValue(undefined);
 });
+afterEach(() => {
+	vi.useRealTimers();
+});
+
+/** The mix still rendering: what askAiAboutSong rejects with until it is. */
+const MIXING = { status: 409 };
 
 describe("SongCheck", () => {
 	test("aiLine and agreementText read as the card says them", () => {
@@ -161,5 +167,50 @@ describe("SongCheck", () => {
 		expect(notify).toHaveBeenCalledWith(expect.stringMatching(/^Detected 120 bpm/), {
 			kind: "info",
 		});
+	});
+	test("the upload's check waits out a rendering mix and uses the answer once it comes", async () => {
+		vi.useFakeTimers();
+		remote.askAiAboutSong.mockRejectedValueOnce(MIXING).mockRejectedValueOnce(MIXING);
+		const { check, showTab } = make();
+		const done = check.checkWithScore();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(remote.askAiAboutSong).toHaveBeenCalledTimes(1);
+		expect(check.aiBusy).toBe(true);
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(remote.askAiAboutSong).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(10_000);
+		await done;
+		expect(remote.askAiAboutSong).toHaveBeenCalledTimes(3);
+		expect(showTab).toHaveBeenCalled();
+		expect(remote.saveChanges).toHaveBeenCalledTimes(1);
+		expect(check.aiError).toBeNull();
+		expect(check.aiBusy).toBe(false);
+	});
+
+	test("after eighteen tries of a rendering mix the check gives up with a notice", async () => {
+		vi.useFakeTimers();
+		remote.askAiAboutSong.mockRejectedValue(MIXING);
+		const { check } = make();
+		const done = check.checkWithScore();
+		for (let i = 0; i < 17; i++) await vi.advanceTimersByTimeAsync(10_000);
+		await done;
+		expect(remote.askAiAboutSong).toHaveBeenCalledTimes(18);
+		expect(notify).toHaveBeenCalledWith(
+			"The mix is still rendering; use Ask AI to check once it is ready",
+			{ kind: "info" },
+		);
+		expect(check.aiError).toBeNull();
+		expect(check.aiBusy).toBe(false);
+		expect(remote.saveChanges).not.toHaveBeenCalled();
+	});
+
+	test("the upload's check does not retry an error other than a rendering mix", async () => {
+		vi.useFakeTimers();
+		remote.askAiAboutSong.mockRejectedValueOnce(new Error("gateway down"));
+		const { check } = make();
+		await check.checkWithScore();
+		expect(remote.askAiAboutSong).toHaveBeenCalledTimes(1);
+		expect(check.aiError).toBe("gateway down");
+		expect(check.aiBusy).toBe(false);
 	});
 });

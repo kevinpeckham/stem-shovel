@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Effect on the song page's three cancellation, retry and timeout pipelines**: chord detect/check/draft runs as a fiber that Cancel or a new run interrupts; the song check's wait for the mix is an `Effect.retry` on the 409 with three new tests; the browser alignment's worker is acquired and released by Effect with its 90 s as `Effect.timeout`. Public APIs unchanged; the song page node grows 60.2 → 74.5 kB gzip, no other page changes (docs/song-page.md "Effect on the client, as a pilot"; docs/effect-adoption.md).
+
 ## [0.201.3] - 2026-10-30
 
 ### Technical

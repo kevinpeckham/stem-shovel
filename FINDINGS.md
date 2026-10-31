@@ -1714,8 +1714,26 @@ original error with `{ try, catch: (e) => e }`; the thunk gets the
 AbortSignal only when it declares the parameter; `ensuring` cleanup runs
 on interrupt too, so an interrupted run's cleanup must be idempotent with
 what Cancel writes; `Effect.catch` sees typed failures only, so a throw
-inside `Effect.sync` rejects the run instead. The rewritten class is kept
-out of the tree; the token version stayed.
+inside `Effect.sync` rejects the run instead. The rewritten class was
+kept out of the tree that day and adopted on 2026-10-31 together with the
+song check's retry and the alignment's timeout: the three cost 14.3 kB
+gzip on the same node (60.2 → 74.5), so the runtime is about 11.6 kB and
+each further pipeline about 1.3 kB. Learned in those two conversions:
+**Effect's default clock runs on `setTimeout`**, so Vitest's fake timers
+drive `Effect.timeout`, `Schedule.spaced` and `Effect.retry`
+(`vi.advanceTimersByTimeAsync(10_000)` per wait, no test clock, no extra
+flush); `Effect.retry({ schedule, times, while })` applies `times` as
+`attempt <= times`, so `times: N - 1` gives N attempts in all, and `while`
+may return a boolean or an Effect of one; `Schedule.spaced`,
+`Effect.timeout` and the rest take `Duration.Input` (a number of
+milliseconds, `"10 seconds"`, `Duration.seconds(10)`); a plain-object
+failure (`{ status: 409 }`) reaches `runPromise`'s rejection as the same
+object; `Effect.catchIf` has an optional third `orElse` for the errors the
+predicate does not match; `Effect.callback`'s register function is typed
+with `this: Scheduler` beside `(resume, signal)`; a synchronous throw
+inside `Effect.map` is a defect that `orElseSucceed` does not catch, so a
+fallible pure step that used to sit inside a try/catch stays inside the
+`tryPromise` thunk.
 
 ## A remote form's dirty fields survive `clearForm`, and a dirty field with no stored value renders empty (2026-10-30)
 

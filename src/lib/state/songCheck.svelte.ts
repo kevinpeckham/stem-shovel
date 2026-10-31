@@ -30,6 +30,8 @@ import type { AlignedChart } from "#lib/utils/placedSections.js";
 import { scanOffer, type ScanLadder, type ScanOffer } from "#lib/utils/scanOffer.js";
 import { tempoAlternatesText, tempoRungText } from "#lib/utils/tempoRungText.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import * as Effect from "effect/Effect";
+import * as Schedule from "effect/Schedule";
 
 /** What the song check reads of the song (the page's data). */
 export interface CheckedSong {
@@ -75,6 +77,13 @@ interface ScanResult {
 /** After an upload the mix renders in the background; the check waits for it this long. */
 const MIX_WAIT_TRIES = 18;
 const MIX_WAIT_MS = 10_000;
+
+/** A promise as an Effect, its rejection kept as the error (not wrapped in Cause.UnknownError). */
+const attempt = <A>(thunk: () => PromiseLike<A>) =>
+	Effect.tryPromise({ try: thunk, catch: (e) => e });
+
+/** 409: the mix is not rendered yet (renditions still transcoding after an upload). */
+const mixPending = (e: unknown) => (e as { status?: unknown } | null)?.status === 409;
 
 /** What a scan would write: tempo and time signature at 0:00, and the keys where each begins. */
 function scanChanges(d: Detection, keys: KeyChange[]): SongChange[] {
@@ -338,18 +347,25 @@ export class SongCheck {
 	/**
 	 * The song-check: the model's answer, its key and tempo changes then placed by aligning
 	 * the chart to the stems when it can (stem-bench Study 12). The alignment never breaks the
-	 * check: when it cannot run or fails, the model's placement stays.
+	 * check: when it cannot run or fails, the model's placement stays. An Effect whose error
+	 * is the AI call's rejection as it came (a 409 while the mix renders), so it can be retried.
 	 */
-	async #checkSong(): Promise<PlacedAnswer> {
-		const answer = await askAiAboutSong({ id: this.#opts.song().id });
-		if (!this.#opts.hasScore()) return answer;
-		try {
-			const aligned = await this.alignChart();
-			return "placements" in aligned ? placeAnswerByAlignment(answer, aligned.placements) : answer;
-		} catch {
-			return answer;
-		}
+	#checkSong(): Effect.Effect<PlacedAnswer, unknown> {
+		return Effect.gen({ self: this }, function* () {
+			const answer = yield* attempt(() => askAiAboutSong({ id: this.#opts.song().id }));
+			if (!this.#opts.hasScore()) return answer;
+			return yield* attempt(() => this.#placed(answer)).pipe(Effect.orElseSucceed(() => answer));
+		});
 	}
+
+	/** The answer's changes placed by the chart aligned to the stems; as it came when the chart has no placements. */
+	async #placed(answer: AiAnswer): Promise<PlacedAnswer> {
+		const aligned = await this.alignChart();
+		return "placements" in aligned ? placeAnswerByAlignment(answer, aligned.placements) : answer;
+	}
+
+	/** The song-check once, as a promise for the button handlers (it rejects with the AI call's error). */
+	#checkOnce = () => Effect.runPromise(this.#checkSong());
 
 	/** "Ask AI to check": "Use these" puts the answer into the rows and saves them. */
 	askAi = async () => {
@@ -357,7 +373,7 @@ export class SongCheck {
 		this.aiBusy = true;
 		this.aiError = null;
 		try {
-			this.aiAnswer = await this.#checkSong();
+			this.aiAnswer = await this.#checkOnce();
 		} catch (e) {
 			this.aiError = errorMessage(e);
 		} finally {
@@ -377,7 +393,7 @@ export class SongCheck {
 		this.aiBusy = true;
 		this.aiError = null;
 		try {
-			const answer = await this.#checkSong();
+			const answer = await this.#checkOnce();
 			this.aiAnswer = answer;
 			this.#opts.showTab();
 			if (answer.warnings?.length)
@@ -437,22 +453,25 @@ export class SongCheck {
 		}
 	};
 
-	/** The song-check, waiting for the mix to render (409) a while; its answer then used at once. */
+	/**
+	 * The song-check, waiting for the mix to render a while: an Effect retry
+	 * while the error is a 409, every MIX_WAIT_MS up to MIX_WAIT_TRIES attempts
+	 * in all; any other error, or the last 409, rejects as it came. Its answer
+	 * then used at once.
+	 */
 	async #checkOnceMixed() {
-		for (let attempt = 1; ; attempt++) {
-			try {
-				this.aiAnswer = await this.#checkSong();
-				this.#opts.showTab();
-				this.aiBusy = false;
-				await this.useAiAnswer();
-				return;
-			} catch (e) {
-				// 409: the mix is not rendered yet (renditions still transcoding after an upload).
-				const status = (e as { status?: unknown }).status;
-				if (status !== 409 || attempt >= MIX_WAIT_TRIES) throw e;
-				await new Promise((r) => setTimeout(r, MIX_WAIT_MS));
-			}
-		}
+		this.aiAnswer = await Effect.runPromise(
+			this.#checkSong().pipe(
+				Effect.retry({
+					schedule: Schedule.spaced(MIX_WAIT_MS),
+					times: MIX_WAIT_TRIES - 1,
+					while: mixPending,
+				}),
+			),
+		);
+		this.#opts.showTab();
+		this.aiBusy = false;
+		await this.useAiAnswer();
 	}
 
 	/** Fill the rows from the model's answer and save at once (a bug report: filling alone looked like nothing happened). */

@@ -277,3 +277,13 @@ provoked on dev and seen in Sentry with their tags.
   code. Reconsider only as one move covering the song check's 409 retry
   and the alignment's 90 s timeout too, which would share the one copy;
   the server stays Effect's home.
+- 2026-10-31: that one move made and measured: `SongChordDraft`,
+  `SongCheck` (the 409 retry as `Effect.retry`) and `alignChartInBrowser`
+  (`acquireUseRelease` + `Effect.timeout`) together, public APIs
+  unchanged, +14.3 kB gzip on the song page node (60.2 → 74.5, +6.7% of
+  that page's client JS), nothing elsewhere. Kevin: "go". The rule for
+  the client from here: a class adopts Effect when it has the shape
+  (cancellation, retry, timeout, a resource to release) and sits on a
+  page that already carries it, or the gain is worth the ~11.6 kB first
+  copy; plain state classes and components never do
+  (docs/song-page.md "Effect on the client, as a pilot").

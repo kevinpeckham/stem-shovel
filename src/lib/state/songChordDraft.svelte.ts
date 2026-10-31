@@ -7,6 +7,8 @@ import { notify } from "#lib/state/notifications.svelte.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
 import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
+import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 
 /** What the page supplies: functions, since each follows the page's data and the player. */
 export interface SongChordDraftOptions {
@@ -19,8 +21,13 @@ export interface SongChordDraftOptions {
 	aiAvailable: () => boolean;
 }
 
-/** A run stopped by Cancel, from inside the transcription's progress callback. */
-class DraftCancelled extends Error {}
+/**
+ * A promise as an Effect, its rejection kept as the error. A thunk that takes
+ * the signal sees it aborted when the run is interrupted (Effect passes it
+ * only to a thunk that declares the parameter).
+ */
+const attempt = <A>(thunk: (signal: AbortSignal) => PromiseLike<A>) =>
+	Effect.tryPromise({ try: thunk, catch: (e) => e });
 
 /** Where each bar of the song starts on the grid, and where the last one ends. */
 function barStartsOf(grid: BarGrid, duration: number): number[] {
@@ -39,7 +46,9 @@ function barStartsOf(grid: BarGrid, duration: number): number[] {
  * panel's ⋯ menu): Basic Pitch on the tonal stems, one chord per bar on the
  * song's grid, checked by the AI; then the AI turns them into sections, a
  * progression per section and a chart, each saved on request by the page's
- * draft card. Cancel drops whatever a run would still have set.
+ * draft card. Each run is an Effect fiber: Cancel, or a new run, interrupts
+ * it, so nothing after its current step happens (docs/song-page.md "Effect
+ * on the client, as a pilot").
  */
 export class SongChordDraft {
 	/** What a run is doing ("Listening… 40%"), or null when none is. */
@@ -51,16 +60,29 @@ export class SongChordDraft {
 	chordError = $state<string | null>(null);
 	draft = $state<(ChartDraftAnswer & { chartHtml: string }) | null>(null);
 	draftBusy = $state(false);
-	/** Bumped by Cancel: a run whose number no longer matches drops its result. */
-	#draftRun = 0;
+	/** The latest run; a new run interrupts it before starting, Cancel interrupts it. */
+	#fiber: Fiber.Fiber<void> | null = null;
 	#opts: SongChordDraftOptions;
 
 	constructor(opts: SongChordDraftOptions) {
 		this.#opts = opts;
 	}
 
+	/**
+	 * Starts a run once the previous one has stopped (its cleanup has run), and
+	 * resolves when this one ends: done, failed and reported, or interrupted.
+	 */
+	#run(program: Effect.Effect<void>): Promise<void> {
+		const previous = this.#fiber;
+		const fiber = Effect.runFork(
+			previous ? Effect.andThen(Fiber.interrupt(previous), program) : program,
+		);
+		this.#fiber = fiber;
+		return Effect.runPromise(Fiber.await(fiber)).then(() => undefined);
+	}
+
 	cancelDraft = () => {
-		this.#draftRun++;
+		if (this.#fiber) Effect.runFork(Fiber.interrupt(this.#fiber));
 		this.chordBusy = null;
 		this.draftBusy = false;
 		notify("Canceled", { kind: "info" });
@@ -72,30 +94,43 @@ export class SongChordDraft {
 		this.draft = null;
 	};
 
-	detectChords = async (run = ++this.#draftRun) => {
-		const ready = this.#ready();
-		if (!ready) return;
-		const { engine, grid } = ready;
-		const cancelled = () => run !== this.#draftRun;
-		this.chordBusy = "Listening…";
-		this.chordError = null;
-		this.chordSegments = null;
-		this.chordsChecked = null;
-		this.draft = null;
-		try {
+	detectChords = () => this.#run(this.#detect());
+
+	/** The chart panel's button: detect chords first when that has not run, then draft. */
+	draftFromPanel = () =>
+		this.#run(
+			Effect.gen({ self: this }, function* () {
+				if (!this.chordSegments) yield* this.#detect();
+				if (this.chordSegments) yield* this.#draft();
+			}),
+		);
+
+	draftFromChords = () => this.#run(this.#draft());
+
+	#fail(what: string, e: unknown) {
+		this.chordError = errorMessage(e);
+		notify(`${what}: ${this.chordError}`, { kind: "error" });
+	}
+
+	#detect(): Effect.Effect<void> {
+		return Effect.gen({ self: this }, function* () {
+			const ready = this.#ready();
+			if (!ready) return;
+			const { engine, grid } = ready;
+			this.chordBusy = "Listening…";
+			this.chordError = null;
+			this.chordSegments = null;
+			this.chordsChecked = null;
+			this.draft = null;
 			const duration = engine.duration;
-			const notes = await this.#notes(engine, cancelled);
-			if (!notes || cancelled()) return;
-			this.#readBars(notes, barStartsOf(grid, duration));
-			await this.#checkChords(run);
-		} catch (e) {
-			if (cancelled() || e instanceof DraftCancelled) return;
-			this.chordError = errorMessage(e);
-			notify(`Chord detection failed: ${this.chordError}`, { kind: "error" });
-		} finally {
-			if (!cancelled()) this.chordBusy = null;
-		}
-	};
+			yield* this.#notes(engine).pipe(
+				Effect.map((notes) => this.#readBars(notes, barStartsOf(grid, duration))),
+				Effect.andThen(this.#checkChords()),
+				Effect.catch((e) => Effect.sync(() => this.#fail("Chord detection failed", e))),
+				Effect.ensuring(Effect.sync(() => (this.chordBusy = null))),
+			);
+		});
+	}
 
 	/** The engine and the grid when every stem has decoded and the song has a tempo and a meter. */
 	#ready(): { engine: StemEngine; grid: BarGrid } | null {
@@ -117,16 +152,27 @@ export class SongChordDraft {
 	/**
 	 * The song's notes: the server's when its transcription covers the song,
 	 * otherwise transcribed here (the server copy keeps growing in the
-	 * background). Null when the run was canceled while asking.
+	 * background).
 	 */
-	async #notes(engine: StemEngine, cancelled: () => boolean): Promise<Note[] | null> {
-		const stored = await songNotes({ id: this.#opts.songId() }).catch(() => null);
-		if (cancelled()) return null;
-		if (stored?.complete) return stored.notes;
-		this.chordBusy =
-			stored && stored.doneSeconds > 0
-				? `Listening… (server ${Math.round((100 * stored.doneSeconds) / Math.max(1, stored.duration))}% done)`
-				: "Listening…";
+	#notes(engine: StemEngine): Effect.Effect<Note[], unknown> {
+		return Effect.gen({ self: this }, function* () {
+			const stored = yield* attempt(() => songNotes({ id: this.#opts.songId() })).pipe(
+				Effect.orElseSucceed(() => null),
+			);
+			if (stored?.complete) return stored.notes;
+			this.chordBusy =
+				stored && stored.doneSeconds > 0
+					? `Listening… (server ${Math.round((100 * stored.doneSeconds) / Math.max(1, stored.duration))}% done)`
+					: "Listening…";
+			return yield* attempt((signal) => this.#transcribe(engine, signal));
+		});
+	}
+
+	/**
+	 * Basic Pitch in the browser. It takes no signal, so an interrupted run
+	 * stops it at its next progress report.
+	 */
+	async #transcribe(engine: StemEngine, signal: AbortSignal): Promise<Note[]> {
 		const { transcribeNotes } = await import("#lib/audio/transcribe.js");
 		const buffers = await engine.decodedBuffers();
 		const features = buffers.map((b) => extractFeatures(b, 30));
@@ -135,7 +181,7 @@ export class SongChordDraft {
 			buffers.map((buffer, i) => ({ buffer, weight: features[i].tonal / top })),
 			engine.duration,
 			(p) => {
-				if (cancelled()) throw new DraftCancelled();
+				signal.throwIfAborted();
 				this.chordBusy = `Listening… ${Math.round(p * 100)}%`;
 			},
 		);
@@ -147,48 +193,42 @@ export class SongChordDraft {
 	 * recording, 54 % after this pass). Any failure keeps the detector's
 	 * chords, without a word: they are still shown.
 	 */
-	async #checkChords(run: number) {
-		const segments = this.chordSegments;
-		if (!this.#opts.aiAvailable() || !segments?.length) return;
-		this.chordBusy = "Checking the chords with AI…";
-		const answer = await reconcileChords({
-			id: this.#opts.songId(),
-			chords: segments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
-			bars: this.chordBars,
-		}).catch(() => null);
-		if (run !== this.#draftRun || !answer?.chords) return;
-		const fixed = reconciledSegments(segments, answer.chords);
-		this.chordSegments = fixed.segments;
-		this.chordsChecked = { changed: fixed.changed };
+	#checkChords(): Effect.Effect<void> {
+		return Effect.gen({ self: this }, function* () {
+			const segments = this.chordSegments;
+			if (!this.#opts.aiAvailable() || !segments?.length) return;
+			this.chordBusy = "Checking the chords with AI…";
+			const answer = yield* attempt(() =>
+				reconcileChords({
+					id: this.#opts.songId(),
+					chords: segments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
+					bars: this.chordBars,
+				}),
+			).pipe(Effect.orElseSucceed(() => null));
+			if (!answer?.chords) return;
+			const fixed = reconciledSegments(segments, answer.chords);
+			this.chordSegments = fixed.segments;
+			this.chordsChecked = { changed: fixed.changed };
+		});
 	}
 
-	/** The chart panel's button: detect chords first when that has not run, then draft. */
-	draftFromPanel = async () => {
-		const run = ++this.#draftRun;
-		if (!this.chordSegments) await this.detectChords(run);
-		if (this.chordSegments && run === this.#draftRun) await this.draftFromChords(run);
-	};
-
-	draftFromChords = async (run = ++this.#draftRun) => {
-		const segments = this.chordSegments;
-		if (!segments) return;
-		const cancelled = () => run !== this.#draftRun;
-		this.draftBusy = true;
-		this.chordError = null;
-		try {
-			const answer = await draftChart({
-				id: this.#opts.songId(),
-				chords: segments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
-				bars: this.chordBars,
-			});
-			if (cancelled()) return;
-			this.draft = answer;
-		} catch (e) {
-			if (cancelled()) return;
-			this.chordError = errorMessage(e);
-			notify(`The draft failed: ${this.chordError}`, { kind: "error" });
-		} finally {
-			if (!cancelled()) this.draftBusy = false;
-		}
-	};
+	#draft(): Effect.Effect<void> {
+		return Effect.gen({ self: this }, function* () {
+			const segments = this.chordSegments;
+			if (!segments) return;
+			this.draftBusy = true;
+			this.chordError = null;
+			yield* attempt(() =>
+				draftChart({
+					id: this.#opts.songId(),
+					chords: segments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
+					bars: this.chordBars,
+				}),
+			).pipe(
+				Effect.map((answer) => (this.draft = answer)),
+				Effect.catch((e) => Effect.sync(() => this.#fail("The draft failed", e))),
+				Effect.ensuring(Effect.sync(() => (this.draftBusy = false))),
+			);
+		});
+	}
 }

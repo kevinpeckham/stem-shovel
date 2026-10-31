@@ -164,3 +164,19 @@ inlined into that page only. Reverted as not worth the cost for six
 checks (docs/effect-adoption.md "Decision record"); its two behavior
 tests stay. Pure extractions never carry a new runtime, so their diffs
 stay reviewable.
+
+**Adopted 2026-10-31**, once all three shapes were extracted and could
+share the one copy: `SongChordDraft` (each run a fiber; Cancel or a new
+run interrupts it), `SongCheck` (the wait for the mix is `Effect.retry`
+with `Schedule.spaced` and a `while` on the 409; the alignment fallback
+is `orElseSucceed`) and `alignChartInBrowser` (the worker under
+`acquireUseRelease`, the 90 s as `Effect.timeout` folded to the same
+sentence). Public APIs unchanged, no component touched. Measured: the
+song page node 60.2 → 74.5 kB gzip (+14.3 kB, +24%; the page's whole
+client JS +6.7%), inlined into that page only: the runtime is about
+11.6 kB and each further pipeline about 1.3 kB. Kevin's call ("go",
+2026-10-31), leaning on clarity and predictability. If the weight ever
+matters, the three run only on a click and could load behind a dynamic
+import like the transcriber. The server stays Effect's home; a client
+class adopts it only when it has this shape (cancellation, retry,
+timeout, a resource to release), never for plain state.
