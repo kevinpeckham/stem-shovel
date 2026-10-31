@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.202.0] - 2026-10-31
+
 ### Added
 
 - **The chart reads the band's own idiom.** The chord chart parser now reads bold and numbered section labels (`**II - Verse**`, `I - Intro`), the dot between bars (`A・D・E・A`), `x N` after a chord for that bar repeated (`D5 x2`, up to 64) beside `x N` after the closing pipe for the line, `--` holds, a word beside a chord ignored with a warning instead of the line lost, the editor's escapes (`\|`, `\*`), `bpm 132` and `Key: Amaj` in the header, and a **Structure** line (`Structure: Intro・Verse・Chorus x2・Outro`, by numeral, name or prefix) that plays the sections in that order, with a warning and the chart read as written when it names a section the chart does not define. Chord symbols read parentheses in the Logic Pro sense: `G5(7)` is G D F. The band's five stored charts are the parser's fixtures; Letter Lands and Mop Heart place every section where the band set it. (stem-bench response "chart idiom", 2026-10-30)
