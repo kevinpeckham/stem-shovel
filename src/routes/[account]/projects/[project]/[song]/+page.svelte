@@ -35,6 +35,7 @@
 	import StemVersionOffer from "#lib/components/StemVersionOffer.svelte";
 	import { StemActions } from "#lib/state/stemActions.svelte.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
+	import PointerMenu from "#lib/components/PointerMenu.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
 	import MixList from "#lib/components/MixList.svelte";
 	import SongFilesPanel from "#lib/components/SongFilesPanel.svelte";
@@ -78,7 +79,7 @@
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
-	import { onDestroy, onMount, tick } from "svelte";
+	import { onDestroy, onMount, tick, type ComponentProps } from "svelte";
 
 	let { data } = $props();
 
@@ -411,21 +412,23 @@
 		demoPanel?.show(id);
 	}
 
-	// Ctrl / ⌘-click (or right-click) on a waveform: a small menu at the pointer.
-	/** The ⌘-click menu: from a stem's waveform or piano roll, or (stem null) from the Comments row's mix waveform. */
-	let stemMenuAt = $state<{
-		stem: StemState | null;
-		seconds: number;
-		x: number;
-		y: number;
-	} | null>(null);
-	function onStemContext(stem: StemState | null, seconds: number, x: number, y: number) {
-		stemMenuAt = { stem, seconds, x, y };
-	}
-	function closeStemContext(e: Event) {
-		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
-		if (demoMenuAt && !(e.target as HTMLElement).closest("[data-demo-context]")) demoMenuAt = null;
-	}
+	// Ctrl / ⌘-click (or right-click) on a waveform: a menu at the pointer (PointerMenu). The player
+	// has its own for the stem rows, with "Seek here"; the page adds "Comment here" to it and keeps the
+	// menus of the Comments row's mix waveform and of a demo's.
+	type MenuItem = NonNullable<ComponentProps<typeof PointerMenu>["items"]>[number];
+	const seekHere = (action: () => void): MenuItem => ({
+		label: "Seek here",
+		iconClass: "i-ph-skip-forward",
+		action,
+	});
+	/** The comment form opens with the spot's position filled in. */
+	const commentHere = (action: () => void): MenuItem => ({
+		label: "Comment here",
+		iconClass: "i-ph-hands-clapping-bold",
+		action,
+	});
+	/** Where the Comments row's mix waveform was Ctrl / ⌘-clicked or right-clicked. */
+	let mixMenuAt = $state<{ seconds: number; x: number; y: number } | null>(null);
 	onMount(() => {
 		docs.load();
 		try {
@@ -629,15 +632,6 @@
 		},
 	});
 </script>
-
-<svelte:window
-	onkeydown={(e) => {
-		if (e.key === "Escape") stemMenuAt = null;
-	}}
-	onpointerdown={(e) => {
-		closeStemContext(e);
-	}}
-/>
 
 <svelte:head>
 	<title>{pageTitle(data.song.title)}</title>
@@ -1053,7 +1047,10 @@
 						endAt={data.song.endAt}
 						fps={data.song.frameRate}
 						onengine={(e) => (playerEngine = e)}
-						onstemcontext={onStemContext}
+						contextItems={(_stem, seconds) =>
+							data.canEdit
+								? [commentHere(() => comments.open({ at: changes.editPos(seconds) }))]
+								: []}
 						{afterRows}
 						songId={data.song.id}
 						onreorder={data.canEdit ? stemActions.saveOrder : undefined}
@@ -1816,86 +1813,45 @@
 		/>{/if}
 {/snippet}
 
-{#if demoMenuAt}
-	<!-- Ctrl / ⌘-click menu on a demo's waveform, at the pointer -->
-	<div
-		class="fixed z-40 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
-		style:left="{Math.min(demoMenuAt.x, window.innerWidth - 240)}px"
-		style:top="{demoMenuAt.y + 4}px"
-		role="menu"
-		data-demo-context
-	>
-		<div class="truncate px-3 py-1.5 text-xs opacity-70">
-			{demoMenuAt.demo.label} · {formatTime(demoMenuAt.seconds, 1)}
-		</div>
-		<button
-			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-			type="button"
-			role="menuitem"
-			onclick={() => {
-				demoPanel?.seekTo(demoMenuAt?.seconds ?? 0);
-				demoMenuAt = null;
-			}}
-		>
-			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
-		</button>
-		{#if data.canComment}
-			<button
-				class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-				type="button"
-				role="menuitem"
-				onclick={() => {
-					const at = formatTime(demoMenuAt?.seconds ?? 0, 2);
-					const demoId = demoMenuAt?.demo.id ?? "";
-					demoMenuAt = null;
-					comments.open({ at, demoId });
-				}}
-			>
-				<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
-			</button>
-		{/if}
-	</div>
-{/if}
+<!-- Ctrl / ⌘-click menu on a demo's waveform, at the pointer -->
+<PointerMenu
+	at={demoMenuAt}
+	items={demoMenuAt
+		? [
+				{
+					kind: "notice",
+					notice: `${demoMenuAt.demo.label} · ${formatTime(demoMenuAt.seconds, 1)}`,
+				},
+				seekHere(() => demoPanel?.seekTo(demoMenuAt?.seconds ?? 0)),
+				...(data.canComment
+					? [
+							commentHere(() =>
+								comments.open({
+									at: formatTime(demoMenuAt?.seconds ?? 0, 2),
+									demoId: demoMenuAt?.demo.id ?? "",
+								}),
+							),
+						]
+					: []),
+			]
+		: []}
+	ariaLabel="Actions at this spot in the demo"
+/>
 
-{#if stemMenuAt}
-	<!-- Ctrl / ⌘-click menu at the pointer -->
-	<div
-		class="fixed z-40 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
-		style:left="{Math.min(stemMenuAt.x, window.innerWidth - 240)}px"
-		style:top="{stemMenuAt.y + 4}px"
-		role="menu"
-		data-stem-context
-	>
-		<div class="truncate px-3 py-1.5 text-xs opacity-70">
-			{stemMenuAt.stem?.label ?? "Mix"} · {showPos(stemMenuAt.seconds)}
-		</div>
-		<button
-			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-			type="button"
-			role="menuitem"
-			onclick={() => {
-				playerEngine?.seek(stemMenuAt?.seconds ?? 0);
-				stemMenuAt = null;
-			}}
-		>
-			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
-		</button>
-		{#if data.canEdit}
-			<button
-				class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-				type="button"
-				role="menuitem"
-				onclick={() => {
-					const at = changes.editPos(stemMenuAt?.seconds ?? 0);
-					stemMenuAt = null;
-					comments.open({ at });
-				}}
-			>
-				<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
-			</button>
-		{/if}
-	</div>
-{/if}
+<!-- Ctrl / ⌘-click menu on the Comments row's mix waveform, at the pointer (the stem rows' is the player's own) -->
+<PointerMenu
+	at={mixMenuAt}
+	items={mixMenuAt
+		? [
+				{ kind: "notice", notice: `Mix · ${showPos(mixMenuAt.seconds)}` },
+				seekHere(() => playerEngine?.seek(mixMenuAt?.seconds ?? 0)),
+				...(data.canEdit
+					? [commentHere(() => comments.open({ at: changes.editPos(mixMenuAt?.seconds ?? 0) }))]
+					: []),
+			]
+		: []}
+	ariaLabel="Actions at this spot in the mix"
+/>
 
 {#snippet commentCard(id: string)}
 	{@const c = data.comments.find((x) => x.id === id)}
@@ -1976,7 +1932,7 @@
 			canComment={data.canComment}
 			count={data.comments.length}
 			onopen={() => (commentsOpen = !commentsOpen)}
-			oncontext={(seconds, x, y) => onStemContext(null, seconds, x, y)}
+			oncontext={(seconds, x, y) => (mixMenuAt = { seconds, x, y })}
 		/>
 	{/if}
 	<!-- The player's tips under the rows, as the instruments wear them (Kevin: the comment gesture is not obvious). -->

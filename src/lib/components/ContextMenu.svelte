@@ -7,7 +7,9 @@
 	 * a native popover, placed beside the button by CSS anchor positioning
 	 * (`position-area`) with a JS fallback (src/lib/utils/anchorFallback.ts).
 	 * Light dismiss, Escape and focus leaving the menu close it; `bind:openState`
-	 * lets a parent open or close it too.
+	 * lets a parent open or close it too. With `at`, the trigger is a hidden
+	 * anchor at those viewport coordinates instead of a button: the menu opens
+	 * at the pointer (PointerMenu.svelte wraps this for the waveforms' menus).
 	 */
 
 	type Position = "bottom left" | "bottom right" | "top left" | "top right";
@@ -35,6 +37,8 @@
 
 	interface Props {
 		ariaLabel?: string | null;
+		/** Viewport coordinates of a pointer: the trigger becomes a hidden 1 px anchor there and the menu opens below and to its right, flipping at the edges. */
+		at?: { x: number; y: number } | null;
 		/** The trigger's own look; replaces the default chrome (`button button-sm` makes it one of a toolbar's buttons). */
 		buttonBaseClasses?: string | null;
 		/** Added to the trigger's classes. */
@@ -56,6 +60,7 @@
 
 	let {
 		ariaLabel = "More actions",
+		at = null,
 		buttonBaseClasses = "bg-dark cursor-pointer disabled-text-current/10 px-3 py-2 grid place-items-center border border-current/10 leading-none rounded-md disabled-opacity-60",
 		buttonClasses = "",
 		clearButtonBaseClasses = false,
@@ -138,24 +143,38 @@
 			"[position-area:top_span-right] [margin:0_0_0.25rem] [position-try-fallbacks:flip-block]",
 	};
 
+	/**
+	 * At the pointer: below and to the right of the anchor, flipped on either axis where it would
+	 * leave the viewport. The minimum width matters: a popover with an automatic width shrinks to
+	 * the room left beside the anchor instead of overflowing it, and only an overflow triggers a flip.
+	 */
+	const POINTER_CLASSES =
+		"min-w-56 [position-area:bottom_span-right] [margin:0.25rem_0_0] [position-try-fallbacks:flip-block,flip-inline,flip-block_flip-inline]";
+
 	async function run(item: ContextMenuItem) {
 		popoverEl?.hidePopover();
 		await item.action?.();
 	}
 </script>
 
-<div class="grid">
-	<!-- button -->
+<div class={at ? "contents" : "grid"}>
+	<!-- button; with `at`, a hidden anchor at the pointer (position: fixed, so the top layer's popover anchors to the viewport point) -->
 	<button
 		bind:this={buttonEl}
 		data-active={dataActive}
 		data-open={openState}
 		type="button"
 		aria-label={ariaLabel}
+		aria-hidden={at ? "true" : undefined}
+		tabindex={at ? -1 : undefined}
 		{disabled}
 		popovertarget={popoverId}
 		{title}
-		class="{clearButtonBaseClasses ? '' : buttonBaseClasses}  {buttonClasses}"
+		class={at
+			? "fixed w-px h-px p-0 border-0 opacity-0 pointer-events-none"
+			: `${clearButtonBaseClasses ? "" : buttonBaseClasses}  ${buttonClasses}`}
+		style:left={at ? `${at.x}px` : undefined}
+		style:top={at ? `${at.y}px` : undefined}
 	>
 		<span class={iconClass} aria-hidden="true"></span>
 		{#if label}<span class={labelClasses}>{label}</span>{/if}
@@ -166,9 +185,11 @@
 		id={popoverId}
 		bind:this={popoverEl}
 		popover="auto"
-		class="{positionClasses[
-			position ?? 'bottom left'
-		]} h-auto overflow-hidden fixed bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em max-h-400px {popoverClasses}"
+		class="{at
+			? POINTER_CLASSES
+			: positionClasses[
+					position ?? 'bottom left'
+				]} h-auto overflow-hidden fixed bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em max-h-400px {popoverClasses}"
 		ontoggle={onToggle}
 		onfocusout={onFocusOut}
 	>

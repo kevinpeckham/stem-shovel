@@ -35,12 +35,6 @@
 			.sort((a, b) => a.at - b.at),
 	);
 
-	// Ctrl / ⌘-click (or right-click) on a waveform: seek, or comment at that spot.
-	let contextAt = $state<{ stem: StemState; seconds: number; x: number; y: number } | null>(null);
-	function closeContext(e: Event) {
-		if (contextAt && !(e.target as HTMLElement).closest("[data-stem-context]")) contextAt = null;
-	}
-
 	// A comment lives in this page only: no request, no row, gone on reload.
 	let commentPanel = $state<HTMLDivElement | null>(null);
 	let draft = $state({ title: "", body: "", at: "" });
@@ -107,7 +101,13 @@
 			songId={song.id}
 			showStatus={false}
 			{keyboard}
-			onstemcontext={(stem, seconds, x, y) => (contextAt = { stem, seconds, x, y })}
+			contextItems={(_stem, seconds) => [
+				{
+					label: "Comment here",
+					iconClass: "i-ph-hands-clapping-bold",
+					action: () => openComment(formatTime(seconds, 0)),
+				},
+			]}
 			{afterRows}
 		>
 			{#snippet errorHint()}
@@ -118,13 +118,6 @@
 		<p class="text-sm text-dim">No stems yet.</p>
 	{/if}
 </div>
-
-<svelte:window
-	onpointerdown={closeContext}
-	onkeydown={(e) => {
-		if (e.key === "Escape") contextAt = null;
-	}}
-/>
 
 {#snippet afterRows()}
 	{#if engine}
@@ -152,43 +145,6 @@
 		</div>
 	{/if}
 {/snippet}
-
-{#if contextAt}
-	<div
-		class="fixed z-40 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
-		style:left="{Math.min(contextAt.x, window.innerWidth - 240)}px"
-		style:top="{contextAt.y + 4}px"
-		role="menu"
-		data-stem-context
-	>
-		<div class="truncate px-3 py-1.5 text-xs opacity-70">
-			{contextAt.stem.label} · {formatTime(contextAt.seconds)}
-		</div>
-		<button
-			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-			type="button"
-			role="menuitem"
-			onclick={() => {
-				engine?.seek(contextAt?.seconds ?? 0);
-				contextAt = null;
-			}}
-		>
-			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
-		</button>
-		<button
-			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-			type="button"
-			role="menuitem"
-			onclick={() => {
-				const at = formatTime(contextAt?.seconds ?? 0, 0);
-				contextAt = null;
-				openComment(at);
-			}}
-		>
-			<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
-		</button>
-	</div>
-{/if}
 
 <!-- The demo's comment form: what members get, minus the saving. -->
 <div

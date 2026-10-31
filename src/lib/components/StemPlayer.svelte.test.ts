@@ -1,8 +1,9 @@
 import { tick } from "svelte";
 import { fakeAudioBuffer } from "../../../tests/helpers/fakeAudioBuffer";
+import { installFakePopover } from "../../../tests/helpers/fakePopover";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import type { StemManifest } from "#lib/audio/types.js";
-import { render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import StemPlayer from "./StemPlayer.svelte";
@@ -81,6 +82,7 @@ const fetchSpy = vi.fn(async () => ({
 }));
 
 beforeAll(() => {
+	installFakePopover();
 	vi.stubGlobal("AudioContext", FakeAudioContext);
 	vi.stubGlobal("fetch", fetchSpy);
 	vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => null);
@@ -146,6 +148,32 @@ describe("StemPlayer", () => {
 		await user.keyboard("{ArrowUp}");
 		expect(onreorder).toHaveBeenCalledTimes(2);
 		expect(rowNames()).toEqual(["Bass", "Vox", "Drums"]);
+	});
+
+	test("a right-click on a row opens the menu at the pointer: the spot, Seek here, and the host's items", async () => {
+		const onengine = vi.fn<(engine: StemEngine) => void>();
+		const contextItems = vi.fn((stem: { label: string }, seconds: number) => [
+			{ label: `Comment on ${stem.label} at ${seconds.toFixed(2)}`, action: () => {} },
+		]);
+		render(StemPlayer, { props: { manifest: manifest(), onengine, contextItems } });
+		await ready();
+		const engine = onengine.mock.calls[0][0];
+		const seek = vi.spyOn(engine, "seek");
+		const wave = screen.getByRole("slider", { name: "Drums position" });
+		wave.getBoundingClientRect = () => ({ left: 0, width: 100 }) as DOMRect;
+		await fireEvent.contextMenu(wave, { clientX: 50, clientY: 7 });
+		await tick();
+		// Halfway along the decoded 0.1 s (the fake buffers): 0.05 s, one frame and 20 subframes in the
+		// player's readout mode (timecode without a grid).
+		expect(screen.getByText("Drums · 00:00:01.20")).toBeInTheDocument();
+		expect(contextItems).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "drums" }),
+			expect.closeTo(0.05, 6),
+		);
+		expect(screen.getByRole("button", { name: "Comment on Drums at 0.05" })).toBeVisible();
+		await fireEvent.click(screen.getByRole("button", { name: "Seek here" }));
+		expect(seek).toHaveBeenCalledWith(expect.closeTo(0.05, 6));
+		expect(screen.queryByRole("button", { name: "Seek here" })).toBeNull();
 	});
 
 	test("a refreshed manifest with the same stems relabels and reorders without decoding again", async () => {

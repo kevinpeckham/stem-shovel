@@ -1735,6 +1735,37 @@ inside `Effect.map` is a defect that `orElseSucceed` does not catch, so a
 fallible pure step that used to sit inside a try/catch stays inside the
 `tryPromise` thunk.
 
+## A popover opened during `contextmenu` survives the button's release in Chromium; one with an automatic width shrinks instead of flipping (2026-10-31)
+
+Moving the waveforms' right-click menu onto a native popover (PointerMenu,
+a ContextMenu anchored to a hidden trigger at the pointer) raised two
+questions, both answered by measuring in headless Chromium rather than by
+the spec.
+
+The HTML spec's light-dismiss steps read as though a popover shown while
+a pointer button is down is hidden again at `pointerup` (the "popover
+pointerdown target" is null, so the release "matches" and hides
+everything). It is not: a popover opened synchronously inside a
+`contextmenu` listener, in a microtask, in a `setTimeout(0)`, or in the
+`pointerup` listener itself all stayed open after `mouse.up` (probe in
+the session's scratchpad, five variants). So the gesture components keep
+firing `oncontext` from `contextmenu` and `click`, and the menu opens on
+mount.
+
+CSS anchor positioning with `position-area: bottom span-right` and
+`position-try-fallbacks: flip-inline` never flipped at the viewport's
+right edge: a popover with an automatic width is sized to the inset area
+beside the anchor, so at 58 px from the edge it rendered 58 px wide with
+every word on its own line, and nothing overflowed to trigger the
+fallback. A `min-width` (the menu's `min-w-56`) makes it overflow, and
+then it flips. A pointer-anchored popover needs a minimum width.
+
+Also: Playwright's `page.mouse.click(x, y, { modifiers: ["Meta"] })` sent
+no modifier flags on this Linux Chromium (metaKey and ctrlKey both false
+on pointerdown, pointerup and click), while `locator.click({ modifiers })`
+and `keyboard.down("Control")` around the click did. A ⌘-click probe
+"failing" was the harness, not the app.
+
 ## bun left eight nested copies of `@sentry/core` in node_modules, and the dev server served every one (2026-10-31)
 
 Kevin saw the song page's Stem Player "hang" on the dev server after the

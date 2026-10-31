@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The menu at a spot in a waveform** (Ctrl / ⌘-click or right-click: the position, Seek here, Comment here) is a native popover on the top layer now, as the ⋯ menus are: it opens above a popped-out Player panel instead of behind it, flips at the viewport's edges instead of being clamped, and closes on a click outside, Escape or focus leaving it. The three hand-drawn copies (the stems, the demos, the home page's player) became one component, `PointerMenu`, a `ContextMenu` anchored to the pointer; the Stem Player owns its rows' menu, with the page adding "Comment here" (Kevin, 2026-10-31).
 - **The Stem Player's status line** ("5 stems, streamed · play buffered · keep on this device") moved from the widget's header, where it fought the view tabs and the controls for room, to the first line of the widget's body (Kevin, 2026-10-31). It shows on phones now too.
 
 ## [0.202.0] - 2026-10-31

@@ -12,6 +12,8 @@
 	import { DeviceKeep } from "#lib/audio/deviceKeep.svelte.js";
 	import type { StemManifest, StemState } from "#lib/audio/types.js";
 	import StemRow from "#lib/components/StemRow.svelte";
+	import PointerMenu from "#lib/components/PointerMenu.svelte";
+	import type ContextMenu from "#lib/components/ContextMenu.svelte";
 	import MixerStage from "#lib/components/MixerStage.svelte";
 	import { stemMixerModel } from "#lib/audio/mixerModel.js";
 	import { StemClick } from "#lib/audio/stemClick.svelte.js";
@@ -31,7 +33,9 @@
 	import { timelineKinds } from "#lib/utils/timelineKinds.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import type { SongSection } from "#lib/val/SongSectionSchema.js";
-	import { untrack, type Snippet } from "svelte";
+	import { untrack, type ComponentProps, type Snippet } from "svelte";
+
+	type MenuItems = NonNullable<ComponentProps<typeof ContextMenu>["items"]>;
 
 	interface Props {
 		manifest: StemManifest;
@@ -42,8 +46,8 @@
 		stemBadge?: Snippet<[StemState]>;
 		/** Stems showing their MIDI piano roll instead of the waveform, by stem id. */
 		midiViews?: Record<string, MidiSummary>;
-		/** Ctrl / ⌘-click or right-click on a row's waveform or roll. */
-		onstemcontext?: (stem: StemState, seconds: number, x: number, y: number) => void;
+		/** Ctrl / ⌘-click or right-click on a row's waveform or roll opens a menu at the pointer with "Seek here"; these items follow it (the song page's "Comment here"). */
+		contextItems?: (stem: StemState, seconds: number) => MenuItems;
 		/** Rendered after the last stem row, inside the stems section (the comment timeline). */
 		afterRows?: Snippet;
 		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
@@ -78,7 +82,7 @@
 		stemMenu,
 		stemBadge,
 		midiViews = {},
-		onstemcontext,
+		contextItems,
 		afterRows,
 		headerExtras,
 		sections = [],
@@ -96,6 +100,16 @@
 	}: Props = $props();
 
 	const engine = new StemEngine();
+	/** Where a row was Ctrl / ⌘-clicked or right-clicked, for the menu at the pointer (PointerMenu after the rows). */
+	let contextAt = $state<{ stem: StemState; seconds: number; x: number; y: number } | null>(null);
+	const contextMenuItems = (c: NonNullable<typeof contextAt>): MenuItems => [
+		{
+			kind: "notice",
+			notice: `${c.stem.label} · ${formatPosition(readoutMode(!!barGrid(changes, startAt)), c.seconds, { fps, grid: barGrid(changes, startAt) })}`,
+		},
+		{ label: "Seek here", iconClass: "i-ph-skip-forward", action: () => engine.seek(c.seconds) },
+		...(contextItems?.(c.stem, c.seconds) ?? []),
+	];
 	/** Tracks (the rows) or the Stage (docs/visual-mixer.md), remembered in this browser for every player. */
 	const VIEW_KEY = "stemshovel.playerView";
 	let view = $state<"tracks" | "stage">("tracks");
@@ -421,13 +435,18 @@
 						badge={stemBadge}
 						note={rateNotes.get(stem.id) ?? null}
 						roll={midiViews[stem.id] ?? null}
-						oncontext={onstemcontext}
+						oncontext={(stem, seconds, x, y) => (contextAt = { stem, seconds, x, y })}
 						handle={onreorder ? grip : undefined}
 						dragging={dragging === stem.id}
 					/>
 				{/each}
 			{/if}
 			{#if afterRows}{@render afterRows()}{/if}
+			<PointerMenu
+				at={contextAt}
+				items={contextAt ? contextMenuItems(contextAt) : []}
+				ariaLabel="Actions at this spot in the stem"
+			/>
 		</section>
 
 		<div

@@ -221,7 +221,12 @@ fields are `$state`, so components read `engine.position` directly.
   position typed in any format and read against the song's grid on the
   server). Ctrl / ⌘-click or right-click on a waveform or MIDI roll opens a
   menu at the pointer with "Seek here" and "Comment here" (position
-  prefilled). Located comments draw as icons on a row under the last stem,
+  prefilled): `PointerMenu.svelte`, a `ContextMenu` whose trigger is a
+  hidden anchor at the pointer (`at`), so the menu is a native popover on
+  the top layer (above a popped-out panel) that flips at the viewport's
+  edges and closes on a click outside or Escape. The player owns the stem
+  rows' menu ("Seek here" is its; the page adds "Comment here" through
+  `contextItems`); the page keeps the Comments row's and a demo's. Located comments draw as icons on a row under the last stem,
   on the waveform column, over the mix's waveform (`engine.mixPeaks`, the
   decoded stems summed by `computeMixPeaks`; `combinePeaks` stands in from
   the stored per-stem peaks until then); clicking one marks the point with

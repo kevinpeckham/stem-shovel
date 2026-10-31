@@ -147,6 +147,30 @@ describe("ContextMenu", () => {
 		expect(screen.queryByRole("button", { name: "Rename" })).toBeNull();
 	});
 
+	test("at: the trigger is a hidden anchor at the pointer, and openState opens the menu there", async () => {
+		render(ContextMenu, {
+			props: {
+				at: { x: 120, y: 40 },
+				openState: "open",
+				items: [{ label: "Seek here", action: () => {} }],
+			},
+		});
+		await tick();
+		// aria-hidden, so not by role: the anchor is decoration, the menu is what is read.
+		const trigger = document.querySelector<HTMLElement>("button[popovertarget]")!;
+		expect(trigger).toHaveAttribute("aria-label", "More actions");
+		expect(trigger).toHaveClass("fixed");
+		expect(trigger).toHaveAttribute("aria-hidden", "true");
+		expect(trigger).toHaveAttribute("tabindex", "-1");
+		expect(trigger.style.left).toBe("120px");
+		expect(trigger.style.top).toBe("40px");
+		expect(screen.getByRole("button", { name: "Seek here" })).toBeVisible();
+		// Below and to the right of the pointer, flipping where it would leave the viewport.
+		expect(screen.getByRole("button", { name: "Seek here" }).closest("[popover]")).toHaveClass(
+			"[position-area:bottom_span-right]",
+		);
+	});
+
 	test("a disabled trigger renders disabled, with a label after the icon", () => {
 		render(ContextMenu, { props: { disabled: true, label: "Options", ariaLabel: "Options" } });
 		const trigger = screen.getByRole("button", { name: "Options" });
