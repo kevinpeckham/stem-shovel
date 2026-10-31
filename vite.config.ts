@@ -67,7 +67,13 @@ export default defineConfig({
 		useTabs: true, // match the SvelteKit scaffold
 		printWidth: 100,
 		svelte: true, // needs the `svelte` package present, which SvelteKit provides
-		ignorePatterns: ["src/env.d.ts", "drizzle/**"], // generated: varlock types, drizzle-kit migrations
+		// generated: varlock types, drizzle-kit migrations; chart texts: fixtures and the migration's output are charts, not markdown to reflow
+		ignorePatterns: [
+			"src/env.d.ts",
+			"drizzle/**",
+			"tests/fixtures/charts/**",
+			"scripts/chart-migration/**",
+		],
 	},
 	// better-auth is pure ESM but Vercel's file tracer (@vercel/nft) resolves
 	// its package to package.json alone and never copies dist/, so the function

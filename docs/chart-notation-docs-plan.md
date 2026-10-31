@@ -1,5 +1,14 @@
 # Chart notation: a User Docs reference page and a tooltip — brief from the bench
 
+**Status (2026-10-31, evening): superseded in part by
+docs/barmark-adoption-plan.md.** The notation became the barmark
+standard; the app consumes its parser (`utils/barmarkChartBars.ts`)
+and the idiom parser below is a transitional fallback until the stored
+charts are migrated. Deliverables 1–2 (the user-docs page and the tip)
+remain app work and now teach the barmark dialect; 3–5 are the
+grammar's (elision, Logic parentheticals, `...`). The record below is
+what shipped in v0.202.0.
+
 **Status (2026-10-31): deliverables 1–4 shipped**, 5 (the ring-out
 directive) and the public standard open for Kevin. The parser
 (`src/lib/utils/chordChartBars.ts`) reads the band's idiom with the

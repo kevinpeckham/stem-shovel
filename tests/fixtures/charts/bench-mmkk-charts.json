@@ -1,0 +1,242 @@
+{
+	"version": 1,
+	"note": "Study 12 real-arm chart transcriptions (docs/BRIEF-STUDY12.md): the bench's reading of the PUBLIC MMKK charts (fixture-mmkk.json carries the markdown), bars expanded from the charts' repeat notation, chord spellings normalized to the bench vocabulary (F#(5)(7) -> F#5 etc.). letter-lands is the GATED item: unambiguous repeats, 76 bars x declared 132 bpm = 138.2 s against the 141.3 s recording. eat-all-the-clocks is EXPLORATORY: its Bridge rest bars, 'riff x2' and 'Chorus x2' readings are the bench's judgment (86 bars = 172 s against a 146 s recording, a disclosed -26 s mismatch the subsequence DTW must absorb). peaceful-dreams is EXCLUDED: its chart's structure labels and 'x 8' scope are too ambiguous to transcribe registrably. Declared section start times are NEVER used in construction, only in scoring.",
+	"songs": [
+		{
+			"slug": "letter-lands",
+			"gated": true,
+			"bpm": 132,
+			"meter": "4/4",
+			"sections": [
+				{
+					"name": "Intro",
+					"bars": [
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				},
+				{
+					"name": "Verse",
+					"bars": [
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				},
+				{
+					"name": "Chorus",
+					"bars": [
+						["B5"],
+						["B5"],
+						["F#5"],
+						["F#5"],
+						["C#5"],
+						["E5"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				},
+				{
+					"name": "Verse",
+					"bars": [
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				},
+				{
+					"name": "Chorus",
+					"bars": [
+						["B5"],
+						["B5"],
+						["F#5"],
+						["F#5"],
+						["C#5"],
+						["E5"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				},
+				{
+					"name": "Bridge",
+					"bars": [["D5"], ["D5"], ["E5"], ["E5"], ["F#5"], ["F#5"], ["C#7"], ["C#7"]]
+				},
+				{
+					"name": "Verse",
+					"bars": [
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				},
+				{
+					"name": "Chorus",
+					"bars": [
+						["B5"],
+						["B5"],
+						["F#5"],
+						["F#5"],
+						["C#5"],
+						["E5"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				},
+				{
+					"name": "Verse",
+					"bars": [
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				},
+				{
+					"name": "Outro",
+					"bars": [
+						["B5", "Asus4"],
+						["B5", "Asus4"],
+						["B5", "Asus4"],
+						["B5", "Asus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"],
+						["F#5", "Esus4"]
+					]
+				}
+			]
+		},
+		{
+			"slug": "eat-all-the-clocks",
+			"gated": false,
+			"bpm": 120,
+			"meter": "4/4",
+			"sections": [
+				{
+					"name": "Part 1",
+					"bars": [
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"],
+						["Em", "Am"]
+					]
+				},
+				{
+					"name": "Part 2",
+					"bars": [["D5"], ["A7"], ["Em7"], ["Em7"], ["C"], ["D"], ["A"], ["A"]]
+				},
+				{
+					"name": "Verse",
+					"bars": [["E5"], ["Am7", "G5"], ["E5"], ["Am7", "G5"], ["E5"], ["Am7", "G5"]]
+				},
+				{
+					"name": "Chorus",
+					"bars": [
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"],
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"],
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"]
+					]
+				},
+				{
+					"name": "Bridge",
+					"bars": [
+						["E5"],
+						["E5"],
+						["A5"],
+						["A5"],
+						["E5"],
+						["E5"],
+						["A5"],
+						["A5"],
+						[""],
+						[""],
+						["A5"],
+						["A5"]
+					]
+				},
+				{
+					"name": "Verse",
+					"bars": [["E5"], ["Am7", "G5"], ["E5"], ["Am7", "G5"], ["E5"], ["Am7", "G5"]]
+				},
+				{
+					"name": "Chorus",
+					"bars": [
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"],
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"],
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"]
+					]
+				},
+				{
+					"name": "Chorus",
+					"bars": [
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"],
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"],
+						["D5"],
+						["A7"],
+						["E5"],
+						["E5"]
+					]
+				},
+				{
+					"name": "Outro",
+					"bars": [["Em"], ["Em"], ["Em"], ["Em"]]
+				}
+			]
+		}
+	]
+}

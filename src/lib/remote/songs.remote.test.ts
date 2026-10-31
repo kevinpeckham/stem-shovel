@@ -454,6 +454,32 @@ describe("saveDoc for the private note (whoever may view the song)", () => {
 	});
 });
 
+describe("saveDoc stores a chart without the editor's escapes", () => {
+	beforeEach(() => {
+		asEditorOf(ACCOUNT);
+		data.saveSongDoc.mockResolvedValue({ ok: true, version: 2, changed: true });
+	});
+	it("unescapes a chart before it is stored", async () => {
+		const markdown = String.raw`\## Verse` + "\n" + String.raw`\| D \| A \*x\* \[2/4\] G\_A \|`;
+		await call(songs.saveDoc, { songId: SONG, kind: "chart", markdown });
+		expect(data.saveSongDoc).toHaveBeenCalledWith(
+			ACCOUNT,
+			USER,
+			SONG,
+			"chart",
+			"## Verse\n| D | A *x* [2/4] G_A |",
+			{ confirmEmpty: false },
+		);
+	});
+	it("leaves the other documents as written", async () => {
+		const markdown = String.raw`a \| b`;
+		await call(songs.saveDoc, { songId: SONG, kind: "lyrics", markdown });
+		expect(data.saveSongDoc).toHaveBeenCalledWith(ACCOUNT, USER, SONG, "lyrics", markdown, {
+			confirmEmpty: false,
+		});
+	});
+});
+
 describe("side effects of the editor-gated functions", () => {
 	it("deleteStem and saveDefaultMix re-render the mix in the jobs function", async () => {
 		asEditorOf(ACCOUNT);

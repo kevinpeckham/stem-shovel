@@ -57,3 +57,6 @@ coverage/
 .claude/scheduled_tasks.lock
 .claude/scheduled_tasks.json
 # END swamp managed section
+# the chart migration's dry-run output (scripts/migrate-charts-barmark.ts): the band's charts, reviewed, never committed
+scripts/chart-migration/
+

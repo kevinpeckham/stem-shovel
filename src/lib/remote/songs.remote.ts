@@ -70,10 +70,11 @@ import {
 import { renderMarkdown } from "#lib/server/markdown.js";
 import { chartBars } from "#lib/utils/chartBars.js";
 import { chartDefaults } from "#lib/utils/chartDefaults.js";
-import { chordChartBars } from "#lib/utils/chordChartBars.js";
+import { chartBarsOfMarkdown } from "#lib/utils/chartBarsOfMarkdown.js";
+import { unescapeChartMarkdown } from "#lib/utils/unescapeChartMarkdown.js";
 import { withSongMentions } from "#lib/server/songMentions.js";
 import { ChartDraftSchema, ChartSaveSchema } from "#lib/val/ChartDraftSchema.js";
-import { MY_NOTES_KIND } from "#lib/val/SongDocKindSchema.js";
+import { MY_NOTES_KIND, type SongDocKind } from "#lib/val/SongDocKindSchema.js";
 import { SongStageSetSchema } from "#lib/val/SongStageSchema.js";
 import { SongCreditAddSchema } from "#lib/val/ArtistSchema.js";
 import { HOUR, MINUTE, rateLimited } from "#lib/server/rateLimit.js";
@@ -127,28 +128,12 @@ export const saveDoc = form(
 	async ({ songId, kind, markdown, confirmEmpty }, issue) => {
 		const { locals } = getRequestEvent();
 		const opts = { confirmEmpty: confirmEmpty === "true" };
-		if (kind === MY_NOTES_KIND) {
-			const { accountId, userId } = await songViewerOf(locals, songId);
-			const result = await saveUserNote(songId, userId, accountId, markdown, undefined, opts);
-			if (!result.ok) {
-				if (result.needsConfirm) return { needsConfirm: true as const, error: result.error };
-				invalid(issue.markdown(result.error));
-			}
-			return {
-				version: result.version,
-				changed: result.changed,
-				html: await withSongMentions(accountId, songId, result.html ?? ""),
-			};
-		}
-		const { accountId } = await memberOf(locals, accountOfSong, songId);
-		const result = await saveSongDoc(
-			accountId,
-			requireUser(locals).id,
-			songId,
-			kind,
-			markdown,
-			opts,
-		);
+		// The editor escapes `|`, `*`, `_`, `[`, `]` and `#` in a chart, which barmark would read literally.
+		const text = kind === "chart" ? unescapeChartMarkdown(markdown) : markdown;
+		const { accountId, result, html } =
+			kind === MY_NOTES_KIND
+				? await saveMyNote(locals, songId, text, opts)
+				: await saveSharedDoc(locals, songId, kind, text, opts);
 		if (!result.ok) {
 			if (result.needsConfirm) return { needsConfirm: true as const, error: result.error };
 			invalid(issue.markdown(result.error));
@@ -156,10 +141,35 @@ export const saveDoc = form(
 		return {
 			version: result.version,
 			changed: result.changed,
-			html: await withSongMentions(accountId, songId, renderMarkdown(markdown)),
+			html: await withSongMentions(accountId, songId, html),
 		};
 	},
 );
+
+/** The caller's private note on the song: anyone who may view it keeps one. */
+async function saveMyNote(
+	locals: App.Locals,
+	songId: string,
+	markdown: string,
+	opts: { confirmEmpty: boolean },
+) {
+	const { accountId, userId } = await songViewerOf(locals, songId);
+	const result = await saveUserNote(songId, userId, accountId, markdown, undefined, opts);
+	return { accountId, result, html: result.html ?? "" };
+}
+
+/** A shared song document (chart, lyrics or notes): members only. */
+async function saveSharedDoc(
+	locals: App.Locals,
+	songId: string,
+	kind: SongDocKind,
+	markdown: string,
+	opts: { confirmEmpty: boolean },
+) {
+	const { accountId } = await memberOf(locals, accountOfSong, songId);
+	const result = await saveSongDoc(accountId, requireUser(locals).id, songId, kind, markdown, opts);
+	return { accountId, result, html: renderMarkdown(markdown) };
+}
 
 /** New song in a project; lands on its page. */
 export const createSong = form(SongCreateSchema, async ({ projectId, title }) => {
@@ -361,7 +371,7 @@ function barsOfScore(
 	score: { kind: "chart"; markdown: string } | { kind: "pdf" | "image"; chartRead: string | null },
 	defaults: ReturnType<typeof chartDefaults>,
 ) {
-	if (score.kind === "chart") return chordChartBars(score.markdown, defaults);
+	if (score.kind === "chart") return chartBarsOfMarkdown(score.markdown, defaults);
 	return score.chartRead ? chartBars(score.chartRead, defaults) : undefined;
 }
 

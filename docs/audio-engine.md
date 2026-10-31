@@ -730,7 +730,7 @@ holds, and uses it in two places: the Sections tab's "Place from chart"
 and the song-check's key and tempo changes.
 
 - **Bars from the chart** (pure, `utils/chartBars.ts` and
-  `utils/chordChartBars.ts`, both to `ChartBar {measure, chords, bpm,
+  `utils/barmarkChartBars.ts`, both to `ChartBar {measure, chords, bpm,
   meter, key, section}` plus warnings). The stored AI read of a notation
   file (`m<n> key … tempo … |: :| ending <n>: <chords>`) is expanded in
   play order: repeats and first and second endings are followed, D.S.,
@@ -739,14 +739,22 @@ and the song-check's key and tempo changes.
   their measure on with the song's own values before the first, and a
   rehearsal mark or a quoted word that names a section
   (`utils/chartSectionName.ts`: Intro, Verse 2, Pre-chorus, Solo, Outro…)
-  starts one. The band's markdown chart follows the user doc's tips:
-  `## Heading` (or `[Chorus]`, `Chorus:`) starts a section, `| D | A |`
-  grids and bare chord lines give a bar a cell or a symbol, two symbols
-  in a cell split the bar, `%` and `/` hold, `N.C.` is silence, `x2`
-  after a line or in a heading repeats it (capped at eight), `|: :|`
-  across lines repeats once, lyric lines are skipped (a line is chords
-  only when every token parses), and "Key: Bm" or "120 bpm" apply from
-  the next bar. Either returns null with no tempo or no bars.
+  starts one. The band's chart is **barmark** (the standard that grew
+  out of this app's notation: github.com/kevinpeckham/barmark, the
+  `barmark` package, docs/barmark-adoption-plan.md): `parseChart` gives
+  the bars in play order with sections, replays (a bare `## Name`
+  heading replays that section), `x N`, `|: :|`, `%`, directives and
+  one-bar meters already expanded, and the adapter maps each bar's slots
+  to symbols that divide the bar equally (a `/` hold repeats the symbol
+  before it, `N.C.` and `--` are "N.C.", `?` holds with a warning, a
+  `_` group plays its first member), takes the tempo and meter from the
+  chart's directives else the song's own, writes the key as "D major",
+  and turns every barmark diagnostic into a warning line. Until the
+  stored charts are migrated, `utils/chartBarsOfMarkdown.ts` falls back
+  to the old idiom parser (`utils/chordChartBars.ts`) when barmark reads
+  no bars, with a warning that the chart will be migrated; the fallback
+  and that parser go once the migration is confirmed. Either parser
+  returns null with no tempo or no bars.
 - **The query** `chartBarsOf` (songs.remote.ts, members): the song's
   score through `scoreForAi`; the chord chart or a notation file's
   stored read gives `{bars, warnings, source: "chart" | "summary"}`;
