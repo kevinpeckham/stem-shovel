@@ -17,15 +17,10 @@ Press **Save** or **⌘S** / **Ctrl+S**. Each save that changes the text makes a
 
 ## Tips for charts
 
-- How to write a chart the app can read: [Writing a chord chart](/docs/writing-a-chord-chart).
-- Put the key, time signature and tempo in the first line; the song's settings hold the exact values for the player.
+- Charts are written in **barmark**, a plain-text notation for chord charts: [Writing a chord chart](/docs/writing-a-chord-chart) covers what a song here needs, and [barmark.dev](https://www.barmark.dev) has the full user guide and a tutorial.
+- Put the key, time signature and tempo in the first lines (`key: D, time: 4/4, tempo: 120`); the song's settings hold the exact values for the player.
 - One section per heading (`## Verse`) keeps the chart in step with the sections on the timeline.
-- A code block keeps a grid's spacing as typed:
-
-```
-| D     | A     | Bm    | G     |
-| D     | A     | G     | G     |
-```
+- The chart is drawn as a grid of bars, so there is no need for a code block or for lining up the pipes as you type.
 
 ## Notation
 

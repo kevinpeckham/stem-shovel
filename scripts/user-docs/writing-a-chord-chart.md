@@ -1,6 +1,6 @@
 # Writing a chord chart
 
-A song's **Chart** is written in **barmark**, a plain-text notation for the bar grid musicians already write on paper. A chart the app can read lets **Place from chart** in Song settings › Sections put the sections on the recording with no AI, lets the app recognize the chart as this song's own when the stems are scanned, and gives the song check chords to compare against.
+A song's **Chart** is written in **barmark**, a plain-text notation for the bar grid musicians already write on paper. This page covers what you need for a song here; the full user guide to the syntax, and a tutorial, live at [barmark.dev](https://www.barmark.dev). A chart the app can read lets **Place from chart** in Song settings › Sections put the sections on the recording with no AI, lets the app recognize the chart as this song's own when the stems are scanned, and gives the song check chords to compare against.
 
 ## The first lines
 
@@ -152,4 +152,4 @@ For the editor itself, notation uploads and earlier versions, see [Charts, lyric
 
 ## The standard
 
-barmark is an open notation; its full grammar and tools live at [github.com/kevinpeckham/barmark](https://github.com/kevinpeckham/barmark).
+barmark is an open notation, not this app's alone. Its home is [barmark.dev](https://www.barmark.dev): the user guide to the syntax, a tutorial, and the renderer that draws your chart here. The grammar itself and the tools live at [github.com/kevinpeckham/barmark](https://github.com/kevinpeckham/barmark).

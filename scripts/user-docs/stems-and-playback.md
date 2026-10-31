@@ -50,7 +50,7 @@ The readout shows the position as **timecode** (`minutes:seconds:frames.subframe
 
 ## Sections and the timeline
 
-If the song has sections, a row above the stems shows them with their numerals; the current one is highlighted while playing, and hovering shows the name and the length in bars. Sections and the song's tempo, key and time signature changes are entered in the song's settings.
+If the song has sections, a row above the stems shows them, each by a short form of its name (In, V1, Ch1, Br, Out) or the full name when there is room; the current one is highlighted while playing, and hovering shows the name and the length in bars. Sections and the song's tempo, key and time signature changes are entered in the song's settings.
 
 ## MIDI
 
