@@ -47,7 +47,7 @@
 	{/each}
 {/snippet}
 
-<!-- Start of bar 1 and End: typed in the readout's format, carried as seconds in the hidden field. -->
+<!-- Start of bar 1 and End: typed in the readout's format, carried as seconds in the hidden field (positionValue). -->
 {#snippet position(
 	label: string,
 	entry: "startAtEntry" | "endAtEntry",
@@ -62,9 +62,14 @@
 				placeholder={POSITION_PLACEHOLDER[mode]}
 				autocomplete="off"
 				bind:value={details[entry]}
+				defaultValue={field === "startAt" ? details.startAtText : details.endAtText}
 				aria-label={label}
 			/>
-			<input {...fields[field].as("hidden", "")} />
+			<!-- The entry's reset value is the saved text: clearForm resets the form when settings open, and
+			     Svelte writes each input's reset value back into its binding a tick later (so without this the
+			     entry came back blank). The hidden field renders the value it is given, literally: the seconds
+			     the entry reads as, as typed. -->
+			<input {...fields[field].as("hidden", details.positionValue(entry))} />
 			<button
 				class="button button-xs shrink-0"
 				type="button"

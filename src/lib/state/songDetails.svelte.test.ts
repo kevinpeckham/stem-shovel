@@ -103,14 +103,25 @@ describe("SongDetails", () => {
 		expect(details.settingsDirty).toBe(false);
 	});
 
-	test("preparePositions writes seconds into the hidden fields, or names the bad one", () => {
+	test("positionValue is the hidden field's value as typed: the seconds, or nothing for a blank or unreadable entry", () => {
+		const { details } = make();
+		details.reset();
+		details.startAtEntry = "0:02.1";
+		expect(details.positionValue("startAtEntry")).toBe("2.1");
+		details.startAtEntry = "1:30";
+		expect(details.positionValue("startAtEntry")).toBe("90");
+		expect(details.positionValue("endAtEntry")).toBe("");
+		details.startAtEntry = "soon";
+		expect(details.positionValue("startAtEntry")).toBe("");
+		expect(details.positionError).toBeNull();
+	});
+
+	test("preparePositions passes readable entries, or names the bad one", () => {
 		const { details } = make();
 		details.reset();
 		details.startAtEntry = "1:30";
 		details.endAtEntry = "";
 		expect(details.preparePositions()).toBe(true);
-		expect(updateSong.fields.startAt.value()).toBe("90");
-		expect(updateSong.fields.endAt.value()).toBe("");
 		details.endAtEntry = "soon";
 		expect(details.preparePositions()).toBe(false);
 		expect(details.positionError).toMatch(/^End: /);

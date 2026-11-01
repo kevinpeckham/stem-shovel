@@ -33,8 +33,12 @@ export interface SongDetailsOptions {
  * on the `updateSong` remote form (title, URL, description, first written,
  * start and end, version, frame rate), read back through its fields, and the
  * credits, added and removed as you go. Start and end are typed in the
- * readout's format and carried as seconds; `preparePositions` converts them
- * into the form's hidden fields before a submit.
+ * readout's format and carried as seconds: `positionValue` is what the
+ * form's hidden field holds, read as the entry is typed (a remote field's
+ * `.as("hidden", value)` renders that value literally and ignores
+ * `field.set`, and enhance captures the form's data before its callback
+ * runs; FINDINGS.md), and `preparePositions` refuses a submit whose entry
+ * is not a position.
  */
 export class SongDetails {
 	/** Start of bar 1 as typed. */
@@ -112,24 +116,39 @@ export class SongDetails {
 		this.endAtEntry = this.endAtText;
 	};
 
+	/** What an entry reads as: null when it is not a position, 0 when blank. */
+	#seconds(entry: "startAtEntry" | "endAtEntry"): number | null {
+		const text = this[entry];
+		if (!text.trim()) return 0;
+		const song = this.#opts.song();
+		const start = entry === "startAtEntry";
+		return this.#opts.changes.rowSeconds({
+			time: text,
+			shown: start ? this.startAtText : this.endAtText,
+			seconds: start ? song.startAt : song.endAt,
+		});
+	}
+
+	/** The hidden field's value for an entry, as typed: the seconds, or "" for a blank or unreadable entry (preparePositions reports the latter). */
+	positionValue = (entry: "startAtEntry" | "endAtEntry"): string => {
+		const seconds = this.#seconds(entry);
+		return this[entry].trim() && seconds !== null ? String(seconds) : "";
+	};
+
 	/**
-	 * Start and end as seconds into the form's hidden fields, before a submit;
-	 * false (with `positionError` set) when one does not read as a position.
+	 * Before a submit: false (with `positionError` set) when an entry does not
+	 * read as a position; the hidden fields already hold the seconds (`positionValue`).
 	 */
 	preparePositions = () => {
-		const { changes } = this.#opts;
-		const song = this.#opts.song();
 		this.positionError = null;
-		for (const [label, text, field, shown, stored] of [
-			["Start of bar 1", this.startAtEntry, this.fields.startAt, this.startAtText, song.startAt],
-			["End", this.endAtEntry, this.fields.endAt, this.endAtText, song.endAt],
+		for (const [entry, label] of [
+			["startAtEntry", "Start of bar 1"],
+			["endAtEntry", "End"],
 		] as const) {
-			const seconds = !text.trim() ? 0 : changes.rowSeconds({ time: text, shown, seconds: stored });
-			if (seconds === null) {
-				this.positionError = `${label}: ${changes.positionMessage(text)}`;
+			if (this.#seconds(entry) === null) {
+				this.positionError = `${label}: ${this.#opts.changes.positionMessage(this[entry])}`;
 				return false;
 			}
-			field.set(text.trim() ? String(seconds) : "");
 		}
 		return true;
 	};
