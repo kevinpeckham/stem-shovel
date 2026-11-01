@@ -6,7 +6,7 @@ const { renderChartHtml, renderDocHtml } = await import("./chartHtml.js");
 describe("renderChartHtml", () => {
 	it("draws a barmark chart as <barmark-chart> with a declarative shadow root", () => {
 		const html = renderChartHtml("## Verse\n| D | A |");
-		expect(html).toMatch(/^<barmark-chart theme="dark">/); // the renderer carries its options as attributes (0.2.1)
+		expect(html).toMatch(/^<barmark-chart theme="dark" rehearsal-letters>/); // the renderer carries its options as attributes (0.2.1)
 		expect(html).toContain('<template shadowrootmode="open">');
 		expect(html).toContain("Verse");
 	});

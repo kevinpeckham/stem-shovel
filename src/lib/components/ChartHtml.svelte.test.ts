@@ -38,6 +38,14 @@ describe("ChartHtml", () => {
 		expect(setHTMLUnsafe).not.toHaveBeenCalled();
 	});
 
+	test("the wrapper wears barmark-look, the chart's palette and fonts", async () => {
+		const { container } = render(ChartHtml, { html: CHART });
+		await tick();
+		const wrapper = container.querySelector("barmark-chart")?.parentElement;
+		expect(wrapper?.classList.contains("barmark-look")).toBe(true);
+		expect(wrapper?.classList.contains("min-w-0")).toBe(true);
+	});
+
 	test("without setHTMLUnsafe (an older browser) the HTML still renders", async () => {
 		const { container } = render(ChartHtml, { html: CHART });
 		await tick();

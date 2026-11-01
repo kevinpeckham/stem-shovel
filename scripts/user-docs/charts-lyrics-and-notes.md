@@ -4,12 +4,14 @@ Every song has three documents, shown in the panel beside the player: the **Char
 
 ## The editor
 
-The editor has two views of the same document:
+Lyrics and notes have two views of the same document:
 
-- **Rendered** is what you see on the song page. Select text for bold, italic and links; the ⋮ beside a block changes it to a heading, a list, a quote or a code block.
-- **Markdown** is the plain text behind it. Headings start with `#`, lists with `-`, and a fenced code block (three backticks) keeps spacing exactly as typed, which is the way to lay out a chord grid.
+- **Rich Text** is what you see on the song page. Select text for bold, italic and links; the ⋮ beside a block changes it to a heading, a list, a quote or a code block.
+- **Markdown** is the plain text behind it. Headings start with `#` and lists with `-`.
 
-While you edit on the song page, the Rich Text / Markdown switch sits at the top right of the Docs panel. Switching views never loses anything. **Undo** and **Redo** work across both, and so do the usual shortcuts.
+While you edit lyrics or notes on the song page, the Rich Text / Markdown switch sits at the top right of the Docs panel. Switching views never loses anything. **Undo** and **Redo** work across both, and so do the usual shortcuts.
+
+The chart is plain text only: it is written in [barmark](https://www.barmark.dev), and you edit the text itself, with the drawn chart updating below it as you type. The Chart tab's **Chords** / **Engraving** switch moves between the chord chart and the engraved score (MusicXML and its PDF).
 
 ## Saving
 

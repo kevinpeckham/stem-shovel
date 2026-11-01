@@ -138,8 +138,8 @@ step so it shrinks with the page and still fails on anything new.
    - `state/songDocs.svelte.ts`, `SongDocs`: the document shown (first
      with content, lyrics first), the docked/floating/minimized mode,
      the editor and notation instances bound onto it, `editing`, `view`,
-     `mono` with the remembered preference, the chart's text/notation
-     mode, the Notes tab's Project/Mine choice, the ⋯ `menuItems`, the
+     `mono` with the remembered preference, the chart's Chords/Engraving
+     mode (`ChartMode`, stored as `text` | `notation`), the Notes tab's Project/Mine choice, the ⋯ `menuItems`, the
      notation picker and upload, `showRead`; `DOC_KINDS`, `DOC_LABELS`,
      `DOC_HINTS`, `DOC_VIEWS` exported from it. The player's view switch
      (`showView`), the history panel and the URL openers stay on the

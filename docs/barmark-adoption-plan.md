@@ -1,6 +1,6 @@
 # Adopt barmark — brief from Kevin via the bench
 
-**Status (2026-10-31, evening): Scopes 1–3 on dev and staging.** The
+**Status (2026-11-01): Scopes 1–3 released (v0.203.0); the update brief (docs/barmark-update-brief.md: plain-text chart editing, Chords/Engraving, the barmark.dev look) on dev.** Earlier: Scopes 1–3 on dev and staging. The
 parser behind `utils/barmarkChartBars.ts` (371831a), the migration
 (`scripts/migrate-charts-barmark.ts`: Letter Lands, Mop Heart and
 Interbellum applied on dev and staging; Eat All the Clocks and Peaceful

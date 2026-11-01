@@ -4,6 +4,9 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" href="%sveltekit.assets%/icons/stem-shovel-icon.svg" />
+		<!-- barmark's chart font, registered once on the document (a browser ignores @font-face inside the chart's shadow root); the element sees this and leaves it alone. The literal is fontFaceCss("/fonts/barmark/Edwin-Roman.otf"), checked by src/lib/server/barmarkFont.test.ts. -->
+		<!-- prettier-ignore -->
+		<style data-barmark-font>@font-face{font-family:"barmark Edwin";src:url("/fonts/barmark/Edwin-Roman.otf") format("opentype");font-display:swap}</style>
 		%sveltekit.head%
 	</head>
 	<body

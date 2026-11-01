@@ -1,4 +1,3 @@
-import { fontFaceCss } from "@barmark/render";
 import extractorSvelte from "@unocss/extractor-svelte";
 import presetWind4 from "@unocss/preset-wind4";
 import {
@@ -18,10 +17,6 @@ import {
  */
 export default defineConfig({
 	extractors: [extractorSvelte()],
-	preflights: [
-		// barmark's chart font (Edwin, static/fonts/barmark), registered on the document: a browser ignores @font-face inside the chart's shadow root.
-		{ getCSS: () => fontFaceCss("/fonts/barmark/Edwin-Roman.otf") },
-	],
 	presets: [
 		presetWind4({ preflights: { reset: true } }),
 		// Phosphor icons as classes (`i-ph-play-fill`), as in replicator
@@ -41,7 +36,11 @@ export default defineConfig({
 				// brand: "Bangers",
 				// display: "Bahiana",
 				mono: "Noto Mono",
-				serif: "Noto Serif:400",
+				// Two entries: barmark's `###` note lines are italic, and `italic: true` on one entry would load only the italic.
+				serif: [
+					{ name: "Noto Serif", weights: ["400"] },
+					{ name: "Noto Serif", weights: ["400"], italic: true },
+				],
 				sans: "Noto Sans:400,600,700",
 				// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
 			},
@@ -697,6 +696,19 @@ export default defineConfig({
 		["tab-active", "tab bg-accent text-oxford"],
 		["tab-idle", "tab hover-current/80"],
 
+		// barmark's chart look: the renderer's custom properties on the chart's
+		// container (chosen by Kevin on barmark.dev, 2026-11-01; the same
+		// shortcut as barmark.dev's site/uno.config.ts).
+		[
+			"barmark-look",
+			[
+				"[--barmark-size:15.5px] [--barmark-paper:oklch(96.89%_0.01_251.56/0.12)]",
+				"[--barmark-ink:#fff] [--barmark-note:#ece8e0] [--barmark-accent:#e8a56a]",
+				"[--barmark-muted:oklch(98.51%_0_0/0.8)] [--barmark-rule:oklch(98.51%_0_0/0.8)]",
+				"[--barmark-directive:oklch(98.51%_0_0/0.8)]",
+				'[--barmark-text-font:"Noto_Serif",Georgia,serif] [--barmark-label-font:"Noto_Sans",system-ui,sans-serif]',
+			].join(" "),
+		],
 		// Chart / lyrics typography, shared by the read-only <article> and the
 		// woof-editor surface (its own body styles are zero-specificity, so these
 		// win). Written like replicator's `article-body`: direct-child selectors

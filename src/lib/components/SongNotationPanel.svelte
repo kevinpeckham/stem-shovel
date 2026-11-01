@@ -383,7 +383,7 @@
 	};
 </script>
 
-<section class="flex flex-col gap-3 h-full" aria-label="Notation">
+<section class="flex flex-col gap-3 h-full" aria-label="Engraving">
 	{#if jobs.length > 0}
 		<ul class="grid gap-1 text-13px" aria-label="Notation uploads">
 			{#each jobs as job (job.name)}

@@ -41,6 +41,13 @@
 		onclose?: () => void;
 		/** Monospace throughout (charts: chord grids line up); the source pane is monospace anyway. */
 		mono?: boolean;
+		/**
+		 * Plain text only (charts: barmark is plain text, and the WYSIWYG's
+		 * markdown serializer escaped its pipes and asterisks): no Rich Text
+		 * pane and no Rich Text / Markdown choice, whatever `view` says; the
+		 * source pane only.
+		 */
+		plain?: boolean;
 	}
 
 	let {
@@ -61,8 +68,11 @@
 		view = $bindable("rendered"),
 		onclose,
 		mono = false,
+		plain = false,
 	}: Props = $props();
 	let embedded = $derived(mode === "embedded");
+	/** The pane on screen: the source whenever the editor is plain. */
+	let pane = $derived(plain ? "markdown" : view);
 
 	// The editor package is imported in the browser only (type imports above
 	// are erased). Its server build pulls in isomorphic-dompurify → jsdom,
@@ -106,7 +116,7 @@
 		const md = editor.markdownCurrent;
 		untrack(() => {
 			if (!editor || editor.isSyncingFromWysiwyg || editor.isReplayingHistory) return;
-			if (view !== "markdown") return;
+			if (pane !== "markdown") return;
 			if (historyTimer) clearTimeout(historyTimer);
 			historyTimer = setTimeout(() => {
 				historyTimer = null;
@@ -226,24 +236,26 @@
 
 		<!-- toolbar -->
 		<div class="flex flex-wrap justify-between gap-3 items-center mb-6 sm-mb-0">
-			<!-- rich text / markdown toggle -->
-			<div
-				class="flex overflow-hidden rounded border border-white/15 max-w-fit text-1em"
-				role="tablist"
-				aria-label="{label} view"
-			>
-				{#each VIEWS as v (v.id)}
-					<button
-						type="button"
-						role="tab"
-						aria-selected={view === v.id}
-						class="px-3 py-1.5 text-0.9em text-nowrap {view === v.id
-							? 'bg-blue-100/90 font-500 text-dark'
-							: 'tab-idle'}"
-						onclick={() => (view = v.id)}>{v.name}</button
-					>
-				{/each}
-			</div>
+			<!-- rich text / markdown toggle (none when plain: there is only the source) -->
+			{#if !plain}
+				<div
+					class="flex overflow-hidden rounded border border-white/15 max-w-fit text-1em"
+					role="tablist"
+					aria-label="{label} view"
+				>
+					{#each VIEWS as v (v.id)}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={view === v.id}
+							class="px-3 py-1.5 text-0.9em text-nowrap {view === v.id
+								? 'bg-blue-100/90 font-500 text-dark'
+								: 'tab-idle'}"
+							onclick={() => (view = v.id)}>{v.name}</button
+						>
+					{/each}
+				</div>
+			{/if}
 
 			<!-- undo/redo (hidden) buttons -->
 			<div class="hidden">
@@ -296,7 +308,7 @@
 {/if}
 
 <!-- rendered view-->
-{#if view === "rendered"}
+{#if pane === "rendered"}
 	{#if !embedded && hint.trim()}<p class="mb-5 opacity-90">{hint}</p>{/if}
 	<!--
 		Embedded: the text keeps the reading view's margin. The block buttons
@@ -332,7 +344,7 @@
 {/if}
 
 <!-- markdown -->
-{#if view === "markdown"}
+{#if pane === "markdown"}
 	{@const md_classes = `
 				bg-blue-100/5
 				block
@@ -348,6 +360,7 @@
 				w-full
 				xl-max-w-960px
 				${classes}`}
+	{#if plain && !embedded && hint.trim()}<p class="mb-5 opacity-90">{hint}</p>{/if}
 	{#if editor}
 		<textarea
 			class="

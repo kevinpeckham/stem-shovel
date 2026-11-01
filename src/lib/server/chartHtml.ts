@@ -11,15 +11,18 @@ import { renderMarkdown } from "./markdown.js";
  * is not passed through sanitizeHtml, which would drop the <template> and
  * <style> a shadow root is made of. Its diagnostics stay off: the readout
  * under the chart lists them. The font (Edwin, static/fonts/barmark) is
- * registered once per page by uno.config.ts's preflight, because a browser
- * ignores @font-face inside a shadow root. Transitional: a chart barmark
+ * registered once per page by src/app.html's `<style data-barmark-font>`,
+ * because a browser ignores @font-face inside a shadow root (and the element
+ * leaves a page's own registration alone). Drawn the way barmark.dev does:
+ * the dark palette with rehearsal letters, carried as attributes
+ * (`theme="dark" rehearsal-letters`) so the element keeps them when it loads. Transitional: a chart barmark
  * reads no bars from (the old notation, until it is migrated) renders as
  * markdown, as before. "" for a blank chart.
  */
 export function renderChartHtml(markdown: string): string {
 	if (!markdown.trim()) return "";
 	if (parseChart(markdown).bars.length === 0) return renderMarkdown(markdown);
-	return renderChart(markdown, { theme: "dark" });
+	return renderChart(markdown, { theme: "dark", rehearsalLetters: true });
 }
 
 /** A song document's HTML: the chart through the renderer, the others through renderMarkdown. */

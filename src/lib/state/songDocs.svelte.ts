@@ -14,12 +14,16 @@ export const DOC_KINDS = ["lyrics", "chart", "notes"] as const;
 export const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
 export const DOC_HINTS = {
 	chart:
-		"Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept.",
+		"Chords and arrangement in barmark: bars between pipes, ## Name for a section; the full guide is at barmark.dev.",
 	lyrics:
 		"Lyrics. One line per lyric line; a blank line starts a new section, and a heading names it (Verse, Chorus).",
 	notes: "Notes. Anything about the song — ideas, references, production to-dos, who plays what.",
 } as const;
-/** The editor's panes while editing in the panel. */
+/**
+ * The editor's panes while editing in the panel. The chart has no Rich Text
+ * pane (MarkdownDocEditor's `plain`: barmark is plain text), so the song page
+ * shows this choice only for lyrics and notes.
+ */
 export const DOC_VIEWS = [
 	{ id: "rendered", name: "Rich Text" },
 	{ id: "markdown", name: "Markdown" },

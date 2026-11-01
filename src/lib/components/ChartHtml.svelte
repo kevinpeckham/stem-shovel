@@ -26,8 +26,8 @@
 </script>
 
 {#key html}
-	<!-- The chart's paper is the panel's: the renderer's palette reads these from its host. -->
-	<div class="contents [--barmark-paper:transparent]" {@attach adoptShadow(html)}>
+	<!-- barmark.dev's chart look (uno.config.ts): the renderer's palette reads these custom properties from its host. -->
+	<div class="barmark-look min-w-0" {@attach adoptShadow(html)}>
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -- renderChartHtml escapes what it draws; renderMarkdown is sanitized -->
 		{@html html}
 	</div>

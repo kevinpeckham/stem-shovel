@@ -1348,11 +1348,11 @@
 				</button>
 			{/snippet}
 			{#if docs.panel === "chart" || (docs.panel === "notes" && docs.canHaveNote) || docs.editing}
-				<!-- Stuck to the panel's top right: the editor's pane while a document is edited, Text / Notation on the Chart tab, Project / Mine on the Notes tab (Kevin). -->
+				<!-- Stuck to the panel's top right: the editor's pane while a document is edited, Chords / Engraving on the Chart tab, Project / Mine on the Notes tab (Kevin). -->
 				<div
 					class="sticky top-0 z-10 flex items-start justify-end gap-2 h-0 overflow-visible pointer-events-none"
 				>
-					{#if docs.editing && !docs.notationShown}
+					{#if docs.editing && !docs.notationShown && docs.panel !== "chart"}
 						<div
 							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
 							role="radiogroup"
@@ -1405,7 +1405,7 @@
 							role="radiogroup"
 							aria-label="Chart mode"
 						>
-							{#each [{ id: "text", label: "Text" }, { id: "notation", label: `Notation (${notationCount})` }] as m, index (m.id)}
+							{#each [{ id: "text", label: "Chords" }, { id: "notation", label: `Engraving (${notationCount})` }] as m, index (m.id)}
 								<button
 									type="button"
 									role="radio"

@@ -21,11 +21,18 @@ Rules:
   `chart-body` typography: `@barmark/render` draws it inside a shadow
   root with its own stylesheet (`server/chartHtml.ts`,
   `components/ChartHtml.svelte`), reading its palette from `--barmark-*`
-  custom properties on the host (`ChartHtml` sets the paper transparent so
-  the panel's surface shows through) and its font, Edwin, from the
-  document: the `preflights` entry in `uno.config.ts` registers the
-  `@font-face` (`static/fonts/barmark`, SIL Open Font License), because a
-  browser ignores one inside a shadow root.
+  custom properties on the host: the `barmark-look` shortcut in
+  `uno.config.ts` carries the look Kevin chose on barmark.dev (2026-11-01:
+  15.5px chords, white ink, translucent paper, Noto Serif for lyrics and
+  note lines, Noto Sans for labels), on `ChartHtml`'s wrapper and the
+  editor's live `ChartPreview`. Its font, Edwin, is registered once on the
+  document by the `<style data-barmark-font>` in `src/app.html`
+  (`static/fonts/barmark`, SIL Open Font License; a test keeps the rule
+  and the file in step with the package), because a browser ignores an
+  `@font-face` inside a shadow root and the `<barmark-chart>` element would
+  otherwise register its own. Noto Serif is loaded in two entries, roman
+  and italic: `###` note lines are italic, and one entry with
+  `italic: true` would make every lyric italic (the brief's font trap).
 - **Page structure follows lj-website**: a `page` wrapper, an `app-page-heading` title,
   `heading-2` sections, `max-w-article` for prose.
 - **Semantic tokens** (`bg-panel`, `bg-row`, `text-dim`, `border-line`,

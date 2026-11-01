@@ -25,14 +25,14 @@ name, and the chart user docs. Still to do, each below:
 
 ## What changed since the adoption plan
 
-| The plan says | Now |
-|---|---|
-| `barmark` ^0.2.0 | **`barmark` 0.5.0** is on npm (2026-11-01). Pin it exactly, as barmark.dev does. 0.4.0 added Logic Pro's parentheses, below; 0.5.0 adds gradual tempo changes, below. |
-| `@barmark/render` 0.1.0, npm release imminent | **`@barmark/render` 0.3.0** is on npm, with provenance (2026-11-01). It depends on `barmark` ^0.5.0, so take the two together. |
-| barmark#1: legacy input parses to 0 bars, 0 warnings | **Fixed in 0.3.0.** A chart with text but no bar line warns once, at its first text line. A line with editor-escaped pipes (`D \| A \| G`) warns, and its `suggestion` is the bar line (`\| D \| A \| G \|`). The migration should still refuse rather than guess, but it can now use these diagnostics to find the lines it can't convert. |
-| Logic parentheticals: a grammar question for barmark | **Decided by Kevin (grammar §3, Appendix A.5; in 0.4.0).** Groups in a row are one list (`C7(b9)(#11)` = `C7(b9,#11)`), and `(5)` on a bare root is the power chord (`F#(5)(7)` = `F#5(7)`: F♯ C♯ E). Both print in canonical form. `Cm(5)` and `C7(5)` stay errors. |
-| Tempo that isn't steady | **New in barmark 0.5.0 and render 0.3.0 (grammar §7.2, decided by Kevin).** `tempo:` also takes `rit.`, `accel.` (each optionally `to` a tempo, e.g. `tempo: rit. to 90`) and `a tempo`, from the next bar to the next `tempo:` or the end. Every played bar inside one has `tempoChange: { kind, from, to }`; `tempo` stays the steady tempo. Beat alignment should treat those bars as an unsteady beat rather than fit a fixed grid. The renderer labels the change and draws a dashed line over its bars. |
-| Renderer: `<barmark-chart>` element | The element now has a **`text` property** (render 0.2.0) for live editing: `chart.text = editor.value`. While `text` is a string, it wins over `src` and a `<script type="text/barmark">` child. Changes made together render once. Any string is safe: it's escaped, and problems become diagnostics. |
+| The plan says                                        | Now                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `barmark` ^0.2.0                                     | **`barmark` 0.5.0** is on npm (2026-11-01). Pin it exactly, as barmark.dev does. 0.4.0 added Logic Pro's parentheses, below; 0.5.0 adds gradual tempo changes, below.                                                                                                                                                                                                                                                                                                                                         |
+| `@barmark/render` 0.1.0, npm release imminent        | **`@barmark/render` 0.3.0** is on npm, with provenance (2026-11-01). It depends on `barmark` ^0.5.0, so take the two together.                                                                                                                                                                                                                                                                                                                                                                                |
+| barmark#1: legacy input parses to 0 bars, 0 warnings | **Fixed in 0.3.0.** A chart with text but no bar line warns once, at its first text line. A line with editor-escaped pipes (`D \| A \| G`) warns, and its `suggestion` is the bar line (`\| D \| A \| G \|`). The migration should still refuse rather than guess, but it can now use these diagnostics to find the lines it can't convert.                                                                                                                                                                   |
+| Logic parentheticals: a grammar question for barmark | **Decided by Kevin (grammar §3, Appendix A.5; in 0.4.0).** Groups in a row are one list (`C7(b9)(#11)` = `C7(b9,#11)`), and `(5)` on a bare root is the power chord (`F#(5)(7)` = `F#5(7)`: F♯ C♯ E). Both print in canonical form. `Cm(5)` and `C7(5)` stay errors.                                                                                                                                                                                                                                          |
+| Tempo that isn't steady                              | **New in barmark 0.5.0 and render 0.3.0 (grammar §7.2, decided by Kevin).** `tempo:` also takes `rit.`, `accel.` (each optionally `to` a tempo, e.g. `tempo: rit. to 90`) and `a tempo`, from the next bar to the next `tempo:` or the end. Every played bar inside one has `tempoChange: { kind, from, to }`; `tempo` stays the steady tempo. Beat alignment should treat those bars as an unsteady beat rather than fit a fixed grid. The renderer labels the change and draws a dashed line over its bars. |
+| Renderer: `<barmark-chart>` element                  | The element now has a **`text` property** (render 0.2.0) for live editing: `chart.text = editor.value`. While `text` is a string, it wins over `src` and a `<script type="text/barmark">` child. Changes made together render once. Any string is safe: it's escaped, and problems become diagnostics.                                                                                                                                                                                                        |
 
 ## Scope 3, in practice: the renderer
 
@@ -57,7 +57,7 @@ in the barmark repo.
   `static/fonts`, copied there from the installed package by
   `site/scripts/fonts.ts`. It puts one `<style data-barmark-font>{fontFaceCss("/fonts/Edwin-Roman.otf")}</style>`
   in the layout's head, so there's one `@font-face` and one request.
-  Edwin's licence (`fonts/OFL.txt`) ships beside it.
+  Edwin's license (`fonts/OFL.txt`) ships beside it.
 - **Long input.** barmark.dev redraws on every keystroke under 10,000
   characters, waits 250 ms above that, and stops previewing past 50,000
   characters, with a message.
@@ -94,7 +94,7 @@ pane.
 
 ## New: rename the chart panel's toggle (Kevin, 2026-11-01)
 
-The chart editing panel has a toggle labelled "Text" / "Notation". Both
+The chart editing panel has a toggle labeled "Text" / "Notation". Both
 are notation, so rename it **"Chords" / "Engraving"**: "Chords" for the
 barmark chord chart, "Engraving" for the engraved score (MusicXML and its
 PDF, `SongNotationPanel.svelte`). Change only the labels, and any
@@ -108,35 +108,36 @@ people's saved choice survives, or migrate them if you rename.
 
 Kevin chose these settings on 2026-11-01 in a live preview, for a dark
 page (barmark.dev's ground is `oklch(0.115 0.048 259.91)`). The renderer
-already defaults to everything that isn't a colour or a font:
+already defaults to everything that isn't a color or a font:
+
 - bar numbers flush left in a gutter, on the chord baseline;
 - headings, lyrics, note lines and mid-chart changes start at the first bar line;
 - chords left-aligned in even slots;
-- labelled mid-chart changes ("→ Time 3/4 · Tempo ♩ = 120");
+- labeled mid-chart changes ("→ Time 3/4 · Tempo ♩ = 120");
 - italic note lines.
 
 The page sets only these custom properties, on the element or an
 ancestor:
 
-| Property | Value | For |
-|---|---|---|
-| `--barmark-size` | `15.5px` | chord size; everything else scales from it |
-| `--barmark-ink` | `#fff` | chords, title, lyrics |
-| `--barmark-muted` | `oklch(98.51% 0 0 / 0.8)` | meta line, bar numbers, marks |
-| `--barmark-rule` | `oklch(98.51% 0 0 / 0.8)` | bar lines |
-| `--barmark-directive` | `oklch(98.51% 0 0 / 0.8)` | mid-chart changes |
-| `--barmark-note` | `#ece8e0` | `###` note lines |
-| `--barmark-accent` | `#e8a56a` | error underlines |
-| `--barmark-paper` | `oklch(96.89% 0.01 251.56 / 0.12)` | the chart's ground |
-| `--barmark-text-font` | `"Noto Serif", Georgia, serif` | lyrics and note lines |
-| `--barmark-label-font` | `"Noto Sans", system-ui, sans-serif` | meta line, changes, headings, diagnostics |
+| Property               | Value                                | For                                        |
+| ---------------------- | ------------------------------------ | ------------------------------------------ |
+| `--barmark-size`       | `15.5px`                             | chord size; everything else scales from it |
+| `--barmark-ink`        | `#fff`                               | chords, title, lyrics                      |
+| `--barmark-muted`      | `oklch(98.51% 0 0 / 0.8)`            | meta line, bar numbers, marks              |
+| `--barmark-rule`       | `oklch(98.51% 0 0 / 0.8)`            | bar lines                                  |
+| `--barmark-directive`  | `oklch(98.51% 0 0 / 0.8)`            | mid-chart changes                          |
+| `--barmark-note`       | `#ece8e0`                            | `###` note lines                           |
+| `--barmark-accent`     | `#e8a56a`                            | error underlines                           |
+| `--barmark-paper`      | `oklch(96.89% 0.01 251.56 / 0.12)`   | the chart's ground                         |
+| `--barmark-text-font`  | `"Noto Serif", Georgia, serif`       | lyrics and note lines                      |
+| `--barmark-label-font` | `"Noto Sans", system-ui, sans-serif` | meta line, changes, headings, diagnostics  |
 
 Plus `rehearsalLetters: true`, as the `rehearsal-letters` attribute: sections are lettered A, B, C in play order.
 
 On barmark.dev these are one UnoCSS shortcut, `barmark-look`, in
 `site/uno.config.ts`, applied to the chart's container. The site's
 UnoCSS setup mirrors Stem Shovel's, so the shortcut should carry over
-as it is. Every colour above meets the AA contrast level on that ground. If a Stem
+as it is. Every color above meets the AA contrast level on that ground. If a Stem
 Shovel surface has a different ground, recheck contrast; the renderer's
 own contrast test is in `packages/render/tests/contrast.test.ts`.
 
@@ -144,18 +145,21 @@ own contrast test is in `packages/render/tests/contrast.test.ts`.
 `uno.config.ts` loads `serif: "Noto Serif:400"`, which has no italic, and
 note lines are italic. Adding `italic: true` to that one entry loads only
 the italic, and then every lyric is italic too. Use two entries:
+
 ```ts
 serif: [
 	{ name: "Noto Serif", weights: ["400"] },
 	{ name: "Noto Serif", weights: ["400"], italic: true },
 ],
 ```
+
 Stem Shovel's `"none"` provider under Vitest/SKIP_VARLOCK is unaffected.
 
 **How to check it.** barmark.dev's browser test `the chart wears the
 site's look` (`site/browser/site.pw.ts`) measures:
+
 - a chord at 15.5px;
-- the ink, muted, directive and note colours;
+- the ink, muted, directive and note colors;
 - Noto Serif on lyrics, and an italic Noto Serif note line;
 - Noto Sans on the meta line, directives and headings;
 - the letter "A";

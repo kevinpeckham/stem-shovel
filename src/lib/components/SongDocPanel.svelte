@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ChartHtml from "#lib/components/ChartHtml.svelte";
+	import ChartPreview from "#lib/components/ChartPreview.svelte";
 	import ChartReadout from "#lib/components/ChartReadout.svelte";
 	import MarkdownDocEditor from "#lib/components/MarkdownDocEditor.svelte";
 	import { saveDoc } from "#lib/remote/songs.remote.js";
@@ -148,6 +149,15 @@
 	</div>
 {/snippet}
 
+<!-- The chart drawn as it is typed, under the source (barmark is plain text; the drawing is its rendered view). -->
+{#snippet chartPreview()}
+	{#if kind === "chart"}
+		<div class="mt-6 border-t border-current/20 pt-6">
+			<ChartPreview text={editor?.markdownCurrent ?? markdown} label="Chart preview" />
+		</div>
+	{/if}
+{/snippet}
+
 <!-- The document fills the panel; the chart readout, when there is one, takes its own row under it. -->
 <div class="grid h-full min-h-full grid-rows-[minmax(0,1fr)_auto]">
 	{#if editing && canEdit && onlocalsave}
@@ -171,9 +181,11 @@
 					mode="embedded"
 					{view}
 					{mono}
+					plain={kind === "chart"}
 					onsave={() => void saveLocal()}
 					onclose={() => void close()}
 				/>
+				{@render chartPreview()}
 			</div>
 			{@render badge("Edit mode · demo")}
 		</div>
@@ -204,9 +216,11 @@
 					mode="embedded"
 					{view}
 					{mono}
+					plain={kind === "chart"}
 					onsave={() => formEl?.requestSubmit()}
 					onclose={() => void close()}
 				/>
+				{@render chartPreview()}
 			</form>
 			{@render badge("Edit mode")}
 		</div>
