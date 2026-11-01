@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.203.1] - 2026-11-01
+
 ### Fixed
 
 - **Start of bar 1 and End save again.** Typing a position into either field in Song settings › Details and saving reported "Song settings saved" and stored nothing: the hidden field that carries the seconds was filled by `field.set` in the form's submit callback, which a remote form's hidden input ignores (it renders the value it is given, literally) and which runs after SvelteKit has already captured the form's data. The hidden field now holds the seconds the entry reads as, as it is typed (`SongDetails.positionValue`); an unreadable entry is still refused with its message. Broken since the hidden-field design (0.3.0, Timecode and bars as position formats). A saved start or end also opened blank since 0.19x: the native form reset that `clearForm` runs when settings open writes each input's reset value back into its binding a tick later, after `reset()` had filled the entries, so the inputs' reset value is now the saved text.
