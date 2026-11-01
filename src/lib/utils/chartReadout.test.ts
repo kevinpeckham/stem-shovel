@@ -16,7 +16,7 @@ describe("chartReadout", () => {
 		});
 	});
 	it("takes the chart's own tempo when the song has none", () => {
-		expect(chartReadout("120 bpm\n\n| D | A | Bm | G |", NONE)?.summary).toBe(
+		expect(chartReadout("tempo: 120\n\n| D | A | Bm | G |", NONE)?.summary).toBe(
 			"4 bars · no sections · 0:08",
 		);
 	});
@@ -40,7 +40,7 @@ describe("chartReadout", () => {
 		);
 	});
 	it("passes the parser's warnings through", () => {
-		const read = chartReadout("| A5 riff | D |", SONG);
+		const read = chartReadout("| / D | A |", SONG);
 		expect(read?.summary).toBe("2 bars · no sections · 0:04");
 		expect(read?.warnings.length).toBeGreaterThan(0);
 	});

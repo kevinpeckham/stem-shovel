@@ -1,6 +1,6 @@
 /**
  * The song's tempo and time signature at 0:00 from its changes, the
- * defaults a chart's bars take before its own marks (`chordChartBars`,
+ * defaults a chart's bars take before its own marks (`barmarkChartBars`,
  * `chartBars`). A tempo that is not a positive number is none.
  */
 export function chartDefaults(changes: { kind: string; start: number; value: string }[]): {

@@ -70,7 +70,7 @@ import {
 import { renderChartHtml, renderDocHtml } from "#lib/server/chartHtml.js";
 import { chartBars } from "#lib/utils/chartBars.js";
 import { chartDefaults } from "#lib/utils/chartDefaults.js";
-import { chartBarsOfMarkdown } from "#lib/utils/chartBarsOfMarkdown.js";
+import { barmarkChartBars } from "#lib/utils/barmarkChartBars.js";
 import { unescapeChartMarkdown } from "#lib/utils/unescapeChartMarkdown.js";
 import { withSongMentions } from "#lib/server/songMentions.js";
 import { ChartDraftSchema, ChartSaveSchema } from "#lib/val/ChartDraftSchema.js";
@@ -372,7 +372,7 @@ function barsOfScore(
 	score: { kind: "chart"; markdown: string } | { kind: "pdf" | "image"; chartRead: string | null },
 	defaults: ReturnType<typeof chartDefaults>,
 ) {
-	if (score.kind === "chart") return chartBarsOfMarkdown(score.markdown, defaults);
+	if (score.kind === "chart") return barmarkChartBars(score.markdown, defaults);
 	return score.chartRead ? chartBars(score.chartRead, defaults) : undefined;
 }
 

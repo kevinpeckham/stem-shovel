@@ -17,10 +17,8 @@ describe("renderChartHtml", () => {
 		expect(html).not.toMatch(/<img|<script>/);
 		expect(html).toContain("&lt;script&gt;");
 	});
-	it("renders a chart barmark reads no bars from as markdown, until it is migrated", () => {
-		expect(renderChartHtml("Key: D · 145 bpm\nD5 x2・A5 x2")).toBe(
-			"<p>Key: D · 145 bpm\nD5 x2・A5 x2</p>",
-		);
+	it("draws a chart barmark reads no bars from too (the renderer draws any text)", () => {
+		expect(renderChartHtml("Key: D · 145 bpm\nD5 x2・A5 x2")).toMatch(/^<barmark-chart /);
 	});
 	it("is empty for a blank chart", () => {
 		expect(renderChartHtml("  \n")).toBe("");

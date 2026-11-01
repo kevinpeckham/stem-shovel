@@ -116,7 +116,7 @@ describe("restoreDocVersion", () => {
 		await expect(call(history.restoreDocVersion, shared)).resolves.toEqual({
 			version: 3,
 			changed: true,
-			html: "<p># Old</p>",
+			html: expect.stringMatching(/^<barmark-chart /), // a chart is drawn by barmark's renderer
 		});
 		expect(data.docVersionById).toHaveBeenCalledWith(SONG, "chart", null, VERSION);
 		expect(data.saveSongDoc).toHaveBeenCalledWith(ACCOUNT, USER, SONG, "chart", "# Old", {

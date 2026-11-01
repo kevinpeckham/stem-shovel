@@ -753,13 +753,13 @@ and the song-check's key and tempo changes.
   before it, `N.C.` and `--` are "N.C.", `?` holds with a warning, a
   `_` group plays its first member), takes the tempo and meter from the
   chart's directives else the song's own, writes the key as "D major",
-  and turns every barmark diagnostic into a warning line. Until the
-  stored charts are migrated, `utils/chartBarsOfMarkdown.ts` falls back
-  to the old idiom parser (`utils/chordChartBars.ts`) when barmark reads
-  no bars, with a warning that the chart will be migrated; the fallback
-  and that parser go once the migration is confirmed. Either parser
-  returns null with no tempo or no bars. The chart's display is the
-  standard's too: `@barmark/render` draws it (docs/styling.md).
+  and turns every barmark diagnostic into a warning line. It returns
+  null with no tempo or no bars. barmark is the only parser: the app's
+  earlier in-house one (`chordChartBars`) and the fallback to it retired
+  on 2026-11-01, once every stored chart had been migrated (the five
+  MMKK charts, three by `scripts/migrate-charts-barmark.ts`, since
+  removed, and two by hand). The chart's display is the standard's too:
+  `@barmark/render` draws it (docs/styling.md).
 - **The query** `chartBarsOf` (songs.remote.ts, members): the song's
   score through `scoreForAi`; the chord chart or a notation file's
   stored read gives `{bars, warnings, source: "chart" | "summary"}`;

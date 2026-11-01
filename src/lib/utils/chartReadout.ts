@@ -1,5 +1,5 @@
+import { barmarkChartBars } from "./barmarkChartBars.js";
 import { chartBarSeconds } from "./chartBarSeconds.js";
-import { chartBarsOfMarkdown } from "./chartBarsOfMarkdown.js";
 import { chartStatedValues } from "./chartStatedValues.js";
 import { formatTime } from "./formatTime.js";
 
@@ -10,11 +10,10 @@ function sectionsText(n: number): string {
 }
 
 /**
- * What the chord chart parser (`chartBarsOfMarkdown`: barmark, else the
- * old idiom) reads of a chart, as one line under the document: "76 bars ·
- * 10 sections · 2:18" (the bars it plays, the sections they begin and the
- * chart's length at its tempos),
- * with the parser's warnings; when nothing reads, why, in plain words.
+ * What barmark (`barmarkChartBars`) reads of a chart, as one line under
+ * the document: "76 bars · 10 sections · 2:18" (the bars it plays, the
+ * sections they begin and the chart's length at its tempos), with the
+ * parser's warnings; when nothing reads, why, in plain words.
  * `defaults` are the song's tempo and meter at 0:00 (`chartDefaults`).
  * Null for a blank chart.
  */
@@ -23,7 +22,7 @@ export function chartReadout(
 	defaults: { tempo: number | null; meter: string | null },
 ): { summary: string; warnings: string[] } | null {
 	if (!markdown.trim()) return null;
-	const read = chartBarsOfMarkdown(markdown, defaults);
+	const read = barmarkChartBars(markdown, defaults);
 	if (!read) {
 		const tempo = chartStatedValues(markdown).tempo ?? defaults.tempo;
 		const summary = tempo

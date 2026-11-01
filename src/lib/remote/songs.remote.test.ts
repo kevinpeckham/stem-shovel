@@ -86,7 +86,7 @@ describe("editor-gated functions", () => {
 			arrange: () => data.saveSongDoc.mockResolvedValue({ ok: true, version: 2, changed: true }),
 			dataFn: "saveSongDoc",
 			args: [ACCOUNT, USER, SONG, "chart", "# C", { confirmEmpty: false }],
-			outcome: { version: 2, changed: true, html: "<p># C</p>" },
+			outcome: { version: 2, changed: true, html: expect.stringMatching(/^<barmark-chart /) },
 		},
 		{
 			name: "createSong",
@@ -284,7 +284,7 @@ describe("editor-gated functions", () => {
 				progressions: [],
 				chart: "C",
 				notes: "",
-				chartHtml: "<p>C</p>",
+				chartHtml: expect.stringMatching(/^<barmark-chart /),
 			},
 		},
 		{

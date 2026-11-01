@@ -6,7 +6,7 @@ import { chartSectionName } from "./chartSectionName.js";
  * recording places every bar in seconds). This file reads the measure
  * summary a notation file's chart read stores (`readChartWithAi`,
  * `m<n> key <key> <d>/<d> tempo <bpm> [<mark>] "<words>" |: :| ending <n>:
- * <chords>`); `chordChartBars` reads a band's markdown chart into the
+ * <chords>`); `barmarkChartBars` reads a band's barmark chart into the
  * same shape.
  *
  * Repeats and endings are expanded: a `:|` sends play back to the last

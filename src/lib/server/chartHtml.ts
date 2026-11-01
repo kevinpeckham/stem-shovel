@@ -1,5 +1,4 @@
 import { renderChart } from "@barmark/render";
-import { parseChart } from "barmark";
 import { renderMarkdown } from "./markdown.js";
 
 /**
@@ -15,13 +14,11 @@ import { renderMarkdown } from "./markdown.js";
  * because a browser ignores @font-face inside a shadow root (and the element
  * leaves a page's own registration alone). Drawn the way barmark.dev does:
  * the dark palette with rehearsal letters, carried as attributes
- * (`theme="dark" rehearsal-letters`) so the element keeps them when it loads. Transitional: a chart barmark
- * reads no bars from (the old notation, until it is migrated) renders as
- * markdown, as before. "" for a blank chart.
+ * (`theme="dark" rehearsal-letters`) so the element keeps them when it loads. "" for a blank
+ * chart.
  */
 export function renderChartHtml(markdown: string): string {
 	if (!markdown.trim()) return "";
-	if (parseChart(markdown).bars.length === 0) return renderMarkdown(markdown);
 	return renderChart(markdown, { theme: "dark", rehearsalLetters: true });
 }
 

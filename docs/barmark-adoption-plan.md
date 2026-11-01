@@ -1,13 +1,6 @@
 # Adopt barmark — brief from Kevin via the bench
 
-**Status (2026-11-01): Scopes 1–3 released (v0.203.0); the update brief (docs/barmark-update-brief.md: plain-text chart editing, Chords/Engraving, the barmark.dev look) on dev.** Earlier: Scopes 1–3 on dev and staging. The
-parser behind `utils/barmarkChartBars.ts` (371831a), the migration
-(`scripts/migrate-charts-barmark.ts`: Letter Lands, Mop Heart and
-Interbellum applied on dev and staging; Eat All the Clocks and Peaceful
-Dreams refused, for Kevin's hand), the renderer (`server/chartHtml.ts`,
-`components/ChartHtml.svelte`) and the rewritten user-docs page. Open:
-production (Kevin applies the three and refreshes the page), the two
-refused charts, then retiring `chordChartBars` and the fallbacks.
+**Status (2026-11-01, late): complete.** Scopes 1–3 released (v0.203.0), the update brief (docs/barmark-update-brief.md) released (v0.204.0), all five stored charts migrated on every stage (Letter Lands, Mop Heart and Interbellum by `scripts/migrate-charts-barmark.ts`; Eat All the Clocks and Peaceful Dreams by Kevin's hand on production; dev and staging take that same text), each confirmed against its recording's section markers, and the in-house parser (`chordChartBars`), the converter (`legacyChartToBarmark`), the migration script and the two fallbacks (`chartBarsOfMarkdown`, `renderChartHtml`'s markdown for a chart with no bars) removed. The adoption hashes for Study 16: 371831a (the parser), b5ed9ed2 (the migration), a0926c65 (the renderer).
 
 **Status: brief for the stem-shovel agent** (2026-10-31). The chart
 notation this app pioneered is now a standard with its own repository

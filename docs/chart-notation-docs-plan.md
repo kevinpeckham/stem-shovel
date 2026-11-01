@@ -3,8 +3,9 @@
 **Status (2026-10-31, evening): superseded in part by
 docs/barmark-adoption-plan.md.** The notation became the barmark
 standard; the app consumes its parser (`utils/barmarkChartBars.ts`)
-and the idiom parser below is a transitional fallback until the stored
-charts are migrated. Deliverables 1–2 (the user-docs page and the tip)
+and the idiom parser below (`chordChartBars`) retired on 2026-11-01
+with the last stored chart's migration; this document is the record of
+the idiom it read. Deliverables 1–2 (the user-docs page and the tip)
 remain app work and now teach the barmark dialect; 3–5 are the
 grammar's (elision, Logic parentheticals, `...`). The record below is
 what shipped in v0.202.0.
