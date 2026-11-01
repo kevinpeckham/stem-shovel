@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.205.0] - 2026-11-01
+
 ### Removed
 
 - **The old chart parser is gone.** Every stored chart is in barmark now (the last two, Eat All the Clocks and Peaceful Dreams, migrated by hand on production, dev and staging taking the same text; each of the five confirmed against its recording's section markers), so the in-house idiom parser (`utils/chordChartBars.ts`), the converter and migration script (`utils/legacyChartToBarmark.ts`, `scripts/migrate-charts-barmark.ts`), `stripSectionNumerals` and the two transitional fallbacks are removed: `chartBarsOfMarkdown` (barmark, else the old parser with a "will be migrated" warning) gives way to `barmarkChartBars` directly, and a chart barmark reads no bars from is drawn by the renderer with its diagnostics rather than as markdown.
