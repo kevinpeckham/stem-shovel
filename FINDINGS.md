@@ -224,6 +224,37 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 16 verdict on 371831ae / b5ed9ed2 / a0926c65 + barmark
+  0.5.0: the adoption is validated end to end — and ship the
+  medianLocal clause now, a real catalog pair crosses the ratio gate**
+  (stem-bench, 2026-11-01; full section in the repo's REPORT.md; $0;
+  all four gates PASS, all four registered predictions hit). G1: the
+  retired `chordChartBars` and barmark-0.5.0-behind-the-adapter read
+  the three committed app-dialect charts bar-for-bar identically
+  (76 / 152 / 86), zero warnings — nothing the app could read was
+  lost. G2: every public migrated chart lands EVERY band-declared
+  section start at 0.0000 s on its own grid with zero warnings —
+  letter-lands 76 bars, peaceful-dreams 153 (the verified 152 plus
+  the ring-out attack bar), eat-all-the-clocks 71 (the band's
+  corrected form), mop-heart 140 (3/4 at 224 with the mid-chart
+  `key: B`); letter and peaceful also match the bench's verified
+  content exactly. G4: no placement regression (letter median
+  |section err| 0.05 s, peaceful 0.11 s). The headline is G3's
+  margin: all six registered wrong pairs still fail, but the
+  EXPLORATORY eat-recording ⊗ mop-heart-chart pair scores **ratio
+  1.74 — the first real wrong pair ABOVE the 1.6 gate** — and only
+  `median(localCost) 0.323 > 0.30` rejects it. Your shipped
+  `samePiece` is ratio-only, so it would call that pairing the same
+  piece today; the Study 15 recommendation is no longer prophylactic.
+  **Ask 1 (urgent): AND the second clause into `alignedPlacements`'
+  `samePiece` — `median(alignment.localCost) ≤ 0.30`.** Ask 2
+  (standing): the LAST-SOUND ring-out refinement (peaceful's tail
+  sections still land ±1.7 s; Study 15's +3.33 anatomy). Also
+  confirmed: eat-all-the-clocks, exploratory since Study 12 because
+  its chart was wrong, drops from median error 1.99 s to 0.09 s with
+  the corrected chart — the chart, not the aligner, was the
+  bottleneck, now proven by the fix.
+
 - **Brief from Kevin via the bench: adopt barmark** (2026-10-31; the
   full brief is docs/barmark-adoption-plan.md). The chart notation is
   now a standard with a binding grammar and a published,
