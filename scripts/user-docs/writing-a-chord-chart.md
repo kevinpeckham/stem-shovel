@@ -10,7 +10,7 @@ Start with the key, the time signature and the tempo, one per line (`key: D`, `t
 key: F#, time: 4/4, tempo: 132
 ```
 
-The key is a root, plus `m` for minor or a mode word: `F#`, `Em`, `D mixolydian`. A bare root means major, so write `F#`, never `F#maj`. When the chart has no tempo or time signature, the app takes them from the song's settings; a `tempo:` in the chart wins over the song's. A `key:`, `time:` or `tempo:` line further down applies from the next bar on.
+The key is a root, plus `m` for minor or a mode word: `F#`, `Em`, `D mixolydian`. A bare root means major, so write `F#`, never `F#maj`. When the chart has no tempo or time signature, the app takes them from the song's settings; a `tempo:` in the chart wins over the song's. A `key:`, `time:` or `tempo:` line further down applies from the next bar on. A slowing or quickening is written the way players say it: `tempo: rit.` (or `tempo: rit. to 90`, `tempo: accel.`) runs from the next bar until the next `tempo:` line or the end of the chart, and `tempo: a tempo` returns to the steady tempo. The app keeps counting bars at the steady tempo through a ritardando, so a section marker inside one may need placing by ear.
 
 ## Title and sections
 

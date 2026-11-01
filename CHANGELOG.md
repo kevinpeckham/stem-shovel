@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **barmark 0.5.0 and @barmark/render 0.3.0.** Charts can say where the tempo slows or quickens: `tempo: rit.`, `tempo: rit. to 90`, `tempo: accel.` and `tempo: a tempo` read (grammar §7.2; a ritardando used to be refused as "tempo must be beats per minute"), and the renderer draws a dashed line along the bars inside one. Logic Pro's chord spelling reads as written (`C7(b9)(#11)`, `F#(5)(7)`); a chart with text but no bar lines, or with escaped pipes, warns instead of reading as empty. The chart's look changed with the renderer's 0.2.0: chords at 16px with no label under 12px, bar numbers in a gutter flush left, chords starting at the left of their share of the bar, mid-chart changes naming themselves ("→ Time 3/4 · Tempo ♩ = 120"), note lines italic and lyrics in Georgia. The element now carries its options as attributes (`theme="dark"`). The Writing a chord chart page gains the gradual tempo line.
+
 ## [0.203.1] - 2026-11-01
 
 ### Fixed

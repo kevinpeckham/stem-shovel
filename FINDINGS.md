@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## The Vite dev server keeps serving a dependency's old version after `bun add` until it restarts (2026-11-01)
+
+After upgrading `@barmark/render` 0.1.0 → 0.3.0 the running dev server's song pages still drew the old renderer's output (no `theme` attribute on the element) while the tests, which start their own Vite, used the new one. Vite externalizes `node_modules` packages for SSR and loads them through Node's own module loader, whose ESM cache never reloads a module, so a server-side dependency changes only on a restart (`systemctl --user restart stem-shovel-dev`, 4 s); client-side packages go through the dep optimizer, which does notice the lockfile. Check an upgraded server dependency's effect after a restart, not before, and never restart while a browser test runs.
+
 ## A native form reset writes each input's reset value back into its `bind:value` a microtask later (2026-11-01)
 
 Svelte 5 (5.57) listens for `reset` on the document (capture) and, one microtask on, runs every bound control's reset handler, which assigns the input's `defaultValue` to the bound state (`bindings/input.js`, `is_reset ? input.defaultValue : input.value`). So state set synchronously right after `form.reset()` is overwritten: `SongDetails.reset()` ran `clearForm` (which resets the element, since 2026-10-30) and then set `startAtEntry = startAtText`, and the Start of bar 1 and End fields opened blank for a song that had them. The fix is to make the reset value right: `defaultValue={savedText}` on the bound input (Svelte's `defaultValue` attribute), so the reset lands on the saved text and `reset()` agrees with it. A bound input in a form that gets reset needs a `defaultValue` whenever its state is seeded from data, or its seed survives only until the next microtask.

@@ -13,7 +13,7 @@ refused charts, then retiring `chordChartBars` and the fallbacks.
 notation this app pioneered is now a standard with its own repository
 (kevinpeckham/barmark), a binding grammar
 (docs/grammar-v0.1-draft.md there; Kevin decides grammar questions),
-a published parser (`barmark` 0.2.0 on npm, provenance-attested) and
+a published parser (`barmark` 0.2.0 on npm, provenance-attested; the app is on 0.5.0 since 2026-11-01, which reads gradual tempo changes) and
 a renderer (`@barmark/render` 0.1.0 in the workspace: HTML with
 declarative shadow DOM and a `<barmark-chart>` web component; its npm
 release is imminent — coordinate with Kevin). This brief asks the app
