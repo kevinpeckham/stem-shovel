@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **barmark 0.6.0 and @barmark/render 0.4.0.** No grammar change: every chart reads as before. The renderer puts a little air between bar rows (0.35 of the chord size), so one row's bar lines no longer run into the next's, and can draw chords as Nashville numbers or Roman numerals (`numerals="nashville" | "roman"`, not yet exposed in the app); barmark gains `transposeChart` (a chart in another key, as canonical text) and `degreeOf` (a root's scale degree in a key), neither used by the app yet.
+
 ## [0.205.0] - 2026-11-01
 
 ### Removed
