@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.203.0] - 2026-11-01
+
 ### Technical
 
 - **The chart reads barmark.** The chord chart's parser is now the `barmark` package (0.2.0), the standard that grew out of this app's notation (github.com/kevinpeckham/barmark; the brief in docs/barmark-adoption-plan.md), behind a thin adapter (`utils/barmarkChartBars.ts`) to the `ChartBar` shape the chart alignment, the song check and the readout already consume: sections, replays by a bare heading, `x N`, `|: :|`, `%`, holds, `N.C.`/`--`, `[2/4]`, fermatas and directives come from the package; the adapter divides each bar's slots equally, takes the tempo and meter from the chart else the song, and shows every barmark diagnostic under the chart. Until the band's stored charts are migrated, `utils/chartBarsOfMarkdown.ts` falls back to the old idiom parser when barmark reads no bars, with a warning that the chart will be migrated; that parser retires with the migration. A chart save now strips the editor's markdown escapes (`\|`, `\*`, `\_`, `\[`, `\]`, `\#`), which barmark would read literally.
