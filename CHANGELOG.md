@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.204.0] - 2026-11-01
+
 ### Changed
 
 - **The chart is edited as plain text only.** barmark is plain text, so the Chart tab has no Rich Text pane or Rich Text/Markdown choice (`MarkdownDocEditor` `plain`): editing opens the source, in monospace, with a live drawing of the chart below it as you type (`ChartPreview`, the `<barmark-chart>` element's `text` property, redrawn on every keystroke under 10,000 characters and 250 ms after a pause above, not past 50,000). Lyrics and notes keep both panes. The WYSIWYG round-tripped charts through a markdown serializer, which wrote `\|` and `\*\*` into stored charts (docs/barmark-update-brief.md). The chart hint names barmark and barmark.dev.
