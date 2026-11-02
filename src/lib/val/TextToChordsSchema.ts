@@ -14,22 +14,7 @@ export const TextToChordsSchema = v.object({
 });
 export type TextToChordsInput = v.InferOutput<typeof TextToChordsSchema>;
 
-/** The degrees the model may write, Roman numerals relative to the key; the case says major or minor. */
-export const CHORD_DEGREE_NUMERALS = [
-	"I",
-	"II",
-	"III",
-	"IV",
-	"V",
-	"VI",
-	"VII",
-	"bII",
-	"bIII",
-	"#IV",
-	"bV",
-	"bVI",
-	"bVII",
-] as const;
+/** The circle's keys by position (0 = C, 1 = G … 11 = F), as the prompt names the player's. */
 export const KEY_NAMES = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"] as const;
 
 const percent = v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100))));
@@ -68,26 +53,12 @@ export const TextToChordsSetupSchema = v.object({
 });
 export type TextToChordsSetup = v.InferOutput<typeof TextToChordsSetupSchema>;
 
-/** What the model is asked to reply: the chords by degree with their beats, and a name, a tempo, a key and a style if it has an opinion, and a setup for the player. */
+/** What the model is asked to reply: the progression as a barmark chord chart (its key, meter, tempo and feel in its directives), and a name, a note and a style if it has an opinion, and a setup for the player. */
 export const TextToChordsReplySchema = v.object({
 	setup: v.optional(v.nullable(TextToChordsSetupSchema)),
 	name: v.optional(v.nullable(v.pipe(v.string(), v.trim(), v.maxLength(40)))),
 	note: v.optional(v.nullable(v.pipe(v.string(), v.trim(), v.maxLength(200)))),
-	bpm: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(40), v.maxValue(240)))),
-	key: v.optional(v.nullable(v.picklist(KEY_NAMES))),
 	style: v.optional(v.nullable(v.picklist(CHORD_STYLES.map((s) => s.id)))),
-	chords: v.pipe(
-		v.array(
-			v.object({
-				/** "I", "ii", "V", "bVII", "#iv"…: lowercase for a minor chord, or `quality` says. */
-				degree: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(5)),
-				quality: v.optional(v.nullable(v.picklist(["major", "minor"]))),
-				seventh: v.optional(v.nullable(v.boolean())),
-				beats: v.optional(v.nullable(v.picklist([1, 2, 4]))),
-			}),
-		),
-		v.minLength(1),
-		v.maxLength(64),
-	),
+	chart: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(4000)),
 });
 export type TextToChordsReply = v.InferOutput<typeof TextToChordsReplySchema>;

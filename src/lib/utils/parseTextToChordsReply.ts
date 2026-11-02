@@ -1,51 +1,27 @@
 import * as v from "valibot";
+import { parseChart, printParsed } from "barmark";
 import type { ChordStyleId } from "#lib/constants/chordStyles.js";
-import type { DemoChord, DemoSetup } from "#lib/constants/demoProgressions.js";
-import {
-	CHORD_DEGREE_NUMERALS,
-	KEY_NAMES,
-	TextToChordsReplySchema,
-	type TextToChordsReply,
-} from "#lib/val/TextToChordsSchema.js";
+import type { DemoSetup } from "#lib/constants/demoProgressions.js";
+import { TextToChordsReplySchema, type TextToChordsReply } from "#lib/val/TextToChordsSchema.js";
 
 export interface TextToChordsResult {
 	name: string;
 	note: string;
-	bpm: number | null;
-	/** The circle position of the key the model chose; null leaves the circle where it is. */
-	keyCenter: number | null;
 	style: ChordStyleId | null;
-	chords: DemoChord[];
+	/** The progression as a barmark chord chart, in barmark's canonical print: its key, meter, tempo and feel in its directives. */
+	chart: string;
 	/** How the model set the player up (the sound, voicing, strum, arpeggiator, octave, sustain, effects), in the demos' shape; empty when it said nothing. */
 	setup: DemoSetup;
 }
 
-/** A numeral's distance from the key clockwise in fifths (constants/demoProgressions.ts), by its uppercase form. */
-const FIFTHS: Record<(typeof CHORD_DEGREE_NUMERALS)[number], number> = {
-	I: 0,
-	II: 2,
-	III: 4,
-	IV: 11,
-	V: 1,
-	VI: 3,
-	VII: 5,
-	bII: 7,
-	bIII: 9,
-	"#IV": 6,
-	bV: 6,
-	bVI: 8,
-	bVII: 10,
-};
-
 /**
- * The model's reply as a progression by degree (docs/chord-player.md,
+ * The model's reply as a chord chart (docs/chord-player.md,
  * "Text-to-Progression"): the first JSON object in the text, checked
- * against TextToChordsReplySchema, each chord's numeral read for its
- * degree (I, ii, bVII, #iv…) and its case for the quality unless the reply
- * says, a seventh and its beats (a whole bar unless said). Throws with a
- * reason the caller can hand back to the model for another go.
+ * against TextToChordsReplySchema, its `chart` read by barmark. Throws
+ * with a reason the caller can hand back to the model for another go: the
+ * chart's errors by line ("line 3: …"), or that it has no bars.
  */
-export function parseTextToChordsReply(text: string, beatsPerBar: 3 | 4): TextToChordsResult {
+export function parseTextToChordsReply(text: string): TextToChordsResult {
 	const json = text.match(/\{[\s\S]*\}/)?.[0];
 	if (!json) throw new Error("no JSON object in the reply");
 	let raw: unknown;
@@ -61,30 +37,17 @@ export function parseTextToChordsReply(text: string, beatsPerBar: 3 | 4): TextTo
 		throw new Error(`${path ? `${path}: ` : ""}${issue.message}`);
 	}
 	const reply = parsed.output;
-	const chords: DemoChord[] = reply.chords.map((c) => {
-		const m = c.degree
-			.replace(/♭/g, "b")
-			.replace(/♯/g, "#")
-			.match(/^([b#]?)([ivIV]+)$/);
-		const upper = m ? `${m[1]}${m[2].toUpperCase()}` : "";
-		if (!m || !(upper in FIFTHS))
-			throw new Error(`"${c.degree}" is not a degree I know (I to VII, bII, bIII, #IV, bVI, bVII)`);
-		const minor = c.quality ? c.quality === "minor" : m[2] === m[2].toLowerCase();
-		const beats = c.beats ?? (beatsPerBar === 3 ? 2 : 4);
-		return {
-			fifths: FIFTHS[upper as keyof typeof FIFTHS],
-			quality: minor ? "minor" : "major",
-			beats: beats as 1 | 2 | 4,
-			seventh: c.seventh === true,
-		};
-	});
+	const chart = parseChart(reply.chart);
+	const errors = chart.diagnostics
+		.filter((d) => d.severity === "error")
+		.map((d) => `line ${d.line}: ${d.message}`);
+	if (errors.length > 0) throw new Error(`the chart has errors: ${errors.join("; ")}`);
+	if (chart.bars.length === 0) throw new Error("the chart has no bars");
 	return {
 		name: (reply.name ?? "").trim() || "From a description",
 		note: reply.note ?? "",
-		bpm: reply.bpm ?? null,
-		keyCenter: reply.key ? KEY_NAMES.indexOf(reply.key) : null,
 		style: reply.style ?? null,
-		chords,
+		chart: printParsed(reply.chart, chart),
 		setup: replySetup(reply.setup),
 	};
 }

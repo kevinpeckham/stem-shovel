@@ -2,13 +2,14 @@
 	import { metronome } from "#lib/audio/metronome.svelte.js";
 	import { progressionPad } from "#lib/audio/progression.svelte.js";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import ProgressionImport from "#lib/components/ProgressionImport.svelte";
 	import {
 		deleteProgression,
 		renameProgression,
 		saveProgression,
 	} from "#lib/remote/progressions.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
-	import { DEMO_PROGRESSIONS, type DemoProgression } from "#lib/constants/demoProgressions.js";
+	import { DEMO_PROGRESSIONS } from "#lib/constants/demoProgressions.js";
 	import { textToChords as askForChords } from "#lib/remote/textToChords.remote.js";
 	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
 	import { measuresOf, type ChordBeats } from "#lib/utils/chordRhythm.js";
@@ -36,7 +37,7 @@
 
 	const pad = progressionPad;
 
-	// Text-to-Progression (docs/chord-player.md): the description and the request in flight; the answer lands on the pad as a demo does, learn mode off, ready to Play.
+	// Text-to-Progression (docs/chord-player.md): the description and the request in flight; the answer, a barmark chart, lands on the pad through the same path as Import, learn mode off, ready to Play.
 	let chordsPrompt = $state("");
 	let chordsAsking = $state(false);
 	let chordsNote = $state("");
@@ -54,28 +55,24 @@
 				key: chordPlayer.keyCenter,
 				style: chordPlayer.style,
 			});
-			const demo: DemoProgression = {
-				id: "text-to-chords",
+			// The setup first (its voicing and octave voice the chords), then the chart: its key, meter, tempo and feel.
+			pad.importChart(reply.chart, {
 				name: reply.name,
-				hint: reply.note,
-				bpm: reply.bpm ?? metronome.bpm,
-				beatsPerBar: metronome.beatsPerBar,
-				chords: reply.chords,
-				setup: {
-					...reply.setup,
-					...(reply.style ? { style: reply.style } : {}),
-					...(reply.keyCenter === null ? {} : { keyCenter: reply.keyCenter }),
-				},
-			};
-			pad.loadDemo(demo);
-			pad.setLearn(false);
-			chordsNote = [reply.note, reply.bpm ? `${reply.bpm} bpm` : ""].filter(Boolean).join(" · ");
+				setup: { ...reply.setup, ...(reply.style ? { style: reply.style } : {}) },
+			});
+			chordsNote = [reply.note, `${metronome.bpm} bpm`].filter(Boolean).join(" · ");
 			notify(`${reply.name} is on the pad: press Play, or Learn to play it yourself`);
 		} catch (e) {
 			chordsError = errorMessage(e);
 		} finally {
 			chordsAsking = false;
 		}
+	}
+	/** A chart from the Import menu onto the pad; throws with the chart's errors for the menu to show. */
+	function importChart(text: string): string[] {
+		const warnings = pad.importChart(text);
+		notify(`${pad.name || "The chart"} is on the pad: press Play, or Learn to play it yourself`);
+		return warnings;
 	}
 	const measures = $derived(measuresOf(pad.entries, metronome.beatsPerBar));
 	/** The entry's index in the pad for each measure's entries, so a tap finds it. */
@@ -252,6 +249,7 @@
 				{ id: "demos-block", kind: "snippet", snippet: demosBlock },
 			]}
 		/>
+		<ProgressionImport onimport={importChart} />
 		{#if account}
 			<ContextMenu
 				ariaLabel="Saved progressions"

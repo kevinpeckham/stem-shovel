@@ -11,6 +11,7 @@ import {
 } from "#lib/utils/chordRhythm.js";
 import { encodeChordMidi } from "#lib/utils/encodeChordMidi.js";
 import { humanizeOffsets } from "#lib/utils/humanizeOffsets.js";
+import { chartToProgression, type ChartImport } from "#lib/utils/chartToProgression.js";
 import { progressionChart } from "#lib/utils/progressionChart.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
 import type { DemoProgression, DemoSetup } from "#lib/constants/demoProgressions.js";
@@ -198,6 +199,34 @@ class ProgressionPad {
 		this.name = demo.name;
 		this.#persist();
 		this.setLearn(true);
+	}
+
+	/**
+	 * A barmark chord chart onto the pad (the Import menu, and
+	 * Text-to-Progression's reply): the setup first, if any (its voicing and octave voice the
+	 * chords), then the chart's bars as entries with its tempo, meter and key,
+	 * its feel on the metronome's swing when it writes one; named by `name`,
+	 * else the chart; unsaved, learn mode off. Undo brings the old pad back.
+	 * Throws with the chart's errors; returns what it could not carry exactly.
+	 */
+	importChart(text: string, options: { name?: string; setup?: DemoSetup } = {}): string[] {
+		if (options.setup) this.#applySetup(options.setup);
+		const read = chartToProgression(text, {
+			voicing: chordPlayer.voicing,
+			octave: chordPlayer.octave,
+			bpm: metronome.bpm,
+		});
+		if (read.errors.length > 0) throw new Error(read.errors.join("; "));
+		this.#land(read, options.name);
+		return read.warnings;
+	}
+	/** An imported chart's entries, tempo, meter and key onto the pad, its feel on the metronome when it writes one. */
+	#land(read: ChartImport, name: string | undefined) {
+		this.open(read.data, null);
+		this.name = name || read.name;
+		if (read.hasFeel) metronome.setSwing(read.feel === "straight" ? 0 : 0.6);
+		this.setLearn(false);
+		this.#persist();
 	}
 
 	/** A demo's settings into the chord player and the piano; whatever the demo leaves out stays as it is. */

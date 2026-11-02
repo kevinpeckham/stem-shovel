@@ -21,30 +21,24 @@ describe("TextToChordsSchema", () => {
 });
 
 describe("TextToChordsReplySchema", () => {
-	const reply = { chords: [{ degree: "I" }, { degree: "vi", seventh: true, beats: 2 }] };
-	it("needs only the chords and trims the rest", () => {
+	const reply = { chart: "key: C\n\n| C | G |" };
+	it("needs only the chart and trims the rest", () => {
 		expect(v.parse(TextToChordsReplySchema, reply)).toEqual(reply);
 		const named = v.parse(TextToChordsReplySchema, {
 			...reply,
 			name: " Night ",
-			bpm: 72,
-			key: "Db",
 			style: "jazz",
 			note: null,
 		});
 		expect(named.name).toBe("Night");
 		expect(named.note).toBeNull();
+		expect(v.parse(TextToChordsReplySchema, { chart: "  | C |\n " }).chart).toBe("| C |");
 	});
-	it("bounds the chords and what the model may say about them", () => {
-		const chords = (n: number) => Array.from({ length: n }, () => ({ degree: "V" }));
-		expect(ok(TextToChordsReplySchema, { chords: [] })).toBe(false);
-		expect(ok(TextToChordsReplySchema, { chords: chords(64) })).toBe(true);
-		expect(ok(TextToChordsReplySchema, { chords: chords(65) })).toBe(false);
-		expect(ok(TextToChordsReplySchema, { chords: [{ degree: " " }] })).toBe(false);
-		expect(ok(TextToChordsReplySchema, { chords: [{ degree: "bVII7sus" }] })).toBe(false);
-		expect(ok(TextToChordsReplySchema, { chords: [{ degree: "I", beats: 3 }] })).toBe(false);
-		expect(ok(TextToChordsReplySchema, { ...reply, bpm: 241 })).toBe(false);
-		expect(ok(TextToChordsReplySchema, { ...reply, key: "C#" })).toBe(false);
+	it("bounds the chart and what the model may say about it", () => {
+		expect(ok(TextToChordsReplySchema, { chart: "  " })).toBe(false);
+		expect(ok(TextToChordsReplySchema, { chart: "x".repeat(4000) })).toBe(true);
+		expect(ok(TextToChordsReplySchema, { chart: "x".repeat(4001) })).toBe(false);
+		expect(ok(TextToChordsReplySchema, { chords: [{ degree: "I" }] })).toBe(false);
 		expect(ok(TextToChordsReplySchema, { ...reply, style: "polka" })).toBe(false);
 		expect(ok(TextToChordsReplySchema, { ...reply, name: "x".repeat(41) })).toBe(false);
 	});

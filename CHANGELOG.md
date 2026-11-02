@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Import a chart into the chord player.** The progression pad's Import menu takes a barmark chord chart, pasted or picked as a file: its key, meter, tempo and feel set the player, each chord lands with its beats (holds, `%` and replayed sections resolved, N.C. a rest, a chord off the beat rounded and a three-beat one struck again, each case warned once), with a slash bass under the voicing (`utils/chartToProgression.ts`, `progressionPad.importChart`). Undo brings the pad back.
+- **Text-to-Progression writes barmark.** The model now answers with a chord chart in the notation the song pages use instead of a list of Roman numerals, validated with barmark's parser (an error goes back to the model for another go) and imported through the same path as a pasted chart, so the key, tempo and feel travel in the chart itself; the name, note, style and player setup stay as they were.
+
 ## [0.211.0] - 2026-11-02
 
 ### Added

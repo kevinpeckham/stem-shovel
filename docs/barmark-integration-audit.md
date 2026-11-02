@@ -98,7 +98,15 @@ imported (item 4), its feel sets the pad's swing.
   `<song>.chart.md` holding `printChart`'s canonical text (done 2026-11-02).
 - **Chat and comments**: plain text today; not worth a chart renderer.
 
-### 4. Import a chart into the chord player (M)
+### 4. Import a chart into the chord player (M) — done 2026-11-02
+
+Shipped as `utils/chartToProgression.ts` (pure: bars to entries on a beat
+timeline, durations rounded to whole beats and split 4/2/1, the circle
+position from the key's parent major, warnings once each),
+`progressionPad.importChart`, the pad's Import menu
+(`ProgressionImport.svelte`), and Text-to-Progression answering in barmark
+(`TextToChordsReplySchema.chart`, `parseTextToChordsReply` validating with
+`parseChart`). The Roman-numeral reply format is gone.
 
 The reverse of 1: paste or pick a song's chart, `parseChart` →
 `flattenBars`, each bar's chords to entries by `degreeOf(root, key)` for

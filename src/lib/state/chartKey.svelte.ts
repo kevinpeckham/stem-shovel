@@ -1,6 +1,7 @@
 import type { ComponentProps } from "svelte";
 import { parseChart, transposeChart } from "barmark";
 import type ContextMenu from "#lib/components/ContextMenu.svelte";
+import { tonicPitchClass } from "#lib/utils/tonicPitchClass.js";
 
 type MenuItems = NonNullable<ComponentProps<typeof ContextMenu>["items"]>;
 type ChartKey = { tonic: string; mode: string };
@@ -9,25 +10,11 @@ type ChartKey = { tonic: string; mode: string };
 const CHART_KEY_PREFIX = "stemshovel.song.chart-key.";
 /** The fixed spelling of a moved key, by pitch class. */
 const KEY_NAMES = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
-const LETTER_PCS: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
 /** −5..+6: every key once, the shorter way round. */
 function normalize(n: number): number {
 	const pc = ((Math.round(n) % 12) + 12) % 12;
 	return pc > 6 ? pc - 12 : pc;
-}
-
-/** The pitch class of a tonic such as "F#" or "Bb", null when it is not one. */
-function pitchClass(tonic: string): number | null {
-	const letter = LETTER_PCS[tonic[0]?.toUpperCase() ?? ""];
-	if (letter === undefined) return null;
-	let pc = letter;
-	for (const ch of tonic.slice(1)) {
-		if (ch === "#" || ch === "♯") pc += 1;
-		else if (ch === "b" || ch === "♭") pc -= 1;
-		else return null;
-	}
-	return (pc + 12) % 12;
 }
 
 /**
@@ -54,7 +41,7 @@ export class ChartKeyChoice {
 	#key(markdown: string): ChartKey | null {
 		if (this.#parsed?.markdown !== markdown) {
 			const key = parseChart(markdown).bars[0]?.key ?? null;
-			this.#parsed = { markdown, key: key && pitchClass(key.tonic) !== null ? key : null };
+			this.#parsed = { markdown, key: key && tonicPitchClass(key.tonic) !== null ? key : null };
 		}
 		return this.#parsed.key;
 	}
@@ -63,7 +50,7 @@ export class ChartKeyChoice {
 	#keyName(key: ChartKey, semitones: number): string {
 		const suffix = key.mode === "minor" ? "m" : "";
 		if (semitones === 0) return key.tonic + suffix;
-		return KEY_NAMES[((pitchClass(key.tonic) ?? 0) + semitones + 12) % 12] + suffix;
+		return KEY_NAMES[((tonicPitchClass(key.tonic) ?? 0) + semitones + 12) % 12] + suffix;
 	}
 
 	/** Draw the chart `n` semitones away (normalized to −5..+6) and remember it. */

@@ -36,25 +36,25 @@ the piano's engine.
 ## What already exists here
 
 - **Text-to-Progression** (2026-10-04, Kevin: as the drum machine's
-  Text-to-Beat): `src/lib/server/textToChords.ts` goes through the same
-  gateway call (`complete` in textToBeat.ts, exported; the same model,
-  reasoning off) with a prompt that explains Roman numerals in a key
-  (uppercase major, lowercase minor, the borrowed bII, bIII, #IV, bVI,
-  bVII), the pad's meter, the circle's key and style, and the styles on
-  offer with their hints; the reply (`TextToChordsReplySchema`) is chords
-  by degree with `seventh` and `beats`, plus a name, note, bpm, a key
-  or style when the description wants one, and a `setup`
+  Text-to-Beat; in barmark since 2026-11-02): `src/lib/server/textToChords.ts`
+  goes through the same gateway call (`askForJson` in effect/ai.ts; the
+  same model as textToBeat.ts, reasoning off) with a prompt that asks for
+  a barmark chord chart in the player's key and the pad's meter (`key:`,
+  `time:`, `tempo:`, `feel: swing` for a swung feel, one `## Section`,
+  bars of chords by name with `/` holds and `N.C.`, 4 to 32 bars, no `%`
+  or `x2`), the styles on offer with their hints, and the `setup`
   (`TextToChordsSetupSchema`: sound, mode, voicing, strum with direction,
   pattern and speed, the arpeggiator block, octave, sustain, effects as
-  percentages; anything a preset holds, Kevin) that `replySetup` turns
-  into a `DemoSetup`. `parseTextToChordsReply`
-  (tested) reads the numerals into `DemoChord`s (the demos' shape), so
-  the pad takes the answer through `loadDemo` with a setup of the chosen
-  style and key, learn mode then switched off; a reply that fails goes
-  back to the model once with the reason; calls are logged (kind
-  "text-to-chords"), 20 an hour per user or address
-  (`textToChords.remote.ts`). The Describe menu sits beside Demos on the
-  pad when the page's load says `aiAvailable()`.
+  percentages). The reply (`TextToChordsReplySchema`) is `{ name, note,
+  style?, setup?, chart }`; `parseTextToChordsReply` (tested) checks the
+  JSON, runs `parseChart` and throws the error diagnostics ("line N: …")
+  so the model gets another go, then returns the canonical print. The
+  pad takes the answer through `importChart` (the same path as a pasted
+  chart, below) with the setup applied first so its voicing and octave
+  voice the chords, learn mode then switched off; the key, tempo and feel
+  travel in the chart. Calls are logged (kind "text-to-chords"), 20 an
+  hour per user or address (`textToChords.remote.ts`). The Describe menu
+  sits beside Demos on the pad when the page's load says `aiAvailable()`.
 - **The arpeggiator is a class** (2026-10-04, for the piano, docs/piano.md
   "Arpeggiator"): `audio/arpeggiator.svelte.ts`, the chord player's code
   lifted out whole; `chordPlayer.arpeggiator` is its instance (mode
@@ -442,6 +442,34 @@ scale)`; the click stays on the grid, so the scatter is heard against it.
 `encodeChordMidi` takes `{ humanize, random }` and moves each chord's
 notes together by the same amounts in ticks and velocity, so the download
 matches what was heard (the second step of docs/barmark-integration-audit.md).
+
+## What shipped: import a chart (2026-11-02)
+
+Item 4 of docs/barmark-integration-audit.md. **Import**, beside Demos on
+the pad (`ProgressionImport.svelte`: a textarea, a file picker for
+`.chart.md`/`.md`/`.txt`, "Put it on the pad", warnings and an error
+line), hands the text to `progressionPad.importChart(text, { name?,
+setup? })`, which throws the chart's errors or lands
+`utils/chartToProgression.ts`'s reading: the bars (`parseChart(text).bars`,
+replays expanded, `%` resolved) laid on one beat timeline
+(`beatsOf(meter) / slots.length` a slot, a group splitting its slot, a
+hold extending the span before it across bar lines, so a hold after
+`N.C.` stays a rest), each span's end rounded to the beat without
+drifting later chords, whole-beat lengths emitted as 4s, a 2 then a 1 (a
+3-beat chord is struck again), `N.C.`, `--`, note sets and unreadable
+slots as rests; a chord's `label` is the canonical symbol with ♯/♭ on
+the root and bass, its `notes` `voiceChord` from the record's intervals
+in the player's voicing and octave with a slash bass an octave below,
+its `wedge` the circle id for the root and quality (b3+b5 diminished, b3
+minor, else major). The first bar's tempo (else the pad's), meter
+(clamped 2–6) and key (the tonic moved to its parent major, then the
+circle index) go with the data through `open`; a written `feel:` sets
+the metronome's swing (0 for straight, 0.6 otherwise). Warnings come
+back once each (rounding, re-striking, a change of meter, tempo or key
+mid-chart, the 400-entry cap, barmark's own warnings) and the component
+lists them. The export (`progressionChart`) round-trips through it. The
+util is pure and tested; `tonicPitchClass` moved to its own util for it
+and `chartKey.svelte.ts`.
 
 ## Phases
 
