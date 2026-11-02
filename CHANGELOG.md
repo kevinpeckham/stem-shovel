@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.210.0] - 2026-11-02
+
 ### Changed
 
 - **The home page's chart demo draws on its own panel.** The documents demo's chart has no paper of its own any more: `SongDocPanel` takes `chartPaper`, which `ChartHtml` and `ChartPreview` set as `--barmark-paper` on their wrapper (an inline custom property, so it wins over the `barmark-look` shortcut's translucent paper), and the demo passes "transparent" (Kevin). Song pages are unchanged.
