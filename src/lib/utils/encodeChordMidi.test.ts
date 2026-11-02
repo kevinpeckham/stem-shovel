@@ -37,4 +37,28 @@ describe("encodeChordMidi", () => {
 			track: 0,
 		});
 	});
+	it("humanizes each chord's onset and velocity together, clamped at the start", async () => {
+		// Full humanize at 120 bpm: +30 ms is round(0.03 × 96 × 2) = 6 ticks, 6/192 s; velocity 90 × 1.2.
+		const late = parseMidi(
+			await encodeChordMidi(entries, 120, 4, 90, { humanize: 1, random: () => 1 }).arrayBuffer(),
+		).notes;
+		expect(late.slice(0, 3).map((n) => [n.start, n.duration, n.velocity])).toEqual([
+			[0.03125, 0.875, 108],
+			[0.03125, 0.875, 108],
+			[0.03125, 0.875, 108],
+		]);
+		expect(late[3]!.start).toBe(1.53125);
+		// Early: the first chord cannot start before 0; velocity 90 × 0.8.
+		const early = parseMidi(
+			await encodeChordMidi(entries, 120, 4, 90, { humanize: 1, random: () => 0 }).arrayBuffer(),
+		).notes;
+		expect(early[0]).toMatchObject({ start: 0, velocity: 72 });
+		expect(early[3]!.start).toBe(1.46875);
+	});
+	it("is byte-identical to the exact file at humanize 0", async () => {
+		const bytes = async (b: Blob) => Array.from(new Uint8Array(await b.arrayBuffer()));
+		const exact = await bytes(encodeChordMidi(entries, 120, 4));
+		expect(await bytes(encodeChordMidi(entries, 120, 4, 90, { humanize: 0 }))).toEqual(exact);
+		expect(await bytes(encodeChordMidi(entries, 120, 4, 90, {}))).toEqual(exact);
+	});
 });

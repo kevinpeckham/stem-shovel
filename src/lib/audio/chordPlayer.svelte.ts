@@ -505,10 +505,17 @@ class ChordPlayerEngine {
 		this.sounding = rest;
 		this.listener?.up(by);
 	}
-	/** A jotted chord played back by the pad: its notes as they were, held until `release(by)`. */
-	sound(by: string, chord: { label: string; wedge: string; notes: number[] }) {
+	/**
+	 * A jotted chord played back by the pad: its notes as they were, held
+	 * until `release(by)`. `scale` (the pad's humanize) makes it a little
+	 * louder or softer, kept within 0.05..1.
+	 */
+	sound(by: string, chord: { label: string; wedge: string; notes: number[] }, scale = 1) {
 		this.release(by);
-		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / chord.notes.length));
+		const velocity = Math.max(
+			0.05,
+			Math.min(1, this.velocity * Math.min(1, Math.sqrt(3 / chord.notes.length)) * scale),
+		);
 		if (this.arp)
 			this.arpeggiator.hold(by, chord.notes, velocity, {
 				by,

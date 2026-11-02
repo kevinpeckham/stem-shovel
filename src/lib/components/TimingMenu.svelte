@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { progressionPad } from "#lib/audio/progression.svelte.js";
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import { BPM_MAX, BPM_MIN } from "#lib/utils/tapTempo.js";
@@ -7,8 +8,9 @@
 	/**
 	 * The chord player's Timing menu (docs/chord-player.md, "The Timing
 	 * menu"), the Arpeggiator menu's shape: the session tempo by slider,
-	 * steps, number or Tap, the beats to the bar, and the click, each
-	 * explained in an InfoTip. The tempo and meter are the metronome's.
+	 * steps, number or Tap, the beats to the bar, the pad's humanize, and
+	 * the click, each explained in an InfoTip. The tempo and meter are the
+	 * metronome's.
 	 */
 	const BEATS_PER_BAR = [2, 3, 4, 5, 6];
 </script>
@@ -92,6 +94,28 @@
 			beat {metronome.beat + 1} of {metronome.beatsPerBar}
 		</div>
 	{/if}
+
+	<hr class="border-current/30 mt-2 col-span-full" />
+
+	<!-- Humanize -->
+	<label class="block col-span-full">
+		<div class="flex items-center justify-between">
+			<span class="block mb-2">Humanize · {Math.round(progressionPad.humanize * 100)}%</span>
+			<InfoTip
+				text="The pad's chords land a little early or late and a little louder or softer when it plays back, as a hand would, and the MIDI it saves carries the same. 0 is exact."
+			/>
+		</div>
+		<input
+			class="w-full accent-maximumYellow"
+			type="range"
+			min="0"
+			max="100"
+			step="5"
+			value={Math.round(progressionPad.humanize * 100)}
+			aria-label="Humanize in percent"
+			oninput={(e) => progressionPad.setHumanize(Number(e.currentTarget.value) / 100)}
+		/>
+	</label>
 
 	<hr class="border-current/30 mt-2 col-span-full" />
 

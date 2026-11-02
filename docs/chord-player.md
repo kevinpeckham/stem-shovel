@@ -429,6 +429,20 @@ older rows still read): the chart can name its key and opening a saved
 progression puts the player back in the key it was jotted in, so the
 wedges it lights are the ones that were pressed.
 
+## What shipped: humanize on the pad (2026-11-02)
+
+The Timing menu's **Humanize** slider (`pad.humanize`, 0 to 1 in steps of
+0.05, `stemshovel.chord-player.pad-humanize`, off by default: a setting
+that changes what plays is a mode, not a default). In `#schedule` each
+chord draws `utils/humanizeOffsets.ts` once, the Studio's amounts (±30 ms,
+±20 percent of velocity at full, which `utils/swingNotes.ts` now shares),
+and lands at `start + seconds`, never before the previous chord or the
+present, released by the same shift, through `chordPlayer.sound(by, entry,
+scale)`; the click stays on the grid, so the scatter is heard against it.
+`encodeChordMidi` takes `{ humanize, random }` and moves each chord's
+notes together by the same amounts in ticks and velocity, so the download
+matches what was heard (the second step of docs/barmark-integration-audit.md).
+
 ## Phases
 
 ### Phase 1: the instrument and its page (first release)

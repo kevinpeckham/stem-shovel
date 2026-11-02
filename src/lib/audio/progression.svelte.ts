@@ -10,6 +10,7 @@ import {
 	type ProgressionEntry,
 } from "#lib/utils/chordRhythm.js";
 import { encodeChordMidi } from "#lib/utils/encodeChordMidi.js";
+import { humanizeOffsets } from "#lib/utils/humanizeOffsets.js";
 import { progressionChart } from "#lib/utils/progressionChart.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
 import type { DemoProgression, DemoSetup } from "#lib/constants/demoProgressions.js";
@@ -60,6 +61,8 @@ class ProgressionPad {
 	loop = $state(false);
 	/** A click under playback: the metronome button's state as playback starts, toggled by the same button while it plays. */
 	click = $state(true);
+	/** Playback and the MIDI export scatter each chord a little, 0..1 (0 is exact). */
+	humanize = $state(0);
 	playing = $state(false);
 	/** The entry sounding, for the pad; -1 when stopped. */
 	playingIndex = $state(-1);
@@ -85,6 +88,8 @@ class ProgressionPad {
 	#timers: ReturnType<typeof setTimeout>[] = [];
 	#index = 0;
 	#nextTime = 0;
+	/** The last chord's humanized onset: the next never lands before it. */
+	#lastOnset = 0;
 	#clickTime = 0;
 	#clickBeat = 0;
 	/** The metronome was running when playback started: it comes back when the progression ends. */
@@ -98,6 +103,7 @@ class ProgressionPad {
 		this.jot = read("pad-jot") === "1";
 		this.loop = read("pad-loop") === "1";
 		this.click = read("pad-click") !== "0";
+		this.setHumanize(Number(read("pad-humanize")), false);
 		try {
 			const raw = read("progression");
 			if (raw) {
@@ -292,6 +298,13 @@ class ProgressionPad {
 		this.click = on;
 		write("pad-click", on ? "1" : "0");
 	}
+	/** How much playback and the MIDI export scatter each chord, 0..1 in steps of 0.05 (0 is exact). */
+	setHumanize(v: number, persist = true) {
+		// A value that is not a number (nothing stored, say) is exact.
+		const stepped = Number.isFinite(v) ? Math.round(Math.max(0, Math.min(1, v)) * 20) / 20 : 0;
+		this.humanize = Math.round(stepped * 100) / 100;
+		if (persist) write("pad-humanize", String(this.humanize));
+	}
 	select(index: number) {
 		this.selected = this.selected === index ? -1 : index;
 	}
@@ -390,6 +403,7 @@ class ProgressionPad {
 		this.#holds.clear();
 		this.#index = 0;
 		this.#nextTime = ctx.currentTime + 0.1;
+		this.#lastOnset = 0;
 		this.#clickTime = this.#nextTime;
 		this.#clickBeat = 0;
 		this.playing = true;
@@ -464,17 +478,35 @@ class ProgressionPad {
 			const start = this.#nextTime;
 			const length = entry.beats * beat;
 			this.#at(start, () => (this.playingIndex = i));
-			if (entry.kind === "chord") {
-				const by = `pad:${i}`;
-				this.#at(start, () => chordPlayer.sound(by, entry));
-				this.#at(start + Math.max(length - RELEASE_BEATS * beat, length / 2), () =>
-					chordPlayer.release(by),
-				);
-			}
+			if (entry.kind === "chord") this.#playChord(i, entry, start, length, beat);
 			this.#nextTime = start + length;
 			this.#index = i + 1;
 		}
 	};
+	/**
+	 * One chord of playback, let go a quarter beat before its end (at least half its length in).
+	 * Humanized, it lands a little off the grid and a little louder or softer (the
+	 * Studio's amounts), never before the last chord or the present; the click stays the grid.
+	 */
+	#playChord(
+		i: number,
+		entry: ProgressionEntry & { kind: "chord" },
+		start: number,
+		length: number,
+		beat: number,
+	) {
+		const by = `pad:${i}`;
+		const { seconds, velocity } = humanizeOffsets(this.humanize);
+		const onset =
+			this.humanize > 0
+				? Math.max(start + seconds, this.#lastOnset, this.#ctx!.currentTime + 0.005)
+				: start;
+		this.#lastOnset = onset;
+		this.#at(onset, () => chordPlayer.sound(by, entry, 1 + velocity));
+		this.#at(start + seconds + Math.max(length - RELEASE_BEATS * beat, length / 2), () =>
+			chordPlayer.release(by),
+		);
+	}
 	#remainingBeats(): number {
 		let n = 0;
 		for (let i = this.#index; i < this.entries.length; i++) n += this.entries[i].beats;
@@ -483,7 +515,9 @@ class ProgressionPad {
 
 	/** The progression as a Standard MIDI File, to save. */
 	midi(): Blob {
-		return encodeChordMidi(this.entries, metronome.bpm, metronome.beatsPerBar);
+		return encodeChordMidi(this.entries, metronome.bpm, metronome.beatsPerBar, 90, {
+			humanize: this.humanize,
+		});
 	}
 	/** The progression as a barmark chord chart, to save. */
 	chart(): string {

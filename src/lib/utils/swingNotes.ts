@@ -1,5 +1,6 @@
 import { barAt, secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
 import type { ClipNoteEvent } from "./clipNoteEvents";
+import { humanizeOffsets } from "./humanizeOffsets";
 
 /**
  * Swing and humanize for a MIDI track's notes (docs/dawn-daw-plan.md, D5),
@@ -9,7 +10,8 @@ import type { ClipNoteEvent } from "./clipNoteEvents";
  * the beat. A note within an eighth of the off-beat moves with it; the
  * on-beats stay. Humanize scatters every note a little in time (up to
  * `humanize` × 30 ms either way) and in velocity (up to ±`humanize` × 0.2),
- * from `random` (0..1), which a test pins.
+ * from `random` (0..1), which a test pins: `humanizeOffsets`, the amounts
+ * the progression pad shares.
  */
 export function swingNotes(
 	events: ClipNoteEvent[],
@@ -34,8 +36,9 @@ export function swingNotes(
 				if (Math.abs(into - off) < beat / 8) at = beatStart + off + (beat / 6) * swing;
 			}
 			if (humanize > 0) {
-				at += (random() * 2 - 1) * 0.03 * humanize;
-				velocity = Math.max(0.05, Math.min(1, velocity + (random() * 2 - 1) * 0.2 * humanize));
+				const scatter = humanizeOffsets(humanize, random);
+				at += scatter.seconds;
+				velocity = Math.max(0.05, Math.min(1, velocity + scatter.velocity));
 			}
 			return { ...e, at: Math.max(0, at), velocity };
 		})

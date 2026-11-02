@@ -61,7 +61,7 @@ On a wide screen the device and the notes each pop out into a panel of their own
 
 ## The Timing menu
 
-The Metronome button (the tempo alone, bpm implied) starts and stops the click; the small arrow beside it opens the Timing menu: the tempo in beats per minute, by the slider, the steps, the number or **Tap** (tap the button in time and it takes your tempo); the beats to the bar, two to six, which is how the pad groups its bars; and **Click**, a metronome at that tempo to play along to while you jot, the same click the pad's playback keeps under it. The tempo and meter are the metronome's, the same ones the Metronome page and the looper show.
+The Metronome button (the tempo alone, bpm implied) starts and stops the click; the small arrow beside it opens the Timing menu: the tempo in beats per minute, by the slider, the steps, the number or **Tap** (tap the button in time and it takes your tempo); the beats to the bar, two to six, which is how the pad groups its bars; **Humanize**, which makes the pad's chords land a little early or late and a little louder or softer when it plays back, as a hand would (0 is exact, and the MIDI it downloads carries the same feel); and **Click**, a metronome at that tempo to play along to while you jot, the same click the pad's playback keeps under it. The tempo and meter are the metronome's, the same ones the Metronome page and the looper show.
 
 ## Playing on the computer keyboard
 

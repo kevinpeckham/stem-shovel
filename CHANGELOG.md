@@ -12,6 +12,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **Download a progression as a barmark chord chart.** The chord player pad's MIDI button is a Download menu: MIDI file, as before, or Barmark chord chart, a `.chart.md` with the key, meter and tempo (`feel: swing` when the session swing is 0.5 or more), the pad's name as its section and the chords bar by bar, one slot a beat with `/` holds and `N.C.` for a rest, in barmark's canonical form (`utils/progressionChart.ts`, `printChart`). A saved progression now carries its key (`ProgressionDataSchema.key`, the circle index, optional), and opening one puts the player back in that key. The first step of docs/barmark-integration-audit.md.
 
+- **Humanize on the progression pad.** A Humanize slider in the chord player's Timing menu scatters each chord's onset and loudness a little when the pad plays back (the Studio's amounts, `utils/humanizeOffsets.ts`: up to 30 ms and 20 percent at full), so a progression feels played rather than sequenced; the MIDI download carries the same scatter. Off by default, remembered by this browser.
+
 ## [0.210.0] - 2026-11-02
 
 ### Changed
