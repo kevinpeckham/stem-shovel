@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.211.0] - 2026-11-02
+
 ### Added
 
 - **Download a progression as a barmark chord chart.** The chord player pad's MIDI button is a Download menu: MIDI file, as before, or Barmark chord chart, a `.chart.md` with the key, meter and tempo (`feel: swing` when the session swing is 0.5 or more), the pad's name as its section and the chords bar by bar, one slot a beat with `/` holds and `N.C.` for a rest, in barmark's canonical form (`utils/progressionChart.ts`, `printChart`). A saved progression now carries its key (`ProgressionDataSchema.key`, the circle index, optional), and opening one puts the player back in that key. The first step of docs/barmark-integration-audit.md.
