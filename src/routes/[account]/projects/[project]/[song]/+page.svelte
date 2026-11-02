@@ -1421,6 +1421,19 @@
 								>
 							{/each}
 						</div>
+						{#if docs.chartMode === "text"}
+							<!-- How the Chords view spells chords: a syntax choice within chords, so a menu on the view (Kevin). -->
+							<div class="pointer-events-auto rounded shadow-md shadow-black/40">
+								<ContextMenu
+									ariaLabel="Chord spelling: {docs.chordDialectShort}"
+									title="Chord spelling"
+									buttonBaseClasses="button button-xs gap-1 border-white/15 bg-oxford/95 opacity-80 hover-opacity-100"
+									iconClass="i-ph-list-numbers"
+									label={docs.chordDialectShort}
+									items={docs.chordDialectItems}
+								/>
+							</div>
+						{/if}
 					{/if}
 				</div>
 			{/if}
@@ -1471,6 +1484,7 @@
 						mono={docs.mono[docs.doc]}
 						above={docs.panel === "chart" ? draftInPanel : undefined}
 						chartDefaults={chartDefaults(data.song.changes)}
+						numerals={docs.numerals}
 					/>
 				{/key}
 			{/if}

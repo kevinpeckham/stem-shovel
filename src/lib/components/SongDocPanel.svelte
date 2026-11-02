@@ -40,6 +40,8 @@
 		onlocalsave?: (markdown: string) => Promise<void> | void;
 		/** The song's tempo and meter at 0:00 (`chartDefaults`): given for the chart, a readout of what the chart parser reads shows under it. */
 		chartDefaults?: { tempo: number | null; meter: string | null };
+		/** The chart's spelling (the Chords view's menu): Nashville or Roman numerals, or null for chord names. */
+		numerals?: "nashville" | "roman" | null;
 	}
 
 	let {
@@ -57,6 +59,7 @@
 		mono = false,
 		onlocalsave,
 		chartDefaults,
+		numerals = null,
 	}: Props = $props();
 
 	const fields = saveDoc.fields;
@@ -153,7 +156,7 @@
 {#snippet chartPreview()}
 	{#if kind === "chart"}
 		<div class="mt-6 border-t border-current/20 pt-6">
-			<ChartPreview text={editor?.markdownCurrent ?? markdown} label="Chart preview" />
+			<ChartPreview text={editor?.markdownCurrent ?? markdown} label="Chart preview" {numerals} />
 		</div>
 	{/if}
 {/snippet}
@@ -232,7 +235,7 @@
 		>
 			{@render above?.()}
 			{#if kind === "chart"}
-				<ChartHtml {html} />
+				<ChartHtml {html} {markdown} {numerals} />
 			{:else}
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
 				{@html html}

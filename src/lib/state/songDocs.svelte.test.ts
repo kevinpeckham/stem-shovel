@@ -115,6 +115,37 @@ describe("SongDocs", () => {
 		expect(ids(d.menuItems)).toEqual(["mono", "history"]);
 	});
 
+	test("setChordDialect spells chords as names, Nashville or Roman, and is remembered", () => {
+		const store = stubStorage();
+		const { d } = setup();
+		expect(d.chordDialect).toBe("names");
+		expect(d.numerals).toBeNull();
+		d.setChordDialect("roman");
+		expect(d.numerals).toBe("roman");
+		expect(store.get("stemshovel.song.chord-dialect")).toBe("roman");
+		const again = setup().d;
+		again.load();
+		expect(again.chordDialect).toBe("roman");
+		expect(d.chordDialectShort).toBe("Roman");
+		expect(ids(d.chordDialectItems)).toEqual(["names", "nashville", "roman"]);
+		expect(d.chordDialectItems.map((i: { iconClass?: string | null }) => i.iconClass)).toEqual([
+			"i-ph-check invisible",
+			"i-ph-check invisible",
+			"i-ph-check",
+		]);
+		run(d.chordDialectItems, "nashville");
+		expect(d.numerals).toBe("nashville");
+		expect(d.chordDialectShort).toBe("Nashville");
+	});
+
+	test("load ignores a remembered chord spelling it does not know", () => {
+		const store = stubStorage();
+		store.set("stemshovel.song.chord-dialect", "solfege");
+		const { d } = setup();
+		d.load();
+		expect(d.chordDialect).toBe("names");
+	});
+
 	test("setChartMode switches between text and notation, and the notation menu offers its upload", async () => {
 		const store = stubStorage();
 		const { d } = setup();

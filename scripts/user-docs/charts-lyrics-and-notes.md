@@ -11,7 +11,7 @@ Lyrics and notes have two views of the same document:
 
 While you edit lyrics or notes on the song page, the Rich Text / Markdown switch sits at the top right of the Docs panel. Switching views never loses anything. **Undo** and **Redo** work across both, and so do the usual shortcuts.
 
-The chart is plain text only: it is written in [barmark](https://www.barmark.dev), and you edit the text itself, with the drawn chart updating below it as you type. The Chart tab's **Chords** / **Engraving** switch moves between the chord chart and the engraved score (MusicXML and its PDF).
+The chart is plain text only: it is written in [barmark](https://www.barmark.dev), and you edit the text itself, with the drawn chart updating below it as you type. The Chart tab's **Chords** / **Engraving** switch moves between the chord chart and the engraved score (MusicXML and its PDF). On the Chords view, the small menu beside the switch picks how chords are spelled: **Chord names** (D, Bm7), **Nashville numbers** (1, 6m⁷) or **Roman numerals** (I, vi⁷), each chord counted from the key its bar is in, so a key change renumbers from there. The choice is remembered in your browser and changes nothing in the chart itself.
 
 ## Saving
 

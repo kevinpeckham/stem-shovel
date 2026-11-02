@@ -5,7 +5,8 @@
 	 * A live barmark preview of chart text, for the editor (barmark.dev's
 	 * ChartRender.svelte): a `<barmark-chart>` drawn the way the saved chart
 	 * is (`renderChartHtml`: dark, rehearsal letters, the `barmark-look`
-	 * palette), fed through the element's `text` property. The element module
+	 * palette), fed through the element's `text` property and spelled with
+	 * `numerals` when the Chords view asks for numbers. The element module
 	 * is browser-only, so it loads on mount. Up to LONG characters it redraws
 	 * on every change; above that it waits until typing pauses; above MAX it
 	 * stops previewing and says so.
@@ -13,14 +14,16 @@
 	interface Props {
 		text: string;
 		label?: string;
+		/** The Chords view's spelling: each chord as its degree, or null for chord names. */
+		numerals?: "nashville" | "roman" | null;
 	}
-	let { text, label }: Props = $props();
+	let { text, label, numerals = null }: Props = $props();
 
 	const LONG = 10_000;
 	const MAX = 50_000;
 	const PAUSE = 250;
 
-	type ChartElement = HTMLElement & { text: string | null };
+	type ChartElement = HTMLElement & { text: string | null; numerals: string | null };
 	let chart = $state<ChartElement>();
 	let ready = $state(false);
 	const tooLong = $derived(text.length > MAX);
@@ -40,6 +43,8 @@
 		const next = text;
 		if (!ready || !chart || next.length > MAX) return;
 		const element = chart;
+		// Set in the same task as the text, so the element draws once.
+		element.numerals = numerals ?? null;
 		// A long chart's first drawing is immediate; later ones wait for a pause.
 		if (next.length <= LONG || element.text === null || element.text === undefined) {
 			element.text = next;

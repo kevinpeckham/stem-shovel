@@ -139,7 +139,13 @@ step so it shrinks with the page and still fails on anything new.
      with content, lyrics first), the docked/floating/minimized mode,
      the editor and notation instances bound onto it, `editing`, `view`,
      `mono` with the remembered preference, the chart's Chords/Engraving
-     mode (`ChartMode`, stored as `text` | `notation`), the Notes tab's Project/Mine choice, the ⋯ `menuItems`, the
+     mode (`ChartMode`, stored as `text` | `notation`), the Chords view's
+     chord spelling (`ChordDialect`: names, nashville or roman, stored as
+     `stemshovel.song.chord-dialect`; a small menu beside the toggle, and
+     `numerals` hands it to `ChartHtml`, which then feeds the element its
+     text so the renderer redraws client-side, since a server-rendered
+     chart only restyles on an attribute change; Kevin, 2026-11-02: a
+     syntax choice within Chords, not a third mode), the Notes tab's Project/Mine choice, the ⋯ `menuItems`, the
      notation picker and upload, `showRead`; `DOC_KINDS`, `DOC_LABELS`,
      `DOC_HINTS`, `DOC_VIEWS` exported from it. The player's view switch
      (`showView`), the history panel and the URL openers stay on the

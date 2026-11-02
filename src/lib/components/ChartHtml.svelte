@@ -11,23 +11,51 @@
 	 * chart is parsed again with setHTMLUnsafe unless it has its shadow root
 	 * already (the page's own HTML, parsed by the browser). `{#key}` remounts
 	 * on new HTML, so that re-parse never fights the block's own update.
+	 *
+	 * With `numerals` (the Chords view's Nashville or Roman spelling) the
+	 * element module loads and the chart is handed its `markdown` as `text`:
+	 * a server-drawn chart has no text of its own, so a `numerals` attribute
+	 * alone would only restyle it. Back to null after that, the element
+	 * redraws from the same text with chord names. Never set, nothing loads
+	 * and the server's HTML stays as it is.
 	 */
 	interface Props {
 		html: string;
+		/** The chart text, which the element redraws from when spelled as numerals. */
+		markdown?: string;
+		numerals?: "nashville" | "roman" | null;
 	}
-	let { html }: Props = $props();
+	let { html, markdown, numerals = null }: Props = $props();
 
-	const adoptShadow = (html: string) => (node: HTMLElement) => {
-		void tick().then(() => {
+	type ChartElement = HTMLElement & { text: string | null; numerals: string | null };
+	/** The element has been given text, so a return to names must be drawn too. */
+	let drawn = false;
+
+	const draw = (html: string) => (node: HTMLElement) => {
+		const dialect = numerals;
+		const text = markdown ?? "";
+		let live = true;
+		void tick().then(async () => {
 			const chart = node.querySelector("barmark-chart");
 			if (chart && !chart.shadowRoot && "setHTMLUnsafe" in node) node.setHTMLUnsafe(html);
+			if (!dialect && !drawn) return;
+			await import("@barmark/render/element");
+			// Queried again: the re-parse above replaced the element.
+			const element = node.querySelector<ChartElement>("barmark-chart");
+			if (!live || !element) return;
+			element.numerals = dialect;
+			element.text = text;
+			drawn = true;
 		});
+		return () => {
+			live = false;
+		};
 	};
 </script>
 
 {#key html}
 	<!-- barmark.dev's chart look (uno.config.ts): the renderer's palette reads these custom properties from its host. -->
-	<div class="barmark-look min-w-0" {@attach adoptShadow(html)}>
+	<div class="barmark-look min-w-0" {@attach draw(html)}>
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -- renderChartHtml escapes what it draws; renderMarkdown is sanitized -->
 		{@html html}
 	</div>

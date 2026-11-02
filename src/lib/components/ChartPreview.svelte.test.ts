@@ -7,7 +7,7 @@ import { describe, expect, test, vi } from "vite-plus/test";
 vi.mock("@barmark/render/element", () => ({}));
 const { default: ChartPreview } = await import("./ChartPreview.svelte");
 
-type ChartElement = HTMLElement & { text?: string | null };
+type ChartElement = HTMLElement & { text?: string | null; numerals?: string | null };
 const chartOf = (container: HTMLElement) =>
 	container.querySelector("barmark-chart") as ChartElement | null;
 
@@ -35,6 +35,16 @@ describe("ChartPreview", () => {
 		await rerender({ text: "| D | A |" });
 		await tick();
 		expect(chartOf(container)?.text).toBe("| D | A |");
+	});
+
+	test("spells the chords with the numerals asked for, and back to names with null", async () => {
+		const { container, rerender } = render(ChartPreview, { text: "| D |", numerals: "nashville" });
+		await settle();
+		expect(chartOf(container)?.numerals).toBe("nashville");
+		expect(chartOf(container)?.text).toBe("| D |");
+		await rerender({ numerals: null });
+		await tick();
+		expect(chartOf(container)?.numerals).toBeNull();
 	});
 
 	test("a long chart draws at once, then waits for typing to pause", async () => {
