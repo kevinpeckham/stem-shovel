@@ -20,7 +20,7 @@
         "@vercel/blob": "2.8.2",
         "@vercel/speed-insights": "^2.0.0",
         "ai": "^7.0.154",
-        "barmark": "0.7.0",
+        "barmark": "0.8.0",
         "better-auth": "^1.7.14",
         "client-zip": "^2.5.1",
         "drizzle-orm": "0.45.4",
@@ -976,7 +976,7 @@
 
     "balanced-match": ["balanced-match@4.0.4", "", {}, "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA=="],
 
-    "barmark": ["barmark@0.7.0", "", {}, "sha512-bdACOfy6oQnsx8XvLzTY/9Ty3B/ZZa6DViOQnUtrALZf8hl3sJL1wOrBKs8PGC+P0K1bLIVx2/lqFxwtmMd0Lw=="],
+    "barmark": ["barmark@0.8.0", "", {}, "sha512-hDuPewJZCvE/XPo20P88YiOZ0zmXLA3UKjqMSVp9NEYt49S2NPOMQ6gaahFfMZb9BmRXLjxecgyWZdMFvLkHUQ=="],
 
     "base64-js": ["base64-js@0.0.8", "", {}, "sha512-3XSA2cR/h/73EzlXXdU6YNycmYI7+kicTxks4eJg2g39biHR84slg2+des+p7iHYhbRg/udIS4TD53WabcOUkw=="],
 
@@ -1655,6 +1655,8 @@
     "@ai-sdk/provider-utils/undici": ["undici@7.30.1", "", {}, "sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg=="],
 
     "@babel/code-frame/js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
+
+    "@barmark/render/barmark": ["barmark@0.7.0", "", {}, "sha512-bdACOfy6oQnsx8XvLzTY/9Ty3B/ZZa6DViOQnUtrALZf8hl3sJL1wOrBKs8PGC+P0K1bLIVx2/lqFxwtmMd0Lw=="],
 
     "@esbuild-kit/core-utils/esbuild": ["esbuild@0.18.20", "", { "optionalDependencies": { "@esbuild/android-arm": "0.18.20", "@esbuild/android-arm64": "0.18.20", "@esbuild/android-x64": "0.18.20", "@esbuild/darwin-arm64": "0.18.20", "@esbuild/darwin-x64": "0.18.20", "@esbuild/freebsd-arm64": "0.18.20", "@esbuild/freebsd-x64": "0.18.20", "@esbuild/linux-arm": "0.18.20", "@esbuild/linux-arm64": "0.18.20", "@esbuild/linux-ia32": "0.18.20", "@esbuild/linux-loong64": "0.18.20", "@esbuild/linux-mips64el": "0.18.20", "@esbuild/linux-ppc64": "0.18.20", "@esbuild/linux-riscv64": "0.18.20", "@esbuild/linux-s390x": "0.18.20", "@esbuild/linux-x64": "0.18.20", "@esbuild/netbsd-x64": "0.18.20", "@esbuild/openbsd-x64": "0.18.20", "@esbuild/sunos-x64": "0.18.20", "@esbuild/win32-arm64": "0.18.20", "@esbuild/win32-ia32": "0.18.20", "@esbuild/win32-x64": "0.18.20" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-ceqxoedUrcayh7Y7ZX6NdbbDzGROiyVBgC4PriJThBKSVPWnnFHZAkfI1lJT8QFkOwH4qOS2SJkS4wvpGl8BpA=="],
 

@@ -50,7 +50,7 @@ function directiveLine(opts: {
 function barLines(entries: ProgressionEntry[], beatsPerBar: number): string[] {
 	const slots: string[] = [];
 	for (const e of entries) {
-		slots.push(e.kind === "chord" ? chartLabel(e.label) : "N.C.");
+		slots.push(e.kind === "chord" ? e.label : "N.C.");
 		for (let b = 1; b < e.beats; b++) slots.push("/");
 	}
 	while (slots.length % beatsPerBar !== 0) slots.push("/");
@@ -61,9 +61,4 @@ function barLines(entries: ProgressionEntry[], beatsPerBar: number): string[] {
 	for (let i = 0; i < bars.length; i += BARS_PER_LINE)
 		lines.push(`| ${bars.slice(i, i + BARS_PER_LINE).join(" | ")} |`);
 	return lines;
-}
-
-/** The chord player's label in barmark's spelling: barmark reads `add9` but not `(add9)` (a parenthesis takes the tone alone). */
-function chartLabel(label: string): string {
-	return label.replace(/\(add(\d+)\)/g, "add$1");
 }

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **barmark 0.8.0.** `(addN)` reads inside parentheses, so the chord chart export no longer rewrites the player's `Am(add9)` labels; an empty heading's error now says how to fix it; the grammar carries the notes from issues 64 to 66.
+
 ## [0.213.0] - 2026-11-02
 
 ### Added
