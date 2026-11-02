@@ -25,6 +25,18 @@ afterEach(() => {
 });
 
 describe("ChartHtml", () => {
+	test("paper sets the wrapper's --barmark-paper, which the renderer reads for its background; unset by default", async () => {
+		const { container, rerender } = render(ChartHtml, { html: CHART, paper: "transparent" });
+		await tick();
+		const wrapper = container.querySelector("barmark-chart")?.parentElement as HTMLElement;
+		expect(wrapper.classList.contains("barmark-look")).toBe(true);
+		expect(wrapper.style.getPropertyValue("--barmark-paper")).toBe("transparent");
+		await rerender({ html: CHART, paper: null });
+		await tick();
+		const plain = container.querySelector("barmark-chart")?.parentElement as HTMLElement;
+		expect(plain.style.getPropertyValue("--barmark-paper")).toBe("");
+	});
+
 	test("a chart inserted from script has no shadow root: it is parsed again with setHTMLUnsafe", async () => {
 		const setHTMLUnsafe = vi.fn();
 		Object.defineProperty(HTMLElement.prototype, "setHTMLUnsafe", {

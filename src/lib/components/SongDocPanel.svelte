@@ -42,6 +42,8 @@
 		chartDefaults?: { tempo: number | null; meter: string | null };
 		/** The chart's spelling (the Chords view's menu): Nashville or Roman numerals, or null for chord names. */
 		numerals?: "nashville" | "roman" | null;
+		/** The chart's background in place of the look's paper: the home page's demo draws it transparent on its own panel. */
+		chartPaper?: string | null;
 	}
 
 	let {
@@ -60,6 +62,7 @@
 		onlocalsave,
 		chartDefaults,
 		numerals = null,
+		chartPaper = null,
 	}: Props = $props();
 
 	const fields = saveDoc.fields;
@@ -156,7 +159,12 @@
 {#snippet chartPreview()}
 	{#if kind === "chart"}
 		<div class="mt-6 border-t border-current/20 pt-6">
-			<ChartPreview text={editor?.markdownCurrent ?? markdown} label="Chart preview" {numerals} />
+			<ChartPreview
+				text={editor?.markdownCurrent ?? markdown}
+				label="Chart preview"
+				{numerals}
+				paper={chartPaper}
+			/>
 		</div>
 	{/if}
 {/snippet}
@@ -235,7 +243,7 @@
 		>
 			{@render above?.()}
 			{#if kind === "chart"}
-				<ChartHtml {html} {markdown} {numerals} />
+				<ChartHtml {html} {markdown} {numerals} paper={chartPaper} />
 			{:else}
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
 				{@html html}

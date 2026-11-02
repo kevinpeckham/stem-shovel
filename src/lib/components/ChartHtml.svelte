@@ -24,8 +24,10 @@
 		/** The chart text, which the element redraws from when spelled as numerals. */
 		markdown?: string;
 		numerals?: "nashville" | "roman" | null;
+		/** The chart's background in place of the look's translucent paper (`--barmark-paper`): "transparent" on the home page's demo. */
+		paper?: string | null;
 	}
-	let { html, markdown, numerals = null }: Props = $props();
+	let { html, markdown, numerals = null, paper = null }: Props = $props();
 
 	type ChartElement = HTMLElement & { text: string | null; numerals: string | null };
 	/** The element has been given text, so a return to names must be drawn too. */
@@ -55,7 +57,7 @@
 
 {#key html}
 	<!-- barmark.dev's chart look (uno.config.ts): the renderer's palette reads these custom properties from its host. -->
-	<div class="barmark-look min-w-0" {@attach draw(html)}>
+	<div class="barmark-look min-w-0" style:--barmark-paper={paper} {@attach draw(html)}>
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -- renderChartHtml escapes what it draws; renderMarkdown is sanitized -->
 		{@html html}
 	</div>

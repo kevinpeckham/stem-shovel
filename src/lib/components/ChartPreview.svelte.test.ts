@@ -28,6 +28,15 @@ describe("ChartPreview", () => {
 		expect(screen.getByRole("region", { name: "Preview" })).toBe(wrapper);
 	});
 
+	test("paper sets the wrapper's --barmark-paper for the renderer's background; unset by default", async () => {
+		const { container, rerender } = render(ChartPreview, { text: "| D |", paper: "transparent" });
+		const wrapper = chartOf(container)?.parentElement as HTMLElement;
+		expect(wrapper.style.getPropertyValue("--barmark-paper")).toBe("transparent");
+		await rerender({ paper: null });
+		await tick();
+		expect(wrapper.style.getPropertyValue("--barmark-paper")).toBe("");
+	});
+
 	test("hands the text to the element once it has loaded, and again on every change", async () => {
 		const { container, rerender } = render(ChartPreview, { text: "| D |" });
 		await settle();

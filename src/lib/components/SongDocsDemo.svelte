@@ -110,6 +110,7 @@
 				onlocalsave={(md) => keepLocal(doc, md)}
 				chartDefaults={DEMO_CHART_DEFAULTS}
 				numerals={spelling.numerals}
+				chartPaper="transparent"
 			/>
 		{/key}
 	{/if}

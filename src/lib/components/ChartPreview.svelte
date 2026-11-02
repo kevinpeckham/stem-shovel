@@ -16,8 +16,10 @@
 		label?: string;
 		/** The Chords view's spelling: each chord as its degree, or null for chord names. */
 		numerals?: "nashville" | "roman" | null;
+		/** The chart's background in place of the look's translucent paper (`--barmark-paper`). */
+		paper?: string | null;
 	}
-	let { text, label, numerals = null }: Props = $props();
+	let { text, label, numerals = null, paper = null }: Props = $props();
 
 	const LONG = 10_000;
 	const MAX = 50_000;
@@ -55,7 +57,12 @@
 	});
 </script>
 
-<div class="barmark-look min-w-0" role={label ? "region" : undefined} aria-label={label}>
+<div
+	class="barmark-look min-w-0"
+	style:--barmark-paper={paper}
+	role={label ? "region" : undefined}
+	aria-label={label}
+>
 	{#if tooLong}
 		<p role="status" class="p-4 text-sm">
 			This chart is too long to preview ({text.length.toLocaleString("en-US")} characters; the preview

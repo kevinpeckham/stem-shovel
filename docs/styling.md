@@ -25,7 +25,10 @@ Rules:
   `uno.config.ts` carries the look Kevin chose on barmark.dev (2026-11-01:
   15.5px chords, white ink, translucent paper, Noto Serif for lyrics and
   note lines, Noto Sans for labels), on `ChartHtml`'s wrapper and the
-  editor's live `ChartPreview`. Its font, Edwin, is registered once on the
+  editor's live `ChartPreview`; both take a `paper` prop that sets
+  `--barmark-paper` inline on that wrapper, over the shortcut's paper
+  (`SongDocPanel`'s `chartPaper`: the home page's demo draws its chart
+  transparent on its own panel). Its font, Edwin, is registered once on the
   document by the `<style data-barmark-font>` in `src/app.html`
   (`static/fonts/barmark`, SIL Open Font License; a test keeps the rule
   and the file in step with the package), because a browser ignores an
