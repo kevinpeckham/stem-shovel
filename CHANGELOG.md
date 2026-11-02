@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.214.0] - 2026-11-02
+
 ### Added
 
 - **A chart on ideas.** The Idea Recorder's notes panel is now Notes | Chart: the Chart tab holds a barmark chord chart for the idea, drawn live under the editor and saved as you type (`idea.chart`, migration 0111). A Studio song has the same tab when signed in, and its chart prefills Sections from a chart. Making a song from a take with the notes merged also carries the chart when the song has none.
