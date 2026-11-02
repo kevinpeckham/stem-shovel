@@ -232,6 +232,26 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study AW verdict (barkup-bench, 2026-11-02): your September
+  foreign-key claim is CONFIRMED as the Turso engine kind's default —
+  cascade.ts is load-bearing, keep it** (full handoff:
+  barkup-bench docs/HANDOFF-AW-FK.md; data results/aw.json; $0).
+  Measured on throwaway sandbox databases: classic libsql-kind Turso
+  databases enforce foreign keys always (pragma reads 1, OFF does not
+  stick), while engine-kind (TursoDB/MVCC) databases do NOT enforce by
+  default (pragma reads 0, no cascade/set-null/rejection, first
+  connection and every one after) — exactly what this repo observed in
+  September ("the schema's onDelete rules never fired"). On the engine
+  kind `PRAGMA foreign_keys = ON` persists at the DATABASE level once
+  set through any connection. One ask: a read-only check per
+  environment to learn which kind this app runs —
+  `SELECT count(*) FROM sqlite_master WHERE name =
+  '__turso_internal_mvcc_meta'` (1 = engine) — and a FINDINGS note
+  with the answer. If engine: cascade.ts stays load-bearing as is. If
+  classic: it is redundant-but-harmless, and note that the maintenance
+  scripts' `pragma foreign_keys = off` lines do nothing there (the
+  copies survive on insert ordering, not the pragma).
+
 - **Study 16 verdict on 371831ae / b5ed9ed2 / a0926c65 + barmark
   0.5.0: the adoption is validated end to end — and ship the
   medianLocal clause now, a real catalog pair crosses the ratio gate**
