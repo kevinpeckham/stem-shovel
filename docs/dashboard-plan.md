@@ -87,7 +87,8 @@ yet). The sidebar holds **Latest** (what is new for you), then the **Tools**,
 `marketing-section-heading`, lists in `constants/dashboardLinks.ts`;
 Session Recorder needs the current account's slug,
 `utils/dashboardTools.ts`; More opens with the inbox, the current
-account's settings (`utils/dashboardMore.ts`), the notification settings
+account's settings (`utils/dashboardMore.ts`), Create new account
+(`/accounts?new=1`, Kevin 2026-11-02), the notification settings
 and the short links; "Report a bug" opens the
 footer's form, "Share Stem Shovel" uses the share sheet or copies the
 address, `utils/shareSite.ts`). Quick actions are gone; the start card

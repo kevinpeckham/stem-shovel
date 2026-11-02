@@ -39,9 +39,10 @@ export const DASHBOARD_INSTRUMENTS: DashboardLink[] = [
 	{ label: "Palette", href: "/chord-player" },
 ];
 
-/** The sidebar's More: the person's own pages (the inbox, the notification settings, their short links; the current account's settings join after the inbox through `dashboardMore`), then the footer's links, the bug report and sharing the site. */
+/** The sidebar's More: the person's own pages (the inbox, a new account, the notification settings, their short links; the current account's settings join after the inbox through `dashboardMore`), then the footer's links, the bug report and sharing the site. */
 export const DASHBOARD_MORE: (DashboardLink | DashboardAction)[] = [
 	{ label: "Inbox", href: "/inbox" },
+	{ label: "Create new account", href: "/accounts?new=1" },
 	{ label: "Notifications", href: "/settings/notifications" },
 	{ label: "Links", href: "/settings/links" },
 	{ label: "Docs", href: "/docs" },

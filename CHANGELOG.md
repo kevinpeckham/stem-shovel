@@ -18,6 +18,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Set list show view: spelling and key.** A chart opened in a set list's show view has the same two menus, so a singer taped to the floor gets the song in their key and their spelling.
 - **Charts zip: canonical `.chart.md`.** Download All Charts writes each chart as `<song>.chart.md` in barmark's canonical form (`printChart`) rather than `<song>-chart.txt`.
 
+- **Create new account from the dashboard.** The dashboard's More section links to Create new account (the accounts page with its New account panel open), after the current account's settings.
+
 ## [0.210.0] - 2026-11-02
 
 ### Changed

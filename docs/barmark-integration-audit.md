@@ -182,7 +182,11 @@ instrument. Only if Kevin wants it.
 
 Kevin asked for recommendations; the grammar draft (barmark
 docs/grammar-v0.1-draft.md, sections 2.1, 2.3, 7.1 and 8) already decides
-two of them, so these are readings of it plus one request.
+two of them, so these are readings of it plus one request. Kevin agreed
+with all three (2026-11-02); filed on barmark as issues #64 (generators,
+section 8), #65 (`N.C.`, section 2.3) and #66 (`feel:` a kind, section
+7.1), with #62 (`(addN)` rejected) and #63 (an empty heading reads as a
+replay) for the two parser findings.
 
 1. **Durations within a bar.** A generator writes one slot per beat (the
    bar divided equally, `/` for a beat the chord holds through) and hands
