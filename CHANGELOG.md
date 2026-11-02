@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **A chart must also match bar by bar to count as this recording.** "Place from chart" and the song-check's aligned placements called a chart this recording when it fit the recording 1.6 times better than its tritone control. stem-bench Study 16 found a real wrong pairing, the Eat All the Clocks recording against the Mop Heart chart, that clears that ratio at 1.74 and is told apart only by its bars' median local cost, 0.323; so `samePiece` now also requires that median within 0.30 (`ALIGNMENT_SAME_PIECE_LOCAL_COST`), as Study 15 proposed. The band's correct charts sit well under it; a chart that fails is hedged everywhere and says it does not seem to match, as before.
+
 ### Technical
 
 - **barmark 0.6.0 and @barmark/render 0.4.0.** No grammar change: every chart reads as before. The renderer puts a little air between bar rows (0.35 of the chord size), so one row's bar lines no longer run into the next's, and can draw chords as Nashville numbers or Roman numerals (`numerals="nashville" | "roman"`, not yet exposed in the app); barmark gains `transposeChart` (a chart in another key, as canonical text) and `degreeOf` (a root's scale degree in a key), neither used by the app yet.

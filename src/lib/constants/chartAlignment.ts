@@ -7,11 +7,21 @@
  * synthetic renders (ratios of 24 to 49), where the chart and the audio
  * are the same pads; real playing is never that close, and at 3 every
  * correct chart read as "not this recording". The caveat: two songs of
- * one band, two charts a class. The bench found each bar's local cost
- * (its median) separates the classes further; a check on it is the next
- * refinement.
+ * one band, two charts a class. The ratio alone is not enough: see
+ * `ALIGNMENT_SAME_PIECE_LOCAL_COST`.
  */
 export const ALIGNMENT_SAME_PIECE_RATIO = 1.6;
+
+/**
+ * The most the median of the path's per-bar local cost may be for the
+ * chart to count as this recording; both this and the ratio must hold
+ * (utils/alignedPlacements.ts). stem-bench Study 15 proposed it and
+ * Study 16 (2026-11-01) made it necessary: one real wrong pairing, the
+ * Eat All the Clocks recording against the Mop Heart chart, scores a
+ * ratio of 1.74, over the 1.6 gate, and only its median local cost of
+ * 0.323 tells it apart; the band's correct charts sit well under 0.30.
+ */
+export const ALIGNMENT_SAME_PIECE_LOCAL_COST = 0.3;
 
 /**
  * The share of the recording's loudest window's RMS that counts as

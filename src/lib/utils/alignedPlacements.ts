@@ -1,4 +1,7 @@
-import { ALIGNMENT_SAME_PIECE_RATIO } from "#lib/constants/chartAlignment.js";
+import {
+	ALIGNMENT_SAME_PIECE_LOCAL_COST,
+	ALIGNMENT_SAME_PIECE_RATIO,
+} from "#lib/constants/chartAlignment.js";
 import type { Alignment } from "#lib/audio/chartAlignment.js";
 import { chartBarSeconds } from "./chartBarSeconds.js";
 import type { ChartBar } from "./chartBars.js";
@@ -11,8 +14,11 @@ import type { ChartBar } from "./chartBars.js";
  * method weak or the alignment says so: the first and last sections (the
  * chart stops describing the intro and the outro's tail), a bar whose
  * local cost is more than twice the median (the chart stopped matching
- * there), and everything when the chart does not fit this recording
- * better than its tritone control by `ALIGNMENT_SAME_PIECE_RATIO`.
+ * there), and everything when the chart is not this recording: it must
+ * fit better than its tritone control by `ALIGNMENT_SAME_PIECE_RATIO`
+ * AND the median of its bars' local cost must be within
+ * `ALIGNMENT_SAME_PIECE_LOCAL_COST` (stem-bench Study 16: a wrong
+ * pairing can clear the ratio alone).
  *
  * When the chart is this recording, the two weak edges are anchored to the
  * recording's sound instead of the path (stem-bench Study 14): a first
@@ -79,8 +85,10 @@ function sectionsOf(
 
 export function alignedPlacements(bars: ChartBar[], alignment: Alignment): AlignedPlacements {
 	const ratio = alignment.controlCost / Math.max(alignment.cost, COST_FLOOR);
-	const samePiece = ratio >= ALIGNMENT_SAME_PIECE_RATIO;
-	const limit = 2 * median(alignment.localCost);
+	const localMedian = alignment.localCost.length > 0 ? median(alignment.localCost) : 0;
+	const samePiece =
+		ratio >= ALIGNMENT_SAME_PIECE_RATIO && localMedian <= ALIGNMENT_SAME_PIECE_LOCAL_COST;
+	const limit = 2 * localMedian;
 	const at = (i: number) => Math.max(0, alignment.barStarts[i] ?? 0);
 	const hedge = (i: number) => !samePiece || (alignment.localCost[i] ?? 0) > limit;
 	const changed = bars.flatMap((b, i) => (i > 0 ? [{ b, i, prev: bars[i - 1]! }] : []));

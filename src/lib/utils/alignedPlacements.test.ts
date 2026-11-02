@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 import type { Alignment } from "#lib/audio/chartAlignment.js";
-import { ALIGNMENT_SAME_PIECE_RATIO } from "#lib/constants/chartAlignment.js";
+import {
+	ALIGNMENT_SAME_PIECE_LOCAL_COST,
+	ALIGNMENT_SAME_PIECE_RATIO,
+} from "#lib/constants/chartAlignment.js";
 import { alignedPlacements } from "./alignedPlacements.js";
 import type { ChartBar } from "./chartBars.js";
 
@@ -101,6 +104,22 @@ describe("alignedPlacements", () => {
 		expect(alignedPlacements(bars, alignment({ cost: 0.1, controlCost: 0.124 })).samePiece).toBe(
 			false,
 		);
+	});
+
+	test("Study 16's wrong pairing: a ratio of 1.74 clears the gate, its median local cost of 0.323 does not; the same ratio with a low local cost is this recording", () => {
+		expect(ALIGNMENT_SAME_PIECE_LOCAL_COST).toBe(0.3);
+		const wrong = alignedPlacements(
+			bars,
+			alignment({ cost: 0.1, controlCost: 0.174, localCost: Array(8).fill(0.323) }),
+		);
+		expect(wrong.ratio).toBeCloseTo(1.74);
+		expect(wrong.samePiece).toBe(false);
+		expect(wrong.sections.every((s) => s.hedged)).toBe(true);
+		const right = alignedPlacements(
+			bars,
+			alignment({ cost: 0.1, controlCost: 0.174, localCost: Array(8).fill(0.12) }),
+		);
+		expect(right.samePiece).toBe(true);
 	});
 
 	test("FIRST-ONSET: a first section at the chart's first bar starts at the first sound, hedged, only when the chart is this recording", () => {

@@ -790,16 +790,21 @@ and the song-check's key and tempo changes.
   each bar that begins one (the first snapped to 0 within a quarter
   second), a key or tempo change at each bar whose value differs from
   the bar before, `ratio = controlCost / cost` and `samePiece = ratio >=
-  ALIGNMENT_SAME_PIECE_RATIO` (constants/chartAlignment.ts). The
-  constant is **1.6** since stem-bench Study 14 (2026-10-30): the first
+  ALIGNMENT_SAME_PIECE_RATIO && median(localCost) <=
+  ALIGNMENT_SAME_PIECE_LOCAL_COST` (constants/chartAlignment.ts). The
+  ratio constant is **1.6** since stem-bench Study 14 (2026-10-30): the first
   value, 3, came from synthetic renders where correct charts score 24 to
   49, but on the two real recordings the band's own correct charts
   score 2.04 and 2.53 and another song's chart 1.17 and 1.24, so at 3
   every correct chart read as "not this recording" and everything was
   hedged (the home-field lesson, third appearance: measure on the
   domain production sees). 1.6 is the real-domain midpoint, from two
-  songs of one band; the per-bar local-cost median separates further and
-  is the next refinement. A placement is hedged at the first and last
+  songs of one band. The local-cost clause, **0.30**, joined it after
+  Study 16 (2026-11-01): with all five charts migrated, one real wrong
+  pairing (the Eat All the Clocks recording against the Mop Heart
+  chart) scored a ratio of 1.74, over the gate, and only its median
+  local cost of 0.323 told it apart; the correct charts sit well under
+  0.30. A placement is hedged at the first and last
   sections, in a bar whose local cost is over twice the median (the
   chart stopped matching there) and everywhere when the chart is not
   this recording.
@@ -831,8 +836,9 @@ and the song-check's key and tempo changes.
 - **Not done.** MusicXML (its summary is the same form, but
   `scoreForAi` returns the file; a later pass can read it through the
   same parser), three or more endings, D.S. and coda jumps, a tempo map
-  from the alignment itself (the bench's candidates memo), and a
-  local-cost check beside the ratio. Study 14 also confirmed the two
+  from the alignment itself (the bench's candidates memo), and the
+  LAST-SOUND ring-out refinement (a tail section still lands within
+  about 1.7 s). Study 14 also confirmed the two
   parsers reproduce the bench's transcriptions bar for bar (76/76,
   86/86) and the summary form to its spec, so the bench can feed them.
 
