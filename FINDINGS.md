@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## The Vercel CLI waits for a deployment itself: `vercel inspect <url> --wait`, not a curl loop (2026-11-02)
+
+After a push to `main` the release step waited for production with a `curl … | grep` loop over `time.sleep(15)`, four minutes for v0.207.0, until Kevin asked for a better way. The CLI (59.16.0) has one: the Git integration creates the deployment within seconds of the push, so `vercel ls --prod` lists it as the first row at once (stdout is the URLs alone, one per line; the project and team lines go to stderr), and `vercel inspect <url> --wait --timeout 5m` blocks until that deployment is Ready and then prints its status and aliases. Passing the alias (`www.stemshovel.com`) instead would resolve to the deployment _currently_ behind it, the old one, which is already Ready, so the wait would return at once; it has to be the new deployment's own URL. The same works for a staging push without `--prod`. The release skill (`.claude/skills/release/SKILL.md`) carries the step.
+
 ## Oxfmt reflows inline CSS in `src/app.html`; `<!-- prettier-ignore -->` keeps a literal rule intact (2026-11-01)
 
 `src/app.html` carries barmark's `@font-face` rule in a `<style data-barmark-font>`, and a test asserts the literal equals `fontFaceCss("/fonts/barmark/Edwin-Roman.otf")` so it cannot drift from the package. `bun run format` (Oxfmt) formats the HTML's embedded CSS too, expanding the one-line rule onto several lines with spaces, which broke the exact match. Oxfmt honors `<!-- prettier-ignore -->` on the line before the element, so the style tag keeps the package's output byte for byte. A single UK spelling pass (`bun run spell:us`) also rewrites every doc under docs/, including a brief another agent committed; the gate requires it, so the committed copy gets American spellings.
