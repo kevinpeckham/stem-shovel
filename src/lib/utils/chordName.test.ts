@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vite-plus/test";
+import { parseChord } from "barmark";
 import { nameChord } from "./chordName";
 import { degreeOf, scalePitchClasses } from "./scaleDegrees";
+import { tonicPitchClass } from "./tonicPitchClass";
 
 const C = 60;
 const key = { root: 0, mode: "major" as const };
@@ -38,6 +40,45 @@ describe("nameChord", () => {
 	test("notes that are no chord are listed, and nothing is nothing", () => {
 		expect(nameChord([C, C + 1, C + 2])?.name).toBe("C C♯ D");
 		expect(nameChord([])).toBeNull();
+	});
+});
+
+describe("names barmark reads", () => {
+	// Every chord the table names, played on C: the name must parse as barmark and sound these notes (a fifth the table leaves out may be in barmark's chord).
+	const SETS = [
+		[0, 2, 4, 7, 9],
+		[0, 2, 4, 7, 11],
+		[0, 2, 4, 7, 10],
+		[0, 2, 3, 7, 10],
+		[0, 4, 7, 11],
+		[0, 4, 7, 10],
+		[0, 3, 7, 10],
+		[0, 3, 7, 11],
+		[0, 3, 6, 9],
+		[0, 3, 6, 10],
+		[0, 5, 7, 10],
+		[0, 4, 7, 9],
+		[0, 3, 7, 9],
+		[0, 2, 4, 7],
+		[0, 2, 3, 7],
+		[0, 4, 11],
+		[0, 4, 10],
+		[0, 3, 10],
+		[0, 4, 7],
+		[0, 3, 7],
+		[0, 3, 6],
+		[0, 4, 8],
+		[0, 2, 7],
+		[0, 5, 7],
+		[0, 7, 12],
+	];
+	test.each(SETS)("%j on C", (...set) => {
+		const name = nameChord(set.map((i) => C + i))!.name;
+		const parsed = parseChord(name);
+		expect(parsed.ok, name).toBe(true);
+		const heard = new Set([...set.map((i) => i % 12), 7]);
+		const named = new Set([...(parsed.ok ? parsed.value.pitches : []).map(tonicPitchClass), 7]);
+		expect(named, name).toEqual(heard);
 	});
 });
 

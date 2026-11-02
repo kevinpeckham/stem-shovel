@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
+import { parseChord } from "barmark";
+import { tonicPitchClass } from "#lib/utils/tonicPitchClass.js";
 import { chordChart, chordOf, chordsPerBar, type Note } from "./chords";
 
 const profileOf = (pcs: number[]) => {
@@ -52,5 +54,48 @@ describe("chordsPerBar", () => {
 	});
 	test("an empty bar is N.C.", () => {
 		expect(chordsPerBar([], [0, 2]).map((s) => s.chord)).toEqual(["N.C."]);
+	});
+});
+
+describe("names barmark reads", () => {
+	// Every template on every root, alone and over another bass: the detector's name must parse as barmark and sound the template's notes.
+	const SHAPES = [
+		[0, 4, 7],
+		[0, 3, 7],
+		[0, 4, 7, 10],
+		[0, 4, 7, 11],
+		[0, 3, 7, 10],
+		[0, 5, 7],
+		[0, 5, 7, 10],
+		[0, 2, 7],
+		[0, 3, 6],
+		[0, 4, 8],
+		[0, 7],
+	];
+	test.each(SHAPES)("%j", (...shape) => {
+		for (let root = 0; root < 12; root++) {
+			const profile = new Float64Array(12);
+			for (const i of shape) profile[(root + i) % 12] = 1;
+			const { chord } = chordOf(profile, root);
+			const parsed = parseChord(chord);
+			expect(parsed.ok, chord).toBe(true);
+			if (!parsed.ok) continue;
+			const named = new Set(parsed.value.pitches.map((p) => tonicPitchClass(p)));
+			expect(named, chord).toEqual(new Set(shape.map((i) => (root + i) % 12)));
+		}
+	});
+	test("a slash bass parses, and the chart shows ♯ and ♭", () => {
+		const profile = new Float64Array(12);
+		for (const pc of [1, 4, 8]) profile[pc] = 1;
+		profile[8] = 1.5;
+		const { chord } = chordOf(profile, 8);
+		expect(parseChord(chord).ok, chord).toBe(true);
+		expect(
+			chordChart([
+				{ bar: 1, bars: 1, start: 0, chord: "F#m", confidence: 1 },
+				{ bar: 2, bars: 1, start: 0, chord: "Bbdim", confidence: 1 },
+				{ bar: 3, bars: 1, start: 0, chord: "N.C.", confidence: 0 },
+			]),
+		).toBe("| F♯m | B♭° | N.C. |");
 	});
 });

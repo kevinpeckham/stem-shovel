@@ -1,9 +1,6 @@
 <script lang="ts">
-	import {
-		CHORD_RECIPES,
-		type ChordRecipe,
-		type ChordRecipeId,
-	} from "#lib/constants/chordStyles.js";
+	import { CHORD_RECIPES, type ChordRecipeId } from "#lib/constants/chordStyles.js";
+	import { styledChordName } from "#lib/utils/styledChord.js";
 	import type { ChordStyleData } from "#lib/val/ChordStyleSchema.js";
 
 	/**
@@ -75,14 +72,12 @@
 		"minSix",
 		"dim7",
 	];
+	/** A recipe's suffix as the wedge names it (barmark's spelling, styledChordName on C), so "m7(♭5)" here is "Bm7(♭5)" there. */
 	const recipeLabel = (id: ChordRecipeId, ring: "major" | "minor") => {
-		const recipe: ChordRecipe = CHORD_RECIPES[id];
-		const suffix = recipe.suffix;
 		if (id === "major" || id === "minor") return "triad";
 		if (id === "dim") return "dim";
 		if (id === "powerWide") return "5 (wide)";
-		if (recipe.rootOnly) return suffix;
-		return ring === "minor" ? `m${suffix}` : suffix;
+		return styledChordName(ring === "minor" ? "Cm" : "C", ring, CHORD_RECIPES[id]).slice(1);
 	};
 </script>
 

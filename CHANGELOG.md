@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A chart on ideas.** The Idea Recorder's notes panel is now Notes | Chart: the Chart tab holds a barmark chord chart for the idea, drawn live under the editor and saved as you type (`idea.chart`, migration 0111). A Studio song has the same tab when signed in, and its chart prefills Sections from a chart. Making a song from a take with the notes merged also carries the chart when the song has none.
+
+### Changed
+
+- **One chord vocabulary.** Every chord name the app shows or writes is now spelled by barmark (`displayChord`, `intervalSemitones`): the chord player's wedges and pad (`Bm7(♭5)`, `G7(♭9)`, `C(9)`, `Am(9)`; the minor thirteenth is named `Am9(13)` for the notes it plays; a diminished wedge no longer doubles its sign; an inversion's bass is spelled in flats in a flat key), the piano's readout (`Cmmaj7`, `C°`, `C+`, `Cm7(♭5)`), the style editor's options, the chord detector's draft chart, the MusicXML summary the model reads (ASCII canonical: `Caug7`, `Cmaj9(11)`, `C(b9)`), and the chart alignment, which reads chords with barmark's parser. Nothing that sounds changed: every recipe's notes are the same, and a test holds each name to its notes.
+
 ### Technical
 
 - **barmark 0.8.0.** `(addN)` reads inside parentheses, so the chord chart export no longer rewrites the player's `Am(add9)` labels; an empty heading's error now says how to fix it; the grammar carries the notes from issues 64 to 66. `@barmark/render` 0.7.1 depends on it, so one copy of barmark is installed.

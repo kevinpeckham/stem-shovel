@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+import { parseChord } from "barmark";
 import { zipSync } from "fflate";
 import { musicXmlFromMxl } from "./musicXmlFromMxl";
 import { keyName, musicXmlSummary } from "./musicXmlSummary";
@@ -49,8 +50,8 @@ describe("musicXmlSummary", () => {
 				"Part: Piano (2 parts)",
 				'm1 key C major 4/4 tempo 96 [A] "Verse": Cmaj7 Am7',
 				"m2 :|: Fmaj9",
-				"m3 key A♭ major: A♭add9/C",
-				"m5 key F♯ minor: F♯m",
+				"m3 key A♭ major: Ab(9)/C",
+				"m5 key F♯ minor: F#m",
 			].join("\n"),
 		);
 	});
@@ -67,7 +68,57 @@ describe("musicXmlSummary", () => {
 	it("is empty for XML without parts", () => {
 		expect(musicXmlSummary("<score-partwise/>")).toBe("");
 	});
+	it("names every MusicXML kind as barmark reads it", () => {
+		const harmony = (kind: string, degrees = "") =>
+			`<harmony><root><root-step>B</root-step><root-alter>-1</root-alter></root><kind>${kind}</kind>${degrees}</harmony>`;
+		const chordOf = (h: string) =>
+			musicXmlSummary(
+				`<score-partwise><part id="P1"><measure number="1">${h}</measure></part></score-partwise>`,
+			)
+				.split("m1: ")
+				.at(-1)!;
+		for (const kind of KINDS) {
+			const name = chordOf(harmony(kind));
+			expect(parseChord(name).ok, `${kind}: ${name}`).toBe(true);
+		}
+		const degree = (value: number, alter: number, type: string) =>
+			`<degree><degree-value>${value}</degree-value><degree-alter>${alter}</degree-alter><degree-type>${type}</degree-type></degree>`;
+		expect(chordOf(harmony("dominant", degree(9, -1, "add") + degree(11, 1, "add")))).toBe(
+			"Bb7(b9,#11)",
+		);
+		expect(chordOf(harmony("major", degree(5, 0, "subtract")))).toBe("Bb");
+		expect(chordOf(harmony("half-diminished"))).toBe("Bbm7(b5)");
+		expect(chordOf(harmony("augmented-seventh"))).toBe("Bbaug7");
+	});
 });
+
+const KINDS = [
+	"major",
+	"minor",
+	"augmented",
+	"diminished",
+	"dominant",
+	"major-seventh",
+	"minor-seventh",
+	"diminished-seventh",
+	"augmented-seventh",
+	"half-diminished",
+	"major-minor",
+	"major-sixth",
+	"minor-sixth",
+	"dominant-ninth",
+	"major-ninth",
+	"minor-ninth",
+	"dominant-11th",
+	"major-11th",
+	"minor-11th",
+	"dominant-13th",
+	"major-13th",
+	"minor-13th",
+	"suspended-second",
+	"suspended-fourth",
+	"power",
+];
 
 describe("musicXmlFromMxl", () => {
 	const bytes = (s: string) => new TextEncoder().encode(s);

@@ -29,7 +29,7 @@ const CHORDS: { suffix: string; set: number[]; minor?: boolean; dim?: boolean }[
 	{ suffix: "maj7", set: [0, 4, 7, 11] },
 	{ suffix: "7", set: [0, 4, 7, 10] },
 	{ suffix: "m7", set: [0, 3, 7, 10], minor: true },
-	{ suffix: "mMaj7", set: [0, 3, 7, 11], minor: true },
+	{ suffix: "mmaj7", set: [0, 3, 7, 11], minor: true },
 	{ suffix: "dim7", set: [0, 3, 6, 9], dim: true },
 	{ suffix: "m7♭5", set: [0, 3, 6, 10], dim: true },
 	{ suffix: "7sus4", set: [0, 5, 7, 10] },

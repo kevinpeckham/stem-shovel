@@ -1,3 +1,5 @@
+import { displayChord } from "#lib/utils/displayChord.js";
+
 /**
  * Chords from transcribed notes (Basic Pitch, src/lib/audio/transcribe.ts):
  * the notes sounding in each bar are weighed by duration and loudness into
@@ -31,7 +33,7 @@ export interface ChordSegment {
 /** ASCII accidentals, the way charts are typed here (F#, Bb). */
 const NAMES = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
 
-/** Chord templates as intervals from the root; the suffix is what a chart shows. */
+/** Chord templates as intervals from the root; the suffix is what a chart shows, each one barmark reads (chords.test.ts). */
 const TEMPLATES: { suffix: string; intervals: number[] }[] = [
 	{ suffix: "", intervals: [0, 4, 7] },
 	{ suffix: "m", intervals: [0, 3, 7] },
@@ -130,10 +132,11 @@ export function chordsPerBar(notes: Note[], barStarts: number[]): ChordSegment[]
 	return bars;
 }
 
-/** `| D | A | Bm | G |` lines, four bars each, with a chord repeated across the bars it holds. */
+/** `| D | A | Bm | G |` lines, four bars each, with a chord repeated across the bars it holds; each chord shown as barmark spells it, with ♯ and ♭ (`displayChord`). */
 export function chordChart(segments: ChordSegment[], perLine = 4): string {
 	const cells: string[] = [];
-	for (const s of segments) for (let i = 0; i < s.bars; i++) cells.push(i === 0 ? s.chord : "%");
+	for (const s of segments)
+		for (let i = 0; i < s.bars; i++) cells.push(i === 0 ? displayChord(s.chord) : "%");
 	const lines: string[] = [];
 	for (let i = 0; i < cells.length; i += perLine) {
 		lines.push(`| ${cells.slice(i, i + perLine).join(" | ")} |`);

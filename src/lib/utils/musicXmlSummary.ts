@@ -1,3 +1,5 @@
+import { parseChord } from "barmark";
+
 /**
  * A MusicXML score as the few lines a model needs to know the keys and
  * the chords of a song (docs/audio-engine.md, "The score as the AI's
@@ -71,25 +73,26 @@ export function keyName(fifths: number, mode = "major"): string {
 	return mode === "major" || !mode ? `${major} major` : `${major} ${mode}`;
 }
 
+/** MusicXML chord kinds in barmark's vocabulary (a major 11th is maj9(11); barmark has no maj11). */
 const KINDS: Record<string, string> = {
 	major: "",
 	minor: "m",
-	augmented: "+",
+	augmented: "aug",
 	diminished: "dim",
 	dominant: "7",
 	"major-seventh": "maj7",
 	"minor-seventh": "m7",
 	"diminished-seventh": "dim7",
-	"augmented-seventh": "+7",
-	"half-diminished": "m7♭5",
-	"major-minor": "mMaj7",
+	"augmented-seventh": "aug7",
+	"half-diminished": "m7(b5)",
+	"major-minor": "mmaj7",
 	"major-sixth": "6",
 	"minor-sixth": "m6",
 	"dominant-ninth": "9",
 	"major-ninth": "maj9",
 	"minor-ninth": "m9",
 	"dominant-11th": "11",
-	"major-11th": "maj11",
+	"major-11th": "maj9(11)",
 	"minor-11th": "m11",
 	"dominant-13th": "13",
 	"major-13th": "maj13",
@@ -107,21 +110,31 @@ function chordName(harmony: string): string {
 	const kindText = kindEl?.[1]?.match(/\btext="([^"]*)"/)?.[1];
 	const kind = kindText !== undefined ? decode(kindText) : (KINDS[kindEl?.[2]?.trim() ?? ""] ?? "");
 	if (!step) return kind === "N.C." ? kind : "?";
-	const degrees = [...harmony.matchAll(/<degree\b[\s\S]*?<\/degree>/g)]
+	const tones = tonesOf(harmony);
+	const bassStep = harmony.match(/<bass-step>([A-G])<\/bass-step>/)?.[1];
+	const bassAlter = Number(harmony.match(/<bass-alter>(-?\d+)<\/bass-alter>/)?.[1] ?? 0);
+	const bass = bassStep ? `/${bassStep}${accidental(bassAlter)}` : "";
+	const symbol = `${step}${accidental(alter)}${kind.replace(/♯/g, "#").replace(/♭/g, "b")}${tones}${bass}`;
+	// Barmark's canonical spelling where it reads the symbol (Cadd9 → C(9)), else the symbol as built.
+	const parsed = parseChord(symbol);
+	return parsed.ok ? parsed.value.canonical : symbol;
+}
+
+/** Added and altered degrees as barmark's parenthesized tones ("(b9,#11)"); barmark has no omissions, so a subtracted degree is left out. */
+function tonesOf(harmony: string): string {
+	const tones = [...harmony.matchAll(/<degree\b[\s\S]*?<\/degree>/g)]
+		.filter((d) => d[0].match(/<degree-type>([^<]*)</)?.[1] !== "subtract")
 		.map((d) => {
 			const value = d[0].match(/<degree-value>(\d+)</)?.[1] ?? "";
 			const a = Number(d[0].match(/<degree-alter>(-?\d+)</)?.[1] ?? 0);
-			const type = d[0].match(/<degree-type>([^<]*)</)?.[1] ?? "add";
-			return `${type === "subtract" ? "no" : type === "add" ? "add" : ""}${accidental(a)}${value}`;
-		})
-		.join("");
-	const bassStep = harmony.match(/<bass-step>([A-G])<\/bass-step>/)?.[1];
-	const bassAlter = Number(harmony.match(/<bass-alter>(-?\d+)<\/bass-alter>/)?.[1] ?? 0);
-	return `${step}${accidental(alter)}${kind}${degrees}${bassStep ? `/${bassStep}${accidental(bassAlter)}` : ""}`;
+			return `${accidental(a)}${value}`;
+		});
+	return tones.length ? `(${tones.join(",")})` : "";
 }
 
+/** ASCII accidentals, as barmark writes them. */
 const accidental = (alter: number) =>
-	alter > 0 ? "♯".repeat(alter) : alter < 0 ? "♭".repeat(-alter) : "";
+	alter > 0 ? "#".repeat(alter) : alter < 0 ? "b".repeat(-alter) : "";
 
 const decode = (s: string) =>
 	s

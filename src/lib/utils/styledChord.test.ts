@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
+import { parseChord } from "barmark";
+import { CHORD_RECIPES, CHORD_STYLES } from "#lib/constants/chordStyles.js";
+import type { ChordQuality } from "#lib/constants/circleOfFifths.js";
 import { styledChord, styledChordName } from "./styledChord";
+import { tonicPitchClass } from "./tonicPitchClass";
 
 describe("styledChord", () => {
 	it("keeps plain as the triads with the pad's seventh", () => {
@@ -76,7 +80,7 @@ describe("styledChord", () => {
 			"Cmaj7",
 		);
 		expect(styledChordName("Bm", "minor", styledChord("jazz", 5, "minor", false, "dominant"))).toBe(
-			"Bm7♭5",
+			"Bm7(♭5)",
 		);
 		expect(
 			styledChordName("Am", "minor", styledChord("plain", 3, "minor", false, "dominant")),
@@ -97,7 +101,49 @@ describe("styledChord", () => {
 			styledChordName("Am", "minor", styledChord("ragtime", 3, "minor", true, "dominant")),
 		).toBe("A°7");
 		expect(styledChordName("G", "major", styledChord("bossa", 1, "major", true, "dominant"))).toBe(
-			"G7♭9",
+			"G7(♭9)",
 		);
+	});
+	it("names a diminished wedge's chords", () => {
+		expect(styledChordName("B°", "diminished", CHORD_RECIPES.dim)).toBe("B°");
+		expect(styledChordName("F♯°", "diminished", CHORD_RECIPES.halfDim)).toBe("F♯m7(♭5)");
+		expect(styledChordName("C♯m", "minor", CHORD_RECIPES.minAdd9)).toBe("C♯m(9)");
+		expect(styledChordName("E♭", "major", CHORD_RECIPES.add9)).toBe("E♭(9)");
+	});
+	it("keeps a name barmark cannot read as the plain concatenation", () => {
+		expect(styledChordName("C", "major", { intervals: [0, 4, 7], suffix: "zz" })).toBe("Czz");
+		expect(
+			styledChordName("Am", "minor", { intervals: [0, 7], suffix: "zz", rootOnly: true }),
+		).toBe("Azz");
+	});
+});
+
+describe("the recipes' names", () => {
+	// Every recipe on C (a minor's on Cm, a diminished's on C°): barmark must read the name and hear the recipe's notes.
+	const ringOf = (intervals: readonly number[]): ChordQuality =>
+		intervals.includes(3) ? (intervals.includes(6) ? "diminished" : "minor") : "major";
+	const labels: Record<ChordQuality, string> = { major: "C", minor: "Cm", diminished: "C°" };
+	it.each(Object.entries(CHORD_RECIPES))("%s", (_, recipe) => {
+		const quality = ringOf(recipe.intervals);
+		const name = styledChordName(labels[quality], quality, recipe);
+		const parsed = parseChord(name.replace(/♯/g, "#").replace(/♭/g, "b"));
+		expect(parsed.ok, name).toBe(true);
+		if (!parsed.ok) return;
+		const named = parsed.value.pitches.map((p) => tonicPitchClass(p));
+		const heard = recipe.intervals.map((i) => i % 12);
+		expect(new Set(named), name).toEqual(new Set(heard));
+	});
+	it("names every built-in style's chords as barmark reads them", () => {
+		for (const style of CHORD_STYLES)
+			for (let fifths = 0; fifths < 12; fifths++)
+				for (const quality of ["major", "minor", "diminished"] as const)
+					for (const held of [false, true]) {
+						const name = styledChordName(
+							labels[quality],
+							quality,
+							styledChord(style.id, fifths, quality, held, "dominant"),
+						);
+						expect(parseChord(name.replace(/♭/g, "b")).ok, `${style.id} ${name}`).toBe(true);
+					}
 	});
 });

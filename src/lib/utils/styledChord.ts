@@ -5,7 +5,9 @@ import {
 	type ChordRecipeId,
 	type ChordStyleId,
 } from "#lib/constants/chordStyles.js";
+import { parseChord } from "barmark";
 import type { ChordQuality, SeventhType } from "#lib/constants/circleOfFifths.js";
+import { displayChord } from "#lib/utils/displayChord.js";
 
 /**
  * What a wedge plays in a style (docs/chord-player.md, "Styles"): the
@@ -118,9 +120,24 @@ function recipes(
 	}
 }
 
-/** The chord's name from the wedge's label (a minor's carries its "m": "Am") and the recipe: "C", "Cmaj7", "Am7", "Bm7♭5", "G13"; a root-only recipe drops the "m" ("A5", "Dsus4"). */
+/**
+ * The chord's name from the wedge's label (a minor's carries its "m": "Am";
+ * a diminished's its "°": "B°") and the recipe, spelled by barmark
+ * (`displayChord`): "C", "Cmaj7", "Am7", "Bm7(♭5)", "G13", "A°7"; a
+ * root-only recipe drops the "m" ("A5", "Dsus4"), a diminished wedge reads
+ * its recipe as a minor's ("B" + "m" + "7♭5"), and a suffix that starts
+ * with ° goes on the bare root. A name barmark cannot read is the plain
+ * concatenation, as before.
+ */
 export function styledChordName(label: string, quality: ChordQuality, recipe: ChordRecipe) {
+	const root = label.replace(/[m°]$/, "");
+	const bare = quality === "major" || recipe.rootOnly || recipe.suffix.startsWith("°");
+	const symbol =
+		quality === "diminished" && !recipe.suffix
+			? `${root}°`
+			: `${root}${bare ? "" : "m"}${recipe.suffix}`;
+	const parsed = parseChord(symbol.replace(/♯/g, "#").replace(/♭/g, "b"));
+	if (parsed.ok) return displayChord(parsed.value.canonical);
 	if (quality === "diminished") return `${label}${recipe.suffix || "°"}`;
-	const root = recipe.rootOnly && quality === "minor" ? label.replace(/m$/, "") : label;
-	return `${root}${recipe.suffix}`;
+	return `${recipe.rootOnly && quality === "minor" ? root : label}${recipe.suffix}`;
 }

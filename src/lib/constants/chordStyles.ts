@@ -80,7 +80,7 @@ export const CHORD_RECIPES = {
 	min11: { intervals: [0, 3, 7, 10, 14, 17], suffix: "11" },
 	dom13: { intervals: [0, 4, 7, 10, 14, 21], suffix: "13" },
 	maj13: { intervals: [0, 4, 7, 11, 14, 21], suffix: "maj13" },
-	min13: { intervals: [0, 3, 7, 10, 14, 21], suffix: "13" },
+	min13: { intervals: [0, 3, 7, 10, 14, 21], suffix: "9(13)" },
 	add9: { intervals: [0, 4, 7, 14], suffix: "add9" },
 	sus2: { intervals: [0, 2, 7], suffix: "sus2", rootOnly: true },
 	sus4: { intervals: [0, 5, 7], suffix: "sus4", rootOnly: true },

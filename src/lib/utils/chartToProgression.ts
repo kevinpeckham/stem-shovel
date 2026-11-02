@@ -10,6 +10,8 @@ import type { ChordRecord } from "barmark";
 import { CIRCLE_OF_FIFTHS, type ChordVoicing } from "#lib/constants/circleOfFifths.js";
 import type { ChordBeats, ProgressionEntry } from "#lib/utils/chordRhythm.js";
 import { noteMidi, voiceChord } from "#lib/utils/chordNotes.js";
+import { displayChord } from "#lib/utils/displayChord.js";
+import { intervalSemitones } from "#lib/utils/intervalSemitones.js";
 import { tonicPitchClass } from "#lib/utils/tonicPitchClass.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
 
@@ -28,19 +30,6 @@ export interface ChartImport {
 
 const MAX_ENTRIES = 400;
 const DEFAULT_BPM = 100;
-/** Semitones above the root of a scale degree (an interval's `alter` is added). */
-const DEGREE_SEMITONES: Record<number, number> = {
-	1: 0,
-	2: 2,
-	3: 4,
-	4: 5,
-	5: 7,
-	6: 9,
-	7: 11,
-	9: 14,
-	11: 17,
-	13: 21,
-};
 /** How far a mode's tonic sits above its parent major's, to find the circle position. */
 const MODE_TO_MAJOR: Record<string, number> = {
 	major: 0,
@@ -201,29 +190,18 @@ function chordEntry(
 ): ProgressionEntry {
 	const root = tonicPitchClass(chord.root ?? "") ?? 0;
 	const bass = tonicPitchClass(chord.bass);
-	const semitones = chord.intervals.map((i) => (DEGREE_SEMITONES[i.degree] ?? 0) + i.alter);
+	const semitones = chord.intervals.map(intervalSemitones);
 	const intervals = [0, ...semitones.filter((s) => s !== 0)];
 	let notes = voiceChord({ pitch: root, intervals, voicing: opts.voicing, octave: opts.octave });
 	if (bass !== null && bass !== root)
 		notes = [noteMidi(bass, opts.octave - 1), ...notes.slice(0, 11)];
 	return {
 		kind: "chord",
-		label: chordLabel(chord.canonical),
+		label: displayChord(chord.canonical).slice(0, 16),
 		wedge: wedgeOf(root, semitones),
 		notes,
 		beats,
 	};
-}
-
-/** The canonical symbol with the root's and the bass's accidentals as ♯ and ♭, cut to the pad's 16. */
-function chordLabel(canonical: string): string {
-	return canonical
-		.replace(
-			/(^|\/)([A-G])([#b]*)/g,
-			(_, lead: string, letter: string, acc: string) =>
-				`${lead}${letter}${acc.replace(/#/g, "♯").replace(/b/g, "♭")}`,
-		)
-		.slice(0, 16);
 }
 
 /** The wedge the chord lights: its root's position on the ring its quality draws (a flat fifth over a flat third is diminished). */

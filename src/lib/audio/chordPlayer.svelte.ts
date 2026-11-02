@@ -44,6 +44,7 @@ export { ARP_PATTERNS, ARP_RATES, type ArpPattern, type ArpRate } from "./arpegg
 
 /** The notes under the chord name in the readout: written, on a staff, both (the staff above the names), or off. */
 export type NoteReadout = "names" | "staff" | "both" | "off";
+import { displayChord } from "#lib/utils/displayChord.js";
 import { styledChord, styledChordName } from "#lib/utils/styledChord.js";
 
 /**
@@ -343,7 +344,11 @@ class ChordPlayerEngine {
 			inversion,
 		});
 		let label = styledChordName(chord.label, quality, recipe);
-		if (inversion > 0) label += `/${CHROMATIC_NOTES[notes[0] % 12]}`;
+		// The bass of a turned chord after a slash, in flats when the key center's signature is (the root as the wedge spells it).
+		if (inversion > 0) {
+			const flats = CIRCLE_OF_FIFTHS[this.keyCenter].signature.startsWith("♭");
+			label = displayChord(`${label}/${displayChord(CHROMATIC_NOTES[notes[0] % 12], { flats })}`);
+		}
 		return { wedge: chord.id, label, notes };
 	}
 	/** The drawn index of a degree (fifths from the key) for a ring: a minor's wedge sits three fifths back from its root. */

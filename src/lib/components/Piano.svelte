@@ -23,6 +23,7 @@
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import { PITCH_CLASS_NAMES, SCALE_MODES, type ScaleModeId } from "#lib/constants/scales.js";
 	import { nameChord } from "#lib/utils/chordName.js";
+	import { displayChord } from "#lib/utils/displayChord.js";
 	import { degreeOf, scalePitchClasses } from "#lib/utils/scaleDegrees.js";
 	import { PIANO_TIER_BYTES } from "#lib/audio/pianoSamples.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
@@ -217,18 +218,14 @@
 		spellChord(piano.sounding, piano.key ? FLAT_ROOTS.has(piano.key.root) : false),
 	);
 	/** What the readout says: the chord (with its numeral in the key), or the notes, or silence. */
-	/** The chord name spelled as the staff is: in flats in a flat key (the namer writes sharps). */
-	const SHARP_TO_FLAT: Record<string, string> = {
-		"C♯": "D♭",
-		"D♯": "E♭",
-		"F♯": "G♭",
-		"G♯": "A♭",
-		"A♯": "B♭",
+	/** The chord name spelled as barmark spells it and as the staff is: in flats in a flat key (the namer writes sharps); a note list or "C♯ octaves" respelled word by word. */
+	const spelled = (name: string) => {
+		const flats = piano.key ? FLAT_ROOTS.has(piano.key.root) : false;
+		return name
+			.split(" ")
+			.map((w) => (/^[A-G]/.test(w) ? displayChord(w, { flats }) : w))
+			.join(" ");
 	};
-	const spelled = (name: string) =>
-		piano.key && FLAT_ROOTS.has(piano.key.root)
-			? name.replace(/[CDFGA]♯/g, (m) => SHARP_TO_FLAT[m] ?? m)
-			: name;
 	let readout = $derived(
 		!chord
 			? "silent"

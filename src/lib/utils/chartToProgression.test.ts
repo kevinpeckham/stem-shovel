@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { chartToProgression } from "./chartToProgression";
-import { chordMidi, noteMidi } from "./chordNotes";
+import { noteMidi, voiceChord } from "./chordNotes";
 import { progressionChart } from "./progressionChart";
 import type { ProgressionEntry } from "./chordRhythm";
 
@@ -106,7 +106,11 @@ describe("chartToProgression", () => {
 				kind: "chord",
 				label,
 				wedge: "",
-				notes: chordMidi({ pitch, quality, seventh: null, voicing: "standard", octave: 4 }),
+				notes: voiceChord({
+					pitch,
+					intervals: quality === "major" ? [0, 4, 7] : [0, 3, 7],
+					voicing: "standard",
+				}),
 				beats,
 			}) as const;
 		const entries: ProgressionEntry[] = [

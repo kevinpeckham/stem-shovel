@@ -153,7 +153,9 @@ is small and useful. The reverse, a chart from a Studio arrangement
 on MIDI clips (`nameChord` exists for the piano) and is for later, when
 barmark's MIDI translator may do most of it.
 
-### 8. One chord vocabulary (S, opportunistic)
+### 8. One chord vocabulary (S) — done 2026-11-02 (Kevin: align all now, not opportunistically)
+
+Done as `utils/displayChord.ts` (barmark canonical → the app's ♯/♭, °, +, with `flats` for a flat key) and `utils/intervalSemitones.ts`; `styledChordName`, `nameChord`, the piano readout, `ChordStyleEditor`, `chords.ts`, `musicXmlSummary.ts` and `chartToProgression.ts` spell through them, and `chordPitchClasses` reads with `parseChord` (its lexer is gone). Consistency tests hold every recipe, built-in style, `nameChord` entry, detector template and MusicXML kind to barmark's pitches. The dead `chordMidi`/`chordName` in `chordNotes.ts` went too.
 
 `nameChord`, `chordPitchClasses`, `spellChord`, `styledChordName` and
 the piano's readout each carry chord spelling knowledge. New code should
@@ -162,7 +164,7 @@ utilities is only worth it where a bug or a mismatch with the chart's
 spelling shows up (the renderer's power-chord fix in 0.7.0 is the kind
 of thing one vocabulary avoids).
 
-### 9. Ideas and the Idea Recorder (S, when asked)
+### 9. Ideas and the Idea Recorder (S) — done 2026-11-02 (Kevin asked)
 
 An idea's notes are markdown "chords, lyrics, where it might go". A
 chart field on an idea (rendered with `ChartHtml`, edited with
