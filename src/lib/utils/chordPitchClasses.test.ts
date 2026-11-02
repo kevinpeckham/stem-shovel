@@ -52,6 +52,23 @@ describe("chordPitchClasses", () => {
 		expect(tones("C#(7)")).toEqual([1, 5, 8, 11]);
 	});
 
+	test("spellings barmark rejects are read in its spelling", () => {
+		expect(tones("CM7")).toEqual([0, 4, 7, 11]);
+		expect(tones("CMaj7")).toEqual([0, 4, 7, 11]);
+		expect(tones("CM")).toEqual([0, 4, 7]);
+		expect(tones("C69")).toEqual([0, 2, 4, 7, 9]);
+		expect(tones("CmMaj7")).toEqual([0, 3, 7, 11]);
+		expect(tones("DSus4")).toEqual([2, 7, 9]);
+	});
+
+	test("extensions mean what barmark says they mean", () => {
+		expect(tones("C11")).toEqual([0, 2, 5, 7, 10]);
+		expect(tones("Am13")).toEqual([0, 2, 4, 6, 7, 9, 11]);
+		expect(tones("C7alt")).toEqual([0, 4, 10]);
+		expect(tones("Am(add9)")).toEqual([0, 4, 9, 11]);
+		expect(chordPitchClasses("B♭maj7/F")).toEqual({ root: 10, tones: [10, 2, 5, 9] });
+	});
+
 	test("a slash bass adds its pitch class", () => {
 		expect(chordPitchClasses("C/E")).toEqual({ root: 0, tones: [0, 4, 7] });
 		expect(chordPitchClasses("D/F#")?.tones).toEqual([2, 6, 9]);
