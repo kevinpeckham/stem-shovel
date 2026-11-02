@@ -804,7 +804,11 @@ the playhead by the chart's tempo when it states one, else placed on
 the Studio's own bar lines (`barAt`/`secondsAtBar`, with a warning, and
 another when the meters differ); `studio.addSectionMarkers(list)` adds
 them in one undo step, renaming a section marker already within 0.02 s
-instead of doubling it, and stops at `MAX_STUDIO_MARKERS` with a notice. In a Reaper project a section is a region (`MARKER …
+instead of doubling it, and stops at `MAX_STUDIO_MARKERS` with a notice. A signed-in song's notes panel is Notes | Chart (2026-11-02: the idea's
+`chart`, `IdeaDocs.svelte`, loaded with the notes in `openSong`), and the
+song's own chart prefills Sections from a chart (`StudioChartSections`'s
+`text` prop) until the member types or picks a file; a signed-out song
+keeps its textarea and has no chart. In a Reaper project a section is a region (`MARKER …
 1` at its start and an unnamed end line), written and read as such; a
 DAWproject has only markers, so sections go out and come back as plain
 markers there.

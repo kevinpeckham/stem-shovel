@@ -26,6 +26,8 @@ export const idea = table(
 		shared: t.integer("shared", { mode: "boolean" }).notNull().default(false),
 		/** Markdown notes on the idea: chords, lyrics, where it might go. */
 		notes: t.text("notes").notNull().default(""),
+		/** A barmark chord chart for the idea (docs/barmark-integration-audit.md item 9): its changes, before it is a song. */
+		chart: t.text("chart").notNull().default(""),
 		/** The drum machine's project and the piano's sound and effects as they were with this idea (JSON, `IdeaInstrumentsDataSchema`), saved as they change and loaded back with the idea; null before any were saved. */
 		instruments: t.text("instruments"),
 		...timestamps,

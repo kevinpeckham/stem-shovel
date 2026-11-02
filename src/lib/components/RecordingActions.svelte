@@ -137,7 +137,7 @@
 		{#if mode === "add"}
 			<label class="flex items-center gap-2 text-sm">
 				<input type="checkbox" bind:checked={mergeNotes} />
-				Merge the idea's notes into the song's notes
+				Merge the idea's notes into the song's notes and carry its chart when the song has none
 			</label>
 		{/if}
 		<div>
@@ -184,7 +184,7 @@
 		</div>
 		<label class="flex items-center gap-2 text-sm">
 			<input type="checkbox" bind:checked={mergeNotes} />
-			Merge the idea's notes into the song's notes
+			Merge the idea's notes into the song's notes and carry its chart when the song has none
 		</label>
 		<div>
 			<button class="button-accent" disabled={busy || !createProject}>

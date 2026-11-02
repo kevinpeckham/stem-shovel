@@ -27,6 +27,12 @@ export const IdeaNotesSchema = v.object({
 	markdown: v.pipe(v.string(), v.maxLength(50_000, "Keep the notes under 50,000 characters.")),
 });
 
+/** Argument of the saveIdeaChart command: the idea's barmark chord chart. */
+export const IdeaChartSchema = v.object({
+	id: NanoIdSchema,
+	markdown: v.pipe(v.string(), v.maxLength(50_000, "Keep the chart under 50,000 characters.")),
+});
+
 /** What the idea keeps of a loop saved as a take (docs/looper.md): enough to show how it was made; the audio is the take and its sources. */
 export const LooperSettingsSchema = v.object({
 	bpm: v.pipe(v.number(), v.integer(), v.minValue(40), v.maxValue(240)),

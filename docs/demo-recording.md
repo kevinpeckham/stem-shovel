@@ -35,6 +35,18 @@ a song (a share feature may come later). On `/ideas/recorder` (the user's own pa
   documents' embedded markdown editor, always in edit mode with autosave,
   Escape or ⌘S saving at once, and a trash button to clear it
   (`IdeaNotesPanel.svelte`, `saveIdeaNotes`).
+  **A chart beside the notes (2026-11-02, barmark audit item 9):** the
+  panel is Notes | Chart (`IdeaDocTabs.svelte`, `IdeaDocs.svelte`; the
+  page's documents in `state/ideaDocs.svelte.ts`), the chart a barmark
+  chord chart in `idea.chart` (migration 0111) edited by
+  `IdeaChartPanel.svelte`: the same embedded editor in monospace with a
+  live `ChartPreview` under it, autosaving through `saveIdeaChart`; an
+  idea with only a chart is kept (`deleteIdeaIfEmpty`, `deleteEmptyIdeas`
+  both look at it), the trash button clears the document shown, and the
+  list's search matches the chart too. When a take becomes a song with
+  "Merge the idea's notes" on, `copyIdeaChartIntoSong` also makes the
+  chart the song's chart when the song has none (through `saveSongDoc`,
+  so a version is kept); a song that has a chart keeps it.
 - **Take names** go in the field beside the "Take N" label before, during
   or after recording: with no take loaded the field names the next take,
   and a name typed mid-take goes out with it. Starting a take from a

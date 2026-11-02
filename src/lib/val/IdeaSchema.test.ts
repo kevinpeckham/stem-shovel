@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as v from "valibot";
 import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
 import {
+	IdeaChartSchema,
 	IdeaCreateSchema,
 	IdeaInstrumentsDataSchema,
 	IdeaNotesSchema,
@@ -12,16 +13,18 @@ import {
 const id = "V1StGXR8_Z5jdHi6B-myT";
 const ok = (schema: v.GenericSchema, input: unknown) => v.safeParse(schema, input).success;
 
-describe("IdeaCreateSchema, IdeaNotesSchema and TakeNameSchema", () => {
+describe("IdeaCreateSchema, IdeaNotesSchema, IdeaChartSchema and TakeNameSchema", () => {
 	it("make an idea by default and trim the title", () => {
 		expect(v.parse(IdeaCreateSchema, { title: " Riff " })).toEqual({ title: "Riff", kind: "idea" });
 		expect(ok(IdeaCreateSchema, { title: "Loop", kind: "loop" })).toBe(true);
 		expect(ok(IdeaCreateSchema, { title: "Beat", kind: "beat" })).toBe(false);
 		expect(ok(IdeaCreateSchema, { title: " " })).toBe(false);
 	});
-	it("cap the notes and let a take name be cleared", () => {
+	it("cap the notes and the chart and let a take name be cleared", () => {
 		expect(ok(IdeaNotesSchema, { id, markdown: "x".repeat(50_000) })).toBe(true);
 		expect(ok(IdeaNotesSchema, { id, markdown: "x".repeat(50_001) })).toBe(false);
+		expect(ok(IdeaChartSchema, { id, markdown: "x".repeat(50_000) })).toBe(true);
+		expect(ok(IdeaChartSchema, { id, markdown: "x".repeat(50_001) })).toBe(false);
 		expect(v.parse(TakeNameSchema, { id, title: "  " }).title).toBe("");
 		expect(ok(TakeNameSchema, { id, title: "x".repeat(121) })).toBe(false);
 	});

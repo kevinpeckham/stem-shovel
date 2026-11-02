@@ -6,6 +6,7 @@ import {
 	deleteIdeaIfEmpty,
 	getAppSetting,
 	renameIdea as rename,
+	setIdeaChart,
 	setIdeaInstruments,
 	setIdeaKind as changeKind,
 	setIdeaNotes,
@@ -13,6 +14,7 @@ import {
 } from "#lib/server/data.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import {
+	IdeaChartSchema,
 	IdeaCreateSchema,
 	IdeaInstrumentsSchema,
 	IdeaKindChangeSchema,
@@ -58,6 +60,14 @@ export const renameIdea = command(IdeaRenameSchema, async ({ id, title }) => {
 export const saveIdeaNotes = command(IdeaNotesSchema, async ({ id, markdown }) => {
 	const accountId = await ownIdea(id);
 	if (!(await setIdeaNotes(accountId, id, markdown))) error(404, "Idea not found");
+	const ideaDeleted = !markdown.trim() && (await deleteIdeaIfEmpty(accountId, id));
+	return { saved: true, ideaDeleted };
+});
+
+/** The chord chart, saved whole like the notes; clearing it on an otherwise empty idea removes the idea. */
+export const saveIdeaChart = command(IdeaChartSchema, async ({ id, markdown }) => {
+	const accountId = await ownIdea(id);
+	if (!(await setIdeaChart(accountId, id, markdown))) error(404, "Idea not found");
 	const ideaDeleted = !markdown.trim() && (await deleteIdeaIfEmpty(accountId, id));
 	return { saved: true, ideaDeleted };
 });

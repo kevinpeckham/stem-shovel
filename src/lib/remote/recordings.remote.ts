@@ -7,6 +7,7 @@ import {
 	requireUser,
 } from "#lib/server/access.js";
 import {
+	copyIdeaChartIntoSong,
 	copyRecordingStemsToSong,
 	copyRecordingToSong,
 	createSong,
@@ -42,6 +43,12 @@ async function ownTake(id: string) {
 	return { accountId, user, locals };
 }
 
+/** The idea's notes merged into the song's notes, and its chart carried when the song has none. */
+async function carryIdeaDocs(accountId: string, userId: string, songId: string, takeId: string) {
+	await mergeIdeaNotesIntoSong(accountId, userId, songId, takeId);
+	await copyIdeaChartIntoSong(accountId, userId, songId, takeId);
+}
+
 /** A take's own name (may be empty: it then shows as "Take N"). */
 export const setTakeName = command(TakeNameSchema, async ({ id, title }) => {
 	const { accountId } = await ownTake(id);
@@ -71,7 +78,7 @@ export const addRecordingToSong = command(
 		if (!result) error(404, "Recording or song not found");
 		if (result === "full")
 			error(409, `A song can have at most ${MAX_DEMOS_PER_SONG} demo recordings`);
-		if (mergeNotes) await mergeIdeaNotesIntoSong(accountId, user.id, songId, id);
+		if (mergeNotes) await carryIdeaDocs(accountId, user.id, songId, id);
 		const slugs = await songSlugs(songAccount, songId);
 		if (!slugs) error(404, "Song not found");
 		return { href: `/${slugs.account}/projects/${slugs.project}/${slugs.song}` };
@@ -115,7 +122,7 @@ export const newSongFromRecording = command(
 		const song = await createSong(projectAccount, user.id, projectId, title);
 		const result = await copyRecordingToSong(accountId, user.id, id, song.id);
 		if (!result || result === "full") error(404, "Recording not found");
-		if (mergeNotes) await mergeIdeaNotesIntoSong(accountId, user.id, song.id, id);
+		if (mergeNotes) await carryIdeaDocs(accountId, user.id, song.id, id);
 		return { href: `/${slugs.account}/projects/${slugs.project}/${song.slug}` };
 	},
 );

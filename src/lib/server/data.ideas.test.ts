@@ -17,6 +17,7 @@ const {
 	createIdea,
 	createRecording,
 	createRecordingStem,
+	copyIdeaChartIntoSong,
 	deleteEmptyIdeas,
 	deleteIdea,
 	deleteIdeaIfEmpty,
@@ -37,6 +38,7 @@ const {
 	renameIdea,
 	renameRecording,
 	replaceRecordingSource,
+	setIdeaChart,
 	setIdeaInstruments,
 	setIdeaKind,
 	setIdeaNotes,
@@ -50,7 +52,15 @@ const at = (ms: number) => new Date(ms);
 const row = (table: Parameters<typeof fake.rows>[0], id: string) =>
 	fake.rows(table).find((r) => r.id === id);
 
-const idea = { id: "i1", accountId: "a1", createdBy: "u1", kind: "idea", title: "Idea", notes: "" };
+const idea = {
+	id: "i1",
+	accountId: "a1",
+	createdBy: "u1",
+	kind: "idea",
+	title: "Idea",
+	notes: "",
+	chart: "",
+};
 const looper: LooperSettings = { bpm: 120, beatsPerBar: 4, bars: 2, layers: [] };
 const instruments = (settings: Partial<IdeaInstruments>) =>
 	JSON.stringify({ drums: null, piano: null, looper: null, chords: null, ...settings });
@@ -134,17 +144,24 @@ describe("createIdea", () => {
 	});
 });
 
-describe("setIdeaKind / renameIdea / setIdeaNotes", () => {
+describe("setIdeaKind / renameIdea / setIdeaNotes / setIdeaChart", () => {
 	test("change the account's own idea and refuse another account's", async () => {
 		reset({ idea: [idea, { ...idea, id: "i2", accountId: "a2" }] });
 		expect(await setIdeaKind("a1", "i1", "loop")).toBe(true);
 		expect(await renameIdea("a1", "i1", "Renamed")).toBe(true);
 		expect(await setIdeaNotes("a1", "i1", "## notes")).toBe(true);
-		expect(row("idea", "i1")).toMatchObject({ kind: "loop", title: "Renamed", notes: "## notes" });
+		expect(await setIdeaChart("a1", "i1", "| G | D |")).toBe(true);
+		expect(row("idea", "i1")).toMatchObject({
+			kind: "loop",
+			title: "Renamed",
+			notes: "## notes",
+			chart: "| G | D |",
+		});
 		expect(await setIdeaKind("a1", "i2", "loop")).toBe(false);
 		expect(await renameIdea("a1", "i2", "Renamed")).toBe(false);
 		expect(await setIdeaNotes("a1", "i2", "x")).toBe(false);
-		expect(row("idea", "i2")).toMatchObject({ kind: "idea", title: "Idea", notes: "" });
+		expect(await setIdeaChart("a1", "i2", "x")).toBe(false);
+		expect(row("idea", "i2")).toMatchObject({ kind: "idea", title: "Idea", notes: "", chart: "" });
 	});
 });
 
@@ -316,7 +333,7 @@ describe("loopSources", () => {
 });
 
 describe("deleteIdeaIfEmpty", () => {
-	test("keeps an idea with notes, a take, a source or a revision; removes an empty one", async () => {
+	test("keeps an idea with notes, a chart, a take, a source or a revision; removes an empty one", async () => {
 		reset({
 			idea: [
 				idea,
@@ -324,6 +341,7 @@ describe("deleteIdeaIfEmpty", () => {
 				{ ...idea, id: "i3" },
 				{ ...idea, id: "i4" },
 				{ ...idea, id: "i5" },
+				{ ...idea, id: "i6", chart: "| G |" },
 			],
 			recording: [take("r1", 1, { ideaId: "i3" })],
 			studioSource: [{ id: "ss1", accountId: "a1", ideaId: "i4", url: "https://b/ss1.wav" }],
@@ -333,10 +351,11 @@ describe("deleteIdeaIfEmpty", () => {
 		expect(await deleteIdeaIfEmpty("a1", "i3")).toBe(false);
 		expect(await deleteIdeaIfEmpty("a1", "i4")).toBe(false);
 		expect(await deleteIdeaIfEmpty("a1", "i5")).toBe(false);
+		expect(await deleteIdeaIfEmpty("a1", "i6")).toBe(false);
 		expect(await deleteIdeaIfEmpty("a1", "nope")).toBe(false);
-		expect(fake.rows("idea")).toHaveLength(5);
+		expect(fake.rows("idea")).toHaveLength(6);
 		expect(await deleteIdeaIfEmpty("a1", "i1")).toBe(true);
-		expect(fake.rows("idea").map((r) => r.id)).toEqual(["i2", "i3", "i4", "i5"]);
+		expect(fake.rows("idea").map((r) => r.id)).toEqual(["i2", "i3", "i4", "i5", "i6"]);
 	});
 });
 
@@ -350,6 +369,7 @@ describe("deleteEmptyIdeas", () => {
 				{ ...idea, id: "fresh", createdAt: at(NOW - 10_000) },
 				{ ...idea, id: "with-take", createdAt: old },
 				{ ...idea, id: "with-notes", notes: "x", createdAt: old },
+				{ ...idea, id: "with-chart", chart: "| G |", createdAt: old },
 				{ ...idea, id: "with-source", createdAt: old },
 				{ ...idea, id: "with-revision", createdAt: old },
 				{ ...idea, id: "someone-elses", createdBy: "u2", createdAt: old },
@@ -363,6 +383,7 @@ describe("deleteEmptyIdeas", () => {
 			"fresh",
 			"with-take",
 			"with-notes",
+			"with-chart",
 			"with-source",
 			"with-revision",
 			"someone-elses",
@@ -727,6 +748,34 @@ describe("mergeIdeaNotesIntoSong", () => {
 		expect(callsTo("update", "song")).toEqual([]);
 		expect(await mergeIdeaNotesIntoSong("a1", "u1", "sg1", "r2")).toBe(true);
 		expect(row("song", "sg1")?.notesMarkdown).toBe("Notes\n");
+	});
+});
+
+describe("copyIdeaChartIntoSong", () => {
+	test("the idea's chart becomes the song's chart document, as a new version", async () => {
+		reset({
+			...songFixtures({ chartMarkdown: "", chartHash: null, chartVersion: 0 }),
+			idea: [{ ...idea, chart: "  | G | D |  " }],
+			recording: [take("r1", 1)],
+		});
+		expect(await copyIdeaChartIntoSong("a1", "u1", "sg1", "r1")).toBe(true);
+		expect(row("song", "sg1")).toMatchObject({ chartMarkdown: "| G | D |\n", chartVersion: 1 });
+		expect(callsTo("insert", "song_doc_version")[0].values).toMatchObject({
+			songId: "sg1",
+			kind: "chart",
+			markdown: "| G | D |\n",
+		});
+	});
+	test("never replaces a song's own chart; nothing for an empty idea chart or an unknown song", async () => {
+		reset({
+			...songFixtures({ chartMarkdown: "| C |", chartHash: null, chartVersion: 1 }),
+			idea: [idea, { ...idea, id: "i2", chart: "| G |" }],
+			recording: [take("r1", 1), take("r2", 1, { ideaId: "i2" })],
+		});
+		expect(await copyIdeaChartIntoSong("a1", "u1", "sg1", "r1")).toBe(false);
+		expect(await copyIdeaChartIntoSong("a1", "u1", "nope", "r2")).toBe(false);
+		expect(await copyIdeaChartIntoSong("a1", "u1", "sg1", "r2")).toBe(false);
+		expect(callsTo("update", "song")).toEqual([]);
 	});
 });
 

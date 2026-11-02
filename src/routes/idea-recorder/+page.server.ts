@@ -108,6 +108,8 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 			// Loops saved from the looper are listed only when asked for (docs/looper.md, "Save and Export").
 			kind: i.kind,
 			notes: i.notes,
+			// The idea's barmark chord chart (docs/barmark-integration-audit.md item 9).
+			chart: i.chart,
 			// The instruments as they were with the idea (JSON in the row); a row from before the column, or one that fails the schema, loads nothing.
 			instruments: parseIdeaInstruments(i.instruments),
 			createdAt: i.createdAt,

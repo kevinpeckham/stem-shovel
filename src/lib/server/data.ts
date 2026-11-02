@@ -6747,17 +6747,30 @@ export function parseIdeaInstruments(json: string | null): IdeaInstruments | nul
 	}
 }
 
-export async function setIdeaNotes(accountId: string, ideaId: string, notes: string) {
+/** One of the idea's documents, saved whole; false without the idea in the account. */
+async function setIdeaDoc(
+	accountId: string,
+	ideaId: string,
+	doc: { notes: string } | { chart: string },
+) {
 	const [row] = await db
 		.update(idea)
-		.set({ notes })
+		.set(doc)
 		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
 		.returning({ id: idea.id });
 	return !!row;
 }
 
+export function setIdeaNotes(accountId: string, ideaId: string, notes: string) {
+	return setIdeaDoc(accountId, ideaId, { notes });
+}
+
+export function setIdeaChart(accountId: string, ideaId: string, chart: string) {
+	return setIdeaDoc(accountId, ideaId, { chart });
+}
+
 /**
- * Removes the idea when it has neither takes nor notes (nothing worth
+ * Removes the idea when it has neither takes, notes nor a chart (nothing worth
  * keeping): after its last take goes, after its notes are cleared, after a
  * failed upload is discarded. A Studio song (docs/multitrack-recorder.md)
  * also keeps itself alive with a source or a revision. True when it went.
@@ -6765,7 +6778,7 @@ export async function setIdeaNotes(accountId: string, ideaId: string, notes: str
 export async function deleteIdeaIfEmpty(accountId: string, ideaId: string) {
 	const row = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
-		columns: { notes: true },
+		columns: { notes: true, chart: true },
 		with: {
 			takes: { columns: { id: true }, limit: 1 },
 			sources: { columns: { id: true }, limit: 1 },
@@ -6775,6 +6788,7 @@ export async function deleteIdeaIfEmpty(accountId: string, ideaId: string) {
 	if (
 		!row ||
 		row.notes.trim() ||
+		row.chart.trim() ||
 		row.takes.length > 0 ||
 		row.sources.length > 0 ||
 		row.revisions.length > 0
@@ -6798,6 +6812,7 @@ export async function deleteEmptyIdeas(userId: string, olderThanMs: number) {
 				eq(idea.createdBy, userId),
 				lt(idea.createdAt, cutoff),
 				sql`trim(${idea.notes}) = ''`,
+				sql`trim(${idea.chart}) = ''`,
 				notExists(
 					db.select({ id: recording.id }).from(recording).where(eq(recording.ideaId, idea.id)),
 				),
@@ -7206,6 +7221,33 @@ export async function mergeIdeaNotesIntoSong(
 	return result.ok;
 }
 
+/**
+ * The idea's chord chart becomes the song's chart document (a new version,
+ * like any edit) when the song has none; a song's own chart is never
+ * replaced, and an empty idea chart changes nothing. True when it copied.
+ */
+export async function copyIdeaChartIntoSong(
+	recordingAccountId: string,
+	userId: string,
+	songId: string,
+	recordingId: string,
+) {
+	const take = await db.query.recording.findFirst({
+		where: and(eq(recording.accountId, recordingAccountId), eq(recording.id, recordingId)),
+		with: { idea: { columns: { chart: true } } },
+	});
+	const chart = take?.idea?.chart.trim() ?? "";
+	if (!chart) return false;
+	// The song may be in another of the user's accounts.
+	const s = await db.query.song.findFirst({
+		where: eq(song.id, songId),
+		columns: { accountId: true, chartMarkdown: true },
+	});
+	if (!s || s.chartMarkdown.trim()) return false;
+	const result = await saveSongDoc(s.accountId, userId, songId, "chart", `${chart}\n`);
+	return result.ok;
+}
+
 /** Which recordings still want an MP3 (same rules as stems' renditions). */
 export function recordingsWantingPlayback(
 	rows: {
@@ -7349,6 +7391,7 @@ type StudioSongRow = {
 	id: string;
 	title: string;
 	notes: string;
+	chart: string;
 	createdAt: Date;
 	instruments: string | null;
 	createdBy: string | null;
@@ -7379,6 +7422,7 @@ async function studioSongViews(rows: StudioSongRow[], userId: string): Promise<S
 			shared: i.shared,
 			own: i.createdBy === userId,
 			notes: i.notes,
+			chart: i.chart,
 			createdAt: i.createdAt,
 			instruments: parseIdeaInstruments(i.instruments),
 			current: (i.revisions[0] && current.get(i.revisions[0].id)) ?? null,
@@ -7407,6 +7451,7 @@ export async function listStudioSongs(
 			id: true,
 			title: true,
 			notes: true,
+			chart: true,
 			createdAt: true,
 			instruments: true,
 			createdBy: true,
@@ -7531,6 +7576,7 @@ export async function studioSongView(
 			id: true,
 			title: true,
 			notes: true,
+			chart: true,
 			createdAt: true,
 			instruments: true,
 			createdBy: true,

@@ -2,7 +2,9 @@
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import DemoRecorder, { type Take } from "#lib/components/DemoRecorder.svelte";
 	import RecordingActions from "#lib/components/RecordingActions.svelte";
-	import IdeaNotesPanel from "#lib/components/IdeaNotesPanel.svelte";
+	import IdeaDocTabs from "#lib/components/IdeaDocTabs.svelte";
+	import IdeaDocs from "#lib/components/IdeaDocs.svelte";
+	import { IdeaDocsState } from "#lib/state/ideaDocs.svelte.js";
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
@@ -31,6 +33,7 @@
 		deleteIdeaNow,
 		dropIdeaIfEmpty,
 		renameIdea,
+		saveIdeaChart,
 		saveIdeaInstruments,
 		saveIdeaNotes,
 	} from "#lib/remote/ideas.remote.js";
@@ -101,10 +104,8 @@
 	let loadedTake = $derived(idea?.takes.find((t) => t.id === takeId) ?? null);
 	/** The title in the recorder's field; for an unsaved idea, what it will be created with. */
 	let ideaTitle = $state(untrack(() => `Untitled Idea ${data.ideas.length + 1}`));
-	/** The notes as the page knows them (the panel autosaves to the idea). */
-	let notes = $state("");
-	/** Bumped to re-seed the notes panel (another idea, a clear). */
-	let notesKey = $state(0);
+	/** The idea's notes and chart as the page knows them (the panel autosaves to the idea). */
+	const docs = new IdeaDocsState();
 	let phase = $state("idle");
 	/** Drop takes under SHORT_TAKE_SECONDS (a mis-tap); a per-browser setting, read on mount. */
 	let discardShort = $state(false);
@@ -492,9 +493,8 @@
 		if (recorderBusy || !recorder) return;
 		ideaId = null;
 		takeId = null;
-		notes = "";
+		docs.seed();
 		ideaTitle = placeholder();
-		notesKey++;
 		recorder.reset();
 	}
 
@@ -537,6 +537,7 @@
 			id: `pending:${us[0].localId}`,
 			title,
 			notes: "",
+			chart: "",
 			kind: "idea" as const,
 			instruments: null,
 			createdAt: new Date(us[0].createdAt),
@@ -552,8 +553,7 @@
 		ideaTitle = i.title;
 		openIdeas.add(i.id);
 		if (switching) {
-			notes = i.notes;
-			notesKey++;
+			docs.seed(i);
 			loadInstruments(i);
 		}
 		if (t) {
@@ -593,18 +593,21 @@
 			notify(`Take name not saved: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
-	async function clearNotes() {
-		notes = "";
-		notesKey++;
-		if (ideaId) {
-			try {
-				const r = await saveIdeaNotes({ id: ideaId, markdown: "" });
-				if (r.ideaDeleted) ideaId = null; // nothing left in it; the title stays for the next take
-				await refreshAll();
-			} catch (e) {
-				notify(errorMessage(e), { kind: "error" });
-			}
+	/** The trash button: empties the shown document, saved on the idea when there is one. */
+	async function clearDoc() {
+		if (!confirm(`Clear the ${docs.doc}?`)) return;
+		const save = { notes: saveIdeaNotes, chart: saveIdeaChart }[docs.empty()];
+		if (!ideaId) return;
+		try {
+			await docSaved(await save({ id: ideaId, markdown: "" }));
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
 		}
+	}
+	/** After the notes or the chart saved: emptied on an idea holding nothing else, it removed the idea (the title stays for the next take). */
+	async function docSaved({ ideaDeleted }: { ideaDeleted: boolean }) {
+		if (ideaDeleted) ideaId = null;
+		await refreshAll();
 	}
 	/** A failed upload discarded: the idea goes too when it was created for that take and holds nothing else. */
 	async function discardUpload(u: { localId: string; ideaId: string | null }) {
@@ -672,8 +675,7 @@
 			if (emptied) {
 				ideaId = null;
 				takeId = null;
-				notes = "";
-				notesKey++;
+				docs.seed();
 				recorder?.reset();
 			}
 			await refreshAll();
@@ -712,6 +714,7 @@
 					(i) =>
 						i.title.toLowerCase().includes(query) ||
 						i.notes.toLowerCase().includes(query) ||
+						i.chart.toLowerCase().includes(query) ||
 						matchedTakes.has(i.id),
 				)
 			: ideasShown,
@@ -1258,13 +1261,14 @@
 				open={true}
 				floating={notesFloating}
 				closable={false}
-				title={`Notes for “${ideaTitle}”`}
+				title={docs.title(ideaTitle)}
 				storageKey="stemshovel.recorder.notes-panel"
 				width={560}
 				height={620}
 				onminimise={() => setNotesFloating(false)}
 			>
 				{#snippet controls()}
+					<IdeaDocTabs bind:doc={docs.doc} />
 					<button
 						class="button button-xs hidden lg-inline-flex"
 						type="button"
@@ -1282,25 +1286,21 @@
 					<button
 						class="button button-xs"
 						type="button"
-						title="Clear the notes"
-						aria-label="Clear the notes"
-						onclick={() => {
-							if (confirm("Clear the notes?")) clearNotes?.();
-						}}
+						title="Clear the {docs.doc}"
+						aria-label="Clear the {docs.doc}"
+						onclick={clearDoc}
 					>
 						<span class="i-ph-trash" aria-hidden="true"></span>
 					</button>
 				{/snippet}
-				{#key notesKey}
-					<IdeaNotesPanel
-						idea={{ id: ideaId, notes, title: ideaTitle }}
+				{#key docs.key}
+					<IdeaDocs
+						doc={docs.doc}
+						idea={{ id: ideaId, notes: docs.notes, chart: docs.chart, title: ideaTitle }}
 						{ensureIdea}
-						onchange={(m) => (notes = m)}
-						onsaved={async ({ ideaDeleted }) => {
-							// Emptied notes on an idea without takes remove the idea; the list shows the first line of the notes.
-							if (ideaDeleted) ideaId = null;
-							await refreshAll();
-						}}
+						onnotes={(m) => (docs.notes = m)}
+						onchart={(m) => (docs.chart = m)}
+						onsaved={docSaved}
 					/>
 				{/key}
 			</FloatingPanel>

@@ -131,12 +131,14 @@ describe("addRecordingToSong", () => {
 		expect(data.copyRecordingToSong).toHaveBeenCalledWith(ACCOUNT, USER, TAKE, SONG);
 		expect(data.songSlugs).toHaveBeenCalledWith(OTHER_ACCOUNT, SONG);
 		expect(data.mergeIdeaNotesIntoSong).not.toHaveBeenCalled();
+		expect(data.copyIdeaChartIntoSong).not.toHaveBeenCalled();
 	});
-	it("merges the notes under the same scoping when asked", async () => {
+	it("merges the notes and carries the chart under the same scoping when asked", async () => {
 		asTakeOwnerWithRoleInOtherAccount("admin");
 		data.copyRecordingToSong.mockResolvedValue({ id: fakeId("demo") });
 		await call(recordings.addRecordingToSong, { id: TAKE, songId: SONG });
 		expect(data.mergeIdeaNotesIntoSong).toHaveBeenCalledWith(ACCOUNT, USER, SONG, TAKE);
+		expect(data.copyIdeaChartIntoSong).toHaveBeenCalledWith(ACCOUNT, USER, SONG, TAKE);
 	});
 });
 
@@ -208,5 +210,12 @@ describe("newSongFromRecording", () => {
 		});
 		expect(data.createSong).toHaveBeenCalledWith(OTHER_ACCOUNT, USER, PROJECT, "From a take");
 		expect(data.copyRecordingToSong).toHaveBeenCalledWith(ACCOUNT, USER, TAKE, SONG);
+		expect(data.copyIdeaChartIntoSong).not.toHaveBeenCalled();
+	});
+	it("carries the idea's notes and chart to the new song when asked", async () => {
+		asTakeOwnerWithRoleInOtherAccount("member");
+		await call(recordings.newSongFromRecording, { ...input, mergeNotes: true });
+		expect(data.mergeIdeaNotesIntoSong).toHaveBeenCalledWith(ACCOUNT, USER, SONG, TAKE);
+		expect(data.copyIdeaChartIntoSong).toHaveBeenCalledWith(ACCOUNT, USER, SONG, TAKE);
 	});
 });

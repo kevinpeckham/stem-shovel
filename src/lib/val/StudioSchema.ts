@@ -510,6 +510,8 @@ export interface StudioSongView {
 	shared: boolean;
 	own: boolean;
 	notes: string;
+	/** The song's barmark chord chart (docs/barmark-integration-audit.md item 9). */
+	chart: string;
 	createdAt: Date;
 	/** The instruments' settings as they were with the song (the idea's `instruments` JSON); null until an instrument track recorded. */
 	instruments: IdeaInstruments | null;

@@ -8,7 +8,8 @@
 	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
-	import IdeaNotesPanel from "#lib/components/IdeaNotesPanel.svelte";
+	import IdeaDocTabs from "#lib/components/IdeaDocTabs.svelte";
+	import IdeaDocs from "#lib/components/IdeaDocs.svelte";
 	import InputSourceSettings from "#lib/components/InputSourceSettings.svelte";
 	import Metronome from "#lib/components/Metronome.svelte";
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
@@ -135,6 +136,10 @@
 	let song = $derived(data.songs.find((s) => s.id === songId) ?? null);
 	let title = $state("");
 	let notes = $state("");
+	/** The song's barmark chord chart (signed in only: a song kept in the browser has none). */
+	let chart = $state("");
+	/** Which of the song's documents the notes panel shows. */
+	let doc = $state<"notes" | "chart">("notes");
 	let notesKey = $state(0);
 	// ── The song kept in the browser (studioLocal.ts; docs/multitrack-recorder.md, "Signed out"): a visitor, or a member of no editing account ──
 	const local = $derived(!data.account);
@@ -161,6 +166,7 @@
 		songId = null;
 		title = saved?.title ?? "";
 		notes = saved?.notes ?? "";
+		chart = "";
 		notesKey++;
 		selected = null;
 		persistence.open(0);
@@ -227,6 +233,7 @@
 		await clearLocalSong();
 		title = "";
 		notes = "";
+		chart = "";
 		notesKey++;
 		selected = null;
 		localBack = false;
@@ -328,12 +335,28 @@
 		}
 	}
 
+	/** After the notes or the chart saved: emptying one on a song holding nothing else removed the song. */
+	async function songDocSaved({ ideaDeleted }: { ideaDeleted: boolean }) {
+		if (ideaDeleted) {
+			loadedKey = "";
+			songId = null;
+		}
+		await refreshAll();
+	}
+
+	/** The song's notes and chart into their panel (empty for no song). */
+	const NO_DOCS = { notes: "", chart: "" };
+	function seedDocs(s: { notes: string; chart: string }) {
+		notes = s.notes;
+		chart = s.chart;
+		notesKey++;
+	}
+
 	/** Open a song on the device: its arrangement and sources into the engine (once per song). */
 	function openSong(s: StudioSongView | null) {
 		songId = s?.id ?? null;
 		title = s?.title ?? "";
-		notes = s?.notes ?? "";
-		notesKey++;
+		seedDocs(s ?? NO_DOCS);
 		selected = null;
 		persistence.open(s?.revisions[0]?.number ?? 0);
 		diffs = {};
@@ -2044,6 +2067,7 @@
 						<span class="i-ph-bookmark-simple" aria-hidden="true"></span>
 					</button>
 					<StudioChartSections
+						text={chart}
 						grid={studio.grid}
 						from={studio.position}
 						onadd={(s) => {
@@ -3004,13 +3028,16 @@
 				<FloatingPanel
 					open={notesMode !== "minimised"}
 					floating={notesMode === "floating"}
-					title={`Notes for “${title || "this song"}”`}
+					title={`${!local && doc === "chart" ? "Chart" : "Notes"} for “${title || "this song"}”`}
 					storageKey="stemshovel.studio.notes-panel"
 					width={560}
 					height={620}
 					onminimise={() => setMode("notes", "minimised")}
 				>
 					{#snippet controls()}
+						{#if !local}
+							<IdeaDocTabs bind:doc />
+						{/if}
 						<button
 							class="button button-xs hidden lg-inline-flex"
 							type="button"
@@ -3043,17 +3070,13 @@
 						{/key}
 					{:else}
 						{#key `${songId ?? "new"}/${notesKey}`}
-							<IdeaNotesPanel
-								idea={{ id: songId, notes, title: title || "this song" }}
+							<IdeaDocs
+								{doc}
+								idea={{ id: songId, notes, chart, title: title || "this song" }}
 								ensureIdea={ensureSong}
-								onchange={(m) => (notes = m)}
-								onsaved={async ({ ideaDeleted }) => {
-									if (ideaDeleted) {
-										loadedKey = "";
-										songId = null;
-									}
-									await refreshAll();
-								}}
+								onnotes={(m) => (notes = m)}
+								onchart={(m) => (chart = m)}
+								onsaved={songDocSaved}
 							/>
 						{/key}
 					{/if}

@@ -76,6 +76,15 @@ describe("the idea's own functions (creatorship, not membership)", () => {
 			answer: { saved: true, ideaDeleted: false },
 		},
 		{
+			name: "saveIdeaChart",
+			fn: ideas.saveIdeaChart,
+			input: { id: IDEA, markdown: "| G | D |" },
+			dataFn: "setIdeaChart",
+			args: [ACCOUNT, IDEA, "| G | D |"],
+			result: true,
+			answer: { saved: true, ideaDeleted: false },
+		},
+		{
 			name: "setIdeaKind",
 			fn: ideas.setIdeaKind,
 			input: { id: IDEA, kind: "idea" },

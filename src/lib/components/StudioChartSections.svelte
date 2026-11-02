@@ -13,19 +13,23 @@
 		grid: BarGrid;
 		from: number;
 		onadd: (sections: { name: string; start: number }[]) => { added: number; renamed: number };
+		/** The song's own chart (docs/barmark-integration-audit.md item 9), offered until something is typed or picked. */
+		text?: string;
 	}
-	let { grid, from, onadd }: Props = $props();
+	let { grid, from, onadd, text: songChart = "" }: Props = $props();
 
 	const PLACEHOLDER =
 		"key: G\ntime: 4/4\ntempo: 120\n\n## Verse\n| G | D | Em | C |\n\n## Chorus\n| C | G | D | D |";
 
-	let text = $state("");
+	/** What was typed or picked; null until then, so the song's chart shows. */
+	let typed = $state<string | null>(null);
+	const text = $derived(typed ?? songChart);
 	let status = $state<string | null>(null);
 	const preview = $derived(text.trim() ? chartSections(text, { grid, from }) : null);
 	const canAdd = $derived(!!preview && preview.sections.length > 0 && !preview.errors.length);
 
 	function setText(next: string) {
-		text = next;
+		typed = next;
 		status = null;
 	}
 	async function pick(e: Event & { currentTarget: HTMLInputElement }) {
