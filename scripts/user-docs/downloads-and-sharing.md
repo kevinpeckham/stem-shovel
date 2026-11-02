@@ -37,7 +37,7 @@ Listening needs no account. Editing, commenting and uploading do. Owners and adm
 
 ## Documentation downloads
 
-A song's **Downloads** menu has **Song Documentation (PDF)**: its lyrics, chart and notes as one PDF, with its notation after them: every score and every PDF or image marked as notation. The project page's Attachments & Downloads section has **Download All Charts** (every score with its PDF and MusicXML, every chart file, and each text chart as text and PDF, in one zip) and **Download All Song Documentation** (a PDF per song, zipped).
+A song's **Downloads** menu has **Song Documentation (PDF)**: its lyrics, chart and notes as one PDF, with its notation after them: every score and every PDF or image marked as notation. The project page's Attachments & Downloads section has **Download All Charts** (every score with its PDF and MusicXML, every chart file, and each chart as a `.chart.md` barmark file and a PDF, in one zip) and **Download All Song Documentation** (a PDF per song, zipped).
 
 ## Short links
 

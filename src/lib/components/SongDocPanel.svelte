@@ -42,6 +42,8 @@
 		chartDefaults?: { tempo: number | null; meter: string | null };
 		/** The chart's spelling (the Chords view's menu): Nashville or Roman numerals, or null for chord names. */
 		numerals?: "nashville" | "roman" | null;
+		/** The chart drawn in another key (the Chords view's Key menu), null in the original key; the editor's preview stays in the original. */
+		chartText?: string | null;
 		/** The chart's background in place of the look's paper: the home page's demo draws it transparent on its own panel. */
 		chartPaper?: string | null;
 	}
@@ -62,6 +64,7 @@
 		onlocalsave,
 		chartDefaults,
 		numerals = null,
+		chartText = null,
 		chartPaper = null,
 	}: Props = $props();
 
@@ -243,7 +246,7 @@
 		>
 			{@render above?.()}
 			{#if kind === "chart"}
-				<ChartHtml {html} {markdown} {numerals} paper={chartPaper} />
+				<ChartHtml {html} {markdown} {numerals} text={chartText} paper={chartPaper} />
 			{:else}
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
 				{@html html}

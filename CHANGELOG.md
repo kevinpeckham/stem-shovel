@@ -14,6 +14,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **Humanize on the progression pad.** A Humanize slider in the chord player's Timing menu scatters each chord's onset and loudness a little when the pad plays back (the Studio's amounts, `utils/humanizeOffsets.ts`: up to 30 ms and 20 percent at full), so a progression feels played rather than sequenced; the MIDI download carries the same scatter. Off by default, remembered by this browser.
 
+- **A Key menu on the chart.** Beside the chord spelling menu on the song page's Chords view, Key draws the chart in another key: the twelve keys when the chart names its own (the original marked), or steps up and down when it does not. A viewing choice, like the spelling: the chart text stays as written, the choice is this browser's per song (`ChartKeyChoice` in `state/chartKey.svelte.ts`, barmark's `transposeChart`), and the editor and its live preview stay in the original key.
+- **Set list show view: spelling and key.** A chart opened in a set list's show view has the same two menus, so a singer taped to the floor gets the song in their key and their spelling.
+- **Charts zip: canonical `.chart.md`.** Download All Charts writes each chart as `<song>.chart.md` in barmark's canonical form (`printChart`) rather than `<song>-chart.txt`.
+
 ## [0.210.0] - 2026-11-02
 
 ### Changed

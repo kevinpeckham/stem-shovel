@@ -1433,6 +1433,17 @@
 									items={docs.chordDialectItems}
 								/>
 							</div>
+							<!-- Transposition is a view-level key choice, like the spelling (Kevin, 2026-11-02): the chart text stays as written. -->
+							<div class="pointer-events-auto rounded shadow-md shadow-black/40">
+								<ContextMenu
+									ariaLabel="Key: {docs.chartKey.label(data.song.chartMarkdown)}"
+									title="Key: the chart drawn in another key (a viewing choice; the chart itself does not change)"
+									buttonBaseClasses="button button-xs gap-1 border-white/15 bg-oxford/95 opacity-80 hover-opacity-100"
+									iconClass="i-ph-music-note"
+									label={docs.chartKey.label(data.song.chartMarkdown)}
+									items={docs.chartKey.items(data.song.chartMarkdown)}
+								/>
+							</div>
 						{/if}
 					{/if}
 				</div>
@@ -1485,6 +1496,7 @@
 						above={docs.panel === "chart" ? draftInPanel : undefined}
 						chartDefaults={chartDefaults(data.song.changes)}
 						numerals={docs.numerals}
+						chartText={docs.chartKey.text(data.song.chartMarkdown)}
 					/>
 				{/key}
 			{/if}

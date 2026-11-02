@@ -94,8 +94,8 @@ imported (item 4), its feel sets the pad's swing.
   with pdfkit (bars, bar lines, bar numbers, rehearsal letters), so the
   PDF matches the page. M rather than S if the renderer's typography is
   to be matched closely; a first pass of a grid is S.
-- **charts.zip** (`documentation.ts:188`): `<song>-chart.txt` becomes
-  `<song>.chart.md` holding `printChart`'s canonical text.
+- **charts.zip** (`documentation.ts:188`): `<song>-chart.txt` became
+  `<song>.chart.md` holding `printChart`'s canonical text (done 2026-11-02).
 - **Chat and comments**: plain text today; not worth a chart renderer.
 
 ### 4. Import a chart into the chord player (M)

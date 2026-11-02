@@ -104,4 +104,20 @@ describe("ChartHtml", () => {
 		expect(chart.numerals).toBeNull();
 		expect(chart.text).toBe("key: D\n| D | A |");
 	});
+
+	test("text (a transposition) is drawn in place of the markdown; back to null draws the markdown again", async () => {
+		const { container, rerender } = render(ChartHtml, {
+			html: CHART,
+			markdown: "key: D\n| D | A |",
+			text: "key: E\n| E | B |",
+		});
+		await settle();
+		const chart = container.querySelector("barmark-chart") as ChartElement;
+		expect(loaded.element).toBe(true);
+		expect(chart.numerals).toBeNull();
+		expect(chart.text).toBe("key: E\n| E | B |");
+		await rerender({ text: null });
+		await settle();
+		expect(chart.text).toBe("key: D\n| D | A |");
+	});
 });

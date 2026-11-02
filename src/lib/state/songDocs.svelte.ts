@@ -3,6 +3,7 @@ import type ContextMenu from "#lib/components/ContextMenu.svelte";
 import type SongDocPanel from "#lib/components/SongDocPanel.svelte";
 import type SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
 import { saveDoc } from "#lib/remote/songs.remote.js";
+import { ChartKeyChoice } from "#lib/state/chartKey.svelte.js";
 import { ChordDialectChoice, type ChordDialect } from "#lib/state/chordDialect.svelte.js";
 import type { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 import { DEFAULT_DOC_MONO, loadDocMono, saveDocMono } from "#lib/utils/docMonoPreference.js";
@@ -110,11 +111,14 @@ export class SongDocs {
 	notation: SongNotationPanel | null = null;
 	/** The Chords view's spelling, this browser's choice (shared with the home page's demo). */
 	#spelling = new ChordDialectChoice();
+	/** The Chords view's key (a viewing choice: the chart text stays as written), this browser's choice per song. */
+	#key: ChartKeyChoice;
 	#restore: Exclude<PanelMode, "minimised"> = "docked";
 	#opts: SongDocsOptions;
 
 	constructor(opts: SongDocsOptions) {
 		this.#opts = opts;
+		this.#key = new ChartKeyChoice(opts.song().id);
 		// Start on the first document with content.
 		const docs = opts.docs();
 		this.panel = DOC_KINDS.find((k) => docs[k]) ?? "lyrics";
@@ -132,6 +136,10 @@ export class SongDocs {
 			this.chartChoice ??
 			(!this.#opts.docs().chart && this.#opts.notationCount() > 0 ? "notation" : "text")
 		);
+	}
+	/** The Key menu's state: the chart drawn transposed, a viewing choice. */
+	get chartKey(): ChartKeyChoice {
+		return this.#key;
 	}
 	/** The renderer's `numerals` for the chosen spelling, null for chord names. */
 	get numerals(): "nashville" | "roman" | null {
@@ -175,6 +183,7 @@ export class SongDocs {
 	load() {
 		this.mono = loadDocMono();
 		this.#spelling.load();
+		this.#key.load();
 		try {
 			const mode = localStorage.getItem(DOCS_MODE_KEY);
 			if (mode === "docked" || mode === "floating" || mode === "minimised") this.mode = mode;

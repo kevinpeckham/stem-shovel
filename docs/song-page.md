@@ -148,7 +148,16 @@ step so it shrinks with the page and still fails on anything new.
      `numerals` hands it to `ChartHtml`, which then feeds the element its
      text so the renderer redraws client-side, since a server-rendered
      chart only restyles on an attribute change; Kevin, 2026-11-02: a
-     syntax choice within Chords, not a third mode), the Notes tab's Project/Mine choice, the ⋯ `menuItems`, the
+     syntax choice within Chords, not a third mode), the chart's viewing key
+     (`chartKey`, a `ChartKeyChoice` from `state/chartKey.svelte.ts`:
+     semitones −5..+6 remembered per song as
+     `stemshovel.song.chart-key.<id>`, `text()` through barmark's
+     `transposeChart`, a Key menu beside the spelling menu listing the
+     twelve keys when the chart names its own, else steps; the page hands
+     the transposed text to `SongDocPanel`'s `chartText` and `ChartHtml`'s
+     `text`, while the editor and `ChartPreview` stay in the written key;
+     Kevin, 2026-11-02: transposition is a view-level key choice, like the
+     spelling), the Notes tab's Project/Mine choice, the ⋯ `menuItems`, the
      notation picker and upload, `showRead`; `DOC_KINDS`, `DOC_LABELS`,
      `DOC_HINTS`, `DOC_VIEWS` exported from it. The player's view switch
      (`showView`), the history panel and the URL openers stay on the

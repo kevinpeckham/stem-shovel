@@ -16,7 +16,7 @@ A show with two sets is two set lists ("Set 1", "Set 2"); keeping each set its o
 
 ## On stage
 
-**Show view** is the set list the way you want it on a phone taped to the floor: big type, high contrast, one row per song with its note, nothing else. The screen stays awake while it is open. Tap a song to see its chart or lyrics right there; tap again to get back to the list.
+**Show view** is the set list the way you want it on a phone taped to the floor: big type, high contrast, one row per song with its note, nothing else. The screen stays awake while it is open. Tap a song to see its chart or lyrics right there; tap again to get back to the list. An opened chart has the same **Key** and chord spelling menus as the song page (the chart in your key, as names, Nashville numbers or Roman numerals), remembered by your browser.
 
 To get it onto everyone's phones, make a **viewing link** on the set list's page (the same links songs and sessions have) and text it out: the link opens the show view without signing in, and nothing else of the account. Revoke it when the night is over, or give it an expiry when you make it. The show view prints cleanly if paper is more your band's speed.
 

@@ -16,18 +16,21 @@
 	 * element module loads and the chart is handed its `markdown` as `text`:
 	 * a server-drawn chart has no text of its own, so a `numerals` attribute
 	 * alone would only restyle it. Back to null after that, the element
-	 * redraws from the same text with chord names. Never set, nothing loads
-	 * and the server's HTML stays as it is.
+	 * redraws from the same text with chord names. `text` (the Key menu's
+	 * transposition) is drawn in place of `markdown` the same way. Never set,
+	 * nothing loads and the server's HTML stays as it is.
 	 */
 	interface Props {
 		html: string;
 		/** The chart text, which the element redraws from when spelled as numerals. */
 		markdown?: string;
 		numerals?: "nashville" | "roman" | null;
+		/** The chart to draw instead of `markdown`: the Key menu's transposition, null in the original key. */
+		text?: string | null;
 		/** The chart's background in place of the look's translucent paper (`--barmark-paper`): "transparent" on the home page's demo. */
 		paper?: string | null;
 	}
-	let { html, markdown, numerals = null, paper = null }: Props = $props();
+	let { html, markdown, numerals = null, text: textProp = null, paper = null }: Props = $props();
 
 	type ChartElement = HTMLElement & { text: string | null; numerals: string | null };
 	/** The element has been given text, so a return to names must be drawn too. */
@@ -35,12 +38,13 @@
 
 	const draw = (html: string) => (node: HTMLElement) => {
 		const dialect = numerals;
-		const text = markdown ?? "";
+		const moved = !!textProp && textProp !== markdown;
+		const text = textProp ?? markdown ?? "";
 		let live = true;
 		void tick().then(async () => {
 			const chart = node.querySelector("barmark-chart");
 			if (chart && !chart.shadowRoot && "setHTMLUnsafe" in node) node.setHTMLUnsafe(html);
-			if (!dialect && !drawn) return;
+			if (!dialect && !moved && !drawn) return;
 			await import("@barmark/render/element");
 			// Queried again: the re-parse above replaced the element.
 			const element = node.querySelector<ChartElement>("barmark-chart");

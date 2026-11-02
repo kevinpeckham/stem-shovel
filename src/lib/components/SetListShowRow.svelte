@@ -11,6 +11,8 @@
 			id: string;
 			title: string;
 			note: string;
+			songId: string | null;
+			chartMarkdown: string | null;
 			chartHtml: string | null;
 			lyricsHtml: string | null;
 		};
@@ -50,6 +52,12 @@
 		{/if}
 	</button>
 	{#if open}
-		<SetListShowDoc title={row.title} chartHtml={row.chartHtml} lyricsHtml={row.lyricsHtml} />
+		<SetListShowDoc
+			title={row.title}
+			songId={row.songId}
+			chartMarkdown={row.chartMarkdown}
+			chartHtml={row.chartHtml}
+			lyricsHtml={row.lyricsHtml}
+		/>
 	{/if}
 </li>

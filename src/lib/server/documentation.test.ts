@@ -1,3 +1,4 @@
+import { printChart } from "barmark";
 import { unzipSync } from "fflate";
 import { describe, expect, test, vi } from "vite-plus/test";
 
@@ -175,11 +176,14 @@ describe("projectChartsZip", () => {
 			"So What/Lead sheet.mxl",
 			"So What/Lead sheet.pdf",
 			"So What/So What-chart.pdf",
-			"So What/So What-chart.txt",
+			"So What/So What.chart.md",
 			"So What/chart.png",
 		]);
 		expect(latin1(entries["So What/Lead sheet.mxl"]!)).toBe("PK-mxl-bytes");
-		expect(latin1(entries["So What/So What-chart.txt"]!)).toBe("Dm7 | Dm7 | Ebm7");
+		// The chart text in barmark's canonical print.
+		expect(new TextDecoder().decode(entries["So What/So What.chart.md"]!)).toBe(
+			printChart("Dm7 | Dm7 | Ebm7"),
+		);
 		expect(latin1(entries["So What/So What-chart.pdf"]!.subarray(0, 5))).toBe("%PDF-");
 	});
 	test("null when no song has a chart of any kind", async () => {

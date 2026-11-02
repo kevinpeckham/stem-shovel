@@ -5,6 +5,25 @@ import { canViewSetList, canViewSong } from "#lib/server/viewAccess.js";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
+type SongDocs = { id: string; chartMarkdown: string; lyricsMarkdown: string };
+
+/** A document rendered, null when it is empty. */
+const rendered = (markdown: string, render: (markdown: string) => string) =>
+	markdown ? render(markdown) || null : null;
+
+/** A row's chart and lyrics, empty unless the viewer may read the song. */
+function rowDocs(doc: SongDocs | undefined) {
+	if (!doc) return { songId: null, chartMarkdown: null, chartHtml: null, lyricsHtml: null };
+	return {
+		/** The song, for the Key menu's per-song choice. */
+		songId: doc.id,
+		/** The chart text the show view's spelling and Key menus redraw from. */
+		chartMarkdown: doc.chartMarkdown || null,
+		chartHtml: rendered(doc.chartMarkdown, renderChartHtml),
+		lyricsHtml: rendered(doc.lyricsMarkdown, renderMarkdown),
+	};
+}
+
 /**
  * A set list's show view (docs/band-plan.md, "Set list"): a member's, or a
  * visitor's holding its viewing link (the layout turns `?share=` into a
@@ -23,20 +42,14 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const docs = new Map(
 		(await setListSongDocs(account.id, readable)).map((d) => [d.id, d] as const),
 	);
-	const html = (markdown: string | undefined) =>
-		markdown ? renderMarkdown(markdown) || null : null;
 	return {
 		setList: { id: found.setList.id, title: found.setList.title },
-		rows: found.items.map((r) => {
-			const doc = r.song ? docs.get(r.song.id) : undefined;
-			return {
-				id: r.id,
-				title: r.title,
-				note: r.note,
-				chartHtml: doc?.chartMarkdown ? renderChartHtml(doc.chartMarkdown) || null : null,
-				lyricsHtml: html(doc?.lyricsMarkdown),
-			};
-		}),
+		rows: found.items.map((r) => ({
+			id: r.id,
+			title: r.title,
+			note: r.note,
+			...rowDocs(r.song ? docs.get(r.song.id) : undefined),
+		})),
 		/** A member: the way back to the editor. */
 		member: who.accountRole !== null,
 	};

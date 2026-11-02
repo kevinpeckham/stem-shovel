@@ -2,6 +2,7 @@ import { readBlob } from "#lib/server/blob.js";
 import { projectForDocumentation } from "#lib/server/data.js";
 import { markdownToPdfPages } from "#lib/utils/markdownToPdf.js";
 import { safeFilename } from "#lib/utils/safeFilename.js";
+import { printChart } from "barmark";
 import { zipSync, type Zippable } from "fflate";
 import { appendToPdf, type PdfAppendix } from "#lib/utils/appendToPdf.js";
 import PDFDocument from "pdfkit";
@@ -188,8 +189,9 @@ export async function projectDocumentationZip(
  * A zip of the project's charts, a folder per song named by its title:
  * every score's rendered PDF (`<title>.pdf`, once the jobs function has
  * engraved it) and its MusicXML file, every attachment marked as notation
- * under its own filename, and the chart text as `<song>-chart.txt`
- * (markdown) and `<song>-chart.pdf`. Null when there is nothing to put in.
+ * under its own filename, and the chart text as `<song>.chart.md`
+ * (barmark's canonical print, which barmark.dev and the editor open as a
+ * chart) and `<song>-chart.pdf`. Null when there is nothing to put in.
  */
 export async function projectChartsZip(
 	accountId: string,
@@ -223,7 +225,7 @@ export async function projectChartsZip(
 		}
 		if (song.chartMarkdown.trim()) {
 			const stem = safeFilename(song.title);
-			add(`${stem}-chart.txt`, new TextEncoder().encode(song.chartMarkdown), DEFLATED);
+			add(`${stem}.chart.md`, new TextEncoder().encode(printChart(song.chartMarkdown)), DEFLATED);
 			add(
 				`${stem}-chart.pdf`,
 				await songDocumentationPdf({ ...song, projectName: project.name, sections: ["chart"] }),

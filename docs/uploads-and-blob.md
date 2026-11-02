@@ -184,7 +184,7 @@ in three steps driven by `src/lib/upload.ts`:
   `GET /api/projects/[id]/charts.zip` (`<project> charts.zip`: a folder
   per song holding each score's MusicXML file and, once the jobs function
   engraved it, its PDF as `<title>.pdf`, each attachment marked as notation
-  under its own filename, and the chart text as `<song>-chart.txt` and
+  under its own filename, and the chart text as `<song>.chart.md` (barmark's canonical print) and
   `<song>-chart.pdf`). The markdown is drawn by `utils/markdownToPdf.ts`
   from marked's lexer tokens into an open pdfkit document with the
   built-in fonts (Helvetica; Courier for code blocks and spans, so a chord
