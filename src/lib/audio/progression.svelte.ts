@@ -10,6 +10,7 @@ import {
 	type ProgressionEntry,
 } from "#lib/utils/chordRhythm.js";
 import { encodeChordMidi } from "#lib/utils/encodeChordMidi.js";
+import { progressionChart } from "#lib/utils/progressionChart.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
 import type { DemoProgression, DemoSetup } from "#lib/constants/demoProgressions.js";
 
@@ -147,13 +148,14 @@ class ProgressionPad {
 	get canUndo(): boolean {
 		return this.#undo.length > 0;
 	}
-	/** What Save would store: the tempo and meter as they stand, and the entries. */
+	/** What Save would store: the tempo, meter and key as they stand, and the entries. */
 	get data(): ProgressionData {
 		return {
 			bpm: metronome.bpm,
 			beatsPerBar: metronome.beatsPerBar,
 			entries: this.entries,
 			style: chordPlayer.style,
+			key: chordPlayer.keyCenter,
 		};
 	}
 
@@ -332,6 +334,7 @@ class ProgressionPad {
 		metronome.setBeats(data.beatsPerBar);
 		if (data.style && (data.style === "plain" || chordPlayer.styleKnown(data.style)))
 			chordPlayer.setStyle(data.style);
+		applyKey(data);
 		this.savedId = saved?.id ?? null;
 		this.name = saved?.name ?? "";
 		this.notes = saved?.notes ?? "";
@@ -482,6 +485,21 @@ class ProgressionPad {
 	midi(): Blob {
 		return encodeChordMidi(this.entries, metronome.bpm, metronome.beatsPerBar);
 	}
+	/** The progression as a barmark chord chart, to save. */
+	chart(): string {
+		return progressionChart(this.entries, {
+			bpm: metronome.bpm,
+			beatsPerBar: metronome.beatsPerBar,
+			key: chordPlayer.keyCenter,
+			name: this.name,
+			swing: metronome.swing,
+		});
+	}
+}
+
+/** A saved progression's key onto the chord player, when it carries one (saved before 2026-11-02, it does not). */
+function applyKey(data: ProgressionData) {
+	if (typeof data.key === "number") chordPlayer.setKeyCenter(data.key);
 }
 
 export const progressionPad = new ProgressionPad();

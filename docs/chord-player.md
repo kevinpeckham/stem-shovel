@@ -414,6 +414,21 @@ re-presses the wedge at that inversion without a strum, the name gaining
 the bass note after a slash. The strum has a direction (down, up,
 alternate) and an accent (top or bottom note louder) in `#strike`.
 
+## What shipped: the Download menu and the key (2026-11-02)
+
+The pad's MIDI button became a **Download** menu (`ProgressionPad.svelte`):
+MIDI file, as before (`utils/encodeChordMidi.ts`), and **Barmark chord
+chart**, a `.chart.md` from `utils/progressionChart.ts`: `key:` from the
+player's key center, `time: <beats>/4`, `tempo:`, `feel: swing` when the
+session swing is 0.5 or more, one `## <name>` section, and the entries laid
+on a beat timeline and cut at bar lines, one slot a beat (`/` holds,
+`N.C.` for a rest), four bars a line, then barmark's `printChart` for the
+canonical text. The first step of docs/barmark-integration-audit.md. A
+progression's `data` now carries `key` (the circle index, optional, so
+older rows still read): the chart can name its key and opening a saved
+progression puts the player back in the key it was jotted in, so the
+wedges it lights are the ones that were pressed.
+
 ## Phases
 
 ### Phase 1: the instrument and its page (first release)

@@ -33,6 +33,8 @@ export const ProgressionDataSchema = v.object({
 	entries: v.pipe(v.array(ProgressionEntrySchema), v.maxLength(400)),
 	/** The chord style it was jotted in, so a reopened progression keeps jotting in the same sound (the entries carry their notes regardless). */
 	style: v.optional(v.pipe(v.string(), v.maxLength(48))),
+	/** The key center's circle index, so the chart export can name the key and a reopened progression lights the wedges it was jotted on; absent on progressions saved before 2026-11-02. */
+	key: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(11))),
 });
 export type ProgressionData = v.InferOutput<typeof ProgressionDataSchema>;
 

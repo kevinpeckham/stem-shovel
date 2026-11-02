@@ -13,6 +13,7 @@
 	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
 	import { measuresOf, type ChordBeats } from "#lib/utils/chordRhythm.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { progressionDownloads } from "#lib/utils/progressionDownloads.js";
 	import type { SavedProgression } from "#lib/val/ProgressionSchema.js";
 
 	/**
@@ -20,7 +21,7 @@
 	 * progression pad"): the chords jotted as they are played, by measure,
 	 * each with its beats; a tap picks one to change its length, make it a
 	 * rest or drop it. Play runs the progression through the chord player
-	 * with a click; Export saves it as MIDI; a member keeps it in the
+	 * with a click; Download saves it as MIDI or a barmark chord chart; a member keeps it in the
 	 * account by name.
 	 */
 	interface Props {
@@ -86,14 +87,7 @@
 	const openRow = $derived(pad.savedId ? (saved.find((p) => p.id === pad.savedId) ?? null) : null);
 	const BEATS: ChordBeats[] = [1, 2, 4];
 
-	function exportMidi() {
-		if (pad.entries.length === 0) return;
-		const a = document.createElement("a");
-		a.href = URL.createObjectURL(pad.midi());
-		a.download = `${(pad.name || "progression").replace(/[^\w.-]+/g, "-")}.mid`;
-		a.click();
-		setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-	}
+	const downloads = progressionDownloads(pad);
 
 	async function save(asNew = false) {
 		if (!account || !pad.hasContent) return;
@@ -208,17 +202,16 @@
 			<span class="i-ph-eraser" aria-hidden="true"></span>
 			<span class="hidden @xl-inline">Clear</span>
 		</button>
-		<button
-			class="device-button-sm px-3"
-			type="button"
-			aria-label="Export as MIDI"
-			title="Save the progression as a MIDI file"
+		<ContextMenu
+			ariaLabel="Download"
+			title="Download the progression as a MIDI file or a barmark chord chart"
+			iconClass="i-ph-download-simple"
+			label="Download"
+			labelClasses="hidden @xl-inline"
+			buttonBaseClasses="device-button-sm px-3"
 			disabled={pad.entries.length === 0}
-			onclick={exportMidi}
-		>
-			<span class="i-ph-download-simple" aria-hidden="true"></span>
-			<span class="hidden @xl-inline">MIDI</span>
-		</button>
+			items={downloads}
+		/>
 		<button
 			class="device-button-sm px-3 {pad.learn ? 'text-accent' : ''}"
 			type="button"

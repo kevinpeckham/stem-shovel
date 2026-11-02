@@ -178,12 +178,32 @@ instrument. Only if Kevin wants it.
 8. MusicXML and MIDI through barmark's translators when they ship
    (items 6 and 7's reverse).
 
-## Asks for barmark (surfaced, not decided)
+## The three grammar questions, answered (2026-11-02)
 
-- A documented text form for durations within a bar (slots and holds)
-  that a generator should emit, so item 1 prints what a reader expects
-  without guessing (the printer's `reduceSlots` suggests the rule
-  exists; a sentence in the README would settle it).
-- Whether `feel` is meant to carry a swing amount, or only the kind.
-- Guidance on `N.C.` for a rest bar versus a held chord, for item 1 and
-  item 4's round trip.
+Kevin asked for recommendations; the grammar draft (barmark
+docs/grammar-v0.1-draft.md, sections 2.1, 2.3, 7.1 and 8) already decides
+two of them, so these are readings of it plus one request.
+
+1. **Durations within a bar.** A generator writes one slot per beat (the
+   bar divided equally, `/` for a beat the chord holds through) and hands
+   the text to `printChart`: the canonical printer reduces to the fewest
+   even slots (`| C / / / |` → `| C |`, `| C / G / |` → `| C G |`) and
+   keeps what cannot reduce (`| C / G D |`). A chord that crosses a bar
+   line continues as `/` in the next bar. This is what
+   `utils/progressionChart.ts` does. Recommendation to barmark: one
+   sentence under section 8 saying generators should emit beat slots and
+   canonicalize, so every tool arrives at the same text.
+2. **Feel.** The grammar is right to make `feel:` a kind (straight,
+   swing, shuffle, swing 16: where off-beat subdivisions land, 2:1) and
+   not an amount. A swing percentage is a performance setting, which is
+   what the app's session swing (0 to 1) is. Recommendation: keep it so.
+   The app writes `feel: swing` when its swing is 0.5 or more (closer to
+   a triplet feel than to straight) and leaves the directive out
+   otherwise; on import, `feel: swing` sets the pad's swing to the
+   player's default amount.
+3. **A rest bar.** `N.C.` (chord instruments stop, the band may go on)
+   is the pad's rest: the pad is a chord instrument and knows nothing of
+   the band. `--` (everyone stops) would claim more than the pad knows.
+   On import both read as rests, and `/` after a rest stays a rest.
+   Recommendation to barmark: a line in section 2.3 naming `N.C.` as the
+   spelling a chord-instrument tool should emit for its own silence.
