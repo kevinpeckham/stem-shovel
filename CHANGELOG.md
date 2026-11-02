@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.207.0] - 2026-11-02
+
 ### Added
 
 - **Chord spelling on the Chords view.** A small menu beside the Chords / Engraving switch picks Chord names, Nashville numbers or Roman numerals (`@barmark/render`'s `numerals` view: each chord as its degree in its bar's key, a modulation renumbering from its next bar; Nashville keeps the quality, 6m⁷, Roman lowers minor and diminished, vi⁷). A syntax choice within Chords, not a third mode (Kevin). The choice is this browser's (`stemshovel.song.chord-dialect`, `ChordDialect` in `SongDocs`) and applies to the read view and the editor's live preview. Because a server-rendered `<barmark-chart>` only restyles on an attribute change, `ChartHtml` hands the element its text when a spelling other than names is picked, and the renderer redraws in the browser; with chord names nothing loads.
