@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.206.0] - 2026-11-02
+
 ### Changed
 
 - **A chart must also match bar by bar to count as this recording.** "Place from chart" and the song-check's aligned placements called a chart this recording when it fit the recording 1.6 times better than its tritone control. stem-bench Study 16 found a real wrong pairing, the Eat All the Clocks recording against the Mop Heart chart, that clears that ratio at 1.74 and is told apart only by its bars' median local cost, 0.323; so `samePiece` now also requires that median within 0.30 (`ALIGNMENT_SAME_PIECE_LOCAL_COST`), as Study 15 proposed. The band's correct charts sit well under it; a chart that fails is hedged everywhere and says it does not seem to match, as before.
