@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.209.0] - 2026-11-02
+
 ### Fixed
 
 - **A power chord reads right as a number.** In the Nashville and Roman spellings a power chord's 5 is now raised: D5 in D reads 1⁵ and I⁵, G5(7) reads 4⁵⁽⁷⁾, where the Nashville 5 used to join the number and read as 15. Chord names are unchanged (`@barmark/render` 0.7.0).
