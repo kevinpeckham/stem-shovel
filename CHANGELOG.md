@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A power chord reads right as a number.** In the Nashville and Roman spellings a power chord's 5 is now raised: D5 in D reads 1⁵ and I⁵, G5(7) reads 4⁵⁽⁷⁾, where the Nashville 5 used to join the number and read as 15. Chord names are unchanged (`@barmark/render` 0.7.0).
+
+### Technical
+
+- **barmark 0.7.0 and @barmark/render 0.7.0.** No grammar change: every chart reads as before. barmark adds `printParsed` (canonical text from a parse already in hand) and ships stem-bench's conformance fixtures, the four public Badverbs charts as stored here with their verified readings, so a parser change that alters what a real chart means fails barmark's CI before it publishes; the renderer gains `wrap: false` (a section wider than its box scrolls instead of wrapping) and `speakChord` (a chord's spoken name), neither used by the app yet.
+
 ## [0.208.0] - 2026-11-02
 
 ### Added

@@ -63,7 +63,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/gateway": "^4.0.127",
-		"@barmark/render": "0.4.0",
+		"@barmark/render": "0.7.0",
 		"@better-auth/passkey": "^1.7.14",
 		"@kevinpeckham/barkdown": "0.1.1",
 		"@kevinpeckham/woof-editor": "0.3.0",
@@ -77,7 +77,7 @@
 		"@vercel/blob": "2.8.2",
 		"@vercel/speed-insights": "^2.0.0",
 		"ai": "^7.0.154",
-		"barmark": "0.6.0",
+		"barmark": "0.7.0",
 		"better-auth": "^1.7.14",
 		"client-zip": "^2.5.1",
 		"drizzle-orm": "0.45.4",
