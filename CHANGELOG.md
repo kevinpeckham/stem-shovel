@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Chord spelling on the home page's chart demo.** The documents demo's chart gets the same Chord names / Nashville numbers / Roman numerals menu as the song page, and the two share this browser's choice (`ChordDialectChoice` in `state/chordDialect.svelte.ts`, which `SongDocs` now delegates to; the demo's Comments panel moved to `SongDocsDemoComments.svelte` to keep the demo under its complexity baseline).
+
 ## [0.207.0] - 2026-11-02
 
 ### Added

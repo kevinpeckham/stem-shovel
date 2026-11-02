@@ -151,11 +151,13 @@ check and the tests without any secret.
   note board, the add-as-demo / new-song popover, and two reusable
   components that came out of the page. `src/lib/constants/takeLimits.ts`
   holds the ceilings; `src/lib/utils/takeStopReason.ts` decides a stop.
-- `src/routes/+page.server.ts`, `SongPlayerDemo.svelte`, `SongDocsDemo.svelte`,
+- `src/routes/+page.server.ts`, `SongPlayerDemo.svelte`, `SongDocsDemo.svelte`
+  (its Comments panel in `SongDocsDemoComments.svelte`),
   `src/lib/server/songView.ts` — the front page demos a public song (chosen
   on /admin/home, stored in `app_setting`): the player with its downloads,
-  and the documents panel, read-only; the song page loads through the same
-  `songView`. The drum machine demo's starting beat (`homeBeat` in
+  and the documents panel, read-only, with the chart's chord spelling menu
+  (`state/chordDialect.svelte.ts`, the choice shared with the song page);
+  the song page loads through the same `songView`. The drum machine demo's starting beat (`homeBeat` in
   `app_setting`) is chosen by a system admin from the demo's own ⋯ menu.
 - `src/lib/remote/waitlist.remote.ts`, `WaitlistForm.svelte`, `src/routes/waitlist/` —
   the beta waitlist with email confirmation and a separate consent to

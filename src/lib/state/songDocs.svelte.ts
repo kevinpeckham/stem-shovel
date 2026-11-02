@@ -3,6 +3,7 @@ import type ContextMenu from "#lib/components/ContextMenu.svelte";
 import type SongDocPanel from "#lib/components/SongDocPanel.svelte";
 import type SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
 import { saveDoc } from "#lib/remote/songs.remote.js";
+import { ChordDialectChoice, type ChordDialect } from "#lib/state/chordDialect.svelte.js";
 import type { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 import { DEFAULT_DOC_MONO, loadDocMono, saveDocMono } from "#lib/utils/docMonoPreference.js";
 import type { SongDocKind, SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
@@ -32,18 +33,10 @@ export const DOC_VIEWS = [
 /** Docked in its column, floating from lg, or minimized to the action row's button (the Docs panel and the player alike). */
 export type PanelMode = "docked" | "floating" | "minimised";
 type ChartMode = "text" | "notation";
-/** How the Chords view spells chords: names, or each chord's degree in its bar's key (barmark's numerals). */
-export type ChordDialect = "names" | "nashville" | "roman";
-const CHORD_DIALECTS: { id: ChordDialect; label: string; short: string }[] = [
-	{ id: "names", label: "Chord names", short: "Names" },
-	{ id: "nashville", label: "Nashville numbers", short: "Nashville" },
-	{ id: "roman", label: "Roman numerals", short: "Roman" },
-];
 type MenuItems = NonNullable<ComponentProps<typeof ContextMenu>["items"]>;
 
 const DOCS_MODE_KEY = "stemshovel.song.docs-mode";
 const CHART_MODE_KEY = "stemshovel.song.chart-mode";
-const CHORD_DIALECT_KEY = "stemshovel.song.chord-dialect";
 const NOTES_MINE_KEY = "stemshovel.song.notes-mine";
 
 /** What the Docs panel reads of the song (the page's data). */
@@ -111,12 +104,12 @@ export class SongDocs {
 	mode = $state<PanelMode>("docked");
 	/** The Chart tab's mode as picked; until then, notation when there is no chart text but there is notation. */
 	chartChoice = $state<ChartMode | null>(null);
-	/** The Chords view's spelling, this browser's choice. */
-	chordDialect = $state<ChordDialect>("names");
 	/** Mine picked on the Notes tab. */
 	notesChoice = $state(false);
 	editor: SongDocPanel | null = null;
 	notation: SongNotationPanel | null = null;
+	/** The Chords view's spelling, this browser's choice (shared with the home page's demo). */
+	#spelling = new ChordDialectChoice();
 	#restore: Exclude<PanelMode, "minimised"> = "docked";
 	#opts: SongDocsOptions;
 
@@ -142,7 +135,7 @@ export class SongDocs {
 	}
 	/** The renderer's `numerals` for the chosen spelling, null for chord names. */
 	get numerals(): "nashville" | "roman" | null {
-		return this.chordDialect === "names" ? null : this.chordDialect;
+		return this.#spelling.numerals;
 	}
 	get notationShown() {
 		return this.panel === "chart" && this.chartMode === "notation";
@@ -181,13 +174,12 @@ export class SongDocs {
 	/** Read this browser's choices (from onMount). */
 	load() {
 		this.mono = loadDocMono();
+		this.#spelling.load();
 		try {
 			const mode = localStorage.getItem(DOCS_MODE_KEY);
 			if (mode === "docked" || mode === "floating" || mode === "minimised") this.mode = mode;
 			const cm = localStorage.getItem(CHART_MODE_KEY);
 			if (cm === "text" || cm === "notation") this.chartChoice = cm;
-			const dialect = CHORD_DIALECTS.find((d) => d.id === localStorage.getItem(CHORD_DIALECT_KEY));
-			if (dialect) this.chordDialect = dialect.id;
 			this.notesChoice = localStorage.getItem(NOTES_MINE_KEY) === "1";
 		} catch {
 			// Private mode: docked.
@@ -228,23 +220,24 @@ export class SongDocs {
 		remember(CHART_MODE_KEY, mode);
 	}
 
+	/** The Chords view's spelling, this browser's choice. */
+	get chordDialect(): ChordDialect {
+		return this.#spelling.dialect;
+	}
+	set chordDialect(dialect: ChordDialect) {
+		this.#spelling.dialect = dialect;
+	}
 	/** The chord spelling menu's trigger: the current spelling, short. */
 	get chordDialectShort() {
-		return CHORD_DIALECTS.find((d) => d.id === this.chordDialect)?.short ?? "Names";
+		return this.#spelling.short;
 	}
 	/** The chord spelling menu: the three spellings, the current one checked. */
 	get chordDialectItems(): MenuItems {
-		return CHORD_DIALECTS.map((d) => ({
-			id: d.id,
-			label: d.label,
-			iconClass: d.id === this.chordDialect ? "i-ph-check" : "i-ph-check invisible",
-			action: () => this.setChordDialect(d.id),
-		}));
+		return this.#spelling.items;
 	}
 	/** The view redraws in place (under an open editor too), so nothing closes. */
 	setChordDialect(dialect: ChordDialect) {
-		this.chordDialect = dialect;
-		remember(CHORD_DIALECT_KEY, dialect);
+		this.#spelling.set(dialect);
 	}
 
 	async setNotesMine(on: boolean) {

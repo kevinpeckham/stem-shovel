@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { onMount } from "svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
+	import SongDocsDemoComments from "#lib/components/SongDocsDemoComments.svelte";
 	import type { DemoComment } from "#lib/constants/demoComments.js";
 	import type { SongView } from "#lib/server/songView.js";
-	import { formatDate } from "#lib/utils/formatDate.js";
-	import { formatTime } from "#lib/utils/formatTime.js";
 	import { renderPreview } from "#lib/remote/markdown.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { ChordDialectChoice } from "#lib/state/chordDialect.svelte.js";
 
 	/**
 	 * The song page's documents panel for a visitor, as the home page's
@@ -31,6 +33,9 @@
 		comments: "Comments",
 	};
 	let panel = $state<Panel>("chart");
+	/** How the chart spells chords, the same remembered choice as the song page. */
+	const spelling = new ChordDialectChoice();
+	onMount(() => spelling.load());
 	/** The chart readout's defaults: the demo carries no song settings, and a tempo in the chart's own text wins over these. */
 	const DEMO_CHART_DEFAULTS = { tempo: 120, meter: "4/4" };
 	/** The phone's document picker (a <details>): closed on a choice, a click elsewhere or Escape. */
@@ -88,40 +93,7 @@
 
 <div class="grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full relative min-h-540px">
 	{#if panel === "comments"}
-		<div
-			class="h-full min-h-64 max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-8"
-		>
-			<p class="mb-3 text-13px opacity-70">
-				Example comments. Add your own from the player above (⌘-click or right-click a waveform); on
-				the demo they live on this page only.
-			</p>
-			{#if comments.length === 0}
-				<p class="opacity-80">No comments yet.</p>
-			{:else}
-				<ol class="grid gap-4">
-					{#each comments as c (c.id)}
-						<li class="rounded-md border border-white/10 bg-black/20 px-4 py-3">
-							<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-								<h3 class="font-600">{c.title}</h3>
-								<span class="text-12px opacity-70">{c.authorName} · {formatDate(c.createdAt)}</span>
-							</div>
-							{#if c.at !== null}
-								<p class="mt-1 text-12px opacity-70">
-									<span class="i-ph-map-pin mr-1 inline-block align-[-2px]" aria-hidden="true"
-									></span>{formatTime(c.at)}
-								</p>
-							{/if}
-							<p class="mt-2 whitespace-pre-line text-15px">{c.body}</p>
-							{#if c.mine && onremove}
-								<button type="button" class="mt-2 text-12px link-dim" onclick={() => onremove(c.id)}
-									>Delete</button
-								>
-							{/if}
-						</li>
-					{/each}
-				</ol>
-			{/if}
-		</div>
+		<SongDocsDemoComments {comments} {onremove} />
 	{:else}
 		{#key doc}
 			<SongDocPanel
@@ -137,10 +109,22 @@
 				bind:editing
 				onlocalsave={(md) => keepLocal(doc, md)}
 				chartDefaults={DEMO_CHART_DEFAULTS}
+				numerals={spelling.numerals}
 			/>
 		{/key}
 	{/if}
 	<div class="absolute top-2 right-3 flex items-stretch gap-4">
+		{#if panel === "chart"}
+			<!-- How the chart spells chords: the same remembered choice as the song page. -->
+			<ContextMenu
+				ariaLabel="Chord spelling: {spelling.short}"
+				title="Chord spelling"
+				buttonBaseClasses="button button-xs gap-1 border-white/15 bg-oxford/95 opacity-80 hover-opacity-100"
+				iconClass="i-ph-list-numbers"
+				label={spelling.short}
+				items={spelling.items}
+			/>
+		{/if}
 		<!-- A dropdown on a phone (our own, so it opens downward), the segmented control from sm up. -->
 		<details class="relative sm:hidden" bind:this={pickerEl}>
 			<summary
