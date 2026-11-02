@@ -13,6 +13,7 @@
 	import Metronome from "#lib/components/Metronome.svelte";
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
 	import PageCopySection from "#lib/components/PageCopySection.svelte";
+	import StudioChartSections from "#lib/components/StudioChartSections.svelte";
 	import StudioTimeline from "#lib/components/StudioTimeline.svelte";
 	import ExportPanel from "#lib/components/ExportPanel.svelte";
 	import LibraryPanel from "#lib/components/LibraryPanel.svelte";
@@ -2042,6 +2043,18 @@
 					>
 						<span class="i-ph-bookmark-simple" aria-hidden="true"></span>
 					</button>
+					<StudioChartSections
+						grid={studio.grid}
+						from={studio.position}
+						onadd={(s) => {
+							const r = studio.addSectionMarkers(s);
+							if (studio.notice) {
+								notify(studio.notice, { kind: "error" });
+								studio.notice = null;
+							}
+							return r;
+						}}
+					/>
 					<button
 						class="device-button-sm px-3 min-w-32px {studio.arrangement.punch ? 'text-accent' : ''}"
 						type="button"

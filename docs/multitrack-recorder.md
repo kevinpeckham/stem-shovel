@@ -795,7 +795,16 @@ engine's `sections` getter is the one list of `{ id, name, start, end }`
 in time order; `addMarker(t, name, section)` makes one ("Add section"
 beside "Add marker" in the transport, named "Section N"), and S on a
 focused flag (`toggleMarkerSection`, one undo step) turns a marker into
-a section or back. In a Reaper project a section is a region (`MARKER …
+a section or back. **Sections from a chart (2026-11-02, barmark audit
+item 7):** `StudioChartSections.svelte`, a menu beside Add section,
+takes a barmark chord chart (pasted or a file) and
+`utils/chartSections.ts` reads its bars (`parseChart(text).bars`,
+replays expanded) into sections where the heading changes, timed from
+the playhead by the chart's tempo when it states one, else placed on
+the Studio's own bar lines (`barAt`/`secondsAtBar`, with a warning, and
+another when the meters differ); `studio.addSectionMarkers(list)` adds
+them in one undo step, renaming a section marker already within 0.02 s
+instead of doubling it, and stops at `MAX_STUDIO_MARKERS` with a notice. In a Reaper project a section is a region (`MARKER …
 1` at its start and an unnamed end line), written and read as such; a
 DAWproject has only markers, so sections go out and come back as plain
 markers there.

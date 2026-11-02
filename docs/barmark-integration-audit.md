@@ -142,7 +142,7 @@ roadmap; when it ships, a score's `<harmony>` elements become a chart
 through it, and the song page offers "Chart from score". Until then
 nothing in the app should parse MusicXML into charts.
 
-### 7. Studio markers from the chart (S), chart from the Studio (L, later)
+### 7. Studio markers from the chart (S) — done 2026-11-02; chart from the Studio (L, later)
 
 `song.sections` (`[{ name, start }]`, names matching `## Name`) have no
 path into the Studio's `markers` (`StudioSchema.ts:371`, `section:
@@ -212,7 +212,12 @@ replay) for the two parser findings.
    The app writes `feel: swing` when its swing is 0.5 or more (closer to
    a triplet feel than to straight) and leaves the directive out
    otherwise; on import, `feel: swing` sets the pad's swing to the
-   player's default amount.
+   player's default amount. **Superseded 2026-11-02:** Kevin reopened
+   barmark #66 with a brief for an optional amount (`feel: swing 58%`,
+   50% to 75% inclusive, `shuffle` takes one too, the `%` required);
+   stem-shovel#4 holds the app's side (export `50 + 16.67 × s`%, import
+   `(p − 50) / 16.67`, bare `swing` = 1, clamp above 66.7% and say so),
+   blocked until barmark ships it.
 3. **A rest bar.** `N.C.` (chord instruments stop, the band may go on)
    is the pad's rest: the pad is a chord instrument and knows nothing of
    the band. `--` (everyone stops) would claim more than the pad knows.

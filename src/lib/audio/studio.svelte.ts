@@ -2617,6 +2617,40 @@ class StudioEngine {
 		this.arrangement.markers = [...this.markers, marker].sort((a, b) => a.t - b.t);
 		return marker;
 	}
+	/**
+	 * Section markers from a list (a chart's sections), as one undo step: a
+	 * section marker already within 0.02 s of a start is renamed instead of
+	 * doubled; past the cap the new ones are left out and the notice says so.
+	 */
+	addSectionMarkers(list: { name: string; start: number }[]): { added: number; renamed: number } {
+		if (!list.length) return { added: 0, renamed: 0 };
+		this.#commit();
+		const markers = [...this.markers];
+		let added = 0;
+		let renamed = 0;
+		let skipped = 0;
+		for (const item of list) {
+			const near = markers.find((m) => m.section && Math.abs(m.t - item.start) <= 0.02);
+			if (near) {
+				near.name = item.name;
+				renamed++;
+			} else if (markers.length >= MAX_STUDIO_MARKERS) skipped++;
+			else {
+				markers.push({
+					id: localId(),
+					t: round4(Math.max(0, item.start)),
+					name: item.name,
+					section: true,
+				});
+				added++;
+			}
+		}
+		if (skipped) {
+			this.notice = `A song holds at most ${MAX_STUDIO_MARKERS} markers; ${skipped} sections were not added.`;
+		}
+		this.arrangement.markers = markers.sort((a, b) => a.t - b.t);
+		return { added, renamed };
+	}
 	moveMarker(id: string, t: number) {
 		const m = this.markers.find((x) => x.id === id);
 		if (!m || m.t === t) return;

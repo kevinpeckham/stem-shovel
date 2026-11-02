@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Studio: sections from a chart.** A menu beside Add section in the transport takes a barmark chord chart, pasted or picked as a file, and puts a section marker at each of its headings from the playhead, timed by the chart's tempo or, when it names none, on the Studio's own bars (`utils/chartSections.ts`, `studio.addSectionMarkers`, one undo step; a section already at that time is renamed rather than doubled).
+
 ## [0.212.0] - 2026-11-02
 
 ### Added

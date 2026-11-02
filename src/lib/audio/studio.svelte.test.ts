@@ -652,3 +652,46 @@ describe("studio streaming from disk", () => {
 		fresh.stop();
 	});
 });
+
+describe("studio.addSectionMarkers", () => {
+	it("adds section markers in time order and renames one already at a start", () => {
+		studio.arrangement.markers = [{ id: "s1", t: 4, name: "Intro", section: true }];
+		const r = studio.addSectionMarkers([
+			{ name: "Chorus", start: 12 },
+			{ name: "Verse", start: 4.01 },
+			{ name: "Bridge", start: 7 },
+		]);
+		expect(r).toEqual({ added: 2, renamed: 1 });
+		expect(studio.markers.map((m) => [m.t, m.name, m.section, m.id === "s1"])).toEqual([
+			[4, "Verse", true, true],
+			[7, "Bridge", true, false],
+			[12, "Chorus", true, false],
+		]);
+	});
+	it("is one undo step", () => {
+		const before = JSON.parse(JSON.stringify(studio.markers));
+		studio.addSectionMarkers([
+			{ name: "A", start: 0 },
+			{ name: "B", start: 8 },
+		]);
+		expect(studio.markers).toHaveLength(3);
+		studio.undo();
+		expect(studio.arrangement.markers).toEqual(before);
+	});
+	it("stops at the cap and says how many were left out", () => {
+		studio.notice = null;
+		studio.arrangement.markers = Array.from({ length: 63 }, (_, i) => ({
+			id: `m${i}`,
+			t: i,
+			name: `M${i}`,
+		}));
+		const r = studio.addSectionMarkers([
+			{ name: "A", start: 100 },
+			{ name: "B", start: 108 },
+			{ name: "C", start: 116 },
+		]);
+		expect(r).toEqual({ added: 1, renamed: 0 });
+		expect(studio.markers).toHaveLength(64);
+		expect(studio.notice).toBe("A song holds at most 64 markers; 2 sections were not added.");
+	});
+});
