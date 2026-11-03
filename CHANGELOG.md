@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.218.0] - 2026-11-03
+
+### Added
+
+- **Charts draw more of the page.** A chart can carry rehearsal marks, words over a bar ("solo"), accents, hits, push marks and chords with an omitted third or fifth (`C7(no3)`), and the bar numbers in the margin follow the written numbers through a repeat with endings.
+
 ### Technical
 
 - **barmark 0.12.0, `@barmark/render` 0.9.1.** Rehearsal marks (`| @B | D |`), words on a bar (`| "solo" D |`), omissions (`C7(no3)`, `C7(b9,no5)`), voicings (`Cmaj7{E3 G3 B3 C4}`), accents, hits and push marks (`>D`, `^D`, `<D`), the rest of issue 70; a mark or words is not a bar, so every reader of ours plays and places charts as before (the suite passes unchanged). The MusicXML summary writes a subtracted third or fifth as `(no3)`/`(no5)` again. The renderer draws them all and numbers its margin by the written bar (issue 92).
