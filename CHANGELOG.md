@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.220.0] - 2026-11-03
+
 ### Technical
 
 - **The legacy chart-read reader and converter removed.** `chartBars` (the `m<n>` measure-summary reader), `chartReadToBarmark`, `convertChartReads` and `bun run db:convert-chart-reads` are gone: the converter's dry run found no read in the old form on any stage. `chartReadWarnings` and `chartStatedValues` keep their `m<n>` branches for MusicXML summaries.
