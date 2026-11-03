@@ -285,11 +285,8 @@ against an unrecoverable 64-table stranding. The false-reassurance
 comments should be corrected in the same change regardless of which
 option Kevin picks.
 
-_(Amendment 3 resolution, same day: Kevin decided REFUSE-until-handlers
+*(Amendment 3 resolution, same day: Kevin decided REFUSE-until-handlers
 for both buttons — details in
-<<<<<<< Updated upstream
-`2026-11-03-replicator-fk-buttons-DECISION.md`.)_
-=======
 `2026-11-03-replicator-fk-buttons-DECISION.md`.)*
 
 ---
@@ -349,4 +346,3 @@ per workflow. Check your shared behaviors for the same collision.
 **Kevin's two actions:** the 0.37.1 merge decision, and the demo
 census (`bunx varlock run -- bun scripts/fk-orphan-scan.ts --env demo`,
 read-only; release-to-demo now gates on it).
->>>>>>> Stashed changes
