@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **barmark 0.14.1, `@barmark/render` 0.12.0.** A `part:` line names a chart's part (0.13.0; the AI's score read writes one, and the renderer leads its header with it), and several parts in one chart with systems of labelled bar lines (0.14.0, `Gtr | G | C |`, `extractPart`, `printPart`), which the renderer draws as stacked rows; the renderer's one-part attribute is `show-part` now (breaking, unused here). Every reader of ours plays and places charts as before; the suite passes unchanged.
+
 ## [0.220.0] - 2026-11-03
 
 ### Technical

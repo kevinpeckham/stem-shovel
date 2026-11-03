@@ -29,9 +29,12 @@ and worth knowing before a reader or converter leans on `parseChart`:
   `| @A |: D |` is an error (write `|: @A | D |`), and a `|:` … `:|` that
   crosses a `##` heading gives two errors. The read prompt says so.
 - **A `part:` line is plain text in 0.12.0** although grammar 7.3 calls it
-  a directive; `Title:`, `Part:` and `Note:` prose lines parse with no
-  diagnostic, and a mid-chart `key:`/`time:`/`tempo:` line applies from
-  the next bar on.
+  a directive; since 0.13.0 (the same day) it is the directive, read
+  case-insensitively (`Part: Electric Guitar 1 (3 parts)` names the part,
+  parentheses and commas allowed, once and before the first bar), and the
+  renderer 0.10.0 leads its header with it. `Title:`, `Part:` and `Note:`
+  prose lines parse with no diagnostic, and a mid-chart
+  `key:`/`time:`/`tempo:` line applies from the next bar on.
 - **barmark never scans prose**, so a chart whose tempo is only "120 bpm"
   in a header line has no `bar.tempo`; `chartStatedValues` tries the
   directives first and falls back to the prose reader for a value the

@@ -171,12 +171,12 @@ export const chartCacheKey = (url: string) =>
 const CHART_READ_SYSTEM = `You read music notation. The attached file is a song's chart or score. Write it out as a chart in barmark, a plain-text chord chart notation, in exactly this form and nothing else:
 
 # <title>
-Part: <the part you read, e.g. "Electric Guitar 1 (3 parts)">
+part: <the part you read, e.g. "Electric Guitar 1 (3 parts)">
 key: <key>, time: <time signature>, tempo: <bpm>
 <the bars, one bar line per system of the score>
 
 Rules:
-- The directives line: "key:" from the key signature, as barmark spells a key: the tonic with b or # for a flat or sharp, and m for minor ("F", "Bb", "Eb", "F#", "Dm", "C#m"). Prefer the major key for a signature unless the chords plainly sit in the relative minor; a text such as "Key: F Major" in the score confirms it. "time:" the time signature ("4/4", "3/4", "6/8"); "tempo:" the beats per minute of a metronome mark. State only what the score shows: leave out any of the three it does not show.
+- The "part:" line names the part you read (barmark 0.13.0: a directive, once, before the first bar). The directives line: "key:" from the key signature, as barmark spells a key: the tonic with b or # for a flat or sharp, and m for minor ("F", "Bb", "Eb", "F#", "Dm", "C#m"). Prefer the major key for a signature unless the chords plainly sit in the relative minor; a text such as "Key: F Major" in the score confirms it. "time:" the time signature ("4/4", "3/4", "6/8"); "tempo:" the beats per minute of a metronome mark. State only what the score shows: leave out any of the three it does not show.
 - Every measure of the score is written once, in order, as one cell between pipes: | F | C7 | Bbmaj7/F | Gm7 C7 |. Count every measure in every system on every page (the small numbers at the start of a system are measure numbers: use them to keep count), so the bars' numbers match the score's measure numbers.
 - In a cell, the measure's chord symbols in the order they occur, separated by spaces, as written (Fmaj9, Bbmaj7/F, Cm7), with b and # for flats and sharps. A measure with no chord symbol keeps the harmony before it: write / alone in its cell. A measure with the repeat-measure sign is %. N.C. where the score says N.C.
 - Repeats: a bar line that begins a repeat starts with |: (start a new line at that measure), and the line where the repeat ends closes with :| . Endings are bar lines of their own after the repeated bars: |1 G | G7 :| for a first ending (it closes with :|), |2 G | C | for a second, |1-3 ... :| for one ending on several passes.

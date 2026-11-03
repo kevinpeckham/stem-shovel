@@ -98,7 +98,7 @@ describe("readChartWithAi", () => {
 		await read();
 		const system = String((generate.mock.calls[0][0] as unknown as { system: string }).system);
 		expect(system).toContain("key: <key>, time: <time signature>, tempo: <bpm>");
-		expect(system).toContain("Part: <the part you read");
+		expect(system).toContain("part: <the part you read");
 		expect(system).toMatch(/Every measure of the score is written once, in order, as one cell/);
 		expect(system).toContain("|1 G | G7 :|");
 		expect(system).toContain("D.S. al Coda");
