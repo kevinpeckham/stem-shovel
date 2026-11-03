@@ -346,3 +346,22 @@ per workflow. Check your shared behaviors for the same collision.
 **Kevin's two actions:** the 0.37.1 merge decision, and the demo
 census (`bunx varlock run -- bun scripts/fk-orphan-scan.ts --env demo`,
 read-only; release-to-demo now gates on it).
+
+---
+
+## Amendment 5 (2026-11-03, evening): the gate-vs-migration ordering rule, from the floor rule's first live firing
+
+The portal's demo census (`2026-11-03-customer-portal-demo-census.md`):
+data clean on all 58 existing edges including the authorship class, and
+the scan still exited 1 because 10 edges belong to tables whose
+migrations are queued but not yet applied — every skip a finding, three
+floors tripped. The instrument refused to tell "pending migration" from
+"dropped table," which is the design. Portable rule, adopted: **when
+the orphan scan gates a release that carries schema migrations, the
+migrations run BEFORE the workflow starts (keeping the gate strict and
+the scan read-only), or the gate moves after the workflow's migration
+step. Never loosen the floor to let missing-because-pending through —
+that is the same reading as missing-because-dropped.** Portal status:
+dev and staging 68/68 clean after repair, demo 58/58 clean with 10
+pending, 0.37.1 merged to dev and staging, demo release gated until its
+migrations run.
