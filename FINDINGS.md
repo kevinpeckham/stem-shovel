@@ -232,6 +232,22 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **The cross-repo FK rule, coordinated (bench, 2026-11-03):
+  docs/fk-coordinated-response-2026-11-03.md** — the single authority
+  document for how all three apps (this one, Replicator, the customer
+  portal) handle Turso engine-kind foreign keys after Study AW and its
+  correction; committed here because this repo's agent cannot reach the
+  bench VM's handoff directory. This repo's part is small and
+  non-urgent: (1) cascade.ts is already the pattern the other repos are
+  adopting — no changes; (2) when sweep-orphans.ts is next touched,
+  cross-check its Drizzle-derived FK list against the live database's
+  `pragma_foreign_key_list` and warn on mismatch; (3) when convenient,
+  align the ops probe to the shared five-key shape
+  ({date, defaultPragma, pragmaSticksAcrossClients, cascadeFired,
+  violationRejected}). Shared names if adopting pieces:
+  fk-graph.ts / fk-orphan-scan.ts / fk-probe.ts /
+  fk-coverage.test.ts.
+
 - **Study AW verdict (barkup-bench, 2026-11-02): your September
   foreign-key claim is CONFIRMED as the Turso engine kind's default —
   cascade.ts is load-bearing, keep it** (full handoff:
