@@ -120,15 +120,19 @@ function chordName(harmony: string): string {
 	return parsed.ok ? parsed.value.canonical : symbol;
 }
 
-/** Added and altered degrees as barmark's parenthesized tones ("(b9,#11)"); barmark has no omissions, so a subtracted degree is left out. */
+/**
+ * Added and altered degrees as barmark's parenthesized tones ("(b9,#11)"),
+ * a subtracted third or fifth as its omission ("(no5)", barmark 0.12.0);
+ * barmark spells no other omission, so another subtracted degree is left out.
+ */
 function tonesOf(harmony: string): string {
-	const tones = [...harmony.matchAll(/<degree\b[\s\S]*?<\/degree>/g)]
-		.filter((d) => d[0].match(/<degree-type>([^<]*)</)?.[1] !== "subtract")
-		.map((d) => {
-			const value = d[0].match(/<degree-value>(\d+)</)?.[1] ?? "";
-			const a = Number(d[0].match(/<degree-alter>(-?\d+)</)?.[1] ?? 0);
-			return `${accidental(a)}${value}`;
-		});
+	const tones = [...harmony.matchAll(/<degree\b[\s\S]*?<\/degree>/g)].flatMap((d) => {
+		const value = d[0].match(/<degree-value>(\d+)</)?.[1] ?? "";
+		if (d[0].match(/<degree-type>([^<]*)</)?.[1] === "subtract")
+			return value === "3" || value === "5" ? [`no${value}`] : [];
+		const a = Number(d[0].match(/<degree-alter>(-?\d+)</)?.[1] ?? 0);
+		return [`${accidental(a)}${value}`];
+	});
 	return tones.length ? `(${tones.join(",")})` : "";
 }
 

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **barmark 0.12.0, `@barmark/render` 0.9.1.** Rehearsal marks (`| @B | D |`), words on a bar (`| "solo" D |`), omissions (`C7(no3)`, `C7(b9,no5)`), voicings (`Cmaj7{E3 G3 B3 C4}`), accents, hits and push marks (`>D`, `^D`, `<D`), the rest of issue 70; a mark or words is not a bar, so every reader of ours plays and places charts as before (the suite passes unchanged). The MusicXML summary writes a subtracted third or fifth as `(no3)`/`(no5)` again. The renderer draws them all and numbers its margin by the written bar (issue 92).
+
 ## [0.217.0] - 2026-11-03
 
 ### Technical

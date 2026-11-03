@@ -121,7 +121,7 @@ a simpler contract: ask the model for a barmark chart (as
 this path, retiring the Roman-numeral JSON reply format and its parser
 (`parseTextToChordsReply.ts`). One notation for every AI reply.
 
-### 5. The AI's measure summaries become barmark (M)
+### 5. The AI's measure summaries become barmark (M) — unblocked 2026-11-03
 
 `readChartWithAi` (`src/lib/server/aiDetect.ts:166`) reads a PDF or
 image score into the `m1 key C 4/4 tempo 120 … : C F | G` summary
@@ -144,10 +144,10 @@ speak a printed score's measure numbers. barmark 0.11.0 (2026-11-03)
 answered the first two: endings (`|1 … :|`, `|2 …`, `|1-3`) and
 directions (Segno, Coda, To Coda, Fine, one D.C./D.S. jump) expand into
 the played bars, which every reader of ours already consumes, and the
-renderer draws them. Still open there: a rehearsal mark on a bar and
-words on a bar; and barmark issue 92 asks the renderer to number its
-margin from `written`, not played position, so the page and the
-correction editor say the same bar numbers. Item 5 can start once those two are decided, or sooner
+renderer draws them. barmark 0.12.0 (2026-11-03) answered the last two, rehearsal marks
+(`| @B | D |`, `bar.rehearsal`) and words on a bar (`| "solo" D |`,
+`bar.words`), and the renderer 0.9.1 numbers its margin by the written
+bar (issue 92, fixed). Nothing in the grammar blocks item 5 now. Item 5 can start once those two are decided, or sooner
 with text lines carrying them.
 
 ### 6. MusicXML scores get a chart (wait for barmark)

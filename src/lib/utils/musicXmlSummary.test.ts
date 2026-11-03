@@ -86,7 +86,9 @@ describe("musicXmlSummary", () => {
 		expect(chordOf(harmony("dominant", degree(9, -1, "add") + degree(11, 1, "add")))).toBe(
 			"Bb7(b9,#11)",
 		);
-		expect(chordOf(harmony("major", degree(5, 0, "subtract")))).toBe("Bb");
+		expect(chordOf(harmony("major", degree(5, 0, "subtract")))).toBe("Bb(no5)");
+		expect(chordOf(harmony("dominant", degree(3, 0, "subtract")))).toBe("Bb7(no3)");
+		expect(chordOf(harmony("major", degree(9, 0, "subtract")))).toBe("Bb");
 		expect(chordOf(harmony("half-diminished"))).toBe("Bbm7(b5)");
 		expect(chordOf(harmony("augmented-seventh"))).toBe("Bbaug7");
 	});
