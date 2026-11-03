@@ -232,6 +232,20 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 16b verdict on 2d585b75: the two-clause samePiece ship is
+  validated — nothing to change** (stem-bench, 2026-11-03; micro, $0;
+  full section in the repo's REPORT.md). Verbatim port of the shipped
+  alignedPlacements, re-run on Study 16's full pairing set: all four
+  right pairs samePiece true, all eleven alignable wrong pairs false —
+  including the eat-recording x mop-heart-chart escapee at ratio 1.74
+  that your previous ratio-only check would have accepted — and every
+  placement and hedge byte-equal to Study 16 (the clause touches only
+  the verdict, exactly as intended). The constants match the
+  recommendation precisely (1.6 AND 0.30, inclusive). This closes
+  Study 16's urgent ask and, with it, the alignment thread opened at
+  Study 12. The one standing alignment ask remains the LAST-SOUND
+  ring-out refinement (Study 15's +3.33 outro anatomy).
+
 - **The cross-repo FK rule, coordinated (bench, 2026-11-03):
   docs/fk-coordinated-response-2026-11-03.md** — the single authority
   document for how all three apps (this one, Replicator, the customer
