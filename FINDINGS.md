@@ -241,9 +241,15 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   stick), while engine-kind (TursoDB/MVCC) databases do NOT enforce by
   default (pragma reads 0, no cascade/set-null/rejection, first
   connection and every one after) — exactly what this repo observed in
-  September ("the schema's onDelete rules never fired"). On the engine
-  kind `PRAGMA foreign_keys = ON` persists at the DATABASE level once
-  set through any connection. One ask: a read-only check per
+  September ("the schema's onDelete rules never fired").
+  CORRECTION (2026-11-03): the study's claim that `PRAGMA foreign_keys
+  = ON` persists at the database level on the engine kind did NOT
+  survive the engine's next rolling build — same-day reproductions by
+  the customer-portal agent and the bench both read 0 after a
+  prior-execute ON, so treat engine FK enforcement as UNAVAILABLE and
+  every onDelete as documentation; cascade.ts is the durable pattern
+  and the cross-repo recommendation now (barkup-bench REPORT.md,
+  "Correction (2026-11-03)"). One ask: a read-only check per
   environment to learn which kind this app runs —
   `SELECT count(*) FROM sqlite_master WHERE name =
   '__turso_internal_mvcc_meta'` (1 = engine) — and a FINDINGS note
