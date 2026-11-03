@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.216.0] - 2026-11-03
+
 ### Technical
 
 - **barmark 0.11.0, `@barmark/render` 0.8.0.** First and second endings (`|1 G | G7 :|`, `|2 G | C |`, also `|1-3`) and directions (Segno, Coda, To Coda, Fine, one `D.C.`/`D.S.` jump, `al Fine`/`al Coda`), issue 70: the played bars follow the endings and the jump, so a chart import, Sections from a chart and the alignment play them in order with no change of their own (a test pins the order); the renderer draws the ending brackets and the signs. A direction is a cell between bars, never a played bar.
