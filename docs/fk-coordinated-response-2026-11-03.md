@@ -287,4 +287,66 @@ option Kevin picks.
 
 _(Amendment 3 resolution, same day: Kevin decided REFUSE-until-handlers
 for both buttons — details in
+<<<<<<< Updated upstream
 `2026-11-03-replicator-fk-buttons-DECISION.md`.)_
+=======
+`2026-11-03-replicator-fk-buttons-DECISION.md`.)*
+
+---
+
+## Amendment 4 (2026-11-03): the portal's closing note — corrections accepted and verified, fk-orphan-repair adopted, the floor rule extended
+
+From `2026-11-03-customer-portal-foreign-keys-CLOSING.md` (portal
+0.37.1, branch fix/foreign-keys, merge-ready pending Kevin).
+
+**Corrections to the bench's record, all three verified against the
+schema before writing this:** features.ts was NOT "already safe"
+(deletePhase trusted a dead set-null); company has FOUR declared
+children (display_identity.company_id was missing from the bench's
+brief); and company.parent_company_id is CASCADE, not set-null — it is
+declared with the typed-lambda `references((): AnySQLiteColumn =>`
+form the bench's own audit regex could not parse, which is lesson 4.3
+biting the orchestrator too. Three omissions in hand-written edge
+lists, zero in the metadata. The rule is strengthened as the portal
+proposes: **edge lists are never written by hand — in briefs, in code,
+or in reviews — they are printed from `allForeignKeys()`.**
+
+**The census corrects the bench's "zero orphans" claim for the
+portal:** that claim was scoped to five hand-named relationships; the
+full 68-edge scan found 28 orphans (dev 25, staging 3), all
+authorship columns pointing at hand-deleted user rows (Drizzle Studio
+fixture purges), all repaired, rescan clean. Replicator: expect the
+same `updated_by / created_by / actor_user_id → user.id` class in all
+three environments, in proportion to hand-deleted users.
+
+**`fk-orphan-repair` joins the shared names** (scripts/
+fk-orphan-repair.ts): applies the DECLARED action to found orphans
+(set-null → UPDATE, cascade → DELETE, restrict → report), dry-run by
+default, one write batch under `--apply`, and REFUSES on any
+schema/live disagreement, one-sided edge, uncounted edge, or floor
+failure — no `--force` exists. A repeatable, refusing repair beats
+hand SQL everywhere.
+
+**The floor rule is extended (Amendment 1, second failure mode):** the
+portal's reviewer dropped the `user` table and the scan still reported
+clean with 35 of 68 edges silently skipped — edges ENUMERATED is not
+edges EXAMINED. Adopted wording: *"the floor is on counts executed,
+not rows enumerated; a skipped check is a finding, never a zero."*
+
+**Drift-test parsers must account for every textual candidate** (the
+portal's 4.3): `db.delete(user as never)` was invisible to the regex
+and the suite stayed green. Count every textual `.delete(` on a DB
+handle and require each to parse to a schema table or be explicitly
+pinned; "no unresolved sites" means nothing if unparseable sites never
+become candidates.
+
+**For Replicator and the lj-website agent (swamp layers):** the
+portal found `data.latest(<behavior>, "result")` is keyed on behavior +
+data name only — two workflows sharing one behavior can read each
+other's exit codes as their own. The portal's rule: one behavior file
+per workflow. Check your shared behaviors for the same collision.
+
+**Kevin's two actions:** the 0.37.1 merge decision, and the demo
+census (`bunx varlock run -- bun scripts/fk-orphan-scan.ts --env demo`,
+read-only; release-to-demo now gates on it).
+>>>>>>> Stashed changes
