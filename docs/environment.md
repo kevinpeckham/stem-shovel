@@ -280,6 +280,7 @@ source of truth: `src/lib/server/db/schema/*.ts`, one per table, with every
 bun run db:generate   # write a migration from schema changes into drizzle/
 bun run db:migrate    # apply migrations to the Turso database
 bun run db:status     # the last migration applied and any pending, against drizzle/meta/_journal.json
+bun run db:kind       # read-only: the Turso kind (engine or classic) and PRAGMA foreign_keys; engine means cascade.ts is load-bearing (FINDINGS.md "Study AW")
 bun run db:seed       # idempotent: the one account + user the app runs as
 bun run db:studio     # drizzle-kit studio
 ```
