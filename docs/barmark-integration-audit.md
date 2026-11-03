@@ -145,7 +145,9 @@ answered the first two: endings (`|1 … :|`, `|2 …`, `|1-3`) and
 directions (Segno, Coda, To Coda, Fine, one D.C./D.S. jump) expand into
 the played bars, which every reader of ours already consumes, and the
 renderer draws them. Still open there: a rehearsal mark on a bar and
-words on a bar. Item 5 can start once those two are decided, or sooner
+words on a bar; and barmark issue 92 asks the renderer to number its
+margin from `written`, not played position, so the page and the
+correction editor say the same bar numbers. Item 5 can start once those two are decided, or sooner
 with text lines carrying them.
 
 ### 6. MusicXML scores get a chart (wait for barmark)
