@@ -140,7 +140,13 @@ guard the parser side.
 (D.S., D.C., coda, fine), a rehearsal mark on a bar, words on a bar.
 barmark 0.10.0 (2026-11-03) answered the fifth ask: every played bar
 carries `written`, its number as written, so a correction editor can
-speak a printed score's measure numbers.
+speak a printed score's measure numbers. barmark 0.11.0 (2026-11-03)
+answered the first two: endings (`|1 … :|`, `|2 …`, `|1-3`) and
+directions (Segno, Coda, To Coda, Fine, one D.C./D.S. jump) expand into
+the played bars, which every reader of ours already consumes, and the
+renderer draws them. Still open there: a rehearsal mark on a bar and
+words on a bar. Item 5 can start once those two are decided, or sooner
+with text lines carrying them.
 
 ### 6. MusicXML scores get a chart (wait for barmark)
 

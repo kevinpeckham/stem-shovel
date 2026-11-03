@@ -38,6 +38,31 @@ describe("chartToProgression", () => {
 		expect(r.warnings).toEqual([]);
 	});
 
+	it("plays endings and directions in play order (barmark 0.11.0): each pass takes its ending, D.S. al Coda jumps", () => {
+		const r = chartToProgression(
+			"key: G\n\n## A\n|: G | D |\n|1 Em | C :|\n|2 Em | D |\n| Segno |\n| Am | D7 |\n| To Coda | G | D.S. al Coda |\n| Coda |\n| C | G |",
+			opts,
+		);
+		expect(r.errors).toEqual([]);
+		expect(r.data.entries.map((e) => (e.kind === "chord" ? e.label : "rest"))).toEqual([
+			"G",
+			"D",
+			"Em",
+			"C",
+			"G",
+			"D",
+			"Em",
+			"D",
+			"Am",
+			"D7",
+			"G",
+			"Am",
+			"D7",
+			"C",
+			"G",
+		]);
+	});
+
 	it("takes the chart's tempo, else the caller's; no feel written leaves it unsaid", () => {
 		const r = chartToProgression("| C |", opts);
 		expect(r.data.bpm).toBe(88);
