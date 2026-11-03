@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **barmark 0.10.0, `@barmark/render` 0.7.3.** barmark 0.9.0 reads an optional swing amount on `feel:` (`swing 58%`, 50% to 75%, issue 66; each played bar carries `swingPercent`), 0.10.0 gives every played bar its written number (`written`, issue 70); the renderer shows the amount in a chart's header. One copy of barmark is installed.
+
 ## [0.214.0] - 2026-11-02
 
 ### Added
