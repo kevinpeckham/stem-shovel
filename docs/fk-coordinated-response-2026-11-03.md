@@ -26,7 +26,7 @@ FK graph (deepest first, grandchildren before children — Stem Shovel's
 hard-won rule), and make the CI guard bind the generated plans (a new
 child under `user` breaks the build until the plan is regenerated and
 re-reviewed). The `user` set-null point stands: 25 of its 76 edges null
-authorship rather than delete content; the action is honoured per edge,
+authorship rather than delete content; the action is honored per edge,
 from metadata, never assumed.
 
 **2. Insert validation at trust boundaries only — with the residual
