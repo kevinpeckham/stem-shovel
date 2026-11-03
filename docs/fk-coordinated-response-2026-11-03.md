@@ -239,3 +239,48 @@ offers a held connection or an init hook. Plausibly months.
 Detection needs no additions: fk-watch's behavior probe catches the
 outcome (the day stickiness or enforcement flips, it signals), which
 beats tracking upstream intentions.
+
+---
+
+## Amendment 3 (2026-11-03): Amendment 2's Replicator deferral was WRONG — org and user have admin delete buttons and move UP; the deferral criterion is restated
+
+The Replicator agent's correction
+(`2026-11-03-replicator-amendment-2-correction.md`) is accepted in
+full, and the bench verified its receipts before writing this:
+`db.delete(orgTable)` at src/routes/ops/orgs/+page.server.ts:83 and
+`db.delete(userTable)` at src/routes/ops/users/+page.server.ts:266,
+both behind admin UI buttons, both commented with a cascade that does
+not exist — code documenting protection it lacks. The bench's
+"verified no-delete-path" claim in Amendment 2 was drawn from prose,
+not from the drift test's output (which classifies both as `pending`).
+The error was the bench's.
+
+**Revised sizing for Replicator:** `org` (47 direct children, 64
+tables deep topologically) and `user` (76 children, 25 SET NULL —
+authorship an orphan sweep cannot reconstruct once the user row is
+gone) are the repo's LARGEST exposure and move to the front of its
+handler work, not out of it. Everything else in Amendment 2 stands,
+including the bridge framing and the manufactured-debt warning for
+operations an app genuinely cannot perform.
+
+**The deferral criterion, restated so it cannot be misapplied again:**
+defer ONLY on the drift test's own verified `no-delete-path`
+classification, read mechanically from its output — never on prose, a
+proposal's framing, or an assumption that a parent "is probably not
+deleted." Classifications used for sizing decisions are derived, not
+remembered. (The same lesson as the floor rule and the pragma: check
+the behavior, not the description — `grep -rn "db\.delete(" src/`
+costs a second.) Portal: Amendment 2's deferral language cited your
+org/user as having no delete path per your PLAN §2; before relying on
+it, confirm your shipped drift test actually classifies them
+`no-delete-path` rather than inheriting the plan's prose.
+
+**Interim mitigation for Replicator's two buttons** is a product
+decision (Kevin's): leave-and-avoid, confirm-with-stranded-row-counts,
+or refuse-until-handlers-land. The bench's recommendation, consistent
+with the shared `restrict` semantics and the house refuse-rather-than-
+guess style: REFUSE with a plain message until the handlers exist —
+the surface is admin-only, so the cost is one disappointed operator,
+against an unrecoverable 64-table stranding. The false-reassurance
+comments should be corrected in the same change regardless of which
+option Kevin picks.
