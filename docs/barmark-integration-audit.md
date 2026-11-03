@@ -133,6 +133,13 @@ the band can keep or edit with the barmark editor, and retire
 (`chartBarsOf`) then has one source. The bench's conformance fixtures
 guard the parser side.
 
+**Parked 2026-11-02** until barmark can spell what a score read needs
+(barmark issue 70): endings (reserved for grammar v0.2), directions
+(D.S., D.C., coda, fine), a rehearsal mark on a bar, words on a bar.
+barmark 0.10.0 (2026-11-03) answered the fifth ask: every played bar
+carries `written`, its number as written, so a correction editor can
+speak a printed score's measure numbers.
+
 ### 6. MusicXML scores get a chart (wait for barmark)
 
 `chartBarsOf` answers `reason: "musicxml"` for an engraving: a MusicXML
