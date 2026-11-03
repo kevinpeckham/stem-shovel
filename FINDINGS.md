@@ -291,10 +291,11 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   scripts' `pragma foreign_keys = off` lines do nothing there (the
   copies survive on insert ordering, not the pragma).
   **Answered (2026-11-03):** `bun run db:kind` (scripts/db-kind.ts,
-  read-only) reads the marker and the pragma. Dev and staging are both
-  the engine kind with `PRAGMA foreign_keys = 0`, so cascade.ts is
-  load-bearing on them; production is checked from Kevin's machine
-  with the same command. The maintenance scripts' `pragma foreign_keys
+  read-only) reads the marker and the pragma. Dev, staging and
+  production (Kevin's machine, 2026-11-03) are all the engine kind with
+  `PRAGMA foreign_keys = 0`, so cascade.ts is load-bearing everywhere.
+  The first cross-checked sweep found no schema mismatch on any stage,
+  15 old orphans on dev (swept) and none on staging or production. The maintenance scripts' `pragma foreign_keys
   = off` lines are no-ops on the engine kind (already off).
 
 - **Study 16 verdict on 371831ae / b5ed9ed2 / a0926c65 + barmark
