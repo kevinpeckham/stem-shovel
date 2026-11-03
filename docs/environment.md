@@ -282,7 +282,6 @@ bun run db:migrate    # apply migrations to the Turso database
 bun run db:status     # the last migration applied and any pending, against drizzle/meta/_journal.json
 bun run db:kind       # read-only: the Turso kind (engine or classic) and PRAGMA foreign_keys; engine means cascade.ts is load-bearing (FINDINGS.md "Study AW")
 bun run db:fk-probe   # the shared five-key probe {date, defaultPragma, pragmaSticksAcrossClients, cascadeFired, violationRejected}; two scratch tables, dropped after (docs/fk-coordinated-response-2026-11-03.md)
-bun run db:convert-chart-reads [-- --apply]   # a score file's AI read stored in the old m<n> summary, rewritten as barmark; a row that does not round-trip is refused and listed (docs/audio-engine.md "The chart read is barmark")
 bun run db:seed       # idempotent: the one account + user the app runs as
 bun run db:studio     # drizzle-kit studio
 ```

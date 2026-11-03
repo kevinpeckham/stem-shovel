@@ -50,7 +50,6 @@
 		"db:seed-docs": "varlock run -- bun scripts/seed-user-docs.ts",
 		"db:update-docs": "varlock run -- bun scripts/update-user-docs.ts",
 		"db:sweep-orphans": "varlock run -- bun scripts/sweep-orphans.ts",
-		"db:convert-chart-reads": "varlock run -- bun scripts/convert-chart-reads.ts",
 		"db:left-only": "varlock run -- bun scripts/left-only-renditions.ts",
 		"db:rerender-sessions": "varlock run -- bun scripts/rerender-sessions.ts",
 		"db:reset-stage": "varlock run -- bun scripts/reset-stage.ts",

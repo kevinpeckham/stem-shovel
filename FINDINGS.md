@@ -23,7 +23,8 @@ and worth knowing before a reader or converter leans on `parseChart`:
   or `Fine` is an error, and a valid `D.S.`/`D.C.` changes the play order.
   A mechanical conversion from a reader that played straight through
   (`chartBars`) can therefore never keep a direction as a cell and still
-  play the same bars: `chartReadToBarmark` keeps them as quoted words.
+  play the same bars: `chartReadToBarmark` kept them as quoted words (the
+  converter found nothing to convert on any stage and was removed).
 - **`|:` must start a bar line and a repeat stays inside its section:**
   `| @A |: D |` is an error (write `|: @A | D |`), and a `|:` … `:|` that
   crosses a `##` heading gives two errors. The read prompt says so.

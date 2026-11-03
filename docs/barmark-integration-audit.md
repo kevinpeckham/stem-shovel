@@ -154,9 +154,9 @@ bar (issue 92, fixed). Nothing in the grammar blocked item 5 then.
 written numbers are the score's), `parseChart` is the pass check, the
 stored read aligns through `barmarkChartBars`, `chartStatedValues` and
 `chartReadWarnings` read barmark, the editor shows barmark's errors live,
-and `bun run db:convert-chart-reads` rewrites stored reads (round-trip or
-refuse). `chartBars` and `ChartReadSchema`'s line rule are out of the app;
-`chartBars` stays for the converter until production's rows are converted.
+and a converter rewrote stored reads (round-trip or refuse): its dry run
+found none in the old form on any stage, so the converter and `chartBars`
+went the same day. `ChartReadSchema`'s line rule is gone too.
 
 ### 6. MusicXML scores get a chart (wait for barmark)
 

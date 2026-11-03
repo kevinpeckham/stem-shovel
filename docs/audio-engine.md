@@ -739,20 +739,17 @@ barmark read (`ScorePart.barmark`) so `CHART_NOTE` describes it to the
 listening model as such; a MusicXML summary keeps the `m<n>` form and its
 note until barmark's MusicXML translator (item 6).
 
-Reads stored before this are rewritten by `bun run db:convert-chart-reads`
-(`scripts/convert-chart-reads.ts`, `utils/convertChartReads.ts`,
-`utils/chartReadToBarmark.ts`): mechanically, and refusing rather than
-guessing — a row is accepted only when the new text has no error and
-`barmarkChartBars` plays the same bars from it as the legacy `chartBars`
-from the old (count, and each bar's measure number, chords, bpm, meter and
-key). The old reader never followed a direction, so a `D.S.` or `coda` word
-stays quoted words (a direction cell would change the play order). A refused
-row is listed and left as it was: it aligns no bars ("no-bars") until a
-member fixes it in the editor or reads the file again, and the song-check
-still takes its text. `--apply` writes only while the row still holds the
-text that was read. Dev and staging held no stored reads on the day; the
-run is Kevin's on production, after the deploy (the old code read barmark
-text as no bars).
+Reads stored in the old form were to be rewritten by a converter
+(`chartReadToBarmark`, `convertChartReads`, `scripts/convert-chart-reads.ts`:
+mechanical, and accepting a row only when the new text had no error and
+`barmarkChartBars` played the same bars from it as the legacy `chartBars`
+from the old; a `D.S.` or `coda` word stayed words, since a direction cell
+changes the play order). Its dry run on production the same day found no
+read in the old form, as dev and staging had none, so the converter and the
+legacy reader were removed the same day (the 148 reads stem-bench Study 6
+measured were the bench's own). A read stored in the old form would align no
+bars ("no-bars") and the song-check would still take its text through the
+`m<n>` branches `musicXmlSummary` keeps alive.
 
 ## The chord chart as the AI's chart (2026-10-24)
 
@@ -795,8 +792,8 @@ and the song-check's key and tempo changes.
   `measure` is the bar's written number, so a repeat plays a bar again
   under its own). Since 2026-11-03 the band's chart and a notation file's
   stored AI read are both barmark and go through it ("The chart read is
-  barmark"; `utils/chartBars.ts` reads the old `m<n>` summary for the
-  converter alone). Before that the stored read (`m<n> key … tempo … |: :| ending <n>: <chords>`) was expanded in
+  barmark"; the `utils/chartBars.ts` reader of the old `m<n>` summary is
+  gone). Before that the stored read (`m<n> key … tempo … |: :| ending <n>: <chords>`) was expanded in
   play order: repeats and first and second endings were followed, D.S.,
   D.C., coda and fine not (a warning each), a measure the read left
   out held its harmony (`chords: []`), tempo and meter marks applied from

@@ -56,10 +56,10 @@ export const songFile = table(
 		isNotation: t.integer("is_notation", { mode: "boolean" }).notNull().default(false),
 		/**
 		 * A score's read as a barmark chart, as the reading model wrote it or as
-		 * a member corrected it (a read stored before the reads were barmark is
-		 * the `m<n>` measure summary until scripts/convert-chart-reads.ts runs) (docs/audio-engine.md, "The chart read is
-		 * stored"): the song-check reads this instead of reading the file
-		 * again. Null until the file is first read, or after a member clears it.
+		 * a member corrected it (docs/audio-engine.md, "The chart read is
+		 * stored", "The chart read is barmark"): the song-check reads this
+		 * instead of reading the file again. Null until the file is first read,
+		 * or after a member clears it.
 		 */
 		chartRead: t.text("chart_read"),
 		/** A member saved a correction of `chartRead`: a new model read never overwrites it unless the member clears it first. */
