@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.219.0] - 2026-11-03
+
 ### Changed
 
 - **The AI reads a score into a chart.** When the song's score is a PDF or an image, the AI now reads it into a chart in the same notation as the band's own charts, every measure as a bar under the score's own measure numbers, with its repeats, endings, directions, rehearsal marks and section names. **What the AI read** shows that chart for correction, and a bar barmark cannot read is pointed out with its line as you type; a saved correction needs at least one bar.

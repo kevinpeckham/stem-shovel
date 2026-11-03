@@ -285,9 +285,9 @@ against an unrecoverable 64-table stranding. The false-reassurance
 comments should be corrected in the same change regardless of which
 option Kevin picks.
 
-*(Amendment 3 resolution, same day: Kevin decided REFUSE-until-handlers
+_(Amendment 3 resolution, same day: Kevin decided REFUSE-until-handlers
 for both buttons — details in
-`2026-11-03-replicator-fk-buttons-DECISION.md`.)*
+`2026-11-03-replicator-fk-buttons-DECISION.md`.)_
 
 ---
 
@@ -327,8 +327,8 @@ hand SQL everywhere.
 **The floor rule is extended (Amendment 1, second failure mode):** the
 portal's reviewer dropped the `user` table and the scan still reported
 clean with 35 of 68 edges silently skipped — edges ENUMERATED is not
-edges EXAMINED. Adopted wording: *"the floor is on counts executed,
-not rows enumerated; a skipped check is a finding, never a zero."*
+edges EXAMINED. Adopted wording: _"the floor is on counts executed,
+not rows enumerated; a skipped check is a finding, never a zero."_
 
 **Drift-test parsers must account for every textual candidate** (the
 portal's 4.3): `db.delete(user as never)` was invisible to the regex
