@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The AI reads a score into a chart.** When the song's score is a PDF or an image, the AI now reads it into a chart in the same notation as the band's own charts, every measure as a bar under the score's own measure numbers, with its repeats, endings, directions, rehearsal marks and section names. **What the AI read** shows that chart for correction, and a bar barmark cannot read is pointed out with its line as you type; a saved correction needs at least one bar.
+
+### Technical
+
+- **One chart grammar** (barmark integration audit, item 5; docs/audio-engine.md "The chart read is barmark"): `readChartWithAi` asks for barmark (`CHART_READ_SYSTEM`), passes on `parseChart` playing a bar, caches under `chart2:`; `barsOfScore` aligns a stored read through `barmarkChartBars` (`ChartBar.measure` is now the written bar number; a bar's section is its heading, rehearsal mark or a section word); `chartStatedValues` reads `tempo:`/`time:` directives first (the band's charts too); `chartReadWarnings` judges barmark; `ScorePart.barmark` picks the listening model's description; `chartReadIssues` lists barmark's errors in the editor. `chartBars` and `CHART_READ_MEASURE_LINE` are out of the app paths. `bun run db:convert-chart-reads [-- --apply]` rewrites stored reads from the old `m<n>` summary, accepting a row only when it round-trips to the same bars (directions stay words); dev and staging held none, production's run is Kevin's after the deploy.
+
 ## [0.218.0] - 2026-11-03
 
 ### Added

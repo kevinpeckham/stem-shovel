@@ -39,6 +39,11 @@ describe("chartReadout", () => {
 			"1 bar · 1 section · 0:04",
 		);
 	});
+	it("a score's read: its rehearsal marks and section words begin sections", () => {
+		const read =
+			'# Song\nPart: Piano\nkey: F, time: 4/4, tempo: 120\n| @A | F | C |\n| "Chorus" Bb | F |';
+		expect(chartReadout(read, NONE)?.summary).toBe("4 bars · 2 sections · 0:08");
+	});
 	it("passes the parser's warnings through", () => {
 		const read = chartReadout("| / D | A |", SONG);
 		expect(read?.summary).toBe("2 bars · no sections · 0:04");

@@ -3,7 +3,7 @@ import {
 	ALIGNMENT_SOUND_WINDOW_SEC,
 } from "#lib/constants/chartAlignment.js";
 import { chartBarSeconds } from "#lib/utils/chartBarSeconds.js";
-import type { ChartBar } from "#lib/utils/chartBars.js";
+import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
 import { chordPitchClasses } from "#lib/utils/chordPitchClasses.js";
 import { fft } from "./analysis.js";
 

@@ -88,6 +88,7 @@ bun run db:migrate:steps                # db:migrate one statement at a time, wh
 bun run db:status                       # the last migration applied and any pending (APP_ENV=preview for staging); check production before a push to main
 bun run db:kind                         # read-only: the stage's Turso kind (engine or classic) and PRAGMA foreign_keys; engine = cascade.ts is load-bearing (FINDINGS "Study AW")
 bun run db:fk-probe                     # the shared five-key foreign-key probe (docs/fk-coordinated-response-2026-11-03.md); writes and drops two scratch tables, so Kevin runs it on a stage
+bun run db:convert-chart-reads [-- --apply]   # score files' AI reads stored in the old `m<n>` summary rewritten as barmark (docs/audio-engine.md "The chart read is barmark"); refuses a row that does not round-trip; dry run without --apply
 bun run db:preview-bot <account-slug>   # enrol the Screenshot Bot in an account
 bun run db:system-admin <email>         # make a user the operator (/admin)
 bun run db:super-admin <email>          # owner of every account, audited (docs/security.md)

@@ -497,7 +497,8 @@ notation uploaded, go straight to the AI and give it the chart.
   into the summary `musicXmlSummary` makes: one line per measure that
   carries anything, the key from the key signature where it changes,
   time signature, tempo, rehearsal marks in brackets, words in quotes,
-  repeats and endings, chord symbols after a colon. The text is cached
+  repeats and endings, chord symbols after a colon (since 2026-11-03 the
+  read is a barmark chart instead: "The chart read is barmark"). The text is cached
   in Redis (`chart:<sha256 of the url>`, a month; Blob pathnames are
   never reused, so the URL is the version) and logged as `chart-read`
   with the rest. `loadScore` returns `{text, file}`: the summary, and
@@ -640,7 +641,9 @@ bench's own PDF generator dropping every accidental (a WinAnsi font has no
 music glyphs), which the model then read faithfully. The app never
 rasterized PDFs and now does not plan to; instead the read is checked:
 
-- `utils/chartReadWarnings.ts` reads `readChartWithAi`'s summary for the
+- `utils/chartReadWarnings.ts` reads `readChartWithAi`'s text (a barmark
+  chart since 2026-11-03, through `parseChart`, each written bar judged
+  once; the `m<n>` summary form for a MusicXML summary) for the
   reader's own "Note:" lines (an unreadable page, a doubt it voiced
   unprompted) and for the dropped-accidentals signature, judged against
   the key in force at each measure (since 2026-10-28, stem-bench Study 6):
@@ -682,8 +685,9 @@ otherwise reads the file with `readChartWithAi` and stores the result
 file's URL (`chartCacheKey`). Study 5 asks for the read to be seen before it
 anchors a check: `readChartOfFile` (files.remote.ts) returns the stored read, or
 reads and stores one (a few per hour; a stored read is free), with the
-`chartReadWarnings`; `saveChartReadOfFile` keeps a member's correction (one line
-per measure, `m1 …`), which no model read overwrites; `clearChartReadOfFile`
+`chartReadWarnings`; `saveChartReadOfFile` keeps a member's correction (a chart
+barmark plays at least one bar of, `barmarkChartPlays`; before 2026-11-03 one
+line per measure, `m1 …`), which no model read overwrites; `clearChartReadOfFile`
 forgets the read in the row and in Redis, so the next check reads the file again.
 
 On the page: a score tile's ⋯ menu on the Chart tab's notation view has
@@ -696,6 +700,59 @@ confirmation when it was corrected, and the model reads the file afresh)
 and **Check the song** (the page's `askAiWithScore`). The AI card's
 warnings carry **Review what the AI read**, which switches to the notation
 view and opens the first score's read. Migration 0097 adds the columns.
+
+## The chart read is barmark (2026-11-03)
+
+barmark 0.12.0 can spell everything a score read carries (endings,
+directions, rehearsal marks, words on a bar, written bar numbers: barmark
+issue 70), so the app's second chart grammar went (barmark integration
+audit, item 5). `readChartWithAi` asks the reading model for a barmark
+chart (`CHART_READ_SYSTEM`): `# title`, a `Part:` prose line, a
+`key: …, time: …, tempo: …` line with only what the score shows, then every
+measure once as a cell (`/` keeps the harmony, `%` the repeat sign), so the
+bars' written numbers are the score's measure numbers; `|:`/`:|` and `|1`/`|2`
+endings; directions, rehearsal letters (`@A`) and quoted words as cells;
+`## Name` headings for section names the score prints; a `key:`, `time:` or
+`tempo:` line where one changes; `Note:` for an unreadable page. The answer
+passes when `parseChart` plays a bar (logged as `parsed: {bars, errors}`),
+and the Redis key is `chart2:` so no summary cached before is served.
+Kevin's six-page score (the 2026-10-12 note) read into 41 written bars in
+23 s with no diagnostic, the key changes, the `"Key: F Major"` text, the
+chorus's `|1-3 … :|` / `|4` endings and the rehearsal letters all placed
+under the old read's measure numbers.
+
+What follows from one grammar: `barsOfScore` reads a stored read with
+`barmarkChartBars`, so a score's read and the band's chart align the same
+way, a bar's `section` being its heading, else its rehearsal mark, else a
+word `chartSectionName` knows; `saveChartReadOfFile` accepts a text barmark
+plays at least one bar of (`utils/barmarkChartPlays.ts`; a line with an
+error is left out of play and reported, so a member can save and fix);
+`chartStatedValues` reads a barmark chart's `tempo:` and `time:` directives
+first (the band's charts too, which the prose reader had not read a
+`tempo:` line of), falling back to the prose and `m<n>` readers;
+`chartReadWarnings` judges a barmark read through `parseChart`; and the
+read editor (`SongNotationPanel`) lists barmark's errors with their line
+numbers in amber as the member types (`utils/chartReadIssues.ts`), since
+barmark drops a whole bar line for one bad chord while the written numbers
+after it hold, which would align short unnoticed. `loadScore` flags a
+barmark read (`ScorePart.barmark`) so `CHART_NOTE` describes it to the
+listening model as such; a MusicXML summary keeps the `m<n>` form and its
+note until barmark's MusicXML translator (item 6).
+
+Reads stored before this are rewritten by `bun run db:convert-chart-reads`
+(`scripts/convert-chart-reads.ts`, `utils/convertChartReads.ts`,
+`utils/chartReadToBarmark.ts`): mechanically, and refusing rather than
+guessing — a row is accepted only when the new text has no error and
+`barmarkChartBars` plays the same bars from it as the legacy `chartBars`
+from the old (count, and each bar's measure number, chords, bpm, meter and
+key). The old reader never followed a direction, so a `D.S.` or `coda` word
+stays quoted words (a direction cell would change the play order). A refused
+row is listed and left as it was: it aligns no bars ("no-bars") until a
+member fixes it in the editor or reads the file again, and the song-check
+still takes its text. `--apply` writes only while the row still holds the
+text that was read. Dev and staging held no stored reads on the day; the
+run is Kevin's on production, after the deploy (the old code read barmark
+text as no bars).
 
 ## The chord chart as the AI's chart (2026-10-24)
 
@@ -733,13 +790,16 @@ now does the same in the browser, from the stems the player already
 holds, and uses it in two places: the Sections tab's "Place from chart"
 and the song-check's key and tempo changes.
 
-- **Bars from the chart** (pure, `utils/chartBars.ts` and
-  `utils/barmarkChartBars.ts`, both to `ChartBar {measure, chords, bpm,
-  meter, key, section}` plus warnings). The stored AI read of a notation
-  file (`m<n> key … tempo … |: :| ending <n>: <chords>`) is expanded in
-  play order: repeats and first and second endings are followed, D.S.,
-  D.C., coda and fine are not (a warning each), a measure the read left
-  out holds its harmony (`chords: []`), tempo and meter marks apply from
+- **Bars from the chart** (pure, `utils/barmarkChartBars.ts`, to
+  `ChartBar {measure, chords, bpm, meter, key, section}` plus warnings;
+  `measure` is the bar's written number, so a repeat plays a bar again
+  under its own). Since 2026-11-03 the band's chart and a notation file's
+  stored AI read are both barmark and go through it ("The chart read is
+  barmark"; `utils/chartBars.ts` reads the old `m<n>` summary for the
+  converter alone). Before that the stored read (`m<n> key … tempo … |: :| ending <n>: <chords>`) was expanded in
+  play order: repeats and first and second endings were followed, D.S.,
+  D.C., coda and fine not (a warning each), a measure the read left
+  out held its harmony (`chords: []`), tempo and meter marks applied from
   their measure on with the song's own values before the first, and a
   rehearsal mark or a quoted word that names a section
   (`utils/chartSectionName.ts`: Intro, Verse 2, Pre-chorus, Solo, Outro…)

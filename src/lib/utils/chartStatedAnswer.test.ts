@@ -14,6 +14,7 @@ const answer = {
 };
 
 describe("chartStatedAnswer", () => {
+	// A MusicXML score still arrives as the m<n> summary (musicXmlSummary).
 	test("the chart's tempo replaces a wrong one from the model", () => {
 		const out = chartStatedAnswer(answer, "m1 key D major 4/4 tempo 96: D G A");
 		expect(out.tempo).toBe(96);
@@ -44,6 +45,19 @@ describe("chartStatedAnswer", () => {
 		);
 		// The model placed one of the two later marks: only that one is kept.
 		expect(more.tempoChanges).toEqual([{ at: 60, bpm: 132 }]);
+	});
+
+	test("a score's barmark read: its tempo, meter and later tempo lines", () => {
+		const read = "key: D, time: 3/4, tempo: 100\n| D | G |\ntempo: 132\n| A | D |";
+		const out = chartStatedAnswer(answer, read);
+		expect(out).toMatchObject({ tempo: 100, meter: "3/4", key: "D major" });
+		expect(out.tempoChanges).toEqual([{ at: 60, bpm: 132 }]);
+		// A read that states no tempo gives none, whatever the model said.
+		expect(chartStatedAnswer(answer, "key: D\n| D | G |")).toMatchObject({
+			tempo: null,
+			tempoChanges: [],
+			meter: null,
+		});
 	});
 
 	test("a band's chart that writes ♩ = 132", () => {

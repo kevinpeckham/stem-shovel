@@ -20,7 +20,7 @@
 		saveChartReadOfFile,
 		updateFile,
 	} from "#lib/remote/files.remote.js";
-	import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
+	import { chartReadIssues } from "#lib/utils/chartReadIssues.js";
 	import type { PanelFile } from "#lib/components/SongFilesPanel.svelte";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
@@ -90,7 +90,7 @@
 		oncheck,
 	}: Props = $props();
 
-	// ── What the AI read (docs/audio-engine.md, "The chart read is stored"): the per-measure summary of a PDF or image score, shown for correction before it anchors the song-check ──
+	// ── What the AI read (docs/audio-engine.md, "The chart read is stored"): a PDF or image score as a barmark chart, shown for correction (with barmark's errors as the member types) before it anchors the song-check ──
 	interface Reading {
 		file: PanelFile;
 		text: string;
@@ -101,7 +101,7 @@
 		error: string | null;
 	}
 	let reading = $state<Reading | null>(null);
-	let readWarnings = $derived(reading ? chartReadWarnings(reading.text) : []);
+	let readWarnings = $derived(reading ? chartReadIssues(reading.text) : []);
 	let readDirty = $derived(!!reading && reading.text !== reading.stored);
 	/** Open the read of a score file (the ⋯ menu, or the page's card when a check's read looked wrong). */
 	export async function showRead(fileId: string) {
@@ -543,7 +543,7 @@
 										label: "What the AI read",
 										iconClass: "i-ph-text-align-left",
 										title:
-											"The chart as the AI read it, one line per measure: check and correct it before the AI checks the song against it",
+											"The chart as the AI read it, one bar per measure: check and correct it before the AI checks the song against it",
 										condition: canEdit && aiAvailable && t.kind === "pdf",
 										action: () => (t.kind === "pdf" ? void showRead(t.row.id) : undefined),
 									},
@@ -670,7 +670,7 @@
 			{/if}
 		</div>
 	</FloatingPanel>
-	<!-- What the AI read: the per-measure text in an editor, what looks wrong in amber (utils/chartReadWarnings.ts), saved as the read the song-check uses. -->
+	<!-- What the AI read: the barmark chart in an editor, what looks wrong and barmark's errors in amber (utils/chartReadIssues.ts), saved as the read the song-check uses. No readout under it: the panel has no song tempo or meter to read the bars with. -->
 	<FloatingPanel
 		open={reading !== null}
 		title={reading ? `What the AI read of ${nameOf({ kind: "pdf", row: reading.file })}` : ""}
@@ -727,10 +727,10 @@
 				<p class="p-2 text-14px opacity-60">Reading the chart…</p>
 			{:else if reading}
 				<p class="text-12px opacity-70">
-					One line per measure, as the AI read the file{reading.edited
+					A chart in the band's notation (barmark), one bar per measure, as the AI read the file{reading.edited
 						? "; corrected by the band"
-						: ""}. Fix a wrong key, chord or measure number here and save: the song-check reads this
-					text, not the file.
+						: ""}. Fix a wrong key, chord or bar here and save: it becomes the read the song-check
+					uses, not the file.
 				</p>
 				{#if readWarnings.length > 0}
 					<ul class="text-13px text-amber-300 grid gap-1" role="alert">
@@ -748,7 +748,7 @@
 				<textarea
 					class="field font-mono text-12px leading-snug flex-1 min-h-320px w-full resize-y"
 					spellcheck="false"
-					aria-label="What the AI read, one line per measure"
+					aria-label="What the AI read, one bar per measure"
 					disabled={reading.busy}
 					bind:value={reading.text}></textarea>
 			{/if}

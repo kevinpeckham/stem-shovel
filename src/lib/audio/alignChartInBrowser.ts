@@ -1,4 +1,4 @@
-import type { ChartBar } from "#lib/utils/chartBars.js";
+import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
 import type { AlignChartReply, AlignChartRequest } from "#lib/workers/alignChart.worker.js";
 import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";

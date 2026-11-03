@@ -32,7 +32,7 @@ const files = await import("./files.remote");
 const FILE = fakeId("file-one");
 const SONG = fakeId("song-one");
 const DEMO = fakeId("demo-one");
-const READ = "m1 key C major 4/4: C\nm2: G";
+const READ = "key: C, time: 4/4\n| C | G |";
 /** The score file `chartReadOfFile` finds: a notation PDF of SONG, with a read when `chartRead` is given. */
 const scoreRow = (over: Record<string, unknown> = {}) => ({
 	id: FILE,
@@ -238,17 +238,26 @@ describe('the chart read (docs/audio-engine.md, "The chart read is stored")', ()
 		expect(data.saveChartRead).not.toHaveBeenCalled();
 	});
 
-	it("a saved read needs its measure lines, and is marked edited", async () => {
+	it("a saved read needs a bar barmark can play, and is marked edited", async () => {
 		givenScore();
 		data.saveChartRead.mockResolvedValue({ chartRead: READ, chartReadEdited: true });
-		await expect(
-			call(files.saveChartReadOfFile, { id: FILE, text: "Title: Song\nkey C major" }),
-		).rejects.toMatchObject({
+		const noBars = {
 			status: 400,
-			body: { message: "A read has one line per measure, starting m1, m2, …" },
-		});
+			body: {
+				message: "The read has no bars to play: write each measure between pipes, as | F | C7 |",
+			},
+		};
+		for (const text of ["Title: Song\nkey: C", "m1 key C major 4/4: C\nm2: G"])
+			await expect(call(files.saveChartReadOfFile, { id: FILE, text })).rejects.toMatchObject(
+				noBars,
+			);
 		expect(data.saveChartRead).not.toHaveBeenCalled();
-		const warned = "m1 key E major 4/4: E\nm2: A\nm3: B\nm4: C\nm5: A\nm6: G\nm7: E\nm8: A\nm9: B";
+		// An error on one line is the member's to fix later: the bars around it still play.
+		const withError = "key: C\n| C | G |\n| Xq7 |";
+		await expect(
+			call(files.saveChartReadOfFile, { id: FILE, text: withError }),
+		).resolves.toMatchObject({ text: withError, edited: true });
+		const warned = "key: E, time: 4/4\n| E | A | B | C |\n| A | G | E | A |\n| B |";
 		await expect(
 			call(files.saveChartReadOfFile, { id: FILE, text: warned }),
 		).resolves.toMatchObject({ text: warned, edited: true, warnings: [expect.any(String)] });

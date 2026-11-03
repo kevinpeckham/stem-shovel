@@ -1,6 +1,45 @@
 import { describe, expect, test } from "vite-plus/test";
 import { chartStatedValues } from "./chartStatedValues.js";
 
+describe("chartStatedValues: a barmark chart", () => {
+	test("a score's read: the first bar's tempo, every tempo: line in order, the first bar's meter", () => {
+		const read = `# Exiles
+Part: Piano
+key: Eb, time: 3/4, tempo: 96
+| @A | Eb Bb/D | Cm7 Ab |
+time: 4/4, tempo: 120
+| Abmaj7 | Bb |
+tempo: 88
+| Fm7 | Eb |
+Note: page 3 is unreadable`;
+		expect(chartStatedValues(read)).toEqual({ tempo: 96, tempoMarks: [96, 120, 88], meter: "3/4" });
+	});
+
+	test("the band's own chart: a tempo: directive is its tempo (the prose reader never saw one)", () => {
+		expect(chartStatedValues("key: D, tempo: 120\n## Verse\n| D | G | A |")).toEqual({
+			tempo: 120,
+			tempoMarks: [120],
+			meter: null,
+		});
+	});
+
+	test("no time: line states no meter, though barmark plays it in 4/4; one anywhere states the first bar's", () => {
+		expect(chartStatedValues("tempo: 90\n| D | G |").meter).toBeNull();
+		expect(chartStatedValues("tempo: 90\n| D |\ntime: 6/8\n| G |").meter).toBe("4/4");
+		expect(chartStatedValues("time: 6/8\n| D | G |").meter).toBe("6/8");
+	});
+
+	test("without directives the prose still states them; a gradual change is no tempo mark", () => {
+		expect(chartStatedValues("Key: D · 145 bpm · 3/4\n| D | G |")).toEqual({
+			tempo: 145,
+			tempoMarks: [145],
+			meter: "3/4",
+		});
+		expect(chartStatedValues("tempo: 100\n| D |\ntempo: rit.\n| G |").tempoMarks).toEqual([100]);
+		expect(chartStatedValues("tempo: 999\n| D |").tempo).toBeNull();
+	});
+});
+
 describe("chartStatedValues", () => {
 	test("a score summary: the first tempo mark, every mark in measure order, the first time signature", () => {
 		const summary = `Title: Exiles

@@ -30,7 +30,7 @@ describe("chartReadOfFile", () => {
 	beforeEach(() =>
 		reset({
 			songFile: [
-				file("f1", { chartRead: "m1 key C major: C" }),
+				file("f1", { chartRead: "key: C\n| C |" }),
 				file("f2", { kind: "image", filename: "f2.png" }),
 				file("f3", { isNotation: false }),
 				file("f4", { status: "uploading" }),
@@ -46,7 +46,7 @@ describe("chartReadOfFile", () => {
 			url: "https://blob/f1.pdf",
 			filename: "f1.pdf",
 			kind: "pdf",
-			chartRead: "m1 key C major: C",
+			chartRead: "key: C\n| C |",
 			chartReadEdited: false,
 		});
 		await expect(chartReadOfFile("a1", "f2")).resolves.toMatchObject({
@@ -66,11 +66,11 @@ describe("saveChartRead", () => {
 	beforeEach(() => reset({ songFile: [file("f1")] }));
 
 	test("stores a correction, then clears it", async () => {
-		await expect(saveChartRead("a1", "f1", "m1 key D major: D", true)).resolves.toEqual({
-			chartRead: "m1 key D major: D",
+		await expect(saveChartRead("a1", "f1", "key: D\n| D |", true)).resolves.toEqual({
+			chartRead: "key: D\n| D |",
 			chartReadEdited: true,
 		});
-		expect(row("f1")).toMatchObject({ chartRead: "m1 key D major: D", chartReadEdited: true });
+		expect(row("f1")).toMatchObject({ chartRead: "key: D\n| D |", chartReadEdited: true });
 		await expect(saveChartRead("a1", "f1", null, false)).resolves.toEqual({
 			chartRead: null,
 			chartReadEdited: false,
@@ -79,7 +79,7 @@ describe("saveChartRead", () => {
 	});
 
 	test("another account's file is not found and keeps its read", async () => {
-		await expect(saveChartRead("a2", "f1", "m1 x", true)).resolves.toBeNull();
+		await expect(saveChartRead("a2", "f1", "| x |", true)).resolves.toBeNull();
 		expect(row("f1")).toMatchObject({ chartRead: null, chartReadEdited: false });
 	});
 });

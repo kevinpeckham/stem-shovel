@@ -1,5 +1,5 @@
 import { alignChart, type Alignment } from "#lib/audio/chartAlignment.js";
-import type { ChartBar } from "#lib/utils/chartBars.js";
+import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
 
 /**
  * A chart aligned to a recording off the page (audio/chartAlignment.ts):

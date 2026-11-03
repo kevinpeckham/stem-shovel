@@ -1,12 +1,18 @@
+import { parseChart } from "barmark";
+import type { Slot } from "barmark";
 /**
  * What looks wrong in a chart read (docs/audio-engine.md "The chart read is
  * checked"; stem-bench Study 5): the reading model's own "Note:" lines (an
  * unreadable page, a doubt it voiced unprompted), and a key signature that
  * calls for sharps or flats while not one chord symbol carries any, the
  * signature of a PDF whose generator dropped the accidentals (a font with
- * no music glyphs). Pure: the summary text in (`readChartWithAi`'s form,
- * `m<n> key <key> … : <chords>`), short warnings out, empty when nothing
- * stands out.
+ * no music glyphs). Pure: the read in, short warnings out, empty when
+ * nothing stands out. A read is a barmark chart (`readChartWithAi`), its
+ * bars from `parseChart`: the key in force is the bar's `key`, a chord's
+ * root its slot's `chord.root`, each written bar judged once (a repeat
+ * does not count its chords again). A text barmark plays no bar of is
+ * read as the `m<n>` measure summary (`musicXmlSummary`,
+ * `m<n> key <key> … : <chords>`), as reads were stored before.
  *
  * The accidentals check judges each chord against the key IN FORCE at its
  * measure (the latest `key <K> major|minor` at or before the line; a
@@ -101,8 +107,37 @@ function isSuspicious(chord: string, sharps: number): boolean {
 	return alteredLetters(sharps).includes(chord.charAt(0)) && !/^[A-G][♭♯b#]/.test(chord);
 }
 
+interface Scan {
+	chords: string[];
+	suspicious: number;
+}
+
+/** A slot's chord symbols, a group's members included (note sets, holds and N.C. left out). */
+const slotChords = (slot: Slot): string[] =>
+	(slot.kind === "group" ? slot.members : [slot]).flatMap((s) =>
+		s.kind === "chord" && s.chord.kind === "chord" ? [s.chord.canonical] : [],
+	);
+
+/** A barmark chart's chords, each written bar once, judged against the key in force at it; null when no bar plays. */
+function scanBarmark(text: string): Scan | null {
+	const { bars } = parseChart(text);
+	if (bars.length === 0) return null;
+	const seen = new Set<number>();
+	const scan: Scan = { chords: [], suspicious: 0 };
+	for (const bar of bars) {
+		if (seen.has(bar.written)) continue;
+		seen.add(bar.written);
+		const sharps = bar.key ? (keySignatureSharps(`${bar.key.tonic} ${bar.key.mode}`) ?? 0) : 0;
+		for (const chord of bar.slots.flatMap(slotChords)) {
+			scan.chords.push(chord);
+			if (isSuspicious(chord, sharps)) scan.suspicious++;
+		}
+	}
+	return scan;
+}
+
 /** The chords and how many of them look suspicious against the key in force at their measure. */
-function scanChords(lines: string[]): { chords: string[]; suspicious: number } {
+function scanChords(lines: string[]): Scan {
 	let inForce = 0;
 	let suspicious = 0;
 	const chords: string[] = [];
@@ -124,7 +159,7 @@ export function chartReadWarnings(summary: string): string[] {
 		const note = /^note:\s*(.+)$/i.exec(line.trim());
 		if (note) warnings.push(`The reader notes: ${note[1]!.trim()}`);
 	}
-	const { chords, suspicious } = scanChords(lines);
+	const { chords, suspicious } = scanBarmark(summary) ?? scanChords(lines);
 	const anyAccidental = chords.some((c) => /(^|\/)[A-G][♭♯b#]/.test(c));
 	if (chords.length >= 8 && suspicious >= 2 && !anyAccidental)
 		warnings.push(

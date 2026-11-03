@@ -3,6 +3,8 @@ import { logAiRequest, saveChartRead } from "#lib/server/data.js";
 import { createGateway } from "@ai-sdk/gateway";
 import { chartStatedAnswer } from "#lib/utils/chartStatedAnswer.js";
 import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
+import { barmarkChartPlays } from "#lib/utils/barmarkChartPlays.js";
+import { parseChart } from "barmark";
 import { settingsChartDisagreement } from "#lib/utils/settingsChartDisagreement.js";
 import { generateText } from "ai";
 import {
@@ -69,11 +71,18 @@ interface AiAsker {
 	songId: string;
 	accountId: string;
 }
-/** What the request carries for the chart: its per-measure summary as text, the PDF or image itself, or both; `chord` when the text is the band's own chord chart. */
+/**
+ * What the request carries for the chart: its text, the PDF or image
+ * itself, or both. `chord` when the text is the band's own chord chart;
+ * `barmark` when it is a score's read as a barmark chart (`readChartWithAi`),
+ * else a score's text is the `m<n>` measure summary (`musicXmlSummary`, and
+ * a read stored before the reads were barmark).
+ */
 interface ScorePart {
 	text?: string;
 	file?: { data: Uint8Array; mediaType: string; filename: string };
 	chord?: boolean;
+	barmark?: boolean;
 }
 /** The band's chart is free text; this much of it goes along (the draft examples send 3 000). */
 const CHORD_CHART_MAX_CHARS = 12_000;
@@ -84,8 +93,8 @@ const scoreName = (score: ScoreForAi | null | undefined) =>
 /**
  * Reads the score from Blob into what the request carries: a MusicXML as
  * its summary; a PDF or image as its stored read when it has one, else the
- * summary a reading model makes of it (`readChartWithAi`, then stored on
- * the file), plus the file itself when it fits beside the mix. Null when
+ * barmark chart a reading model makes of it (`readChartWithAi`, then stored
+ * on the file), plus the file itself when it fits beside the mix. Null when
  * nothing could be read.
  */
 async function loadScore(
@@ -99,7 +108,7 @@ async function loadScore(
 	}
 	const stored = score.kind === "musicxml" ? "" : storedRead(score);
 	const res = await readBlob(score.url);
-	if (!res.ok) return stored ? { text: stored } : null;
+	if (!res.ok) return stored ? readPart(stored) : null;
 	const bytes = new Uint8Array(await res.arrayBuffer());
 	if (score.kind === "musicxml") {
 		const xml = score.format === "mxl" ? musicXmlFromMxl(bytes) : new TextDecoder().decode(bytes);
@@ -120,8 +129,11 @@ async function loadScore(
 		audioBytes + bytes.byteLength <= MAX_REQUEST_BYTES
 			? { data: bytes, mediaType, filename: score.filename }
 			: undefined;
-	return text || file ? { text: text || undefined, file } : null;
+	return text || file ? { text: text || undefined, barmark: barmarkChartPlays(text), file } : null;
 }
+
+/** A score's read as the request's text, flagged when it is barmark (a read stored before may be the old summary). */
+const readPart = (text: string): ScorePart => ({ text, barmark: barmarkChartPlays(text) });
 
 /** The read stored on a score file, when there is one. */
 const storedRead = (score: Pick<ScoreFileForAi, "chartRead">) => score.chartRead?.trim() ?? "";
@@ -146,19 +158,46 @@ export async function readChartOfScore(
 	return { text, fromModel: true };
 }
 
-/** Where Redis keeps a file's read, by its URL (a second-level cache under the stored read). */
+/** Where Redis keeps a file's read, by its URL (a second-level cache under the stored read); `chart2:` since the reads are barmark, so no summary cached before is served. */
 export const chartCacheKey = (url: string) =>
-	`chart:${createHash("sha256").update(url).digest("hex").slice(0, 32)}`;
+	`chart2:${createHash("sha256").update(url).digest("hex").slice(0, 32)}`;
+
+/**
+ * What `readChartWithAi` asks for: the score as a barmark chart (barmark
+ * grammar v0.1: directive lines, one cell per measure, repeats, endings,
+ * directions, rehearsal marks and headings), so its bars' written numbers
+ * are the score's measure numbers.
+ */
+const CHART_READ_SYSTEM = `You read music notation. The attached file is a song's chart or score. Write it out as a chart in barmark, a plain-text chord chart notation, in exactly this form and nothing else:
+
+# <title>
+Part: <the part you read, e.g. "Electric Guitar 1 (3 parts)">
+key: <key>, time: <time signature>, tempo: <bpm>
+<the bars, one bar line per system of the score>
+
+Rules:
+- The directives line: "key:" from the key signature, as barmark spells a key: the tonic with b or # for a flat or sharp, and m for minor ("F", "Bb", "Eb", "F#", "Dm", "C#m"). Prefer the major key for a signature unless the chords plainly sit in the relative minor; a text such as "Key: F Major" in the score confirms it. "time:" the time signature ("4/4", "3/4", "6/8"); "tempo:" the beats per minute of a metronome mark. State only what the score shows: leave out any of the three it does not show.
+- Every measure of the score is written once, in order, as one cell between pipes: | F | C7 | Bbmaj7/F | Gm7 C7 |. Count every measure in every system on every page (the small numbers at the start of a system are measure numbers: use them to keep count), so the bars' numbers match the score's measure numbers.
+- In a cell, the measure's chord symbols in the order they occur, separated by spaces, as written (Fmaj9, Bbmaj7/F, Cm7), with b and # for flats and sharps. A measure with no chord symbol keeps the harmony before it: write / alone in its cell. A measure with the repeat-measure sign is %. N.C. where the score says N.C.
+- Repeats: a bar line that begins a repeat starts with |: (start a new line at that measure), and the line where the repeat ends closes with :| . Endings are bar lines of their own after the repeated bars: |1 G | G7 :| for a first ending (it closes with :|), |2 G | C | for a second, |1-3 ... :| for one ending on several passes.
+- Directions are cells of their own between bars, where the score prints them: Segno, Coda, To Coda, Fine, D.C., D.C. al Fine, D.C. al Coda, D.S., D.S. al Fine, D.S. al Coda. For example: | Segno | C | F | To Coda | G | C | D.S. al Coda |
+- A rehearsal letter or number is a cell of its own just before its measure, letters and digits after @: | @A | F | C |.
+- A section name printed in the score (Intro, Verse, Chorus, Bridge, Solo, Outro) is a heading line above its bars, ## Verse, and its first measure starts a new line. A repeat opens and closes within one section: write no heading between a |: and its :|.
+- Other text printed on a measure (rit., solo, a cue) goes in double quotes in that measure's cell, before its chords: | "rit." F C |. Lyrics are not text: leave them out.
+- A key, time or tempo change is a directive line of its own just before the bar line that starts with the measure it applies to (start a new line there): key: Ab or time: 3/4 or tempo: 96.
+- Do not invent anything the score does not show. If a page is unreadable, say so on a final line beginning "Note:".`;
 
 /** A read chart stays cached this long; the file never changes under its URL (Blob pathnames are never reused). */
 const CHART_CACHE_SECONDS = 30 * 24 * 3600;
 
 /**
- * A PDF or image of a chart as the per-measure summary `musicXmlSummary`
- * makes of a MusicXML (docs/audio-engine.md, "The score as the AI's
- * chart"): a text model that reads documents (DRAFT_MODEL) writes the key
- * signature where it changes, the time signature, tempo marks, rehearsal
- * marks and words, repeats and endings, and the chord symbols per measure.
+ * A PDF or image of a chart as a barmark chart (docs/audio-engine.md, "The
+ * score as the AI's chart"; the band's own charts are barmark too): a text
+ * model that reads documents (DRAFT_MODEL) writes the key, time and tempo
+ * as directive lines where they are set or change, every measure once as a
+ * cell (so the bars' written numbers are the score's measure numbers),
+ * repeats, endings, directions, rehearsal marks, section headings and
+ * words. The answer passes when barmark plays at least one bar of it.
  * Gemini listening to the mix did not read key signatures off a six-page
  * engraved score (Kevin's test); read as text, the keys are plain. Cached
  * in Redis by the file's URL for a month; logged as `chart-read`.
@@ -180,20 +219,7 @@ export async function readChartWithAi(
 		}
 	}
 	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
-	const system = `You read music notation. The attached file is a song's chart or score. Write it out as a plain-text summary, one line per measure that carries anything of note, in exactly this form and nothing else:
-
-Title: <title>
-Part: <the part you read, e.g. "Electric Guitar 1 (3 parts)">
-m<number> key <key> <time signature> tempo <bpm> [<rehearsal mark>] "<words>" |: :| ending <n>: <chord symbols in order, separated by spaces>
-
-Rules:
-- Number the measures from 1 in order through the whole score (count every measure in every system, on every page; the small numbers at the start of a system are measure numbers, use them to keep count).
-- "key": from the key signature, as "C major", "A♭ major", "F minor" (write ♭ and ♯). State it at measure 1 and again at every measure where the key signature changes (naturals canceling flats or sharps is a change). Prefer the major key for a signature unless the chords plainly sit in the relative minor. A text such as "Key: F Major" in the score confirms it.
-- Write the time signature at measure 1 and where it changes; "tempo <bpm>" where a metronome mark appears.
-- Rehearsal marks in square brackets ("[A Verse]"), other words in quotes ("Chorus", "rit."); lyrics are not words, leave them out.
-- "|:" at a measure that opens a repeat, ":|" at one that closes it, "ending 1" where a first ending starts, and so on; "D.S.", "coda", "fine" as words.
-- Chord symbols after a colon, in the order they occur in the measure, as written (Fmaj9, B♭maj7/F, Cm7, N.C.). A measure with no chord symbol and no mark is left out.
-- Do not invent anything the score does not show; if a page is unreadable, say so on a final line beginning "Note:".`;
+	const system = CHART_READ_SYSTEM;
 	const started = Date.now();
 	const log = {
 		kind: "chart-read",
@@ -215,7 +241,7 @@ Rules:
 						mediaType.startsWith("image/")
 							? { type: "image" as const, image: bytes, mediaType }
 							: { type: "file" as const, data: bytes, mediaType, filename: score.filename },
-						{ type: "text", text: "Summarize this chart as instructed." },
+						{ type: "text", text: "Write this chart out as instructed." },
 					],
 				},
 			],
@@ -231,11 +257,17 @@ Rules:
 		});
 		throw e;
 	}
-	const error = /^m\d+/m.test(text) ? null : "The model did not summarize the chart";
+	const parse = parseChart(text);
+	const error = parse.bars.length > 0 ? null : "The model did not write the chart out";
 	await logAiRequest({
 		...log,
 		response: text,
-		parsed: error ? null : { lines: text.split("\n").length },
+		parsed: error
+			? null
+			: {
+					bars: parse.bars.length,
+					errors: parse.diagnostics.filter((d) => d.severity === "error").length,
+				},
 		error,
 		durationMs: Date.now() - started,
 		inputTokens: usage.inputTokens ?? null,
@@ -287,12 +319,16 @@ async function loadMix(mixUrl: string): Promise<Uint8Array> {
 	return bytes;
 }
 
+/** How a score's barmark read is described to the listening model. */
+const BARMARK_READ_NOTE =
+	', as a chart read from the score in barmark notation: "key:", "time:" and "tempo:" lines where they are set or change, one cell between pipes per written measure ("/" holds the harmony before it), "|:" and ":|" repeats, "|1" and "|2" endings, directions (Segno, To Coda, D.S. al Coda) and rehearsal marks ("@A") as cells of their own, "##" section headings and quoted words';
+
 const CHART_NOTE = (chart: ScorePart) =>
 	`The song's own chart comes with the recording${
 		chart.chord
 			? ', as the band wrote it: its sections, the chords of each (one per bar unless it says otherwise, with repeats as "x2"), sometimes the words. It has no key signatures and marks no bars: read each part\'s key from the chords it moves through, and follow its sections in the recording'
 			: chart.text
-				? `, as a measure-by-measure summary (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)${chart.file ? " and as the file it was read from" : ""}`
+				? `${chart.barmark ? BARMARK_READ_NOTE : ", as a measure-by-measure summary (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)"}${chart.file ? " and as the file it was read from" : ""}`
 				: ""
 	}. First make sure it is the chart of this recording (the same piece: its harmony, meter and form match what you hear); if it plainly is not, set it aside, answer from the recording alone and say so in "notes".`;
 

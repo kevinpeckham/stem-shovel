@@ -5,7 +5,7 @@ import {
 	ALIGNMENT_SAME_PIECE_RATIO,
 } from "#lib/constants/chartAlignment.js";
 import { alignedPlacements } from "./alignedPlacements.js";
-import type { ChartBar } from "./chartBars.js";
+import type { ChartBar } from "./barmarkChartBars.js";
 
 const bar = (over: Partial<ChartBar>): ChartBar => ({
 	measure: 1,

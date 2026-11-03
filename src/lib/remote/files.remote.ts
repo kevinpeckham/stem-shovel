@@ -14,7 +14,8 @@ import {
 import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
 import { redisConfigured, redisPipeline } from "#lib/server/redis.js";
 import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
-import { CHART_READ_MEASURE_LINE, ChartReadSaveSchema } from "#lib/val/ChartReadSchema.js";
+import { ChartReadSaveSchema } from "#lib/val/ChartReadSchema.js";
+import { barmarkChartPlays } from "#lib/utils/barmarkChartPlays.js";
 import { IdSchema } from "#lib/val/SongSchema.js";
 import { scheduleDemoPlayback } from "#lib/server/jobs.js";
 import { notifyDemo } from "#lib/server/notifications.js";
@@ -136,8 +137,8 @@ export const readChartOfFile = command(IdSchema, async ({ id }) => {
 export const saveChartReadOfFile = command(ChartReadSaveSchema, async ({ id, text }) => {
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfFile, id);
-	if (!CHART_READ_MEASURE_LINE.test(text))
-		error(400, "A read has one line per measure, starting m1, m2, …");
+	if (!barmarkChartPlays(text))
+		error(400, "The read has no bars to play: write each measure between pipes, as | F | C7 |");
 	if (!(await chartReadOfFile(accountId, id)))
 		error(404, "Only a score as a PDF or an image has a read");
 	const row = await saveChartRead(accountId, id, text, true);

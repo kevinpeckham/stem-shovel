@@ -68,7 +68,6 @@ import {
 	reconcileChordsWithAi,
 } from "#lib/server/aiDetect.js";
 import { renderChartHtml, renderDocHtml } from "#lib/server/chartHtml.js";
-import { chartBars } from "#lib/utils/chartBars.js";
 import { chartDefaults } from "#lib/utils/chartDefaults.js";
 import { barmarkChartBars } from "#lib/utils/barmarkChartBars.js";
 import { unescapeChartMarkdown } from "#lib/utils/unescapeChartMarkdown.js";
@@ -367,13 +366,13 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	);
 });
 
-/** The bars of a band's chart or a score's chart read; undefined when the score has no read yet. */
+/** The bars of a band's chart or a score's chart read, both barmark; undefined when the score has no read yet. */
 function barsOfScore(
 	score: { kind: "chart"; markdown: string } | { kind: "pdf" | "image"; chartRead: string | null },
 	defaults: ReturnType<typeof chartDefaults>,
 ) {
 	if (score.kind === "chart") return barmarkChartBars(score.markdown, defaults);
-	return score.chartRead ? chartBars(score.chartRead, defaults) : undefined;
+	return score.chartRead ? barmarkChartBars(score.chartRead, defaults) : undefined;
 }
 
 /**

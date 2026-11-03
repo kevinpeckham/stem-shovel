@@ -39,7 +39,9 @@ the app's `ChartBar` shape (chords, bpm, meter, key in force,
 section) so `chartAlignment`, `alignedPlacements`, the ladder and the
 song-check integration stay exactly as shipped and validated
 (Studies 12–15). The summary-form parser (`chartBars`, for AI measure
-summaries) is a different input and stays. The app inherits the
+summaries) was a different input and stayed until 2026-11-03, when the AI's
+reads became barmark too (audit item 5; `chartBars` now serves the
+converter alone). The app inherits the
 grammar's new powers for free — elision, fermatas, directives, the
 unmeasured ring-out family — through the dependency, not through app
 code.

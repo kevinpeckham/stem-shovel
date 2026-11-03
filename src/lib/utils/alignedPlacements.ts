@@ -4,7 +4,7 @@ import {
 } from "#lib/constants/chartAlignment.js";
 import type { Alignment } from "#lib/audio/chartAlignment.js";
 import { chartBarSeconds } from "./chartBarSeconds.js";
-import type { ChartBar } from "./chartBars.js";
+import type { ChartBar } from "./barmarkChartBars.js";
 
 /**
  * What a chart aligned to a recording places in it (stem-bench Study 12):

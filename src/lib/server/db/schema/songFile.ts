@@ -55,8 +55,9 @@ export const songFile = table(
 		/** A score (notation as a PDF or an image): shown on the Chart tab's notation view as well as the Attachments tab. */
 		isNotation: t.integer("is_notation", { mode: "boolean" }).notNull().default(false),
 		/**
-		 * A score's per-measure summary as the reading model wrote it, or as a
-		 * member corrected it (docs/audio-engine.md, "The chart read is
+		 * A score's read as a barmark chart, as the reading model wrote it or as
+		 * a member corrected it (a read stored before the reads were barmark is
+		 * the `m<n>` measure summary until scripts/convert-chart-reads.ts runs) (docs/audio-engine.md, "The chart read is
 		 * stored"): the song-check reads this instead of reading the file
 		 * again. Null until the file is first read, or after a member clears it.
 		 */

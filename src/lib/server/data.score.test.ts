@@ -61,7 +61,7 @@ describe("scoreForAi", () => {
 					filename: "score.pdf",
 					title: "Score",
 					sizeBytes: 1000,
-					chartRead: "m1 key F major 4/4: F",
+					chartRead: "key: F, time: 4/4\n| F |",
 					chartReadEdited: true,
 					createdAt: "2026-10-01",
 				},
@@ -74,7 +74,7 @@ describe("scoreForAi", () => {
 			filename: "score.pdf",
 			title: "Score",
 			sizeBytes: 1000,
-			chartRead: "m1 key F major 4/4: F",
+			chartRead: "key: F, time: 4/4\n| F |",
 			chartReadEdited: true,
 		});
 	});

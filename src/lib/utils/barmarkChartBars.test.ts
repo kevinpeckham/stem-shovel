@@ -42,10 +42,20 @@ describe("barmarkChartBars: the grammar's example", () => {
 
 	it("plays 63 bars in order: repeats, replays and x2 expanded, the fermata not counted", () => {
 		expect(read.bars).toHaveLength(63);
-		expect(read.bars.map((b) => b.measure)).toEqual(read.bars.map((_, i) => i + 1));
+	});
+	it("numbers each bar as written: a repeat and a replay play bars under their own numbers", () => {
+		// Intro 1–4, the verse's repeat 5–8 twice, then 9–12; the chorus 13–20.
+		expect(read.bars.slice(0, 20).map((b) => b.measure)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+		]);
+		// The replayed verse (play bar 25) is written bar 5 again.
+		expect(bar(25).measure).toBe(5);
+		expect(Math.max(...read.bars.map((b) => b.measure))).toBe(31);
 	});
 	it("marks the bar each section occurrence begins, replays included", () => {
-		const sections = read.bars.filter((b) => b.section).map((b) => [b.section, b.measure]);
+		const sections = read.bars
+			.map((b, i) => [b.section, i + 1] as const)
+			.filter(([section]) => section);
 		expect(sections).toEqual([
 			["Intro", 1],
 			["Verse", 5],
@@ -83,6 +93,27 @@ describe("barmarkChartBars: the grammar's example", () => {
 	});
 	it("ignores the feel line", () => {
 		expect(read.warnings).toHaveLength(3);
+	});
+});
+
+describe("barmarkChartBars: sections from headings, rehearsal marks and words", () => {
+	const sectionsOf = (md: string) => barmarkChartBars(md, SONG)?.bars.map((b) => b.section);
+	it("a heading names the bar it begins, over a mark or words on that bar", () => {
+		expect(sectionsOf('## Verse\n| @A | "Chorus" D | A |')).toEqual(["Verse", null]);
+	});
+	it("a rehearsal mark names its bar where no heading begins", () => {
+		expect(sectionsOf("| D | @B | G | A |")).toEqual([null, "B", null]);
+	});
+	it("else the first of a bar's words that names a section; other words name nothing", () => {
+		expect(sectionsOf('| "rit." D | "solo" "Chorus 2" G | "To Coda" A |')).toEqual([
+			null,
+			"solo",
+			null,
+		]);
+		expect(sectionsOf('| "fill" D | "Bridge" G |')).toEqual([null, "Bridge"]);
+	});
+	it("a repeat plays its mark again with its bar", () => {
+		expect(sectionsOf("|: @A | D | G :|")).toEqual(["A", null, "A", null]);
 	});
 });
 

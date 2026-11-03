@@ -1,13 +1,14 @@
+import type { ChartBars } from "./barmarkChartBars.js";
 import { chartSectionName } from "./chartSectionName.js";
 
 /**
- * A chart as the bars it plays, in play order (stem-bench Study 12: the
- * chart rendered as chord pads at its declared tempo and aligned to the
- * recording places every bar in seconds). This file reads the measure
- * summary a notation file's chart read stores (`readChartWithAi`,
- * `m<n> key <key> <d>/<d> tempo <bpm> [<mark>] "<words>" |: :| ending <n>:
- * <chords>`); `barmarkChartBars` reads a band's barmark chart into the
- * same shape.
+ * The legacy reader of a score's chart read in the `m<n>` measure summary
+ * (`m<n> key <key> <d>/<d> tempo <bpm> [<mark>] "<words>" |: :| ending <n>:
+ * <chords>`), the form `readChartWithAi` wrote before it wrote barmark and
+ * `musicXmlSummary` still writes. The app reads every chart with
+ * `barmarkChartBars` now; this stays for the converter
+ * (scripts/convert-chart-reads.ts, `chartReadToBarmark`), which turns a
+ * stored summary into barmark only when both readers play the same bars.
  *
  * Repeats and endings are expanded: a `:|` sends play back to the last
  * `|:` (or, without one, the bar after the previous `:|`, or the start)
@@ -19,35 +20,25 @@ import { chartSectionName } from "./chartSectionName.js";
  * defaults (the song's own settings) apply, else the first mark itself.
  * Never throws: what it cannot read is a warning.
  */
-export interface ChartBar {
-	/** The chart's own measure number this bar plays (a repeat plays a measure again); 1-based. For a chord chart, the running bar count. */
-	measure: number;
-	/** Chord symbols in order; [] means the previous bar's harmony holds; ["N.C."] is silence. */
+/** One measure line of a summary as read. */
+export interface ChartReadMeasure {
 	chords: string[];
-	/** The tempo in force, bpm of the meter's beat. */
-	bpm: number;
-	/** The time signature in force, e.g. "4/4". */
-	meter: string;
-	/** The key in force, e.g. "D major"; null when the chart marks none. */
-	key: string | null;
-	/** A section that begins at this bar: a rehearsal mark's text or a heading; null otherwise. */
-	section: string | null;
-}
-export interface ChartBars {
-	bars: ChartBar[];
-	warnings: string[];
-}
-
-interface Marks {
-	chords: string[];
+	/** "D major", "A♭ minor"; null when the line marks none. */
 	key: string | null;
 	meter: string | null;
 	tempo: number | null;
+	/** The rehearsal mark in square brackets, as written; null when none. */
+	mark: string | null;
+	/** The quoted words, in order. */
+	words: string[];
+	/** The header's text that is none of the above ("D.S." written outside quotes); "" when none. */
+	extra: string;
 	section: string | null;
 	open: boolean;
 	close: boolean;
 	ending: number | null;
 }
+type Marks = ChartReadMeasure;
 
 /** A runaway expansion (a malformed repeat) stops here; no song is this long. */
 const MAX_BARS = 2000;
@@ -63,6 +54,9 @@ const EMPTY: Marks = {
 	key: null,
 	meter: null,
 	tempo: null,
+	mark: null,
+	words: [],
+	extra: "",
 	section: null,
 	open: false,
 	close: false,
@@ -74,10 +68,26 @@ function plausibleTempo(text: string | undefined): number | null {
 	return text && bpm >= 20 && bpm <= 400 ? bpm : null;
 }
 
-function sectionOf(header: string, words: string[]): string | null {
-	const mark = /\[([^\]]+)\]/.exec(header)?.[1]?.trim();
-	if (mark) return mark;
-	return words.map(chartSectionName).find(Boolean) ?? null;
+/** What a header says beyond its key, meter, tempo, mark and ending. */
+function headerExtra(header: string): string {
+	return header
+		.replace(KEY, " ")
+		.replace(METER, " ")
+		.replace(TEMPO, " ")
+		.replace(/\[[^\]]*\]/g, " ")
+		.replace(ENDING, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function sectionOf(mark: string | null, words: string[]): string | null {
+	return mark ?? words.map(chartSectionName).find(Boolean) ?? null;
+}
+
+/** The key a header marks, with ♯ and ♭ ("A♭ major"); null when none. */
+function keyOf(header: string): string | null {
+	const key = KEY.exec(header)?.[1];
+	return key ? key.replace(/#/g, "♯").replace(/(?<=[A-G])b/g, "♭") : null;
 }
 
 function marksOf(rest: string, measure: number, warnings: string[]): Marks {
@@ -97,15 +107,16 @@ function marksOf(rest: string, measure: number, warnings: string[]): Marks {
 	const direction = [header, ...words].map((w) => DIRECTION.exec(w)?.[0]).find(Boolean);
 	if (direction)
 		warnings.push(`m${measure}: "${direction}" is not followed; the bars play straight through`);
+	const mark = /\[([^\]]+)\]/.exec(header)?.[1]?.trim() || null;
 	return {
 		chords,
-		key:
-			KEY.exec(header)?.[1]
-				?.replace(/#/g, "♯")
-				.replace(/(?<=[A-G])b/g, "♭") ?? null,
+		mark,
+		words,
+		extra: headerExtra(header),
+		key: keyOf(header),
 		meter: METER.exec(header)?.[1] ?? null,
 		tempo: plausibleTempo(TEMPO.exec(header)?.[1]),
-		section: sectionOf(header, words),
+		section: sectionOf(mark, words),
 		// ":|:" closes and then lists; it opens nothing.
 		open: line.replace(/:\|/g, " ").includes("|:"),
 		close: line.includes(":|"),
@@ -153,7 +164,8 @@ function playOrder(at: (n: number) => Marks, last: number): number[] {
 	return order;
 }
 
-function readMeasures(summary: string, warnings: string[]): Map<number, Marks> {
+/** A summary's measure lines by measure number (out-of-range numbers left out with a warning). */
+export function chartReadMeasures(summary: string, warnings: string[] = []): Map<number, Marks> {
 	const measures = new Map<number, Marks>();
 	for (const raw of summary.split(/\r?\n/)) {
 		const match = MEASURE.exec(raw.trim());
@@ -179,7 +191,7 @@ export function chartBars(
 	defaults: { tempo: number | null; meter: string | null },
 ): ChartBars | null {
 	const warnings: string[] = [];
-	const measures = readMeasures(summary, warnings);
+	const measures = chartReadMeasures(summary, warnings);
 	if (measures.size === 0) return null;
 	let bpm = defaults.tempo ?? firstOf(measures, (m) => m.tempo);
 	if (bpm === null) return null;

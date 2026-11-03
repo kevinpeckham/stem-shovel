@@ -7,6 +7,35 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## barmark drops a whole bar line for one error, keeps the written numbers after it, and takes directions all or nothing (2026-11-03)
+
+Probed for audit item 5 (the AI's score reads as barmark, barmark 0.12.0)
+and worth knowing before a reader or converter leans on `parseChart`:
+
+- **One bad chord removes its whole line from play.** `| F | C | Xq7 |`
+  then `| Bb | F |` plays two bars, and Bb is written bar 4: the dropped
+  line's pipes still count (grammar A.7). A read with one error aligns
+  short with no warning from the bars themselves, so the read editor
+  lists barmark's errors with their lines (`utils/chartReadIssues.ts`),
+  and `barmarkChartPlays` accepts a text with errors as long as a bar
+  plays.
+- **Directions are all or nothing.** An unused `Segno`, `Coda`, `To Coda`
+  or `Fine` is an error, and a valid `D.S.`/`D.C.` changes the play order.
+  A mechanical conversion from a reader that played straight through
+  (`chartBars`) can therefore never keep a direction as a cell and still
+  play the same bars: `chartReadToBarmark` keeps them as quoted words.
+- **`|:` must start a bar line and a repeat stays inside its section:**
+  `| @A |: D |` is an error (write `|: @A | D |`), and a `|:` … `:|` that
+  crosses a `##` heading gives two errors. The read prompt says so.
+- **A `part:` line is plain text in 0.12.0** although grammar 7.3 calls it
+  a directive; `Title:`, `Part:` and `Note:` prose lines parse with no
+  diagnostic, and a mid-chart `key:`/`time:`/`tempo:` line applies from
+  the next bar on.
+- **barmark never scans prose**, so a chart whose tempo is only "120 bpm"
+  in a header line has no `bar.tempo`; `chartStatedValues` tries the
+  directives first and falls back to the prose reader for a value the
+  directives leave out.
+
 ## barmark reads `Cadd9` and `C(9)` but not `C(add9)`, and a heading with no bars is a replay (2026-11-02)
 
 **Update, barmark 0.8.0 (the same day):** `(addN)` reads as an alias of `(N)` (issue #62) and the empty heading gets a message that says how to fix it (#63), so the export's rewrite is gone again; the finding stays as the record of why `printChart` must be checked with `parseChart` first. Two things the chord player's chart export (`utils/progressionChart.ts`) ran into with `barmark` 0.7.0. The player's minor add-nine labels are spelled `Am(add9)` (the `(add9)` suffix in `constants/chordStyles.ts`); barmark's chord grammar takes a parenthesis as the tone it adds, so `(add9)` fails with `"" is not a tone a parenthesis can add`, while `Aadd9` and `A(9)` both read and print as `A(9)`. `printChart` leaves a line with an error exactly as written, so the failure would have shipped silently in the file: the export rewrites `(addN)` to `addN` before printing, and its test parses every label in the player's vocabulary and asserts zero diagnostics. And a `## Name` heading with no bars under it is not an empty section but a replay of the earlier section of that name (grammar section 6), which errors when there is none, so an empty pad prints the directive line alone. Both worth an issue on barmark (the alias table could accept `(addN)`, as it accepts `C+` and `C°`).

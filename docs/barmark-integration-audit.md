@@ -121,7 +121,7 @@ a simpler contract: ask the model for a barmark chart (as
 this path, retiring the Roman-numeral JSON reply format and its parser
 (`parseTextToChordsReply.ts`). One notation for every AI reply.
 
-### 5. The AI's measure summaries become barmark (M) — unblocked 2026-11-03
+### 5. The AI's measure summaries become barmark (M) — done 2026-11-03
 
 `readChartWithAi` (`src/lib/server/aiDetect.ts:166`) reads a PDF or
 image score into the `m1 key C 4/4 tempo 120 … : C F | G` summary
@@ -147,8 +147,16 @@ the played bars, which every reader of ours already consumes, and the
 renderer draws them. barmark 0.12.0 (2026-11-03) answered the last two, rehearsal marks
 (`| @B | D |`, `bar.rehearsal`) and words on a bar (`| "solo" D |`,
 `bar.words`), and the renderer 0.9.1 numbers its margin by the written
-bar (issue 92, fixed). Nothing in the grammar blocks item 5 now. Item 5 can start once those two are decided, or sooner
-with text lines carrying them.
+bar (issue 92, fixed). Nothing in the grammar blocked item 5 then.
+
+**Done 2026-11-03** (docs/audio-engine.md "The chart read is barmark"):
+`readChartWithAi` asks for a barmark chart (every measure a cell, so the
+written numbers are the score's), `parseChart` is the pass check, the
+stored read aligns through `barmarkChartBars`, `chartStatedValues` and
+`chartReadWarnings` read barmark, the editor shows barmark's errors live,
+and `bun run db:convert-chart-reads` rewrites stored reads (round-trip or
+refuse). `chartBars` and `ChartReadSchema`'s line rule are out of the app;
+`chartBars` stays for the converter until production's rows are converted.
 
 ### 6. MusicXML scores get a chart (wait for barmark)
 

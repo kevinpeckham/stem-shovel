@@ -13,7 +13,7 @@ vi.mock("ai", () => ({ generateText: vi.fn() }));
 
 const { logAiRequest } = await import("#lib/server/data.js");
 const { generateText } = await import("ai");
-const { reconcileChordsWithAi } = await import("./aiDetect");
+const { chartCacheKey, readChartWithAi, reconcileChordsWithAi } = await import("./aiDetect");
 
 const log = vi.mocked(logAiRequest);
 const generate = vi.mocked(generateText);
@@ -85,5 +85,48 @@ describe("reconcileChordsWithAi", () => {
 		expect(log).toHaveBeenCalledWith(
 			expect.objectContaining({ kind: "chord-reconcile", error: "gateway down" }),
 		);
+	});
+});
+
+describe("readChartWithAi", () => {
+	const score = { url: "https://blob/score.pdf", filename: "score.pdf" };
+	const bytes = new Uint8Array([37, 80, 68, 70]);
+	const read = () => readChartWithAi(score, bytes, "application/pdf", who);
+
+	it("asks for a barmark chart: directives, a cell per measure, repeats, endings, directions, marks", async () => {
+		answers("# Song\nkey: F, time: 4/4, tempo: 120\n| F | C |");
+		await read();
+		const system = String((generate.mock.calls[0][0] as unknown as { system: string }).system);
+		expect(system).toContain("key: <key>, time: <time signature>, tempo: <bpm>");
+		expect(system).toContain("Part: <the part you read");
+		expect(system).toMatch(/Every measure of the score is written once, in order, as one cell/);
+		expect(system).toContain("|1 G | G7 :|");
+		expect(system).toContain("D.S. al Coda");
+		expect(system).toContain("| @A | F | C |");
+		expect(system).toContain("## Verse");
+		expect(system).toMatch(/Lyrics are not text: leave them out/);
+		expect(system).toMatch(/a final line beginning "Note:"/);
+		expect(system).not.toMatch(/\bm<number>/);
+	});
+
+	it("a chart barmark plays passes, logged with its bar and error counts (a line with an error plays nothing)", async () => {
+		const text = "# Song\nPart: Piano\nkey: F, tempo: 120\n| F | C | Xq7 |\n| Bb | F |";
+		answers(`${text}\n`);
+		await expect(read()).resolves.toBe(text);
+		expect(log).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: "chart-read", parsed: { bars: 2, errors: 1 }, error: null }),
+		);
+	});
+
+	it("an answer with no bar (the old measure lines, prose) is an error, logged and thrown", async () => {
+		answers("m1 key F major 4/4: F\nm2: C");
+		await expect(read()).rejects.toThrow("The model did not write the chart out");
+		expect(log).toHaveBeenCalledWith(
+			expect.objectContaining({ parsed: null, error: "The model did not write the chart out" }),
+		);
+	});
+
+	it("caches under a new prefix, so a summary cached in the old form is never served", () => {
+		expect(chartCacheKey(score.url)).toMatch(/^chart2:[0-9a-f]{32}$/);
 	});
 });
