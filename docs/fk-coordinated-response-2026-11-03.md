@@ -191,3 +191,51 @@ pragmas-doc fetch (a WAF stub can no longer read as "the sentence is
 gone"). Replicator's cross-repo probe numbers (all three environments:
 defaultPragma 0, no stickiness, no cascade, violations accepted) are
 the first entries in the comparable-probe ledger the rule wanted.
+
+---
+
+## Amendment 2 (2026-11-03, later still): upstream research — size the work as a bridge, and DEFER the org/user teardowns
+
+Kevin asked whether this program is reinventing a wheel. Researched
+2026-11-03 against the Turso and Drizzle docs and repositories:
+
+**No wheel exists today.** No client-side enforcement option anywhere:
+`@libsql/client` and `@tursodatabase/serverless` expose no pragma,
+init-SQL or connection hook (SDK reference checked); Turso's pragmas doc
+says only "off by default for SQLite compatibility" with no scope
+statement; there is no database-level setting; Drizzle has no onDelete
+emulation. Explicit app-side handling is the standard pattern for
+SQLite-without-enforcement, not an invention.
+
+**But the wheel is being built upstream.** tursodatabase/turso is
+actively implementing full SQLite-compatible FK semantics —
+`defer_foreign_keys` (#10036/#10037/#11176), open correctness work
+across affinity, triggers, NO ACTION self-references and parent scans,
+with PR #11095 part of the same normalization. Likely trajectory: the
+engine reaches real per-connection pragma semantics, after which
+"set the pragma at connection open" becomes viable the moment a client
+offers a held connection or an init hook. Plausibly months.
+
+**Therefore, revised sizing:**
+
+- KEEP, permanent regardless of upstream: probes, orphan scans, the
+  drift guard, the floor rule, trust-boundary insert validation. When
+  enforcement arrives, these are what VERIFY it (readings and behavior
+  have already changed under us independently of anything we deployed).
+- KEEP, needed now, modest: handlers for delete paths that exist and
+  demonstrably orphan — the portal's three gaps; Replicator's five
+  version-stranding call sites and 14 low-fan-out parents.
+- **DEFER: Replicator's `org` (47 children) and `user` (76 children)
+  teardown projects.** Neither has an app delete path today, and the
+  drift test documents both as verified no-delete-path, so nothing can
+  silently orphan through them. Two complex teardown systems for
+  operations the app cannot perform, built months before upstream
+  likely obsoletes the need, is manufactured tech debt. Build on the
+  first real trigger: a delete feature is actually wanted, or upstream
+  enforcement lands — whichever comes first. The drift test is the
+  fence that keeps the deferral honest (adding a delete path without a
+  handler fails the build).
+
+Detection needs no additions: fk-watch's behavior probe catches the
+outcome (the day stickiness or enforcement flips, it signals), which
+beats tracking upstream intentions.
