@@ -40,7 +40,8 @@ the piano's engine.
   goes through the same gateway call (`askForJson` in effect/ai.ts; the
   same model as textToBeat.ts, reasoning off) with a prompt that asks for
   a barmark chord chart in the player's key and the pad's meter (`key:`,
-  `time:`, `tempo:`, `feel: swing` for a swung feel, one `## Section`,
+  `time:`, `tempo:`, `feel: swing` for a swung feel, with an amount
+  (`swing 58%`, 50% to 75%) when the words call for one, one `## Section`,
   bars of chords by name with `/` holds and `N.C.`, 4 to 32 bars, no `%`
   or `x2`), the styles on offer with their hints, and the `setup`
   (`TextToChordsSetupSchema`: sound, mode, voicing, strum with direction,
@@ -419,8 +420,11 @@ alternate) and an accent (top or bottom note louder) in `#strike`.
 The pad's MIDI button became a **Download** menu (`ProgressionPad.svelte`):
 MIDI file, as before (`utils/encodeChordMidi.ts`), and **Barmark chord
 chart**, a `.chart.md` from `utils/progressionChart.ts`: `key:` from the
-player's key center, `time: <beats>/4`, `tempo:`, `feel: swing` when the
-session swing is 0.5 or more, one `## <name>` section, and the entries laid
+player's key center, `time: <beats>/4`, `tempo:`, the session swing as
+`feel: swing N%` (where the off-beat lands, `utils/swingPercentOf.ts`:
+50 + 50/3 × swing, one decimal; bare `feel: swing` at the triplet feel,
+nothing when straight; stem-shovel issue 4, barmark 0.9.0), one
+`## <name>` section, and the entries laid
 on a beat timeline and cut at bar lines, one slot a beat (`/` holds,
 `N.C.` for a rest), four bars a line, then barmark's `printChart` for the
 canonical text. The first step of docs/barmark-integration-audit.md. A
@@ -464,7 +468,10 @@ its `wedge` the circle id for the root and quality (b3+b5 diminished, b3
 minor, else major). The first bar's tempo (else the pad's), meter
 (clamped 2–6) and key (the tonic moved to its parent major, then the
 circle index) go with the data through `open`; a written `feel:` sets
-the metronome's swing (0 for straight, 0.6 otherwise). Warnings come
+the metronome's swing from the bar's `swingPercent`
+(`utils/swingOfPercent.ts`, the export's inverse: 0 for straight, 1 for
+bare swing or shuffle, past 66.7% clamped to 1 with a warning, so a
+chart's groove survives an export and re-import). Warnings come
 back once each (rounding, re-striking, a change of meter, tempo or key
 mid-chart, the 400-entry cap, barmark's own warnings) and the component
 lists them. The export (`progressionChart`) round-trips through it. The

@@ -220,11 +220,11 @@ class ProgressionPad {
 		this.#land(read, options.name);
 		return read.warnings;
 	}
-	/** An imported chart's entries, tempo, meter and key onto the pad, its feel on the metronome when it writes one. */
+	/** An imported chart's entries, tempo, meter and key onto the pad, its feel and swing amount on the metronome when it writes one. */
 	#land(read: ChartImport, name: string | undefined) {
 		this.open(read.data, null);
 		this.name = name || read.name;
-		if (read.hasFeel) metronome.setSwing(read.feel === "straight" ? 0 : 0.6);
+		if (read.hasFeel) metronome.setSwing(read.swing);
 		this.setLearn(false);
 		this.#persist();
 	}

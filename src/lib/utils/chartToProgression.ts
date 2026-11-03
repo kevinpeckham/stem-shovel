@@ -12,6 +12,7 @@ import type { ChordBeats, ProgressionEntry } from "#lib/utils/chordRhythm.js";
 import { noteMidi, voiceChord } from "#lib/utils/chordNotes.js";
 import { displayChord } from "#lib/utils/displayChord.js";
 import { intervalSemitones } from "#lib/utils/intervalSemitones.js";
+import { swingOfPercent } from "#lib/utils/swingOfPercent.js";
 import { tonicPitchClass } from "#lib/utils/tonicPitchClass.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
 
@@ -20,6 +21,8 @@ export interface ChartImport {
 	/** The chart's title, else its first section, else "Imported chart". */
 	name: string;
 	feel: Feel;
+	/** The first bar's swing on the app's scale (0 straight to 1 a triplet feel): its `swing N%` through `swingOfPercent`, 1 for bare swing or shuffle, 0 for straight. */
+	swing: number;
 	/** The chart wrote a `feel:` directive (absent, the player's swing stays as it is). */
 	hasFeel: boolean;
 	/** What the pad could not carry exactly, each once, and the parse's warnings ("line N: …"). */
@@ -59,7 +62,8 @@ interface Span {
  * end rounded to the nearest beat, never shorter than one) and struck as
  * entries of 4, 2 and 1 beats. N.C., silence, unreadable slots and note
  * sets are rests. Voiced by the player's voicing and octave, a slash bass
- * an octave below. Never throws: errors say why the caller should refuse.
+ * an octave below; a swing amount sets the player's swing (past 66.7%,
+ * the triplet feel, it is clamped there with a warning). Never throws: errors say why the caller should refuse.
  */
 export function chartToProgression(
 	text: string,
@@ -84,6 +88,7 @@ export function chartToProgression(
 		},
 		name: chart.title?.trim() || chart.sections[0]?.name.trim() || "Imported chart",
 		feel: first?.feel ?? "straight",
+		swing: first ? swingOf(first, warnings) : 0,
 		hasFeel: chart.lines.some((l) => l.kind === "directive" && l.set.feel !== undefined),
 		warnings: [...warnings],
 		errors,
@@ -102,6 +107,18 @@ function keyIndex(key: { tonic: string; mode: string }): number | undefined {
 	if (tonic === null) return undefined;
 	const pitch = (tonic + (MODE_TO_MAJOR[key.mode] ?? 0) + 12) % 12;
 	return CIRCLE_OF_FIFTHS.find((p) => p.major.pitch === pitch)?.index;
+}
+
+/** A bar's feel as the app's swing amount, read from barmark's `swingPercent` (bare swing or shuffle is the triplet feel). */
+function swingOf(bar: PlayedBar, warnings: Set<string>): number {
+	if (bar.feel === "straight") return 0;
+	const percent = bar.swingPercent;
+	if (percent === undefined) return 1;
+	if (percent > 66.7)
+		warnings.add(
+			`the chart's swing of ${percent}% is past the player's range; set to the triplet feel`,
+		);
+	return swingOfPercent(percent);
 }
 
 const meterOf = (bar: PlayedBar) => `${bar.meter.n}/${bar.meter.d}`;

@@ -49,7 +49,8 @@ meter denominator.
 
 What the export is: the progression as a `.chart.md`. `key:` from the
 player's key center, `time: <beatsPerBar>/4`, `tempo: <bpm>`, `feel:
-swing` when the shared swing is on; one `## Progression` section (or the
+swing N%` from the shared swing (since barmark 0.9.0 and issue 4; bare
+`feel: swing` at the triplet feel); one `## Progression` section (or the
 pad's name); each bar's chords from the entries' labels (already barmark
 spellings), `beats` becoming slots and holds (`| C . . . |` style is the
 printer's business: build the text, hand it to `printChart` for the
@@ -79,7 +80,8 @@ the MIDI export as velocity and tick offsets so the download matches
 what was heard. Not barmark work, but it pairs with 1 because the
 export menu is where the setting's effect becomes visible. Barmark's
 `feel` directive is the chart-side counterpart: when a chart is
-imported (item 4), its feel sets the pad's swing.
+imported (item 4), its feel and amount set the pad's swing
+(`swingOfPercent`, 2026-11-03, stem-shovel issue 4 done).
 
 ### 3. The chart everywhere the chart already shows (S each)
 

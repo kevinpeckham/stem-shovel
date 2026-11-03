@@ -131,4 +131,32 @@ describe("chartToProgression", () => {
 			r.data.entries.map((e) => [e.kind, e.beats, e.kind === "chord" ? e.notes : null]),
 		).toEqual(entries.map((e) => [e.kind, e.beats, e.kind === "chord" ? e.notes : null]));
 	});
+
+	it("round-trips the swing amount through the export", () => {
+		const entries: ProgressionEntry[] = [
+			{ kind: "chord", label: "C", wedge: "C", notes: [60, 64, 67], beats: 4 },
+		];
+		for (const swing of [0, 0.1, 0.15, 0.2, 0.25, 0.5, 1]) {
+			const text = progressionChart(entries, { bpm: 100, beatsPerBar: 4, swing });
+			const r = chartToProgression(text, opts);
+			expect(r.swing).toBeCloseTo(swing, 2);
+			expect(r.hasFeel).toBe(swing > 0);
+			expect(r.warnings).toEqual([]);
+		}
+	});
+
+	it("reads bare swing as the triplet feel, straight as 0, and clamps past 66.7% with a warning", () => {
+		expect(chartToProgression("feel: swing\n\n| C |", opts).swing).toBe(1);
+		expect(chartToProgression("feel: shuffle\n\n| C |", opts).swing).toBe(1);
+		const straight = chartToProgression("feel: straight\n\n| C |", opts);
+		expect(straight.swing).toBe(0);
+		expect(straight.hasFeel).toBe(true);
+		expect(chartToProgression("| C |", opts).swing).toBe(0);
+		const dotted = chartToProgression("feel: swing 75%\n\n| C |", opts);
+		expect(dotted.swing).toBe(1);
+		expect(dotted.feel).toBe("swing");
+		expect(dotted.warnings).toEqual([
+			"the chart's swing of 75% is past the player's range; set to the triplet feel",
+		]);
+	});
 });

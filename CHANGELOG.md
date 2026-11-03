@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The swing amount survives a chart.** The chord player's Barmark chord chart download writes the session swing as `feel: swing 58%` (where the off-beat lands; bare `feel: swing` at the triplet feel, nothing when straight), and Import reads an amount back onto the Swing slider, so a groove round-trips. A chart past the triplet feel (up to barmark's 75%) imports at the slider's top with a note. Describe may write an amount when your words call for one.
+
 ### Technical
 
 - **barmark 0.10.0, `@barmark/render` 0.7.3.** barmark 0.9.0 reads an optional swing amount on `feel:` (`swing 58%`, 50% to 75%, issue 66; each played bar carries `swingPercent`), 0.10.0 gives every played bar its written number (`written`, issue 70); the renderer shows the amount in a chart's header. One copy of barmark is installed.

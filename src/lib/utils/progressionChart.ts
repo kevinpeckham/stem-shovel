@@ -1,14 +1,16 @@
 import { printChart } from "barmark";
 import { CIRCLE_OF_FIFTHS } from "#lib/constants/circleOfFifths.js";
 import type { ProgressionEntry } from "#lib/utils/chordRhythm.js";
+import { swingPercentOf } from "#lib/utils/swingPercentOf.js";
 
 const BARS_PER_LINE = 4;
 
 /**
  * The pad's progression as a barmark chord chart (canonical, from
- * `printChart`): a directive line (key, time, tempo, and `feel: swing`
- * when the metronome's swing is closer to a triplet feel than to straight;
- * a chart carries the kind of feel, not an amount), a `## <name>` section,
+ * `printChart`): a directive line (key, time, tempo, and the metronome's
+ * swing as `feel: swing N%`, where the off-beat lands, through
+ * `swingPercentOf`; bare `feel: swing` for the triplet feel, nothing when
+ * straight), a `## <name>` section,
  * and the bars, four to a line. The entries lie on a beat timeline cut at
  * the bar lines, one slot per beat: a chord's first beat is its label and
  * its later beats `/`, across a bar line too; a rest's first beat is
@@ -31,7 +33,7 @@ export function progressionChart(
 	return printChart(`${lines.join("\n")}\n`);
 }
 
-/** `key: G, time: 4/4, tempo: 92`, with `feel: swing` past halfway to a triplet feel. */
+/** `key: G, time: 4/4, tempo: 92`, with `feel: swing 58.3%` for a swing amount (bare `feel: swing` at 66.7%, the triplet feel). */
 function directiveLine(opts: {
 	bpm: number;
 	beatsPerBar: number;
@@ -42,8 +44,14 @@ function directiveLine(opts: {
 	const position = typeof opts.key === "number" ? CIRCLE_OF_FIFTHS[opts.key] : undefined;
 	if (position) directives.push(`key: ${position.major.id}`);
 	directives.push(`time: ${opts.beatsPerBar}/4`, `tempo: ${Math.round(opts.bpm)}`);
-	if ((opts.swing ?? 0) >= 0.5) directives.push("feel: swing");
+	if ((opts.swing ?? 0) > 0) directives.push(feelDirective(opts.swing ?? 0));
 	return directives.join(", ");
+}
+
+/** A swing amount above 0 as barmark's `feel:`: the percentage, bare at the triplet feel. */
+function feelDirective(swing: number): string {
+	const percent = swingPercentOf(swing);
+	return percent >= 66.7 ? "feel: swing" : `feel: swing ${percent}%`;
 }
 
 /** The entries one slot per beat, cut into bars of `beatsPerBar` and lines of four bars. */

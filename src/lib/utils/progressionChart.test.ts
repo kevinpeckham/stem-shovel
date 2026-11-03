@@ -67,8 +67,11 @@ describe("progressionChart", () => {
 			progressionChart([chord("C", 1)], o).split("\n")[0];
 		expect(head({ bpm: 91.6, beatsPerBar: 3, key: 9 })).toBe("key: Eb, time: 3/4, tempo: 92");
 		expect(head({ ...opts, key: 6 })).toBe("key: Gb, time: 4/4, tempo: 120");
-		expect(head({ ...opts, swing: 0.6 })).toBe("time: 4/4, tempo: 120, feel: swing");
-		expect(head({ ...opts, swing: 0.3 })).not.toContain("feel");
+		expect(head({ ...opts, swing: 0.6 })).toBe("time: 4/4, tempo: 120, feel: swing 60%");
+		expect(head({ ...opts, swing: 0.5 })).toBe("time: 4/4, tempo: 120, feel: swing 58.3%");
+		expect(head({ ...opts, swing: 0.2 })).toBe("time: 4/4, tempo: 120, feel: swing 53.3%");
+		expect(head({ ...opts, swing: 1 })).toBe("time: 4/4, tempo: 120, feel: swing");
+		expect(head({ ...opts, swing: 0 })).not.toContain("feel");
 		expect(head(opts)).not.toContain("feel");
 		expect(head({ ...opts, key: null })).not.toContain("key:");
 	});
