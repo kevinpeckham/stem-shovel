@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.215.0] - 2026-11-03
+
 ### Changed
 
 - **The swing amount survives a chart.** The chord player's Barmark chord chart download writes the session swing as `feel: swing 58%` (where the off-beat lands; bare `feel: swing` at the triplet feel, nothing when straight), and Import reads an amount back onto the Swing slider, so a groove round-trips. A chart past the triplet feel (up to barmark's 75%) imports at the slider's top with a note. Describe may write an amount when your words call for one.
