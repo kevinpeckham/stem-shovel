@@ -40,6 +40,7 @@
 		"db:migrate:steps": "varlock run -- bun scripts/migrate-steps.ts",
 		"db:status": "varlock run -- bun scripts/migration-status.ts",
 		"db:kind": "varlock run -- bun scripts/db-kind.ts",
+		"db:fk-probe": "varlock run -- bun scripts/fk-probe.ts",
 		"db:studio": "varlock run -- drizzle-kit studio",
 		"db:seed": "varlock run -- bun scripts/seed.ts",
 		"db:set-password": "varlock run -- bun scripts/set-password.ts",

@@ -246,7 +246,24 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   ({date, defaultPragma, pragmaSticksAcrossClients, cascadeFired,
   violationRejected}). Shared names if adopting pieces:
   fk-graph.ts / fk-orphan-scan.ts / fk-probe.ts /
-  fk-coverage.test.ts.
+  fk-coverage.test.ts. **Done (2026-11-03):** (2) `allForeignKeys()` in
+  `src/lib/server/db/fk-graph.ts`; `scripts/sweep-orphans.ts`
+  cross-checks it against the live `pragma_foreign_key_list`
+  (`utils/liveForeignKeys.ts`, `utils/fkListDiff.ts`), warns on each
+  mismatch, scans the union (`utils/sweepOrphans.ts`, tested on real
+  `file:` SQLite), refuses keys that are neither cascade nor set null,
+  and exits 0 clean / 2 findings / 1 broken; (3) `bun run db:fk-probe`
+  (`scripts/fk-probe.ts`, `utils/fkProbe.ts`) prints the five-key
+  shape. The sweep kept its name rather than `fk-orphan-scan.ts`, since
+  `db:sweep-orphans` is already documented here and in CLAUDE.md.
+
+- **`@libsql/client` 0.18.0 turns foreign keys ON for every local `file:`
+  connection** (from testing `utils/fkProbe.ts`, 2026-11-03): plain
+  local SQLite through the client reads `PRAGMA foreign_keys = 1` and
+  cascades fire, the opposite of the Turso engine kind's default. A
+  test that stands in for the engine must switch the pragma off on each
+  new connection (`fkProbe.test.ts` does both), and a `file:`-backed
+  test proves row selection, not the platform's enforcement.
 
 - **Study AW verdict (barkup-bench, 2026-11-02): your September
   foreign-key claim is CONFIRMED as the Turso engine kind's default —
