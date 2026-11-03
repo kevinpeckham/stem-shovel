@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.217.0] - 2026-11-03
+
 ### Technical
 
 - **The cross-repo foreign-key rule** (`docs/fk-coordinated-response-2026-11-03.md`, bench): `bun run db:kind` reads a stage's Turso kind and `PRAGMA foreign_keys` (dev and staging are engine kind with foreign keys off, so cascade.ts is load-bearing); the orphan sweep derives its keys from `src/lib/server/db/fk-graph.ts`, cross-checks them against the database's own `pragma_foreign_key_list`, warns on a mismatch, scans the union, refuses keys that are neither cascade nor set null, and exits 0 / 2 / 1; `bun run db:fk-probe` prints the shared five-key probe. The sweep's scan and the probe are tested on real local SQLite.
