@@ -14,8 +14,11 @@
  *   bun run db:sweep-orphans            # report only
  *   bun run db:sweep-orphans -- --apply
  *
+ * The floor rule (the response's Amendment 1): the schema must declare
+ * foreign keys and the database must report some, or the run fails as a
+ * broken instrument; zero findings from zero inspected is not a pass.
  * Exits 0 when clean, 2 when orphans or a mismatch were found and not
- * applied, 1 on an error. No import of src/lib/server beyond the schema
+ * applied, 1 on an error or an unmet floor. No import of src/lib/server beyond the schema
  * (the rest pulls in $app/*).
  */
 import { createClient } from "@libsql/client";
@@ -38,7 +41,13 @@ async function crossCheck(): Promise<{
 	mismatch: boolean;
 }> {
 	const declared = allForeignKeys();
+	if (declared.length === 0)
+		throw new Error(
+			"floor not met: the Drizzle schema declares no foreign keys (broken instrument)",
+		);
 	const live = await liveForeignKeys((sql) => db.execute(sql));
+	if (live.length === 0)
+		throw new Error("floor not met: the database reports no foreign keys (broken instrument)");
 	const { missingLive, missingDeclared } = fkListDiff(declared, live);
 	for (const fk of missingLive)
 		console.warn(`WARNING: declared in the schema but not in the database: ${edge(fk)}`);

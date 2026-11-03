@@ -256,6 +256,13 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   (`scripts/fk-probe.ts`, `utils/fkProbe.ts`) prints the five-key
   shape. The sweep kept its name rather than `fk-orphan-scan.ts`, since
   `db:sweep-orphans` is already documented here and in CLAUDE.md.
+  **Amendment 1 (the floor rule) applied the same day:** the sweep fails
+  (exit 1) when the schema declares no foreign keys or the database
+  reports none, so zero findings from zero inspected cannot read as
+  clean; its table skip is a JS prefix test, not SQL `LIKE '__%'`
+  (hazard 2). Hazard 3, resolving every `db.delete(...)` call site to
+  its table and asserting the count, is not built here: cascade.ts is
+  one file reviewed by hand, and the house rule in CLAUDE.md names it.
 
 - **`@libsql/client` 0.18.0 turns foreign keys ON for every local `file:`
   connection** (from testing `utils/fkProbe.ts`, 2026-11-03): plain
