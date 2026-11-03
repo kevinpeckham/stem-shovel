@@ -284,3 +284,7 @@ the surface is admin-only, so the cost is one disappointed operator,
 against an unrecoverable 64-table stranding. The false-reassurance
 comments should be corrected in the same change regardless of which
 option Kevin picks.
+
+*(Amendment 3 resolution, same day: Kevin decided REFUSE-until-handlers
+for both buttons — details in
+`2026-11-03-replicator-fk-buttons-DECISION.md`.)*
