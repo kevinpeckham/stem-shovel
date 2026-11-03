@@ -145,3 +145,49 @@ Row-selection tests run on real SQLite (`file:` URLs), never on
 statement mocks. The five-key probe runs in every repo's ops cadence;
 barkup-bench's fk-watch covers the platform signals and opens the
 re-evaluation issue when Drizzle's tursodatabase driver reaches stable.
+
+---
+
+## Amendment 1 (2026-11-03, later): the floor rule, from Replicator's hazard report
+
+Adopted from `2026-11-03-replicator-fk-guard-flaws.md`, which found the
+same defect three ways in one day: a check that counts bad things reads
+ZERO both when everything is right and when the instrument inspected
+nothing — and a silent check over silently-absent enforcement produces
+confident, documented wrongness. The settled wording, added to the
+shared rule (mirror it verbatim):
+
+**Every FK check asserts a non-zero floor on what it examined — edges
+enumerated, tables scanned, delete call sites resolved — and FAILS when
+the floor is not met. Zero findings from zero inspected is a broken
+instrument, not a pass.**
+
+The three hazards, portable to every sibling:
+
+1. **Coverage guards must be isolated from the suite's own mocks.**
+   `mock.module` (bun) and `vi.mock` are process-global; a schema mock
+   loaded by any other test can hand the guard stub tables, an empty FK
+   graph, and a vacuous all-clear — passing alone, vacuous in the full
+   suite, with the dangerous ordering being the one you don't see.
+   Collect the guard's facts in a fresh child process (Replicator's
+   shipped pattern) or floor-assert the graph size. Portal: this lands
+   directly on your §3.3 — verify the guard still sees real tables with
+   the FULL suite loaded, not single-file.
+2. **`LIKE '__%'` excludes every table** (`_` is SQLite's wildcard);
+   use `substr(name,1,2) <> '__'` and assert the scanned-table count.
+   Replicator's first production sweep reported "0 tables, 0 FKs, no
+   orphans" and nearly filed it as clean.
+3. **"Never deleted" claims must be VERIFIED, not hand-listed:**
+   resolve every `db.delete(identifier)` in src/ back to its table
+   through the schema's export map and import aliases, floor-assert the
+   resolution count, and fail when a claimed no-delete-path table is in
+   fact deleted. Replicator's hand list was wrong in both directions
+   (17 missing parents, 2 non-parents).
+
+The bench applied the rule to its own instrument the same hour:
+fk-watch now floor-asserts the registry responses (a malformed
+drizzle-orm response can no longer read as "no signal") and the
+pragmas-doc fetch (a WAF stub can no longer read as "the sentence is
+gone"). Replicator's cross-repo probe numbers (all three environments:
+defaultPragma 0, no stickiness, no cascade, violations accepted) are
+the first entries in the comparable-probe ledger the rule wanted.
