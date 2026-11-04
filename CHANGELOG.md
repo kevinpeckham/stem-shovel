@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **barmark 0.16.0 and @barmark/render 0.14.0** (from 0.14.1 and 0.12.0): credit lines (`composer:`, `lyricist:`, `arranger:`, `copyright:`, drawn under the title and at the chart's foot), part lines (`Pno.RH |`, `Pno.LH |`), sustain pedal marks (`+G`, `*G`), dotted figures (`C._D`) and `instrument:`/`clef:` on the `part:` line. Charts that read before read the same; the app uses none of the new API yet. A note for the read prompt: a text line starting `composer:` is now a credit, not text.
+
 ## [0.221.0] - 2026-11-03
 
 ### Added

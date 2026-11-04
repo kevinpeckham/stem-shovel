@@ -167,6 +167,15 @@ roadmap; when it ships, a score's `<harmony>` elements become a chart
 through it, and the song page offers "Chart from score". Until then
 nothing in the app should parse MusicXML into charts.
 
+2026-11-04: `@barmark/musicxml` 0.4.0 shipped, but it goes the other
+way: `exportMusicXml(text, { part?, title? })` writes a barmark chart as
+MusicXML 4.0 (chords as `<harmony>` over slash notes, repeats and jumps
+as MusicXML repeats, one part per `part:`, keyboards on two staves,
+transposing instruments written at their pitch). Its README lists
+MusicXML import as "not yet", so this item still waits. The export is a
+candidate feature of its own: a chart as a `.musicxml` download from the
+song page's Download menu and in `charts.zip`, for MuseScore and Dorico.
+
 ### 7. Studio markers from the chart (S) — done 2026-11-02; chart from the Studio (L, later)
 
 `song.sections` (`[{ name, start }]`, names matching `## Name`) have no
