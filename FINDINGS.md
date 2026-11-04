@@ -288,6 +288,36 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 17 verdict: ChordMini on the mix is the measured chord front
+  end for real recordings — and do NOT run the reconciler on its
+  output** (stem-bench, 2026-11-04; ~$0.30; full section in the repo's
+  REPORT.md, registered d374708, results 5472f85). The three zero-model
+  successors to Basic Pitch, measured against Study 13's 38.2 % cliff
+  on the Badverbs recordings. The rematch reversed Study 10: ChordMini,
+  which lost the synthetic chord gate, scores **59/76 (77.6 %)** on
+  letter-lands and 53/86 on eat-all-the-clocks — past production's
+  reconciled 44/76, so the front-end swap now outranks the reconciler
+  in ship order. Costs that ship with it: ~30 MB of pinned ONNX weights
+  (the Study 10 export), 4–6 s per song on CPU, zero API spend, and a
+  root-level vocabulary — its gated credit came entirely through the
+  power-chord allowance (strict-first 0), so it will never spell F#5 or
+  Esus4; the draft layer decides the dressing, and for this band's
+  charts (74 power + 50 sus4 slots of 76 bars) root-plus-power spelling
+  covers most of the page. Root accuracy (disclosed read): 70/76 and
+  75/84 vs the current path's 53/76 and 60/84. The negative results are
+  as load-bearing: (1) stacking the Study 13/14 note-reconciler on
+  ChordMini's chords BROKE 16 right bars (59 → 47) — the reconciler's
+  first breaks in three studies; its value is conditional on the note
+  evidence being the same channel that produced the draft, so it stays
+  valid only on the Basic Pitch path. (2) Per-stem transcription helps
+  without a vocal stem (32/76 vs 29) and hurts with one (15/86 vs 24 —
+  transcribed melody pollutes the merged harmony); if it ships anywhere,
+  vocal-labeled stems stay out of the chord evidence (hypothesis, one
+  song each way). (3) Bar-pooled chroma into `chordOf` reads roots well
+  (68/76) but dresses them in hallucinated sevenths and graded 0/76 —
+  dead as-is. Home-field rule, third instrument class: no detector
+  decision for real recordings gets made on synthetic numbers.
+
 - **Study 16b verdict on 2d585b75: the two-clause samePiece ship is
   validated — nothing to change** (stem-bench, 2026-11-03; micro, $0;
   full section in the repo's REPORT.md). Verbatim port of the shipped
