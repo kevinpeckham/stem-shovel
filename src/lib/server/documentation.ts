@@ -2,6 +2,7 @@ import { readBlob } from "#lib/server/blob.js";
 import { projectForDocumentation } from "#lib/server/data.js";
 import { markdownToPdfPages } from "#lib/utils/markdownToPdf.js";
 import { safeFilename } from "#lib/utils/safeFilename.js";
+import { chartMusicXml } from "#lib/utils/chartMusicXml.js";
 import { printChart } from "barmark";
 import { zipSync, type Zippable } from "fflate";
 import { appendToPdf, type PdfAppendix } from "#lib/utils/appendToPdf.js";
@@ -191,7 +192,8 @@ export async function projectDocumentationZip(
  * engraved it) and its MusicXML file, every attachment marked as notation
  * under its own filename, and the chart text as `<song>.chart.md`
  * (barmark's canonical print, which barmark.dev and the editor open as a
- * chart) and `<song>-chart.pdf`. Null when there is nothing to put in.
+ * chart), `<song>-chart.pdf` and, when the chart exports cleanly,
+ * `<song>.musicxml` (`chartMusicXml`). Null when there is nothing to put in.
  */
 export async function projectChartsZip(
 	accountId: string,
@@ -223,16 +225,30 @@ export async function projectChartsZip(
 			const bytes = await blobBytes(file.url);
 			if (bytes) add(safeFilename(file.filename), bytes, STORED);
 		}
-		if (song.chartMarkdown.trim()) {
-			const stem = safeFilename(song.title);
-			add(`${stem}.chart.md`, new TextEncoder().encode(printChart(song.chartMarkdown)), DEFLATED);
-			add(
-				`${stem}-chart.pdf`,
-				await songDocumentationPdf({ ...song, projectName: project.name, sections: ["chart"] }),
-				DEFLATED,
-			);
-		}
+		if (song.chartMarkdown.trim()) await addChartEntries(add, song, project.name);
 	}
 	if (Object.keys(entries).length === 0) return null;
 	return zipSync(entries);
+}
+
+/**
+ * A song's chart in its charts-zip folder: the text as `<song>.chart.md`
+ * (barmark's canonical print), the chart alone as `<song>-chart.pdf`, and
+ * `<song>.musicxml` when the chart exports cleanly (`chartMusicXml`: a
+ * chart with an error to fix plays but does not export).
+ */
+async function addChartEntries(
+	add: (name: string, bytes: Uint8Array, level: typeof STORED | typeof DEFLATED) => void,
+	song: ProjectSong,
+	projectName: string,
+): Promise<void> {
+	const stem = safeFilename(song.title);
+	add(`${stem}.chart.md`, new TextEncoder().encode(printChart(song.chartMarkdown)), DEFLATED);
+	add(
+		`${stem}-chart.pdf`,
+		await songDocumentationPdf({ ...song, projectName, sections: ["chart"] }),
+		DEFLATED,
+	);
+	const xml = chartMusicXml(song.chartMarkdown, song.title);
+	if (xml) add(`${stem}.musicxml`, new TextEncoder().encode(xml), DEFLATED);
 }

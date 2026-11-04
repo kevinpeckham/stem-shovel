@@ -134,7 +134,7 @@ describe("projectChartsZip", () => {
 				fake.song(
 					"s1",
 					"So What",
-					{ chartMarkdown: "Dm7 | Dm7 | Ebm7" },
+					{ chartMarkdown: "| Dm7 | Dm7 | Ebm7 |" },
 					{
 						notation: [
 							{
@@ -177,14 +177,19 @@ describe("projectChartsZip", () => {
 			"So What/Lead sheet.pdf",
 			"So What/So What-chart.pdf",
 			"So What/So What.chart.md",
+			"So What/So What.musicxml",
 			"So What/chart.png",
 		]);
 		expect(latin1(entries["So What/Lead sheet.mxl"]!)).toBe("PK-mxl-bytes");
 		// The chart text in barmark's canonical print.
 		expect(new TextDecoder().decode(entries["So What/So What.chart.md"]!)).toBe(
-			printChart("Dm7 | Dm7 | Ebm7"),
+			printChart("| Dm7 | Dm7 | Ebm7 |"),
 		);
 		expect(latin1(entries["So What/So What-chart.pdf"]!.subarray(0, 5))).toBe("%PDF-");
+		// The chart as MusicXML, titled by the song.
+		const musicXml = new TextDecoder().decode(entries["So What/So What.musicxml"]!);
+		expect(musicXml).toContain("<score-partwise");
+		expect(musicXml).toContain("So What");
 	});
 	test("null when no song has a chart of any kind", async () => {
 		fake.state.project = {

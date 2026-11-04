@@ -109,7 +109,8 @@ What protects what, and where each rule lives. The first security pass ran on
   it opens only the recording's page: the files reach the visitor through
   the presigned URLs the page presents, as for a link holder.
 - **Downloads** (`GET /api/songs/[id]/documentation.pdf`,
-  `GET /api/projects/[id]/documentation.zip`, `GET /api/projects/[id]/charts.zip`;
+  `GET /api/songs/[id]/chart.musicxml`, `GET /api/projects/[id]/documentation.zip`,
+  `GET /api/projects/[id]/charts.zip`;
   docs/uploads-and-blob.md, "Documentation downloads") are open to whoever
   may view the song or the project by the page's own rules
   (`viewAccess.canViewSong`, `canViewProject`: everyone for a public one,

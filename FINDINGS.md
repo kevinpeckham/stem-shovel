@@ -7,6 +7,29 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## `@barmark/musicxml` exports nothing for a chart that plays with an error, and goes one way only (2026-11-04)
+
+Found adding "Chart as MusicXML" (`src/lib/utils/chartMusicXml.ts`,
+`GET /api/songs/[id]/chart.musicxml`, the charts zip) with
+`@barmark/musicxml` 0.4.0.
+
+- **Stricter than playback.** `parseChart` drops a bar line with an error
+  and plays the rest (the entry below), so `barmarkChartPlays` says yes to
+  `| C | Hb |\n| F |`; `exportMusicXml` on the same text answers
+  `{ ok: false, diagnostics }` and no XML, because any error diagnostic
+  refuses the export. So a song whose chart plays can still have no
+  MusicXML: the route answers a 404 naming what to fix, and the zip leaves
+  the `.musicxml` out while keeping `.chart.md` and the PDF. Check the
+  export's `ok`, never `bars.length`, before promising a file.
+- **No bars, no file.** A chart without bar lines (`Dm7 | Dm7 | Ebm7`)
+  is "the chart has no bars to export"; `barmarkChartPlays` catches it
+  first.
+- **Export only.** The README lists MusicXML import as "not yet", so a
+  MusicXML score still cannot become a chart (audit item 6 in
+  docs/barmark-integration-audit.md waits on).
+- `title` in the options only names a chart with no `# Title` line; a
+  chart with one keeps its own.
+
 ## barmark drops a whole bar line for one error, keeps the written numbers after it, and takes directions all or nothing (2026-11-03)
 
 Probed for audit item 5 (the AI's score reads as barmark, barmark 0.12.0)

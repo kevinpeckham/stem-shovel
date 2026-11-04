@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Download the chart as MusicXML.** A song's Downloads menu gains "Chart as MusicXML" (`GET /api/songs/[id]/chart.musicxml`): the chord chart written by `@barmark/musicxml` 0.4.0 as a MusicXML 4.0 score that MuseScore, Dorico, Sibelius and Finale open, with the bars, chord symbols as `<harmony>` over slash notes, repeats, endings and jumps as MusicXML repeats, sections and rehearsal marks as text, and one part per `part:`; the song's title stands in where the chart has none. The project's charts zip carries each chart as `<song>.musicxml` beside its `.chart.md` and PDF. Viewable like the song; a blank chart, one with errors or one with no bars to play is a 404 naming what to fix (`utils/chartMusicXml.ts`; docs/uploads-and-blob.md "Documentation downloads").
+
+### Technical
+
+- **`requireSongView`** (`src/lib/server/songViewGate.ts`): the song download routes' shared gate (project role, viewer, share codes from the query or cookie, 403), which `mix`, `documentation.pdf` and `chart.musicxml` call instead of each carrying the same five lines; the charts zip's chart entries are `addChartEntries`, and the Downloads menu's documentation buttons are a snippet of their own.
+
 ## [0.222.0] - 2026-11-04
 
 ### Technical

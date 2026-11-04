@@ -6,6 +6,7 @@
       "name": "stem-player",
       "dependencies": {
         "@ai-sdk/gateway": "^4.0.127",
+        "@barmark/musicxml": "0.4.0",
         "@barmark/render": "0.14.0",
         "@better-auth/passkey": "^1.7.14",
         "@kevinpeckham/barkdown": "0.1.1",
@@ -111,6 +112,8 @@
     "@babel/runtime": ["@babel/runtime@7.29.10", "", {}, "sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA=="],
 
     "@babel/types": ["@babel/types@7.29.11", "", { "dependencies": { "@babel/helper-string-parser": "^7.29.11", "@babel/helper-validator-identifier": "^7.29.7" } }, "sha512-WCsemW40Cpc6gouC1SrY6PBaZ+oLRlEVY9XBvZBI7il/HyUrb2nJ505wE1MHEFyDZNnrWDEuy4jL50WVHfTTSQ=="],
+
+    "@barmark/musicxml": ["@barmark/musicxml@0.4.0", "", { "dependencies": { "barmark": "^0.16.0" } }, "sha512-Rf5XLGlQjbNORmAA4MbKDQgu8ehzFxtsCj0GCnE2UmD6M8vgU3HpoXu94BoZkNW9nCcWm2+hmMmJ5xifECl1mg=="],
 
     "@barmark/render": ["@barmark/render@0.14.0", "", { "dependencies": { "barmark": "^0.16.0" } }, "sha512-N0+LQnynNgbnm4FCx0XHbeUQmT46yh9QjJd+WTEflwwqDVa4ro7HcWwaQK2H1RMi/wLHrzAecQUjyPAgSiR+Fg=="],
 

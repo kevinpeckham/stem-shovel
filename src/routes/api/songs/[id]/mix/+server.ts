@@ -1,6 +1,6 @@
-import { accountOfSong, viewerOf } from "#lib/server/access.js";
-import { openShareLinks, projectRoleOf, songForMix } from "#lib/server/data.js";
-import { canViewSong, shareCodesFrom } from "#lib/server/viewAccess.js";
+import { accountOfSong } from "#lib/server/access.js";
+import { songForMix } from "#lib/server/data.js";
+import { requireSongView } from "#lib/server/songViewGate.js";
 import { isOriginal, originalMix, parseMixRequest, renderMix } from "#lib/server/mix.js";
 import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
 import { error } from "@sveltejs/kit";
@@ -20,11 +20,7 @@ export const GET: RequestHandler = async ({ params, url, locals, cookies, getCli
 	if (!song || song.stems.length === 0) error(404, "No stems to mix");
 	const accountId = await accountOfSong(song.id);
 	if (!accountId) error(404, "Not found");
-	const role = locals.user ? await projectRoleOf(song.projectId, locals.user.id) : null;
-	const who = viewerOf(locals, accountId, role ? { [song.projectId]: role } : {});
-	if (!canViewSong(song, who, await openShareLinks(shareCodesFrom(url, cookies)))) {
-		error(403, "This song is private");
-	}
+	await requireSongView(song, accountId, { locals, url, cookies });
 	const req = parseMixRequest(song, url.searchParams);
 	if (!req) error(400, "Bad mix request");
 

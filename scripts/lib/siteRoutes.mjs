@@ -130,6 +130,7 @@ export const ROUTES = [
 	],
 	// Documentation downloads build in the request; a nonsense id is a 404 either way.
 	["api/songs/[id]/documentation.pdf (server)", "/api/songs/x/documentation.pdf", [404], [404]],
+	["api/songs/[id]/chart.musicxml (server)", "/api/songs/x/chart.musicxml", [404], [404]],
 	[
 		"api/projects/[id]/documentation.zip (server)",
 		"/api/projects/x/documentation.zip",

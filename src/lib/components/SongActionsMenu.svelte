@@ -343,23 +343,7 @@
 					</button>
 				{/if}
 			{/if}
-			{#if docs.lyrics || docs.chart || docs.notes}
-				<button
-					class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-					type="button"
-					role="menuitem"
-					title="The lyrics, chart and notes as one PDF, with the notation after them"
-					onclick={() =>
-						downloadBuilt(
-							`/api/songs/${song.id}/documentation.pdf`,
-							"the documentation PDF",
-							`${song.title}.pdf`,
-						)}
-				>
-					<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
-					Song Documentation (PDF)
-				</button>
-			{/if}
+			{@render documentationMenu()}
 			{#if readyDemos.length > 0}
 				<button
 					class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
@@ -374,4 +358,42 @@
 			{/if}
 		</div>
 	</details>
+{/snippet}
+
+<!-- The documents as files: the lyrics, chart and notes in one PDF, and the chart as MusicXML. A snippet of its own so the downloads menu stays readable (Fallow scores a top-level snippet as its own unit). -->
+{#snippet documentationMenu()}
+	{#if docs.lyrics || docs.chart || docs.notes}
+		<button
+			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+			type="button"
+			role="menuitem"
+			title="The lyrics, chart and notes as one PDF, with the notation after them"
+			onclick={() =>
+				downloadBuilt(
+					`/api/songs/${song.id}/documentation.pdf`,
+					"the documentation PDF",
+					`${song.title}.pdf`,
+				)}
+		>
+			<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
+			Song Documentation (PDF)
+		</button>
+	{/if}
+	{#if docs.chart}
+		<button
+			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+			type="button"
+			role="menuitem"
+			title="The chord chart as a MusicXML file for MuseScore, Dorico, Sibelius or Finale"
+			onclick={() =>
+				downloadBuilt(
+					`/api/songs/${song.id}/chart.musicxml`,
+					"the MusicXML chart",
+					`${song.title}.musicxml`,
+				)}
+		>
+			<span class="i-ph-file-code mr-2" aria-hidden="true"></span>
+			Chart as MusicXML
+		</button>
+	{/if}
 {/snippet}

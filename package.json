@@ -65,6 +65,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/gateway": "^4.0.127",
+		"@barmark/musicxml": "0.4.0",
 		"@barmark/render": "0.14.0",
 		"@better-auth/passkey": "^1.7.14",
 		"@kevinpeckham/barkdown": "0.1.1",
