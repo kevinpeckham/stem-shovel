@@ -10,6 +10,17 @@ remain app work and now teach the barmark dialect; 3–5 are the
 grammar's (elision, Logic parentheticals, `...`). The record below is
 what shipped in v0.202.0.
 
+**2026-11-05:** the readout under the chart editor (`ChartReadout`)
+now names what stops a chart from reading. A chart typed as prose
+("Verse: D A Bm G") or one whose only bar line has an error (an empty
+bar, a chord barmark cannot read) said only "No bars read"; it now
+shows barmark's own diagnostics for those lines in amber and, under
+them, the two-line example and the guide's link in the open instead of
+behind the tip (`chartReadout` returns the diagnostics as the warnings
+and a `hint` flag when no bar reads). This is the light form of the
+"chart syntax for hand-written charts" item Kevin raised after Study
+12; a structured editing mode that requires valid bars was not built.
+
 **Status (2026-10-31): deliverables 1–4 shipped**, 5 (the ring-out
 directive) and the public standard open for Kevin. The parser
 (`src/lib/utils/chordChartBars.ts`) reads the band's idiom with the

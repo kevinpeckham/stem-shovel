@@ -1,5 +1,7 @@
+import { parseChart } from "barmark";
 import { barmarkChartBars } from "./barmarkChartBars.js";
 import { chartBarSeconds } from "./chartBarSeconds.js";
+import { chartDiagnosticText } from "./chartDiagnosticText.js";
 import { chartStatedValues } from "./chartStatedValues.js";
 import { formatTime } from "./formatTime.js";
 
@@ -13,22 +15,32 @@ function sectionsText(n: number): string {
  * What barmark (`barmarkChartBars`) reads of a chart, as one line under
  * the document: "76 bars · 10 sections · 2:18" (the bars it plays, the
  * sections they begin and the chart's length at its tempos), with the
- * parser's warnings; when nothing reads, why, in plain words.
- * `defaults` are the song's tempo and meter at 0:00 (`chartDefaults`).
- * Null for a blank chart.
+ * parser's warnings; when nothing reads, why, in plain words: no tempo,
+ * or no bars, with the parser's errors as the warnings (a chart typed as
+ * prose, "Verse: D A Bm G", has "no bar lines"; an empty bar or a chord
+ * it cannot read drops its line, and a chart of one such line has nothing
+ * left) and `hint` set, for a line on how bars are written. `defaults` are the song's tempo and meter at 0:00
+ * (`chartDefaults`). Null for a blank chart.
  */
 export function chartReadout(
 	markdown: string,
 	defaults: { tempo: number | null; meter: string | null },
-): { summary: string; warnings: string[] } | null {
+): { summary: string; warnings: string[]; hint: boolean } | null {
 	if (!markdown.trim()) return null;
 	const read = barmarkChartBars(markdown, defaults);
 	if (!read) {
 		const tempo = chartStatedValues(markdown).tempo ?? defaults.tempo;
-		const summary = tempo
-			? "No bars read"
-			: "No tempo: add one to the chart or the song's settings";
-		return { summary, warnings: [] };
+		if (!tempo)
+			return {
+				summary: "No tempo: add one to the chart or the song's settings",
+				warnings: [],
+				hint: false,
+			};
+		return {
+			summary: "No bars read",
+			warnings: parseChart(markdown).diagnostics.map(chartDiagnosticText),
+			hint: true,
+		};
 	}
 	const { bars, warnings } = read;
 	const sections = bars.filter((b) => b.section).length;
@@ -37,5 +49,6 @@ export function chartReadout(
 	return {
 		summary: `${barsText} · ${sectionsText(sections)} · ${formatTime(Math.round(seconds), 0)}`,
 		warnings,
+		hint: false,
 	};
 }

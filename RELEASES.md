@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **The chart editor says why a chart has no bars.** A chart written as prose, or one whose only line of bars has a mistake, used to get "No bars read" and nothing more. The line under the editor now names the problem, shows a two-line example of a section with its bars, and links to the guide on writing a chart.
+
 ## [0.226.0] - 2026-11-05
 
 Maintenance release with no user-visible changes.

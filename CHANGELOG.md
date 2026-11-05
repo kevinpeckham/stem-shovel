@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The chart readout says why nothing reads.** When a chart has no bars for the parser to play, the line under the editor names barmark's own diagnostic for the line in amber ("no bar lines in this chart; a bar line starts with |" for a chart typed as prose, "an empty cell" for `| D | | G |`) and shows the two-line example and the link to the writing guide in the open instead of behind the tip (`chartReadout` returns the diagnostics as warnings and a `hint` flag; `ChartReadout.svelte`). The light form of the hand-written-chart item from Study 12 (docs/chart-notation-docs-plan.md).
+
 ### Technical
 
 - **`db:delete-doc <slug> [--apply]`** (`scripts/delete-user-doc.ts`): deletes a user doc page the app no longer reads, its versions first, as a dry run unless applied; used to retire the "releases" doc on dev and staging (production from Kevin's machine).
