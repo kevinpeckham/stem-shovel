@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A readout under the score's read.** The "What the AI read" editor now ends with the line the chart editor has: the bars the read plays, its sections and its length at the song's tempo (`ChartReadout`, from the song's tempo and meter at 0:00, which the song page now hands the notation panel), updating as a member corrects the read, so a missed repeat or a dropped bar line shows as a length that does not match the recording.
+
 ## [0.223.0] - 2026-11-05
 
 ### Added

@@ -13,8 +13,10 @@
 		markdown: string;
 		/** The song's tempo and meter at 0:00 (`chartDefaults`); without them, no readout. */
 		defaults?: { tempo: number | null; meter: string | null };
+		/** List the parser's warnings under the summary (off where the page lists them itself, as the read editor does). */
+		warnings?: boolean;
 	}
-	let { markdown, defaults }: Props = $props();
+	let { markdown, defaults, warnings = true }: Props = $props();
 
 	/** Warnings shown before "and N more". */
 	const WARNINGS_SHOWN = 3;
@@ -35,11 +37,13 @@
 				</p>
 			</InfoTip>
 		</div>
-		{#each readout.warnings.slice(0, WARNINGS_SHOWN) as warning, i (i)}
-			<p class="text-amber-300">{warning}</p>
-		{/each}
-		{#if readout.warnings.length > WARNINGS_SHOWN}
-			<p class="text-amber-300">and {readout.warnings.length - WARNINGS_SHOWN} more</p>
+		{#if warnings}
+			{#each readout.warnings.slice(0, WARNINGS_SHOWN) as warning, i (i)}
+				<p class="text-amber-300">{warning}</p>
+			{/each}
+			{#if readout.warnings.length > WARNINGS_SHOWN}
+				<p class="text-amber-300">and {readout.warnings.length - WARNINGS_SHOWN} more</p>
+			{/if}
 		{/if}
 	</div>
 {/if}

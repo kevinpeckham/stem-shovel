@@ -1459,6 +1459,7 @@
 					canEdit={data.canEdit}
 					aiAvailable={data.aiAvailable && !data.song.noAi && !data.song.project.noAi}
 					oncheck={() => void check.askAiWithScore()}
+					chartDefaults={chartDefaults(data.song.changes)}
 				/>
 			{:else if docs.notesMine}
 				<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->

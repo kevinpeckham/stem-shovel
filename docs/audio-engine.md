@@ -693,7 +693,11 @@ forgets the read in the row and in Redis, so the next check reads the file again
 On the page: a score tile's ⋯ menu on the Chart tab's notation view has
 **What the AI read** (`SongNotationPanel.svelte`, members with the AI at
 hand), which opens the read in a floating panel: the lines in an editor,
-what looks wrong in amber (`chartReadWarnings`, live as you type), **Save**
+what looks wrong in amber (`chartReadIssues`, live as you type), the chart
+editor's readout under the text (`ChartReadout`, 2026-11-05: the bars the
+read plays, its sections and its length at the song's tempo and meter at
+0:00, which the song page hands the panel as `chartDefaults`, so a missed
+repeat shows as a length that does not match the recording), **Save**
 (the correction, saved as the read the song-check uses from then on, marked
 "corrected by the band"), **Read again** (clears the stored read, with a
 confirmation when it was corrected, and the model reads the file afresh)

@@ -3,6 +3,7 @@
 	import { refreshAll } from "$app/navigation";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import ChartReadout from "#lib/components/ChartReadout.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import {
 		MAX_NOTATION_PER_SONG,
@@ -79,6 +80,8 @@
 		aiAvailable?: boolean;
 		/** Run the song-check with the (corrected) read: the page asks the AI and shows its card. */
 		oncheck?: () => void;
+		/** The song's tempo and meter at 0:00 (`chartDefaults`), for the readout under the read: how many bars it plays and how long. */
+		chartDefaults?: { tempo: number | null; meter: string | null };
 	}
 	let {
 		songId,
@@ -88,6 +91,7 @@
 		canEdit,
 		aiAvailable = false,
 		oncheck,
+		chartDefaults,
 	}: Props = $props();
 
 	// ── What the AI read (docs/audio-engine.md, "The chart read is stored"): a PDF or image score as a barmark chart, shown for correction (with barmark's errors as the member types) before it anchors the song-check ──
@@ -670,7 +674,7 @@
 			{/if}
 		</div>
 	</FloatingPanel>
-	<!-- What the AI read: the barmark chart in an editor, what looks wrong and barmark's errors in amber (utils/chartReadIssues.ts), saved as the read the song-check uses. No readout under it: the panel has no song tempo or meter to read the bars with. -->
+	<!-- What the AI read: the barmark chart in an editor, what looks wrong and barmark's errors in amber (utils/chartReadIssues.ts), saved as the read the song-check uses. Under it the readout the chart editor has (ChartReadout): the bars it plays, its sections and its length at the song's tempo, the quickest check of a read against the recording. -->
 	<FloatingPanel
 		open={reading !== null}
 		title={reading ? `What the AI read of ${nameOf({ kind: "pdf", row: reading.file })}` : ""}
@@ -751,6 +755,7 @@
 					aria-label="What the AI read, one bar per measure"
 					disabled={reading.busy}
 					bind:value={reading.text}></textarea>
+				<ChartReadout markdown={reading.text} defaults={chartDefaults} warnings={false} />
 			{/if}
 		</div>
 	</FloatingPanel>
