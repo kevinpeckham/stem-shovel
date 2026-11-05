@@ -49,6 +49,7 @@
 		"db:super-admin": "varlock run -- bun scripts/super-admin.ts",
 		"db:seed-docs": "varlock run -- bun scripts/seed-user-docs.ts",
 		"db:update-docs": "varlock run -- bun scripts/update-user-docs.ts",
+		"db:delete-doc": "varlock run -- bun scripts/delete-user-doc.ts",
 		"db:sweep-orphans": "varlock run -- bun scripts/sweep-orphans.ts",
 		"db:left-only": "varlock run -- bun scripts/left-only-renditions.ts",
 		"db:rerender-sessions": "varlock run -- bun scripts/rerender-sessions.ts",

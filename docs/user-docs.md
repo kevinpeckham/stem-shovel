@@ -17,6 +17,10 @@ app's copy is the truth.
   page has not been edited in the app; an edited page is skipped.
 - `bun run db:update-docs --list <slug>` and `--restore <slug> <n>` show
   and bring back versions.
+- `bun run db:delete-doc <slug...> [--apply]` deletes a page the app no
+  longer reads, versions first (the "releases" doc on every stage after
+  2026-11-05, when /releases began rendering RELEASES.md); a dry run
+  without `--apply`.
 - `bun run db:update-docs --merge [--apply] [<slug...>]` is the step after
   a release, below.
 

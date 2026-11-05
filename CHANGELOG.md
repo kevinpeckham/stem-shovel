@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **`db:delete-doc <slug> [--apply]`** (`scripts/delete-user-doc.ts`): deletes a user doc page the app no longer reads, its versions first, as a dry run unless applied; used to retire the "releases" doc on dev and staging (production from Kevin's machine).
+
 ## [0.226.0] - 2026-11-05
 
 ### Changed
