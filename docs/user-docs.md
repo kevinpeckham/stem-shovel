@@ -64,8 +64,9 @@ both takes it once, different changes on both are a conflict).
 - A page whose base cannot be found (its seed version pruned by ten app
   saves since, and the seed changed in between) is reported as such:
   `--force` overwrites, or the change is merged by hand. The releases
-  page is never merged (`IN_APP_ONLY`): its seed is the starting text and
-  the page is written in the app alone (releases-page rules).
+  page is no user doc since 2026-11-05: `/releases` renders RELEASES.md
+  from the repository, and the "releases" rows a stage still holds are
+  inert (off the /docs list, their slug redirecting to /releases).
 - The first production run (2026-10-12) merged thirteen pages and left
   two conflicts, both where Kevin had shortened a passage the seed later
   extended; a conflict is the run's answer, not a failure, so the script

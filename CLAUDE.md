@@ -240,11 +240,11 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   functions, $val schemas, editors, screenshots) and `lightning-jar/lj-website`
   (look and feel, uno config, page structure). Read them with `gh api`.
 - Releases: `/release <version>` (`.claude/skills/release/SKILL.md`).
-  CHANGELOG.md is the full technical record; the `/releases` page is a
-  user doc in the database (edited in the app) carrying only what a user
-  would notice (features, changes, fixes), never permissions, admin
-  actions, security or architecture. A release drafts its section for
-  Kevin to paste there.
+  CHANGELOG.md is the full technical record; `RELEASES.md` is the
+  user-facing record the `/releases` page renders (bundled at build
+  time), carrying only what a user would notice (features, changes,
+  fixes), never permissions, admin actions, security or architecture. A
+  release writes its section at the top of both files.
 - **FINDINGS.md** collects gotchas and insights about packages, browser
   APIs and tools as they surface: add an entry whenever one does, with
   where the lesson came from. Conventions go to this file or docs/;

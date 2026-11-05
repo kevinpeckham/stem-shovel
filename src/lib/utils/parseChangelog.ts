@@ -12,11 +12,12 @@ export interface Release {
  * `### Added` / `### Changed` / `### Fixed` / `### Technical`) as the
  * releases page shows it: every version, newest first, any Technical
  * subsection left out, and the Unreleased section only when it has
- * something in it. The /releases page feeds it the "releases" user doc,
- * which the in-app editor saves with the brackets escaped (`## \[0.31.0\]`),
- * and which has also been written by hand as `## 0.51.0 — 2026-09-28`
- * (no brackets, an em dash), so every one of those spellings counts; a
- * `## ` heading that is not a version is part of the section above it.
+ * something in it. The /releases page feeds it RELEASES.md (until
+ * 2026-11-05 the "releases" user doc, which the in-app editor saved with
+ * the brackets escaped, `## \[0.31.0\]`, and which was also written by
+ * hand as `## 0.51.0 — 2026-09-28`), so every one of those spellings
+ * counts; a `## ` heading that is not a version is part of the section
+ * above it.
  */
 export function parseChangelog(markdown: string): Release[] {
 	const out: Release[] = [];

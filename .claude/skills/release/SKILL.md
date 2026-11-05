@@ -48,31 +48,21 @@ Set `version` in `package.json` to the target version.
 4. Bold the lead phrase of each entry, one entry per user-visible change;
    match the existing style.
 
-## Step 3b: the Releases page (user-facing notes)
+## Step 3b: RELEASES.md (the user-facing notes)
 
-The `/releases` page is the "releases" user doc, stored in each stage's
-database and edited in the app (`/docs/releases/edit`, system admins), not
-a file. Draft the version's section in the same shape as CHANGELOG.md
-(`## [x.y.z] - YYYY-MM-DD`, `### Added` / `### Changed` / `### Fixed`) with
-only what a user would notice: new features, improved or changed features,
-fixes worth knowing about, in plain words. Leave out permissions,
-admin-only actions, security work, infrastructure, migrations, tooling,
-docs-for-developers and anything about how the app is built. Put the
-draft in the release report for Kevin to paste at the top of the page on
-production (and on staging/dev when he wants them in step). The seed
-source `scripts/user-docs/releases.md` is only the starting content.
-
-## Step 3c: production's database and docs (before main is pushed)
-
-When the release adds `drizzle/*.sql`, ask Kevin to run, on production
-from his machine, `git pull origin dev && bun run db:migrate` and to
-confirm with `bun run db:status` that the new migration is applied,
-before pushing main (v0.118.0 went down for ten minutes without this).
-Then, with the release live, the docs: `bun run db:seed-docs` for new
-pages, and `bun run db:update-docs --merge` followed by `--merge --apply`
-to carry the seed files' changes onto the pages he edits in the app
-(docs/user-docs.md); list any conflicts it prints for him to settle in
-the editor. Never `db:update-docs <slug>` a page he edits.
+The `/releases` page renders `RELEASES.md` from the repository (bundled
+at build time, so the deploy is the update; no database, no paste). Add
+the version's section at the top of the file, under `## [Unreleased]` and
+before the previous version, in the same shape as CHANGELOG.md
+(`## [x.y.z] - YYYY-MM-DD`, `### Added` / `### Changed` / `### Fixed`)
+with only what a user would notice: new features, improved or changed
+features, fixes worth knowing about, in plain words. Leave out
+permissions, admin-only actions, security work, infrastructure,
+migrations, tooling, docs-for-developers and anything about how the app
+is built. A release with nothing a user would notice gets the one line
+"Maintenance release with no user-visible changes." A test holds
+RELEASES.md to the changelog's versions, so the release commit must
+carry both files.
 
 ## Step 4: Documentation and memory
 

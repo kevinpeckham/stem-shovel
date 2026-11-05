@@ -43,7 +43,6 @@ const ORDER = [
 	"reporting-a-bug",
 	"privacy-policy",
 	"copyright-policy",
-	"releases",
 ];
 
 /** Pages whose words live in a "copy" doc (docs/page-copy.md): seeded like the docs, listed nowhere, edited at /docs/<slug>/edit. */

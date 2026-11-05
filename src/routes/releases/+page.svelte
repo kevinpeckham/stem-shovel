@@ -25,12 +25,6 @@
 				named in the footer.
 			</p>
 		</div>
-		{#if data.canEdit}
-			<a class="button button-sm" href="/docs/releases/edit">
-				<span class="i-ph-pencil-simple" aria-hidden="true"></span>
-				Edit
-			</a>
-		{/if}
 	</header>
 
 	<div class="grid gap-8 max-w-article">

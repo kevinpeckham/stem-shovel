@@ -66,8 +66,6 @@ if (rest.length === 0 && mode !== "merge") {
 	process.exit(2);
 }
 const DOCS_DIR = new URL("./user-docs/", import.meta.url);
-/** Pages whose seed is only ever the starting text: written in the app from then on, never merged (the releases page, docs/user-docs.md). */
-const IN_APP_ONLY = new Set(["releases"]);
 const REPO = new URL("../", import.meta.url).pathname;
 /** A seed file as the script writes it: LF, trimmed, one trailing newline. */
 const normalize = (text: string) => text.replace(/\r\n/g, "\n").trim().concat("\n");
@@ -203,13 +201,6 @@ if (mode === "list") {
 	let conflicted = 0;
 	let written = 0;
 	for (const slug of slugs) {
-		if (IN_APP_ONLY.has(slug)) {
-			if (rest.length > 0)
-				console.log(
-					`${slug}: written in the app only; its seed is the starting text and is never merged`,
-				);
-			continue;
-		}
 		const page = await pageOf(slug);
 		if (!page) {
 			console.log(`${slug}: not in the database (db:seed-docs adds it)`);

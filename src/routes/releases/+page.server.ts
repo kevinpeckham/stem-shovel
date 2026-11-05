@@ -1,25 +1,19 @@
-import { RELEASES_DOC_SLUG } from "#lib/constants/releasesDoc.js";
-import { getUserDoc } from "#lib/server/data.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import { parseChangelog } from "#lib/utils/parseChangelog.js";
+import releasesMarkdown from "../../../RELEASES.md?raw";
 import type { PageServerLoad } from "./$types";
 
 /**
- * The releases page: the "releases" user doc (edited in the app like every
- * doc page, seeded once from scripts/user-docs/releases.md), split into one
- * section per version. Public; system admins get an Edit button.
+ * The releases page: RELEASES.md from the repository (the user-facing
+ * notes a release writes beside CHANGELOG.md; bundled at build time, so a
+ * deploy is the update), split into one section per version. Public. Until
+ * 2026-11-05 the page was the "releases" user doc, pasted by hand on each
+ * stage after every release.
  */
-export const load: PageServerLoad = async ({ locals }) => {
-	const doc = await getUserDoc(RELEASES_DOC_SLUG);
-	return {
-		releases: doc
-			? parseChangelog(doc.markdown).map((r) => ({
-					version: r.version,
-					date: r.date,
-					html: renderMarkdown(r.body),
-				}))
-			: [],
-		updatedAt: doc?.updatedAt ?? null,
-		canEdit: !!locals.user?.isSystemAdmin,
-	};
-};
+export const load: PageServerLoad = async () => ({
+	releases: parseChangelog(releasesMarkdown).map((r) => ({
+		version: r.version,
+		date: r.date,
+		html: renderMarkdown(r.body),
+	})),
+});

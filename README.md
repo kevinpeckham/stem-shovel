@@ -314,7 +314,7 @@ check and the tests without any secret.
 
 ## Documentation
 
-- `/releases` — the user-facing release notes, a user doc page in the database (`scripts/user-docs/releases.md` seeds the starting content); CHANGELOG.md is the full record.
+- `/releases` — the user-facing release notes, rendered from [RELEASES.md](RELEASES.md) (bundled at build time); CHANGELOG.md is the full record.
 - [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems and demos, chart/lyrics/notes versions.
 - [docs/security.md](docs/security.md) — the security model, what is enforced where, error reports and analytics, known gaps.
 - [docs/billing.md](docs/billing.md) — what an account costs us (Blob, Turso, Vercel), the free/founder tiers, and the plan for Stripe subscriptions.
@@ -333,7 +333,7 @@ check and the tests without any secret.
 - [docs/uploads-and-blob.md](docs/uploads-and-blob.md) — the three-step upload, replacements, renditions, mixdowns, demos, downloads.
 - [docs/testing.md](docs/testing.md) — Vitest: unit and component projects, helpers, what is mocked.
 - [docs/agent-screenshots.md](docs/agent-screenshots.md) — `bun run shot` and the Playwright MCP.
-- [CHANGELOG.md](CHANGELOG.md) — releases; cut one with the `/release` skill.
+- [CHANGELOG.md](CHANGELOG.md) — releases, the technical record, and [RELEASES.md](RELEASES.md), the user-facing one; cut one with the `/release` skill.
 - [CLAUDE.md](CLAUDE.md) — conventions and the working agreement for the agent.
 
 ## License

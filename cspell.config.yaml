@@ -6,6 +6,7 @@ files:
   - "README.md"
   - "SECURITY.md"
   - "CHANGELOG.md"
+  - "RELEASES.md"
   - "CLAUDE.md"
   - "FINDINGS.md"
   - "docs/**/*.md"
@@ -43,6 +44,7 @@ words:
   - Aphex
   - arpeggiated
   - arpeggiator
+  - arpeggiates
   - Audiotool
   - Authy
   - Backblaze

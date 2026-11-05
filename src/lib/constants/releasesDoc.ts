@@ -1,7 +1,7 @@
 /**
- * The user-facing release notes are a user doc page (`user_doc`, editable in
- * the app by system admins like every other doc, seeded once from
- * scripts/user-docs/releases.md) shown at /releases rather than under
- * /docs; CHANGELOG.md in the repository is the full technical record.
+ * The slug of the "releases" user doc that fed /releases until 2026-11-05,
+ * when the page began rendering RELEASES.md from the repository. The rows
+ * may still exist in a stage's database: the slug keeps them off the /docs
+ * list and sends /docs/releases to /releases.
  */
 export const RELEASES_DOC_SLUG = "releases";

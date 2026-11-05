@@ -78,3 +78,22 @@ describe("parseChangelog", () => {
 		expect(r[2]!.body).toContain("Still 0.49.0's.");
 	});
 });
+
+describe("RELEASES.md, the file /releases renders", () => {
+	test("carries every version of CHANGELOG.md in the same order, each with a date and no Technical section", async () => {
+		const [releases, changelog] = await Promise.all([
+			import("../../../RELEASES.md?raw"),
+			import("../../../CHANGELOG.md?raw"),
+		]);
+		const notes = parseChangelog(releases.default);
+		const record = parseChangelog(changelog.default).filter((r) => r.version !== "Unreleased");
+		const versions = notes.filter((r) => r.version !== "Unreleased").map((r) => r.version);
+		expect(versions).toEqual(record.map((r) => r.version));
+		for (const r of notes) {
+			if (r.version === "Unreleased") continue;
+			expect(r.date, r.version).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			expect(r.body, r.version).not.toMatch(/^### Technical/m);
+			expect(r.body.trim(), r.version).not.toBe("");
+		}
+	});
+});
