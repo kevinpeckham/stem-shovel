@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.223.0] - 2026-11-05
+
 ### Added
 
 - **Download the chart as MusicXML.** A song's Downloads menu gains "Chart as MusicXML" (`GET /api/songs/[id]/chart.musicxml`): the chord chart written by `@barmark/musicxml` 0.4.0 as a MusicXML 4.0 score that MuseScore, Dorico, Sibelius and Finale open, with the bars, chord symbols as `<harmony>` over slash notes, repeats, endings and jumps as MusicXML repeats, sections and rehearsal marks as text, and one part per `part:`; the song's title stands in where the chart has none. The project's charts zip carries each chart as `<song>.musicxml` beside its `.chart.md` and PDF. Viewable like the song; a blank chart, one with errors or one with no bars to play is a 404 naming what to fix (`utils/chartMusicXml.ts`; docs/uploads-and-blob.md "Documentation downloads").
