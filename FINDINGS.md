@@ -7,6 +7,39 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## pdfkit's built-in fonts drop ♯ and ♭; a font ships as a Vite `?inline` asset; `@barmark/render` does not export its chord typesetting (2026-11-05)
+
+Found drawing the documentation PDF's chart from barmark's model
+(`src/lib/utils/chartToPdf.ts`, `src/lib/server/documentation.ts`).
+
+- **WinAnsi fonts cannot encode music glyphs.** pdfkit's Helvetica,
+  Times and Courier are the 14 standard fonts in WinAnsi, so `♯`, `♭`,
+  `°`, `ø` and `∆` are silently dropped from the page (the bench's
+  Study 5 found the same in its own PDF generator). Any PDF text that may
+  carry a chord needs an embedded font. The renderer's Edwin
+  (`static/fonts/barmark/Edwin-Roman.otf`, 120 KB, OFL) has those glyphs
+  but not ♩, the segno, the coda or the fermata (checked with fontkit's
+  `hasGlyphForCodePoint`, which pdfkit depends on): tempos print as
+  "124 bpm", directions as words, the fermata as a drawn arc and dot.
+- **Shipping a binary with a function:** `import url from
+  "…/Edwin-Roman.otf?inline"` gives a `data:font/otf;base64,…` string at
+  build time (Vite's asset plugin, in Vitest too), `Buffer.from(url.split(",")[1],
+  "base64")` is what `doc.registerFont` takes, and the built chunk under
+  `.vercel/output/functions/*/…/chunks/documentation.js` carries the
+  base64, not a path, which is what the adapter's tracing needs
+  (CLAUDE.md "Shipping a file with a function"). `vite/client` already
+  declares `*?inline`, so no ambient type is needed.
+- **`@barmark/render`'s export map** has only `.`, `./element` and
+  `./fonts/*`, and the index does not export `typesetChord` or `glyphs`
+  (`dist/chord.js`), so a deep import fails with
+  `ERR_PACKAGE_PATH_NOT_EXPORTED`. The app carries copies
+  (`utils/typesetChord.ts`, `utils/accidentalGlyphs.ts`) until the
+  renderer exports them; a barmark issue would remove the copies.
+- **`layoutChart`'s `block.columns` counts every cell**, fermata,
+  direction and rehearsal cells included, so a drawer that gives those
+  cells a narrow width must divide the row by the section's widest count
+  of _bars_, not by `columns`.
+
 ## `@barmark/musicxml` exports nothing for a chart that plays with an error, and goes one way only (2026-11-04)
 
 Found adding "Chart as MusicXML" (`src/lib/utils/chartMusicXml.ts`,

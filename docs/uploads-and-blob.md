@@ -193,7 +193,17 @@ in three steps driven by `src/lib/upload.ts`:
   the song's title where the chart has none; `<song title>.musicxml`,
   `application/vnd.recordare.musicxml+xml`; a 404 naming what to fix when
   the chart is blank, has errors or has no bars to play, since the export
-  refuses a chart with errors). The markdown is drawn by `utils/markdownToPdf.ts`
+  refuses a chart with errors). The chart section is drawn as a chart
+  (2026-11-05, `utils/chartToPdf.ts`): barmark's renderer model
+  (`layoutChart`) into pdfkit, with the sections and their rehearsal
+  letters, bar numbers, bar lines, repeat marks and ×N, endings, chords
+  in the renderer's own Edwin font (shipped inside the function as a
+  Vite `?inline` asset and registered on each document, because pdfkit's
+  built-in WinAnsi fonts cannot draw ♯, ♭, ° or ø, so the markdown
+  drawing had been losing every accidental), words, fermatas and
+  directions as words, systems as stacked rows; a chart with nothing
+  between pipes still goes through the markdown drawer. Lyrics and notes
+  are drawn by `utils/markdownToPdf.ts`
   from marked's lexer tokens into an open pdfkit document with the
   built-in fonts (Helvetica; Courier for code blocks and spans, so a chord
   grid stays lined up; headings by depth, lists, quotes, rules, tables as

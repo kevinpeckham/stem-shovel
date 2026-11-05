@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The documentation PDF draws the chart as a chart.** The Chart page of a song's documentation PDF, and the `<song>-chart.pdf` in the project's charts zip, are drawn from barmark's renderer model (`utils/chartToPdf.ts` over `layoutChart`) instead of as markdown text: sections with their rehearsal letters, bar numbers, bar lines, repeat marks and ×N, endings, chords with raised extensions, words, fermatas and directions, systems as stacked rows. Chords are set in the renderer's Edwin font, shipped inside the function, so ♯, ♭, ° and ø print; pdfkit's built-in fonts had been dropping every accidental. A chart with nothing between pipes still prints as text.
+
 ## [0.224.0] - 2026-11-05
 
 ### Added

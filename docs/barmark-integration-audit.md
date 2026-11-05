@@ -95,7 +95,11 @@ imported (item 4), its feel and amount set the pad's swing
   Courier), not as a chart. Draw it from `layoutChart`'s `ChartModel`
   with pdfkit (bars, bar lines, bar numbers, rehearsal letters), so the
   PDF matches the page. M rather than S if the renderer's typography is
-  to be matched closely; a first pass of a grid is S.
+  to be matched closely; a first pass of a grid is S. **Done 2026-11-05**
+  as `utils/chartToPdf.ts` (sections with rehearsal letters, bar
+  numbers, bar lines, repeats, endings, chords in Edwin shipped as an
+  inline asset, words, fermatas, directions, systems); not drawn yet:
+  a group's tuplet number, note sets' rings, numerals.
 - **charts.zip** (`documentation.ts:188`): `<song>-chart.txt` became
   `<song>.chart.md` holding `printChart`'s canonical text (done 2026-11-02).
 - **Chat and comments**: plain text today; not worth a chart renderer.

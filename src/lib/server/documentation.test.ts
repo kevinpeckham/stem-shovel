@@ -71,6 +71,19 @@ describe("songDocumentationPdf", () => {
 		// Title, Lyrics, Notes: the empty chart gets no page.
 		expect(pageObjects(latin1(pdf))).toBe(3);
 	});
+	test("a chart of bars gets its page, drawn in Edwin", async () => {
+		const pdf = await songDocumentationPdf({
+			title: "Autumn",
+			lyricsMarkdown: "",
+			chartMarkdown: "## A\n| Cm7 | F7 | Bbmaj7 | Ebmaj7 |",
+			notesMarkdown: "",
+		});
+		const text = latin1(pdf);
+		expect(text.startsWith("%PDF-")).toBe(true);
+		// Title, Chart.
+		expect(pageObjects(text)).toBe(2);
+		expect(text).toContain("Edwin");
+	});
 	test("knows when there is nothing to print", () => {
 		expect(
 			hasDocumentation({ title: "x", lyricsMarkdown: " ", chartMarkdown: "", notesMarkdown: "" }),

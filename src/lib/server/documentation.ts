@@ -1,6 +1,9 @@
 import { readBlob } from "#lib/server/blob.js";
 import { projectForDocumentation } from "#lib/server/data.js";
 import { markdownToPdfPages } from "#lib/utils/markdownToPdf.js";
+import { chartToPdfPages } from "#lib/utils/chartToPdf.js";
+import { layoutChart } from "@barmark/render";
+import edwinDataUrl from "../../../static/fonts/barmark/Edwin-Roman.otf?inline";
 import { safeFilename } from "#lib/utils/safeFilename.js";
 import { chartMusicXml } from "#lib/utils/chartMusicXml.js";
 import { printChart } from "barmark";
@@ -17,8 +20,12 @@ import PDFDocument from "pdfkit";
  * demand inside the request that asks (`GET /api/songs/[id]/documentation.pdf`,
  * `GET /api/projects/[id]/documentation.zip`, `GET /api/projects/[id]/charts.zip`),
  * not in the jobs function: nothing is stored, and a project of forty songs
- * renders in a few seconds. pdfkit draws with its built-in fonts
- * (utils/markdownToPdf.ts); fflate zips (`zipSync`, stored for files that
+ * renders in a few seconds. pdfkit draws the lyrics and notes with its
+ * built-in fonts (utils/markdownToPdf.ts) and a chart of bars from
+ * barmark's renderer model in the chart's own font, Edwin
+ * (utils/chartToPdf.ts: the built-ins are WinAnsi and have no ♯, ♭, ° or
+ * ø), which ships inside the function as a `?inline` import (Vite's
+ * base64 data URL) and is registered on every document; fflate zips (`zipSync`, stored for files that
  * are compressed already, deflated for text). Page code never imports this
  * module: pdfkit would sit in every page function's bundle.
  */
@@ -81,9 +88,25 @@ export async function notationPartsOf(song: NotationSource): Promise<PdfAppendix
 	return parts;
 }
 
-/** An A4 document with the pages `build` draws, as bytes. */
+/** Edwin, the chart's font (static/fonts/barmark), decoded once from the bundled data URL. */
+const EDWIN = Buffer.from(edwinDataUrl.slice(edwinDataUrl.indexOf(",") + 1), "base64");
+const CHART_FONTS = {
+	chord: "Edwin",
+	text: "Helvetica",
+	textBold: "Helvetica-Bold",
+	textItalic: "Helvetica-Oblique",
+};
+
+/** Whether a chart has bars to draw; a chart of prose alone prints as markdown. */
+const hasBars = (markdown: string): boolean =>
+	layoutChart(markdown).blocks.some((b) =>
+		b.items.some((i) => i.kind === "row" || i.kind === "system"),
+	);
+
+/** An A4 document with the pages `build` draws, as bytes; Edwin is registered for the chart. */
 async function pdfBytes(build: (doc: PDFKit.PDFDocument) => void): Promise<Uint8Array> {
 	const doc = new PDFDocument({ size: "A4", margin: 56, compress: true });
+	doc.registerFont("Edwin", EDWIN);
 	const chunks: Buffer[] = [];
 	doc.on("data", (chunk: Buffer) => chunks.push(chunk));
 	const done = new Promise<void>((resolve, reject) => {
@@ -99,8 +122,11 @@ async function pdfBytes(build: (doc: PDFKit.PDFDocument) => void): Promise<Uint8
 /**
  * A song's documentation as one PDF: a title page (the title, the project
  * when given, the version), then a page or more per section that has
- * text, headed "Lyrics", "Chart" or "Notes" and rendered from its markdown,
- * then the notation's pages (`notationPartsOf`) when given (Kevin).
+ * text, headed "Lyrics", "Chart" or "Notes", then the notation's pages
+ * (`notationPartsOf`) when given (Kevin). Lyrics and notes render from
+ * their markdown; a chart with bars is drawn as the engraved chart
+ * (`chartToPdfPages`: bar grid, repeats, endings, chords in Edwin with
+ * their ♯ and ♭), and a chart with none prints as markdown.
  */
 export async function songDocumentationPdf(
 	song: DocumentedSong,
@@ -120,10 +146,16 @@ export async function songDocumentationPdf(
 			doc.addPage();
 			doc.font("Helvetica-Bold").fontSize(16).text(SECTION_TITLE[section]);
 			doc.moveDown(0.6);
-			markdownToPdfPages(doc, textOf(song, section));
+			drawSection(doc, section, textOf(song, section));
 		}
 	});
 	return appendToPdf(text, notation);
+}
+
+/** A section's text on the page: the chart drawn when it has bars, everything else as markdown. */
+function drawSection(doc: PDFKit.PDFDocument, section: DocumentationSection, text: string): void {
+	if (section === "chart" && hasBars(text)) chartToPdfPages(doc, text, CHART_FONTS);
+	else markdownToPdfPages(doc, text);
 }
 
 /** The song rows the project downloads work from, as `projectForDocumentation` returns them. */
