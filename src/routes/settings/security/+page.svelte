@@ -5,17 +5,95 @@
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
-	import { refreshAll } from "$app/navigation";
+	import { refreshAll, replaceState } from "$app/navigation";
+	import { page } from "$app/state";
 	import { authClient } from "#lib/auth-client.js";
 	import { onMount } from "svelte";
 
 	/**
-	 * Two-factor (TOTP) for the signed-in user, driven through Better Auth's
-	 * client plugin: enable (password → QR + backup codes → first code), disable
-	 * (password), new backup codes (password). The server hears through
-	 * notifyTwoFactorChanged only to send the "it changed" email.
+	 * The signed-in user's sign-in: the email address (Better Auth's
+	 * changeEmail: a confirmation link to the current address, then a
+	 * verification link to the new one, both landing back here with
+	 * `?email=1`; the address the user asked for is kept in this browser so
+	 * the landing can tell the two steps apart), two-factor (TOTP) through
+	 * the client plugin (enable with password → QR + backup codes → first
+	 * code; disable; new backup codes) and passkeys. The server hears
+	 * through notifyTwoFactorChanged and notifyPasskeyChanged only to send
+	 * the "it changed" emails.
 	 */
 	let { data } = $props();
+
+	// ---- the sign-in email
+	/** Where this browser keeps the address a change was asked for, until the change lands. */
+	const PENDING_EMAIL = "stem-shovel:pending-email";
+	let changingEmail = $state(false);
+	let newEmail = $state("");
+	let emailBusy = $state(false);
+	let emailError = $state("");
+	const pendingEmail = () => {
+		try {
+			return localStorage.getItem(PENDING_EMAIL);
+		} catch {
+			return null;
+		}
+	};
+	const keepPending = (value: string | null) => {
+		try {
+			if (value === null) localStorage.removeItem(PENDING_EMAIL);
+			else localStorage.setItem(PENDING_EMAIL, value);
+		} catch {
+			// A browser without storage gets the generic landing line.
+		}
+	};
+	async function requestEmailChange() {
+		emailError = "";
+		const address = newEmail.trim().toLowerCase();
+		if (address === data.email) {
+			emailError = "That is your address already.";
+			return;
+		}
+		emailBusy = true;
+		try {
+			const result = await authClient.changeEmail({
+				newEmail: address,
+				callbackURL: "/settings/security?email=1",
+			});
+			if (result.error) {
+				emailError = result.error.message ?? "The change could not be started";
+				return;
+			}
+			keepPending(address);
+			changingEmail = false;
+			newEmail = "";
+			notify(`Check ${data.email} for a link to confirm the change`);
+		} catch (e) {
+			emailError = errorMessage(e);
+		} finally {
+			emailBusy = false;
+		}
+	}
+	/** A verification link landed here: say which step it was, from the address this browser asked for. */
+	function emailLanding() {
+		const url = page.url;
+		if (url.searchParams.get("error")) {
+			notify("That link has expired or was already used. Start the change again.", {
+				kind: "error",
+			});
+		} else if (url.searchParams.get("email") === "1") {
+			const pending = pendingEmail();
+			if (pending && pending === data.email) {
+				keepPending(null);
+				notify(`Your sign-in email is now ${data.email}`);
+			} else if (pending) {
+				notify(`Confirmed. Now open the link we sent to ${pending} to finish the change.`);
+			} else {
+				notify(
+					"Confirmed. If your address above has not changed yet, open the link we sent to the new one.",
+				);
+			}
+		} else return;
+		replaceState("/settings/security", {});
+	}
 	type Step = "idle" | "enabling" | "verifying" | "codes" | "disabling" | "regenerating";
 	let step = $state<Step>("idle");
 	let enabled = $derived(data.twoFactorEnabled);
@@ -102,6 +180,7 @@
 	let passkeysSupported = $state(true);
 	onMount(() => {
 		passkeysSupported = "PublicKeyCredential" in window;
+		emailLanding();
 	});
 	async function addPasskey() {
 		passkeyError = "";
@@ -165,6 +244,58 @@
 		<h1 class="app-page-heading">Security</h1>
 		<p class="opacity-90">Your own sign-in, across every account you belong to.</p>
 	</header>
+
+	<section class="max-w-article">
+		<h2 class="heading-2">Sign-in email</h2>
+		<p class="mt-1 text-sm opacity-90">
+			You sign in as <span class="font-500">{data.email}</span>. Changing it takes two links: one
+			sent to this address to confirm, then one sent to the new address to verify it. Your
+			memberships, projects and everything else stay as they are.
+		</p>
+
+		{#if emailError}<p class="mt-3 text-sm text-red-400" role="alert">{emailError}</p>{/if}
+
+		{#if changingEmail}
+			<form
+				class="mt-4 grid max-w-sm gap-4"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void requestEmailChange();
+				}}
+			>
+				<label class="block">
+					<span class="text-15px text-dim">New email address</span>
+					<input
+						class="mt-1 field"
+						type="email"
+						autocomplete="email"
+						required
+						bind:value={newEmail}
+						disabled={emailBusy}
+					/>
+				</label>
+				<div class="flex items-center gap-4">
+					<button class="button-accent" disabled={emailBusy}>
+						{emailBusy ? "Sending…" : "Send the confirmation"}
+					</button>
+					<button
+						class="text-sm link"
+						type="button"
+						onclick={() => {
+							changingEmail = false;
+							emailError = "";
+						}}>Cancel</button
+					>
+				</div>
+			</form>
+		{:else}
+			<div class="mt-4">
+				<button class="button button-sm" type="button" onclick={() => (changingEmail = true)}>
+					Change email
+				</button>
+			</div>
+		{/if}
+	</section>
 
 	<section class="max-w-article">
 		<h2 class="heading-2">Two-factor authentication</h2>

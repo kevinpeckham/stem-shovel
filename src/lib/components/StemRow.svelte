@@ -22,6 +22,8 @@
 		note?: { text: string; title: string } | null;
 		/** When given, a piano roll of the stem's MIDI file replaces the waveform. */
 		roll?: MidiSummary | null;
+		/** Where the MIDI file's 0 sits in the song, in seconds: the song's `startAt` (MidiRoll's `offset`). */
+		rollOffset?: number;
 		/** Ctrl / ⌘-click or right-click on the waveform or roll, with the position in seconds. */
 		oncontext?: (stem: StemState, seconds: number, x: number, y: number) => void;
 		/** A grip before the name, for reordering (StemPlayer draws it when the rows can be reordered). */
@@ -38,6 +40,7 @@
 		badge,
 		note = null,
 		roll = null,
+		rollOffset = 0,
 		oncontext,
 		handle,
 		dragging = false,
@@ -191,6 +194,7 @@
 				highest={roll.highest}
 				{progress}
 				songDuration={engine.duration}
+				offset={rollOffset}
 				dimmed={silenced}
 				label={stem.label}
 				onseek={(f) => engine.seek(f * engine.duration)}

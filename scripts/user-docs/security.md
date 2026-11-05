@@ -24,6 +24,12 @@ A passkey signs you in with your fingerprint, face or device PIN instead of a pa
 
 **Removing one**: **Remove** beside it in Security. An email confirms the change; if you did not make it, reset your password straight away.
 
+## Your sign-in email
+
+The address you sign in with is shown at the top of Security. **Change email** asks for the new address and sends a link to your **current** address to confirm the change; opening it sends a verification link to the **new** address, and the change takes effect once that one is opened too. Each link works once and expires in an hour. Your accounts, projects and settings stay exactly as they are; only the address you sign in with changes.
+
+If nothing arrives at your current address, check its spam folder; if nothing arrives at the new one after you confirmed, start the change again from Security.
+
 ## Passwords
 
 Passwords are never stored in a readable form. **Forgot password?** on the sign-in page sends a reset link to your address.

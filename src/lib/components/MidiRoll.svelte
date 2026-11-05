@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { MidiNote } from "#lib/audio/midi.js";
+	import { rollNoteSpan } from "#lib/utils/rollNoteSpan.js";
 	import type { Attachment } from "svelte/attachments";
 
 	/**
@@ -15,6 +16,8 @@
 		progress: number;
 		/** Seconds of song per full width, so the notes sit under the waveform's time scale. */
 		songDuration: number;
+		/** Where the file's 0 sits on that scale, in seconds: the song's `startAt` (a DAW exports from bar 1; the recording may carry a count-in before it). */
+		offset?: number;
 		dimmed?: boolean;
 		label: string;
 		onseek?: (fraction: number) => void;
@@ -30,6 +33,7 @@
 		highest,
 		progress,
 		songDuration,
+		offset = 0,
 		dimmed = false,
 		label,
 		onseek,
@@ -46,7 +50,7 @@
 		// why $effect: the redraw inside the canvas attachment: tracks the notes, the range and the size, then draws (canvas)
 		$effect(() => {
 			if (width === 0 || height === 0) return;
-			draw(canvas, ctx, notes, lowest, highest, songDuration, dimmed, width, height);
+			draw(canvas, ctx, notes, lowest, highest, songDuration, offset, dimmed, width, height);
 		});
 	};
 
@@ -57,6 +61,7 @@
 		lo: number,
 		hi: number,
 		seconds: number,
+		from: number,
 		_dim: boolean,
 		w: number,
 		h: number,
@@ -71,11 +76,9 @@
 		const span = Math.max(12, hi - lo + 1);
 		const base = hi - lo + 1 < 12 ? Math.floor((lo + hi) / 2) - 6 : lo;
 		const rowH = h / span;
-		const px = (t: number) => (seconds > 0 ? (t / seconds) * w : 0);
 		for (const n of data) {
 			const y = h - (n.pitch - base + 1) * rowH;
-			const x = px(n.start);
-			const wide = Math.max(1, px(n.start + n.duration) - x);
+			const { x, width: wide } = rollNoteSpan(n, from, seconds, w);
 			ctx.globalAlpha = 0.4 + 0.6 * (n.velocity / 127);
 			ctx.fillRect(x, y + 0.5, wide, Math.max(1, rowH - 1));
 		}

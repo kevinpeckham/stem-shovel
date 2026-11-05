@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Changing the sign-in email** on `/settings/security`: Better Auth's `changeEmail` (`user.changeEmail` in `src/lib/auth.ts`, `sendChangeEmailConfirmEmail` in email.ts) sends a confirmation link to the current address, then the verification link to the new one; both land back on the page, which tells the two steps apart from the address it kept in localStorage. An address another user holds gets the plugin's silent success (docs/auth.md).
+
+### Fixed
+
+- **The MIDI roll sits at the song's start offset.** A stem's piano roll drew the file's notes from the recording's 0, while a DAW exports from bar 1: with a count-in (`song.startAt`) the notes sat early by that much. `MidiRoll` takes an `offset` (`rollNoteSpan` in utils, with a test), the stem row passes the song's `startAt` through (docs/audio-engine.md "MIDI view").
+
 ## [0.227.0] - 2026-11-05
 
 ### Changed

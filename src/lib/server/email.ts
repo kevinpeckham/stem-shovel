@@ -185,6 +185,24 @@ export async function sendWaitlistInviteEmail(opts: {
 	await sendEmail({ to: opts.to, subject: "Your Stem Shovel invite code", ...body });
 }
 
+/** The first step of changing the sign-in address, sent to the current one: a link that approves the change; the new address then gets its verification link. */
+export async function sendChangeEmailConfirmEmail(
+	to: string,
+	name: string,
+	newEmail: string,
+	url: string,
+) {
+	const body = renderEmail({
+		greeting: greet(name),
+		lines: [
+			`Someone asked to change the sign-in email for your Stem Shovel account from ${to} to ${newEmail}. Confirm it with the link below; we then send a verification link to ${newEmail}, and the change takes effect once that one is opened too. The link works once and expires in an hour.`,
+		],
+		cta: { label: "Confirm the change", url },
+		footer: "If that was not you, ignore this email; your address stays as it is.",
+	});
+	await sendEmail({ to, subject: "Confirm your new Stem Shovel email", ...body });
+}
+
 /** Two-factor switched on or off: the user hears, in case it was not them. */
 export async function sendTwoFactorChangedEmail(to: string, name: string, enabled: boolean) {
 	const body = renderEmail({

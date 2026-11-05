@@ -178,6 +178,22 @@ public by URL; editing needs a signed-in member.
   adds one through `authClient.passkey.addPasskey({ name })` and removes
   through `deletePasskey`; `notifyPasskeyChanged` sends the "added" or
   "removed" email. Deleting a user removes their passkeys (cascade.ts).
+- **Changing the sign-in email** (2026-11-05): Better Auth's `changeEmail`
+  (`user.changeEmail` in `src/lib/auth.ts`), driven from `/settings/security`
+  through `authClient.changeEmail({ newEmail, callbackURL })`. With the
+  current address verified (every signed-in user's is), the plugin sends a
+  confirmation link to the current address (`sendChangeEmailConfirmation` →
+  `sendChangeEmailConfirmEmail`), whose click sends a verification link to
+  the new address (the same `sendVerificationEmail` as sign-up), whose click
+  updates `user.email`, keeps it verified and refreshes the session cookie;
+  both clicks land on `/settings/security?email=1` (a bad token lands with
+  `?error=`). The page keeps the requested address in localStorage so the
+  landing can say "now open the link we sent to the new address" after the
+  first click and "your sign-in email is now …" after the second; another
+  browser gets a generic line. A new address another user holds gets a
+  silent success from the plugin (no mail, no error), so the form never
+  tells who has an account. Memberships hang off the user id, so nothing
+  else changes; `locals.user.email` follows the session.
 - **The beta waitlist** (`waitlist_signup`, `waitlist.remote.ts`,
   `WaitlistForm.svelte` on the front page and `/waitlist`): an address joins
   with an optional name and a separate, off-by-default consent to

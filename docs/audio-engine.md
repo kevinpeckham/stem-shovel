@@ -94,7 +94,10 @@ fields are `$state`, so components read `engine.position` directly.
   song's time scale (same seek and keyboard behavior), and back. The file
   is fetched from Blob and parsed in the browser once per URL — a small
   SMF reader that merges tracks, follows tempo changes and keeps note
-  on/off only.
+  on/off only. The file's 0 is drawn at `song.startAt` (`rollNoteSpan`,
+  2026-11-05): a DAW exports MIDI from bar 1, while the recording may
+  carry a count-in before it, so without the shift the notes sat early by
+  the count-in.
 - **Tempo, key and time-signature detection** (`src/lib/audio/analysis.ts`):
   while stems upload, each decoded buffer yields an onset-strength envelope
   (spectral flux, 2048-point FFT, hop 256 = 125 fps) and two chroma

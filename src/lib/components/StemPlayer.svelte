@@ -435,6 +435,7 @@
 						badge={stemBadge}
 						note={rateNotes.get(stem.id) ?? null}
 						roll={midiViews[stem.id] ?? null}
+						rollOffset={startAt ?? 0}
 						oncontext={(stem, seconds, x, y) => (contextAt = { stem, seconds, x, y })}
 						handle={onreorder ? grip : undefined}
 						dragging={dragging === stem.id}

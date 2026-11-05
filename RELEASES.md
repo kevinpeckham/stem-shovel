@@ -4,6 +4,14 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Change the email you sign in with.** Security, in the account menu, now shows your sign-in address with a **Change email** button. A link goes to your current address to confirm, then a link to the new one to verify it; the change takes effect once both are opened. Everything else about your account stays as it is.
+
+### Fixed
+
+- **The MIDI view lines up with a count-in.** A stem's piano roll now starts at the song's start offset, so notes exported from bar 1 of a DAW sit under the right part of the recording when it carries a count-in.
+
 ## [0.227.0] - 2026-11-05
 
 ### Changed

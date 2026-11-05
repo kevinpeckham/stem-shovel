@@ -12,7 +12,11 @@ import {
 	signUpMode,
 	redeemInviteCode,
 } from "#lib/server/data.js";
-import { sendPasswordResetEmail, sendVerificationEmail } from "#lib/server/email.js";
+import {
+	sendChangeEmailConfirmEmail,
+	sendPasswordResetEmail,
+	sendVerificationEmail,
+} from "#lib/server/email.js";
 import { background } from "#lib/server/background.js";
 import { checkSeats, notifyInvitationAccepted } from "#lib/server/notifications.js";
 import { checkSignUp } from "#lib/server/signUpGate.js";
@@ -135,6 +139,17 @@ export const auth = betterAuth({
 			isActive: { type: "boolean", required: true, defaultValue: true, input: false },
 			isSystemAdmin: { type: "boolean", required: true, defaultValue: false, input: false },
 			isSuperAdmin: { type: "boolean", required: true, defaultValue: false, input: false },
+		},
+		// Changing the sign-in address (/settings/security): a confirmation link
+		// goes to the current address first, then a verification link to the new
+		// one (sendVerificationEmail above); the address changes only when both
+		// were opened. An address another user holds gets a silent success, so
+		// the form can never tell who has an account (docs/auth.md).
+		changeEmail: {
+			enabled: true,
+			sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+				await sendChangeEmailConfirmEmail(user.email, user.name, newEmail, url);
+			},
 		},
 	},
 	databaseHooks: {
