@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.227.0] - 2026-11-05
+
 ### Changed
 
 - **The chart readout says why nothing reads.** When a chart has no bars for the parser to play, the line under the editor names barmark's own diagnostic for the line in amber ("no bar lines in this chart; a bar line starts with |" for a chart typed as prose, "an empty cell" for `| D | | G |`) and shows the two-line example and the link to the writing guide in the open instead of behind the tip (`chartReadout` returns the diagnostics as warnings and a `hint` flag; `ChartReadout.svelte`). The light form of the hand-written-chart item from Study 12 (docs/chart-notation-docs-plan.md).
