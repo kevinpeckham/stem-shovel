@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.226.0] - 2026-11-05
+
 ### Changed
 
 - **The releases page renders RELEASES.md from the repository.** `/releases` is bundled from the new `RELEASES.md` at build time (`?raw` import in `src/routes/releases/+page.server.ts`), rebuilt from the production page's own text, so a deploy updates it and nothing is pasted into a database any more; the Edit button and the "releases" user doc seed are gone (the rows a stage still holds stay off the /docs list, and /docs/releases still redirects). The release skill writes each version's section into RELEASES.md beside the changelog's, and a test holds the two files to the same versions.
