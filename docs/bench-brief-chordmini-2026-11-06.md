@@ -12,7 +12,15 @@ The same contract as `scripts/study10/nchord.py`:
 4. Per window, logits summed over a 9-frame box (radius 4, truncated at the window's edges), argmax per frame.
 5. Run-length segments stored on the song; on the page, a chord per bar by majority vote over frames `round(barStart/frameSec) .. round(nextStart/frameSec)` (at least one frame), labels mapped through your `chordmini-vocab.json`.
 
-The port agrees with the Python reference on the three MMKK mixes to the numbers in the table at the end (filled by the app's agent when the port's parity script ran).
+The port agrees with the Python reference on the three MMKK mixes (the app's own parity run, 2026-11-06, before Study 19 confirmed it on all four):
+
+| song               | seconds | frames TS / Py | feature max diff | feature mean diff | chord frames agree | CQT    | inference |
+| ------------------ | ------- | -------------- | ---------------- | ----------------- | ------------------ | ------ | --------- |
+| letter-lands       | 141.3   | 1522 / 1522    | 0.0207           | 0.00000           | 100.00 %           | 0.96 s | 4.80 s    |
+| eat-all-the-clocks | 147.5   | 1588 / 1588    | 0.0501           | 0.00001           | 100.00 %           | 0.96 s | 5.33 s    |
+| peaceful-dreams    | 256.7   | 2764 / 2764    | 0.0047           | 0.00000           | 100.00 %           | 1.59 s | 5.59 s    |
+
+Inference time includes decoding the model and starting the child. **Study 19 (2026-11-06) verdict**: 100.000 % on all four public mixes (7,102 frames), per-bar 59/76 and 53/86 exactly; one grade-neutral difference, an exact 5-to-5 frame tie on two bars of letter-lands that numpy's argmax breaks toward the lower vocab index and the app's vote toward the label seen first (FINDINGS.md).
 
 ## Study 19: gate the port
 
