@@ -8,7 +8,7 @@ popovers and menus behind them. On 2026-10-30 it was 4,928 lines (the
 script to line 2037, 86 `$state` variables, 74 functions), and Fallow
 scored its template at cyclomatic 320 the day a parser-hiding expression
 was replaced (FINDINGS.md). Kevin asked for it to be broken up with more
-components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page was 2,007 lines (script 630, 28 `$state`), down from 4,928; steps 9 to 11 (2026-11-06) took it to 1,250. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
+components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page was 2,007 lines (script 630, 28 `$state`), down from 4,928; steps 9 to 12 (2026-11-06) took it to 901. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
 
 ## The principle: extract by state ownership
 
@@ -239,10 +239,30 @@ step so it shrinks with the page and still fails on anything new.
     - `removeDemo` joined `DemoUploads` as `remove(d)`.
     - `link-dim` → `link` throughout. The health baseline: 2 critical, 3
       CRAP moderate.
-12. Then the page is the layout and the data. Left by ownership: the Docs
-    panel's FloatingPanel with its four ContextMenus (the one block over
-    a hundred lines), the settings popover's props, the comment card
-    snippets.
+12. **The Docs panel, the AI draft card and the player tips**
+    (2026-11-06, done): the page lost 349 lines (1,250 → 901; script
+    399 → 347; 7 `$state` left).
+    - `components/SongDocsPanel.svelte`: the Docs FloatingPanel, with
+      `SongDocsControls.svelte` (the Document dropdown and tablist, the
+      Edit / Done button, the ⋯ menu, the pop-out button) and
+      `SongDocsToolbar.svelte` (the sticky Editor view / Whose notes /
+      Chart mode / Chord spelling / Key groups) inside it, and the body
+      (SongNotationPanel, or SongDocPanel for the user's note or the
+      project document, still bound into `SongDocs`'s fields). The page
+      keeps the `<section>` and the DocHistoryPanel.
+    - `components/SongDraftCard.svelte`: the AI draft with Save sections,
+      Save as chart and Discard (the two saves and `aiChordLines` moved
+      in); `SongDraftInPanel.svelte` wraps it with the chord error for the
+      Chart tab. The page keeps one-line `draftCard` and `draftInPanel`
+      snippets, since the settings popover and SongDocPanel take snippets.
+    - `components/PlayerTips.svelte`: the keyboard and gesture tips under
+      the rows.
+    - `link-dim` → `link`. The health baseline: 1 critical, 1 CRAP
+      moderate.
+13. Then the page is the layout and the data: the header and its action
+    row, the two columns' `<section>`s, the state classes wired together
+    in the script. The remaining candidates are small (the header's
+    buttons, the comment card snippets) and are the layout's own.
 
 ## Effect on the client, as a pilot
 

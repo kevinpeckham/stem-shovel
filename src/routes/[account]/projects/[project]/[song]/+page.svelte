@@ -1,12 +1,6 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
-	import {
-		DOC_HINTS,
-		DOC_KINDS,
-		DOC_LABELS,
-		DOC_VIEWS,
-		SongDocs,
-	} from "#lib/state/songDocs.svelte.js";
+	import { SongDocs } from "#lib/state/songDocs.svelte.js";
 	import { MixUploads } from "#lib/state/mixUploads.svelte.js";
 	import { SongChanges } from "#lib/state/songChanges.svelte.js";
 	import { SongCheck } from "#lib/state/songCheck.svelte.js";
@@ -40,9 +34,10 @@
 		SongPointerMenus as PointerMenus,
 		commentHere,
 	} from "#lib/state/songPointerMenus.svelte.js";
-	import ChartHtml from "#lib/components/ChartHtml.svelte";
-	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
-	import { chartDefaults } from "#lib/utils/chartDefaults.js";
+	import SongDocsPanel from "#lib/components/SongDocsPanel.svelte";
+	import SongDraftCard from "#lib/components/SongDraftCard.svelte";
+	import SongDraftInPanel from "#lib/components/SongDraftInPanel.svelte";
+	import PlayerTips from "#lib/components/PlayerTips.svelte";
 	import { STAGE_LABEL, STAGE_PHASE } from "#lib/constants/songStages.js";
 	import { songStage } from "#lib/utils/songStage.js";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
@@ -52,7 +47,6 @@
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
 	import MixList from "#lib/components/MixList.svelte";
-	import SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import SongAmpPanel from "#lib/components/SongAmpPanel.svelte";
@@ -62,18 +56,14 @@
 	import { MidiViews } from "#lib/state/midiViews.svelte.js";
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { metronome } from "#lib/audio/metronome.svelte.js";
-	import ContextMenu from "#lib/components/ContextMenu.svelte";
-	import { barGrid, formatPosition, secondsAtBar } from "#lib/audio/measures.js";
+	import { barGrid, formatPosition } from "#lib/audio/measures.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
-	import { notify } from "#lib/state/notifications.svelte.js";
 	import { copyShortLink } from "#lib/utils/copyShortLink.js";
 	import { artistLine } from "#lib/utils/artistLine.js";
 	import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemState } from "#lib/audio/types.js";
 
-	import { errorMessage } from "#lib/utils/errorMessage.js";
-	import { saveChartDraft, saveSections } from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import { onDestroy, onMount, tick } from "svelte";
@@ -282,48 +272,6 @@
 
 	/** The song has a chart the AI can read with the mix: a score (MusicXML, or a PDF or image marked as notation) or its own chord chart document (docs/audio-engine.md, "The score as the AI's chart", "The chord chart as the AI's chart"). */
 	let hasScore = $derived(notationCount > 0 || !!data.docs.chart);
-	/** The model's chords ("D5 % A5 …") as chart lines, four bars each. */
-	function aiChordLines(chords: string): string {
-		const cells = chords.split(/\s+/).filter(Boolean);
-		const lines: string[] = [];
-		for (let i = 0; i < cells.length; i += 4)
-			lines.push(`| ${cells.slice(i, i + 4).join(" | ")} |`);
-		return lines.join("\n");
-	}
-	async function saveDraftSections() {
-		const draft = chordDraft.draft;
-		const grid = posCtx.grid;
-		if (!draft || !grid) return;
-		if (
-			data.song.sections.length > 0 &&
-			!confirm("Replace the song's sections with the drafted ones?")
-		)
-			return;
-		try {
-			await saveSections({
-				id: data.song.id,
-				sections: draft.sections.map((s) => ({ name: s.name, start: secondsAtBar(grid, s.bar) })),
-			});
-			await refreshAll();
-			sections.reset();
-			notify("Sections saved from the draft");
-		} catch (e) {
-			notify(errorMessage(e), { kind: "error" });
-		}
-	}
-	async function saveDraftChart() {
-		const draft = chordDraft.draft;
-		if (!draft) return;
-		const hasChart = !!data.docs.chart;
-		if (hasChart && !confirm("Replace the song's chart with the drafted one?")) return;
-		try {
-			await saveChartDraft({ id: data.song.id, markdown: draft.chart, replace: hasChart });
-			await refreshAll();
-			notify("Chart saved from the draft");
-		} catch (e) {
-			notify(errorMessage(e), { kind: "error" });
-		}
-	}
 	/** The chart read opened for correction (docs/audio-engine.md, "The chart read is stored"): the Chart tab's notation view, then the first score's read. */
 	async function reviewRead() {
 		const file = notationPdfs[0];
@@ -788,274 +736,18 @@
 				: 'hidden'} max-w-full"
 		aria-label="Chart, lyrics, notes, comments and PDFs"
 	>
-		<FloatingPanel
-			open={docs.mode !== "minimised"}
-			floating={docs.mode === "floating"}
-			title="Docs"
-			storageKey="stemshovel.song.docs-panel"
-			width={640}
-			height={720}
-			extraClass="h-full"
-			onminimise={() => void docs.setMode("minimised")}
-		>
-			{#snippet controls()}
-				<!-- A dropdown on a phone, the segmented control from sm up. -->
-				<ContextMenu
-					ariaLabel="Document"
-					buttonBaseClasses="button button-xs sm:hidden"
-					iconClass="i-ph-caret-down"
-					label={docs.tabLabel(docs.panel)}
-					position="bottom left"
-					items={DOC_KINDS.map((kind) => ({
-						id: kind,
-						label: docs.tabLabel(kind),
-						iconClass: docs.panel === kind ? "i-ph-check" : "i-ph-check invisible",
-						action: () => docs.show(kind),
-					}))}
-				/>
-				<div
-					class="hidden shrink-0 overflow-hidden rounded border border-white/15 items-center sm:flex"
-					role="tablist"
-					aria-label="Document"
-				>
-					{#each DOC_KINDS as kind, index (kind)}
-						<button
-							type="button"
-							role="tab"
-							aria-selected={docs.panel === kind}
-							class="{docs.panel === kind
-								? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} inline-flex items-center min-h-7 {index ===
-							0
-								? 'rounded-r-none border-r-none'
-								: index === DOC_KINDS.length - 1
-									? 'rounded-l-none'
-									: 'rounded-none border-r-none'}"
-							onclick={() => docs.show(kind)}>{docs.tabLabel(kind)}</button
-						>
-					{/each}
-				</div>
-				<div class="flex items-stretch gap-2 {data.canEdit || docs.notesMine ? '' : 'hidden'}">
-					{#if docs.notationShown}
-						<button
-							class="button button-xs flex items-center"
-							type="button"
-							title="Upload notation: MusicXML files"
-							aria-label="Upload notation"
-							onclick={() => docs.notation?.pick()}
-						>
-							<span class="i-ph-plus"></span>
-						</button>
-					{:else}
-						<button
-							class="button button-xs flex items-center {docs.editing
-								? 'bg-blue-300 text-oxford border-blue-300'
-								: ''}"
-							type="button"
-							title={docs.editing
-								? `Done editing ${docs.notesMine ? "your notes" : `the ${docs.doc}`}`
-								: `Edit ${docs.notesMine ? "your notes" : `the ${docs.doc}`} here`}
-							aria-label={docs.editing
-								? `Done editing ${docs.notesMine ? "your notes" : `the ${docs.doc}`}`
-								: `Edit ${docs.notesMine ? "your notes" : `the ${docs.doc}`}`}
-							aria-pressed={docs.editing}
-							onclick={async () => {
-								if (docs.editing) await docs.editor?.close();
-								else docs.editing = true;
-							}}
-						>
-							<span
-								class={docs.editing
-									? docs.saving
-										? "i-ph-circle-notch animate-spin"
-										: "i-ph-check"
-									: (docs.notesMine ? docs.myNote.html : data.docs[docs.doc])
-										? "i-ph-pencil"
-										: "i-ph-plus"}
-							></span>
-						</button>
-					{/if}
-					<ContextMenu
-						ariaLabel="{DOC_LABELS[docs.panel]} menu"
-						title="More"
-						buttonBaseClasses="button button-xs"
-						iconClass={chordDraft.draftBusy || chordDraft.chordBusy
-							? "i-ph-circle-notch animate-spin"
-							: "i-ph-dots-three-outline-vertical-fill"}
-						position="bottom left"
-						items={docs.menuItems}
-					/>
-				</div>
-				<button
-					class="button button-xs hidden lg-inline-flex"
-					type="button"
-					title={docs.mode === "floating"
-						? "Put the docs back in their column"
-						: "Pop the docs out into a panel"}
-					aria-label={docs.mode === "floating" ? "Dock the docs" : "Pop out the docs"}
-					onclick={() => void docs.setMode(docs.mode === "floating" ? "docked" : "floating")}
-				>
-					<span
-						class={docs.mode === "floating" ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
-						aria-hidden="true"
-					></span>
-				</button>
-			{/snippet}
-			{#if docs.panel === "chart" || (docs.panel === "notes" && docs.canHaveNote) || docs.editing}
-				<!-- Stuck to the panel's top right: the editor's pane while a document is edited, Chords / Engraving on the Chart tab, Project / Mine on the Notes tab (Kevin). -->
-				<div
-					class="sticky top-0 z-10 flex items-start justify-end gap-2 h-0 overflow-visible pointer-events-none"
-				>
-					{#if docs.editing && !docs.notationShown && docs.panel !== "chart"}
-						<div
-							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
-							role="radiogroup"
-							aria-label="Editor view"
-						>
-							{#each DOC_VIEWS as v, index (v.id)}
-								<button
-									type="button"
-									role="radio"
-									aria-checked={docs.view === v.id}
-									class="{docs.view === v.id
-										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
-									0
-										? 'rounded-r-none border-r-none'
-										: 'rounded-l-none'}"
-									onclick={() => (docs.view = v.id)}>{v.name}</button
-								>
-							{/each}
-						</div>
-					{/if}
-					{#if docs.panel === "notes" && docs.canHaveNote}
-						<div
-							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
-							role="radiogroup"
-							aria-label="Whose notes"
-						>
-							{#each [{ id: false, label: "Project" }, { id: true, label: "Mine" }] as m, index (m.label)}
-								<button
-									type="button"
-									role="radio"
-									aria-checked={docs.notesChoice === m.id}
-									title={m.id
-										? "A private note of your own on this song"
-										: "The notes everyone on the project sees"}
-									class="{docs.notesChoice === m.id
-										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
-									0
-										? 'rounded-r-none border-r-none'
-										: 'rounded-l-none'}"
-									onclick={() => void docs.setNotesMine(m.id)}>{m.label}</button
-								>
-							{/each}
-						</div>
-					{/if}
-					{#if docs.panel === "chart"}
-						<div
-							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
-							role="radiogroup"
-							aria-label="Chart mode"
-						>
-							{#each [{ id: "text", label: "Chords" }, { id: "notation", label: `Engraving (${notationCount})` }] as m, index (m.id)}
-								<button
-									type="button"
-									role="radio"
-									aria-checked={docs.chartMode === m.id}
-									class="{docs.chartMode === m.id
-										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
-									0
-										? 'rounded-r-none border-r-none'
-										: 'rounded-l-none'}"
-									onclick={() => void docs.setChartMode(m.id as "text" | "notation")}
-									>{m.label}</button
-								>
-							{/each}
-						</div>
-						{#if docs.chartMode === "text"}
-							<!-- How the Chords view spells chords: a syntax choice within chords, so a menu on the view (Kevin). -->
-							<div class="pointer-events-auto rounded shadow-md shadow-black/40">
-								<ContextMenu
-									ariaLabel="Chord spelling: {docs.chordDialectShort}"
-									title="Chord spelling"
-									buttonBaseClasses="button button-xs gap-1 border-white/15 bg-oxford/95 opacity-80 hover-opacity-100"
-									iconClass="i-ph-list-numbers"
-									label={docs.chordDialectShort}
-									items={docs.chordDialectItems}
-								/>
-							</div>
-							<!-- Transposition is a view-level key choice, like the spelling (Kevin, 2026-11-02): the chart text stays as written. -->
-							<div class="pointer-events-auto rounded shadow-md shadow-black/40">
-								<ContextMenu
-									ariaLabel="Key: {docs.chartKey.label(data.song.chartMarkdown)}"
-									title="Key: the chart drawn in another key (a viewing choice; the chart itself does not change)"
-									buttonBaseClasses="button button-xs gap-1 border-white/15 bg-oxford/95 opacity-80 hover-opacity-100"
-									iconClass="i-ph-music-note"
-									label={docs.chartKey.label(data.song.chartMarkdown)}
-									items={docs.chartKey.items(data.song.chartMarkdown)}
-								/>
-							</div>
-						{/if}
-					{/if}
-				</div>
-			{/if}
-			{#if docs.notationShown}
-				<!-- The notation files (docs/uploads-and-blob.md, "Notation"): MusicXML engraved in the browser. -->
-				<SongNotationPanel
-					bind:this={docs.notation}
-					songId={data.song.id}
-					songTitle={data.song.title}
-					notation={data.song.notation}
-					pdfs={notationPdfs}
-					canEdit={data.canEdit}
-					aiAvailable={data.aiAvailable && !data.song.noAi && !data.song.project.noAi}
-					oncheck={() => void check.askAiWithScore()}
-					chartDefaults={chartDefaults(data.song.changes)}
-				/>
-			{:else if docs.notesMine}
-				<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->
-				{#key `mynotes:${docs.myNote.version}`}
-					<SongDocPanel
-						bind:this={docs.editor}
-						songId={data.song.id}
-						kind="mynotes"
-						label="My notes"
-						hint="Your own notepad for this song. Nobody else sees it."
-						markdown={docs.myNote.markdown}
-						html={docs.myNote.html}
-						version={docs.myNote.version}
-						canEdit={true}
-						bind:editing={docs.editing}
-						view={docs.view}
-						mono={docs.mono.notes}
-					/>
-				{/key}
-			{:else}
-				{#key docs.doc}
-					<SongDocPanel
-						bind:this={docs.editor}
-						songId={data.song.id}
-						kind={docs.doc}
-						label={DOC_LABELS[docs.doc]}
-						hint={DOC_HINTS[docs.doc]}
-						markdown={docs.text}
-						html={data.docs[docs.doc]}
-						version={docs.version}
-						canEdit={data.canEdit}
-						bind:editing={docs.editing}
-						view={docs.view}
-						mono={docs.mono[docs.doc]}
-						above={docs.panel === "chart" ? draftInPanel : undefined}
-						chartDefaults={chartDefaults(data.song.changes)}
-						numerals={docs.numerals}
-						chartText={docs.chartKey.text(data.song.chartMarkdown)}
-					/>
-				{/key}
-			{/if}
-		</FloatingPanel>
+		<SongDocsPanel
+			{docs}
+			song={data.song}
+			docsHtml={data.docs}
+			canEdit={data.canEdit}
+			aiAvailable={data.aiAvailable}
+			{notationPdfs}
+			{notationCount}
+			busy={chordDraft.draftBusy || !!chordDraft.chordBusy}
+			oncheck={() => void check.askAiWithScore()}
+			above={draftInPanel}
+		/>
 		<DocHistoryPanel
 			target={history.target}
 			canRestore={history.restorable}
@@ -1150,58 +842,33 @@
 {/snippet}
 
 {#snippet draftCard()}
-	{#if chordDraft.draft}
-		<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-			<div class="flex flex-wrap items-center justify-between gap-2">
-				<span class="font-600">AI draft</span>
-				<span class="flex items-center gap-3">
-					<button class="link-dim" type="button" onclick={saveDraftSections}>Save sections</button>
-					<button class="link-dim" type="button" onclick={saveDraftChart}>Save as chart</button>
-					<button class="link-dim" type="button" onclick={() => (chordDraft.draft = null)}
-						>Discard</button
-					>
-				</span>
-			</div>
-			{#if chordDraft.draft.chords.trim()}
-				<details class="mt-2 text-12px">
-					<summary class="cursor-pointer text-dim">Chords by bar</summary>
-					<pre class="mt-1 whitespace-pre-wrap font-mono opacity-90">{aiChordLines(
-							chordDraft.draft.chords,
-						)}</pre>
-				</details>
-			{/if}
-			<p class="mt-1 text-13px">
-				<!-- Unkeyed on purpose: a draft is replaced whole, and section names repeat (two verses). -->
-				{#each chordDraft.draft.sections as sec, i}{i > 0 ? " · " : ""}{sec.name} @ bar {sec.bar}{/each}
-			</p>
-			<ul class="mt-1 text-13px opacity-90">
-				{#each chordDraft.draft.progressions as pr}
-					<li><span class="font-600">{pr.section}:</span> {pr.chords}</li>
-				{/each}
-			</ul>
-			{#if chordDraft.draft.notes}<p class="mt-1 text-12px text-dim">
-					{chordDraft.draft.notes}
-				</p>{/if}
-			<!-- The suggested chart as it would look once saved. -->
-			<article class="mt-3 chart-body rounded-md border border-current/40 bg-blue-300/5 px-6 py-6">
-				<ChartHtml html={chordDraft.draft.chartHtml} />
-			</article>
-			<details class="mt-1 text-12px">
-				<summary class="cursor-pointer text-dim">Chart markdown</summary>
-				<pre class="mt-1 whitespace-pre-wrap rounded bg-black/20 p-2 opacity-90">{chordDraft.draft
-						.chart}</pre>
-			</details>
-		</div>
-	{/if}
+	<SongDraftCard
+		{chordDraft}
+		songId={data.song.id}
+		grid={posCtx.grid}
+		hasSections={data.song.sections.length > 0}
+		hasChart={!!data.docs.chart}
+		onsectionssaved={async () => {
+			await refreshAll();
+			sections.reset();
+		}}
+		onchartsaved={refreshAll}
+	/>
 {/snippet}
 
 {#snippet draftInPanel()}
-	{#if chordDraft.chordError}<p class="mb-4 text-sm text-red-400" role="alert">
-			{chordDraft.chordError}
-		</p>{/if}
-	{#if chordDraft.draft}
-		<div class="mb-6">{@render draftCard()}</div>
-	{/if}
+	<SongDraftInPanel
+		{chordDraft}
+		songId={data.song.id}
+		grid={posCtx.grid}
+		hasSections={data.song.sections.length > 0}
+		hasChart={!!data.docs.chart}
+		onsectionssaved={async () => {
+			await refreshAll();
+			sections.reset();
+		}}
+		onchartsaved={refreshAll}
+	/>
 {/snippet}
 
 {#snippet afterRows()}
@@ -1217,23 +884,7 @@
 			oncontext={(seconds, x, y) => pointerMenus.openMix(seconds, x, y)}
 		/>
 	{/if}
-	<!-- The player's tips under the rows, as the instruments wear them (Kevin: the comment gesture is not obvious). -->
-	{#if playerEngine}
-		<div
-			aria-label="Player tips"
-			class="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-light [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
-		>
-			<span><kbd>Space</kbd> play / pause</span>
-			<span><kbd>Home</kbd> to the start</span>
-			<span>click a waveform to jump there</span>
-			{#if data.canComment}
-				<span
-					><kbd>⌘</kbd>-click, <kbd>Ctrl</kbd>-click or right-click a waveform to leave a comment
-					there</span
-				>
-			{/if}
-		</div>
-	{/if}
+	{#if playerEngine}<PlayerTips canComment={data.canComment} />{/if}
 {/snippet}
 
 {#snippet stemBadge(stem: StemState)}
