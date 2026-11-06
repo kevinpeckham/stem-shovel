@@ -7,6 +7,12 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## The VM's egress IP changed and the firewall's bypass rule silently stopped matching (2026-11-06)
+
+- **What happened.** Right after the v0.228.0 deploy, every request from the VM to production, staging and the deployment's own URL answered 429 with `x-vercel-mitigated: challenge` ("Vercel Security Checkpoint"): the home-page version poll, the Swamp site audit (every step failed) and a headless Chromium left on the page for 90 s all got the checkpoint, while other Vercel sites answered the VM normally and the function logs showed real visitors being served. The project's firewall has the managed Bot Protection ruleset on with the challenge action, and the custom rule "Agent VM bypass" (action Bypass, `ip_address eq <VM egress IPv4>`) that lets this VM through still named 45.250.253.163; `curl https://api.ipify.org` showed the VM now leaves through 185.209.178.21.
+- **The fix.** The rule's condition updated to the new address through the CLI's API passthrough, `vercel api "/v1/security/firewall/config?projectId=…&teamId=…" --method PATCH --input body.json` with `{"action":"rules.update","id":"rule_agent_vm_bypass_g976HV","value":{…the whole rule…}}`; the active configuration moved from version 14 to 15 at once, with no publish step, and the next request from the VM was a 200. The claude.ai Vercel MCP connector answers 404 "Seawall Config not found" for this project's firewall config, GET and PATCH alike, so the CLI is the way in. Vercel evaluates system bypass, system mitigations, attack mode, IP blocks, custom rules and then the managed rulesets, so a custom Bypass rule placed before Bot Protection is enough.
+- **Lesson.** A blanket 429 from this VM against every route of one project, with other Vercel sites fine, means the bypass rule's address is stale, not an outage: check the egress address before anything else. The address is not under our control and can change with the VM's host.
+
 ## pdfkit's built-in fonts drop ♯ and ♭; a font ships as a Vite `?inline` asset; `@barmark/render` does not export its chord typesetting (2026-11-05)
 
 Found drawing the documentation PDF's chart from barmark's model
