@@ -33,6 +33,8 @@ words:
   - hdim
   - STFT
   - ptnghia
+  - numpy
+  - nchord
   - barkup
   - MVCC
   - unparseable
