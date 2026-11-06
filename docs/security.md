@@ -359,21 +359,34 @@ lists production's unresolved issues of the last N hours with each one's
 latest event (frames, tags, request), and `bun run sentry:diagnose` takes
 that scan and, for the newest issues without a record under
 `.sentry-triage/` (gitignored, the ledger), runs a headless Claude Code in
-a worktree of `origin/dev` with the issue as its brief. The agent answers
-a structured diagnosis (confidence, a fix applied or proposed, the risk);
-the script, not the agent, decides whether a change becomes a pull
-request: only files under `src/`, `scripts/` or `tests/`, at most six,
-never package.json, migrations, vercel.json, the workflows, the env schema
-or the release files, and only after lint, svelte-check and the tests pass
-in the worktree. Then it commits by path, pushes `sentry/<shortId>` and
-opens a PR against `dev` with the diagnosis for review. Anything else is
-recorded as proposed, with the recommendation. `--dry` prints the brief
-without calling Claude.
+a worktree of `origin/dev` with the issue as its brief. The brief carries
+text an outsider can influence (the issue's title, its breadcrumbs: anyone
+who can make the public site throw), so what the agent may do is the
+script's `--mode`. Unattended runs use `diagnose`, the default: the agent
+has read-only tools (Read, Glob, Grep, `git log|diff|status`), answers a
+structured diagnosis (confidence, the risk, a recommendation) and proposes
+its change as a diff in the answer, which the script writes beside the
+record; nothing is installed, run or pushed. `fix` is an attended command
+(Kevin runs it, never the schedule; FINDINGS.md, 2026-11-06): the agent may
+edit and run the tests, and the script, not the agent, decides whether the
+change becomes a pull request: only files under `src/`, `scripts/` or
+`tests/`, at most six, never package.json, migrations, vercel.json, the
+workflows, the env schema or the release files, and only after lint,
+svelte-check and the tests pass in the worktree. Then it commits by path,
+pushes `sentry/<shortId>` and opens a PR against `dev` with the diagnosis
+for review. Anything else is recorded as proposed, with the recommendation.
+In both modes the agent and the gates get a minimal environment built from
+an allowlist (PATH, HOME, the locale and the Claude sign-in; never the
+varlock secrets the script itself holds), so code the agent wrote cannot
+read them from its process; it still runs as the VM's user with the
+filesystem in reach, which only a sandbox would close. `--dry` prints the
+brief without calling Claude.
 
 Swamp wraps it (`extensions/behaviors/sentry_triage.ts`, type
 `@kevin/sentry-triage`; `models/@kevin/sentry-triage/sentry-production`):
 `scan` records the issue list as data, `triage` records a `triage`
-resource per diagnosis with its Markdown report as a file, so
+resource per diagnosis with its Markdown report (and proposed patch) as
+files, in the definition's `agentMode` (diagnose), so
 `swamp data query 'behavior("sentry-production")'` and the reports show
 what each night found. `workflows/workflow-sentry-triage.yaml` runs it
 (`bunx varlock run -- swamp workflow run sentry-triage`, `--input

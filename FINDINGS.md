@@ -84,6 +84,14 @@ repo's agent to fix; the bench does not edit app pipelines.
   Write+test but inside a no-egress sandbox.
 - Until one of those lands, treat `sentry:diagnose` as a command Kevin
   runs attended, not a schedule.
+- **Landed the same day:** the agent and the gates get an allowlisted
+  environment (never the varlock secrets), and `--mode diagnose`, the
+  default and what the schedule runs, gives the agent read-only tools and
+  takes its change as a proposed diff in the record; `--mode fix` (edit,
+  gate, pull request) is attended. The filesystem (the main checkout's
+  `.env.local`, `~/.claude`, `~/.config/gh`) stays in reach of agent-run
+  code in fix mode; a sandbox is the remaining step (docs/security.md
+  "Sentry triage").
 
 ## `@barmark/musicxml` exports nothing for a chart that plays with an error, and goes one way only (2026-11-04)
 

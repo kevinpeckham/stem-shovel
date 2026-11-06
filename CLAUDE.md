@@ -80,7 +80,7 @@ bun run audit:seo    # every route's indexability: sitemap, robots.txt, X-Robots
 bun run smoke:nightly   # smoke:urls + audit:seo against production, reported to Sentry (cron monitor + events); what .github/workflows/smoke.yml runs daily from GitHub; NIGHTLY_DRY=1 sends nothing (docs/security.md "Nightly, from GitHub")
 bun run smoke:segments  # the dynamic routes' sample values as the JSON SMOKE_SEGMENTS takes (the GitHub repository variable), from the stage's database
 bun run sentry:scan [--hours 24] [--json out]    # production's unresolved Sentry issues with their latest event (docs/security.md "Sentry triage")
-bun run sentry:diagnose --scan out [--max 3] [--dry]   # headless Claude Code diagnoses the newest issues in a worktree; a PR against dev for a small, gated fix; records under .sentry-triage/
+bun run sentry:diagnose --scan out [--max 3] [--mode diagnose|fix] [--dry]   # headless Claude Code diagnoses the newest issues in a worktree with read-only tools and proposes a patch (diagnose, the default and the schedule); fix mode edits, gates and opens a PR against dev, attended only; records under .sentry-triage/
 bunx varlock run -- swamp workflow run sentry-triage [--input mode=scan]   # Swamp: scan + diagnose as data; scheduled once swamp serve runs (the swamp-serve-stem-shovel user unit)
 bun run audit:effects # every $effect in the components with the rationale on the line before it; exits 1 on one without (docs/testing.md "The $effect audit")
 bunx varlock run -- swamp workflow run code-audit   # Swamp: the repo-level audits (audit:effects), asserted and kept as data

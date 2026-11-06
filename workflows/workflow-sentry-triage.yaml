@@ -3,9 +3,10 @@ name: sentry-triage
 description: >-
   Nightly Sentry triage (docs/security.md "Sentry triage"): sentry-production
   scans the unresolved production issues of the last day and has a headless
-  Claude Code diagnose the newest ones without a record, opening a pull
-  request against dev when the cause is clear and the fix is small; every
-  diagnosis is kept as data with its report. `swamp workflow run
+  Claude Code diagnose the newest ones without a record, reading only and
+  proposing a patch (the definition's agentMode; fix mode, which edits and
+  opens a pull request, is an attended command); every diagnosis is kept as
+  data with its report. `swamp workflow run
   sentry-triage` by hand, or the serve daemon's schedule; `--input mode=scan`
   only lists.
 tags:

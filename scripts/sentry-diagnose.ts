@@ -1,22 +1,33 @@
 /**
  * Sentry diagnose: the second half of the triage pipeline. For each issue of
  * a scan (scripts/sentry-scan.ts --json), a headless Claude Code session in a
- * fresh git worktree of origin/dev diagnoses the root cause and, when it is
- * confident and the fix is small, applies it; this script then checks the
- * change itself (which files, how many, and the lint, check and test gates
- * run here, not taken on the agent's word) and opens a pull request against
- * `dev`. The main checkout's branch and files are never touched.
+ * fresh git worktree of origin/dev diagnoses the root cause.
  *
- *   bun run sentry:diagnose --scan scan.json                     # the first 3 issues with no record
- *   bun run sentry:diagnose --scan scan.json --issue STEM-SHOVEL-70 --issue STEM-SHOVEL-6Z
+ * Two modes. `--mode diagnose` (the default) gives the agent read-only tools
+ * (Read, Glob, Grep, git log/diff/status): it proposes a small fix as a
+ * unified diff, which is written to <out>/<shortId>.patch and never applied,
+ * gated or turned into a pull request. `--mode fix` lets the agent edit and
+ * run the tests: when it is confident and the fix is small it applies it, and
+ * this script checks the change itself (which files, how many, and the lint,
+ * check and test gates run here, not taken on the agent's word) and opens a
+ * pull request against `dev`. Why two: the brief carries Sentry text that
+ * anyone who can raise an error on the public site can shape, and an agent
+ * that can write a file and run the tests can run any code (FINDINGS.md,
+ * "sentry:diagnose hands untrusted error text to an agent…"). Unattended runs
+ * (the Swamp workflow, a schedule) diagnose; applying and gating a fix is an
+ * attended command. The main checkout's branch and files are never touched.
+ *
+ *   bun run sentry:diagnose --scan scan.json                     # diagnose the first 3 issues with no record
+ *   bun run sentry:diagnose --scan scan.json --mode fix --issue STEM-SHOVEL-70   # attended: apply, gate, PR
  *   bun run sentry:diagnose --scan scan.json --max 1 --dry       # print the brief, call nothing
  *
- * Flags: --scan <file> (required); --issue <shortId> (repeatable; else the
- * first --max issues of the scan with no record); --max <n> (3); --out <dir>
- * (.sentry-triage, gitignored); --model <id> (claude-opus-5-5); --dry (no
- * agent and no worktree: prints the first brief and writes "dry run"
- * records); --force (diagnose again although a record exists); --keep (leave
- * the worktree, and its branch, in place for a look).
+ * Flags: --scan <file> (required); --mode diagnose|fix (diagnose); --issue
+ * <shortId> (repeatable; else the first --max issues of the scan with no
+ * record); --max <n> (3); --out <dir> (.sentry-triage, gitignored); --model
+ * <id> (claude-opus-5-5); --dry (no agent and no worktree, in either mode:
+ * prints the first brief and writes "dry run" records); --force (diagnose
+ * again although a record exists); --keep (leave the worktree, and in fix
+ * mode its branch, in place for a look).
  *
  * The ledger: <out>/<shortId>.json is the record and <out>/<shortId>.md the
  * readable report; an issue with a record is skipped unless --force (a
@@ -24,15 +35,19 @@
  * agent changed files, the diff is kept as <out>/<shortId>.patch whether or
  * not it became a pull request. An issue that fails before the agent answers
  * (worktree, install, agent error) gets no record, so the next run tries it
- * again. A fix the agent applied is downgraded to "proposed" (the changes
- * discarded, the reason in downgradedBecause) when a path falls outside
- * src/, scripts/ and tests/ or is a schema, migration, lockfile or release
- * file, when more than MAX_FILES changed, or when a gate fails.
+ * again. In fix mode a fix the agent applied is downgraded to "proposed" (the
+ * changes discarded, the reason in downgradedBecause) when a path falls
+ * outside src/, scripts/ and tests/ or is a schema, migration, lockfile or
+ * release file, when more than MAX_FILES changed, or when a gate fails; in
+ * diagnose mode an "applied" answer is always recorded as "proposed".
  *
  * Env: SENTRY data comes from the scan file only (no Sentry call here);
- * CLAUDE_BIN (default `claude`), CLAUDE_CODE_OAUTH_TOKEN passed through when
- * set; CLAUDECODE and CLAUDE_CODE_ENTRYPOINT are removed for the child (a
- * nested session refuses otherwise). git and gh must be signed in for the
+ * CLAUDE_BIN (default `claude`). The agent and the gates get only the
+ * variables in CHILD_ENV_ALLOWLIST (CLAUDE_CODE_OAUTH_TOKEN and
+ * ANTHROPIC_API_KEY passed through when set for the sign-in, SKIP_VARLOCK=1;
+ * CLAUDECODE and CLAUDE_CODE_ENTRYPOINT, which make a nested session refuse,
+ * are simply absent), never the varlock-resolved secrets; this script's own
+ * git and gh calls keep the full env. git and gh must be signed in for the
  * push and the pull request. Exits 0 when every chosen issue produced a
  * record, 1 when any failed, 2 on a bad argument, 3 when claude is not
  * signed in on this machine.
@@ -48,7 +63,8 @@ const MAX_FILES = 6;
 const AGENT_TIMEOUT_MS = 60 * 60 * 1000;
 const GATE_TIMEOUT_MS = 20 * 60 * 1000;
 const LABEL = "sentry-autofix";
-const ALLOWED_TOOLS = [
+/** Fix mode (attended): the agent edits, formats and runs the gates itself. */
+const ALLOWED_TOOLS_FIX = [
 	"Read",
 	"Edit",
 	"Write",
@@ -62,6 +78,51 @@ const ALLOWED_TOOLS = [
 	"Bash(git status:*)",
 	"Bash(git log:*)",
 ].join(",");
+/** Diagnose mode (the default, unattended): read-only, no writes and no test runs. */
+const ALLOWED_TOOLS_DIAGNOSE = [
+	"Read",
+	"Glob",
+	"Grep",
+	"Bash(git log:*)",
+	"Bash(git diff:*)",
+	"Bash(git status:*)",
+].join(",");
+/**
+ * The only variables the agent and the gates inherit (plus SKIP_VARLOCK=1). Both can run code
+ * the agent wrote, steered by Sentry text anyone can shape, so a run under `bunx varlock run`
+ * must not hand them the resolved secrets (FINDINGS.md, "sentry:diagnose hands untrusted error
+ * text to an agent that can write and run code with the caller's env"). This cuts the
+ * environment payload only: the children still run as this Unix user with the filesystem in
+ * reach (the main checkout's .env.local, ~/.claude, ~/.config/gh); a sandbox is the stronger
+ * fix and out of scope here. NODE_OPTIONS is left out on purpose (it can preload code).
+ */
+const CHILD_ENV_ALLOWLIST = [
+	"PATH",
+	"HOME",
+	"USER",
+	"LOGNAME",
+	"SHELL",
+	"TERM",
+	"LANG",
+	"LC_ALL",
+	"TZ",
+	"TMPDIR",
+	"XDG_CONFIG_HOME",
+	"XDG_CACHE_HOME",
+	"XDG_DATA_HOME",
+	"XDG_RUNTIME_DIR",
+	"CI",
+	// The Claude sign-in, when given by env rather than ~/.claude.
+	"CLAUDE_CODE_OAUTH_TOKEN",
+	"ANTHROPIC_API_KEY",
+] as const;
+/** The minimal env for a child that may run agent-written code; never a spread of process.env. */
+function childEnv(): NodeJS.ProcessEnv {
+	// No 1Password in the worktree (.env.local is not copied): the gates run as CI does.
+	const env: NodeJS.ProcessEnv = { SKIP_VARLOCK: "1" };
+	for (const k of CHILD_ENV_ALLOWLIST) if (process.env[k] !== undefined) env[k] = process.env[k];
+	return env;
+}
 const SCHEMA = {
 	type: "object",
 	additionalProperties: false,
@@ -74,14 +135,20 @@ const SCHEMA = {
 		files: {
 			type: "array",
 			items: { type: "string" },
-			description: "Paths changed; empty when none.",
+			description: "Paths changed (or, with a patch, the paths it touches); empty when none.",
 		},
 		summary: { type: "string", maxLength: 70, description: "One line for a PR title." },
 		risk: { type: "string", description: "What could go wrong." },
+		patch: {
+			type: "string",
+			description:
+				"Diagnose mode: the proposed change as a unified diff (git diff format, paths relative to the worktree root). Omit when none.",
+		},
 	},
 };
 
 type Fix = "applied" | "proposed" | "none";
+type Mode = "diagnose" | "fix";
 interface Answer {
 	diagnosis: string;
 	confidence: "high" | "medium" | "low";
@@ -90,6 +157,8 @@ interface Answer {
 	files: string[];
 	summary: string;
 	risk: string;
+	/** The proposed diff's text (diagnose mode); the record keeps a path to it instead. */
+	patch?: string;
 }
 interface Gates {
 	lint?: boolean;
@@ -103,6 +172,7 @@ interface TriageRecord {
 	permalink: string;
 	diagnosedAt: string;
 	model: string;
+	mode: Mode;
 	confidence: Answer["confidence"];
 	fix: Fix;
 	agentFix?: Fix;
@@ -140,7 +210,7 @@ function bad(message: string): never {
 	process.exit(2);
 }
 
-const VALUED = new Set(["--scan", "--issue", "--max", "--out", "--model"]);
+const VALUED = new Set(["--scan", "--issue", "--max", "--out", "--model", "--mode"]);
 const SWITCHES = new Set(["--dry", "--force", "--keep"]);
 for (const [i, a] of process.argv.entries()) {
 	if (i < 2 || !a.startsWith("--")) continue;
@@ -155,6 +225,10 @@ const max = Number(maxRaw);
 if (!Number.isInteger(max) || max < 1) bad(`--max wants a whole number above 0, got ${maxRaw}`);
 const out = resolve(argPath("--out") ?? ".sentry-triage");
 const model = argPath("--model") ?? "claude-opus-5-5";
+const modeRaw = argPath("--mode") ?? "diagnose";
+if (modeRaw !== "diagnose" && modeRaw !== "fix")
+	bad(`--mode wants diagnose or fix, got ${modeRaw}`);
+const mode: Mode = modeRaw;
 const dry = process.argv.includes("--dry");
 const force = process.argv.includes("--force");
 const keep = process.argv.includes("--keep");
@@ -294,15 +368,27 @@ function brief(issue: ScannedIssue, branch: string) {
 		"",
 		"## What to do",
 		"",
-		`You are in a git worktree of stem-shovel, checked out on branch ${branch} from origin/${BASE_BRANCH}. Read CLAUDE.md first and follow its conventions. The latest event's release is a git sha: \`git log\` tells you whether the code has changed since.`,
-		"",
-		"1. Diagnose the root cause from the data above and the code. Say so when the error is outside the app's control (a network failure, a stale deployment chunk, a browser extension) or already fixed on this branch.",
-		`2. If and only if the cause is clear and the fix is small and safe (one or a few files, at most ${MAX_FILES}, under src/, scripts/ or tests/; no schema or migration, no package.json, no dependency, no change to what plays or to user data), apply it, with a test beside the code where one fits. Format what you change with \`bunx vp fmt <file>\`, then run \`bun run lint\`, \`bun run check\` and \`bun run test\`, and fix what they report. Set fix to "applied" and list the files.`,
-		'3. Otherwise do not edit anything: set fix to "proposed" (with the change you recommend) or "none" (nothing worth changing), and files to [].',
-		"",
-		"Never commit, push, create branches or otherwise change git state; the caller does that after checking your work. Do not edit files outside this worktree.",
-		"",
-		"Answer with the structured output only: diagnosis (the root cause, 2-6 sentences), confidence (high|medium|low), fix (applied|proposed|none), recommendation (what to change, or why nothing), files (paths changed, empty when none), summary (one line for a PR title, at most 70 characters), risk (what could go wrong).",
+		...(mode === "diagnose"
+			? [
+					`You are in a git worktree of stem-shovel, detached at origin/${BASE_BRANCH}, with read-only tools: you cannot and must not edit files or run the tests. Read CLAUDE.md first and follow its conventions. The latest event's release is a git sha: \`git log\` tells you whether the code has changed since.`,
+					"",
+					"1. Diagnose the root cause from the data above and the code. Say so when the error is outside the app's control (a network failure, a stale deployment chunk, a browser extension) or already fixed on this branch.",
+					`2. If the cause is clear and the fix is small and safe (one or a few files, at most ${MAX_FILES}, under src/, scripts/ or tests/; no schema or migration, no package.json, no dependency, no change to what plays or to user data), propose it as a unified diff in the patch field: \`git diff\` format with a/ and b/ prefixes, paths relative to the worktree root, a test beside the code where one fits. Set fix to "proposed", list the files the diff touches in files and describe the change in recommendation. A person reviews, applies and gates it; nothing you write is applied automatically.`,
+					'3. Otherwise set fix to "proposed" (with the change you recommend in words, no patch) or "none" (nothing worth changing), and files to [].',
+					"",
+					"Never change git state. Answer with the structured output only: diagnosis (the root cause, 2-6 sentences), confidence (high|medium|low), fix (proposed|none), recommendation (what to change, or why nothing), files (paths the patch touches, empty when none), summary (one line for a PR title, at most 70 characters), risk (what could go wrong), patch (the unified diff, omitted when none).",
+				]
+			: [
+					`You are in a git worktree of stem-shovel, checked out on branch ${branch} from origin/${BASE_BRANCH}. Read CLAUDE.md first and follow its conventions. The latest event's release is a git sha: \`git log\` tells you whether the code has changed since.`,
+					"",
+					"1. Diagnose the root cause from the data above and the code. Say so when the error is outside the app's control (a network failure, a stale deployment chunk, a browser extension) or already fixed on this branch.",
+					`2. If and only if the cause is clear and the fix is small and safe (one or a few files, at most ${MAX_FILES}, under src/, scripts/ or tests/; no schema or migration, no package.json, no dependency, no change to what plays or to user data), apply it, with a test beside the code where one fits. Format what you change with \`bunx vp fmt <file>\`, then run \`bun run lint\`, \`bun run check\` and \`bun run test\`, and fix what they report. Set fix to "applied" and list the files.`,
+					'3. Otherwise do not edit anything: set fix to "proposed" (with the change you recommend) or "none" (nothing worth changing), and files to [].',
+					"",
+					"Never commit, push, create branches or otherwise change git state; the caller does that after checking your work. Do not edit files outside this worktree.",
+					"",
+					"Answer with the structured output only: diagnosis (the root cause, 2-6 sentences), confidence (high|medium|low), fix (applied|proposed|none), recommendation (what to change, or why nothing), files (paths changed, empty when none), summary (one line for a PR title, at most 70 characters), risk (what could go wrong).",
+				]),
 	].join("\n");
 }
 
@@ -323,14 +409,13 @@ function isAnswer(x: unknown): x is Answer {
 		typeof a.recommendation === "string" &&
 		Array.isArray(a.files) &&
 		typeof a.summary === "string" &&
-		typeof a.risk === "string"
+		typeof a.risk === "string" &&
+		(a.patch === undefined || typeof a.patch === "string")
 	);
 }
 function callAgent(prompt: string, cwd: string): AgentResult {
-	// No 1Password in the worktree (.env.local is not copied): the gates run as CI does.
-	const env: NodeJS.ProcessEnv = { ...process.env, SKIP_VARLOCK: "1" };
-	delete env.CLAUDECODE;
-	delete env.CLAUDE_CODE_ENTRYPOINT;
+	// The allowlist leaves out CLAUDECODE and CLAUDE_CODE_ENTRYPOINT (a nested session refuses).
+	const env = childEnv();
 	const r = run(
 		process.env.CLAUDE_BIN ?? "claude",
 		[
@@ -346,7 +431,7 @@ function callAgent(prompt: string, cwd: string): AgentResult {
 			model,
 			"--no-session-persistence",
 			"--allowedTools",
-			ALLOWED_TOOLS,
+			mode === "diagnose" ? ALLOWED_TOOLS_DIAGNOSE : ALLOWED_TOOLS_FIX,
 			"--permission-mode",
 			"default",
 		],
@@ -442,7 +527,7 @@ function discard(cwd: string) {
 	must("git", ["clean", "-fd"], { cwd });
 }
 function gates(cwd: string): { gates: Gates; output: string } {
-	const env = { ...process.env, SKIP_VARLOCK: "1" };
+	const env = childEnv();
 	const steps: [keyof Gates, string[]][] = [
 		["lint", ["run", "lint"]],
 		["check", ["run", "check"]],
@@ -493,7 +578,9 @@ function writeRecord(record: TriageRecord) {
 		"",
 		record.pr ? `${record.pr} (branch ${record.branch})` : "No PR.",
 		...(record.files.length ? ["", "## Files", "", ...record.files.map((f) => `- ${f}`)] : []),
-		...(record.patch ? ["", `Patch: ${record.patch}`] : []),
+		...(record.patch
+			? ["", `${record.mode === "diagnose" ? "Proposed patch" : "Patch"}: ${record.patch}`]
+			: []),
 		...(gateLine ? ["", `Gates: ${gateLine}.`] : []),
 		...(record.gateOutput ? ["", "```", record.gateOutput, "```"] : []),
 		...(record.warnings?.length
@@ -514,12 +601,16 @@ function baseRecord(
 		permalink: issue.permalink,
 		diagnosedAt: new Date().toISOString(),
 		model,
+		mode,
 		gates: {},
 	};
 }
 
 function dryRun(issue: ScannedIssue, first: boolean) {
-	if (first) console.log(`${brief(issue, `sentry/${issue.shortId}`)}\n\n---\n`);
+	if (first)
+		console.log(
+			`${brief(issue, `sentry/${issue.shortId}`)}\n\n---\nMode ${mode}; allowed tools: ${mode === "diagnose" ? ALLOWED_TOOLS_DIAGNOSE : ALLOWED_TOOLS_FIX}\n`,
+		);
 	writeRecord({
 		...baseRecord(issue),
 		confidence: "low",
@@ -539,15 +630,54 @@ function mainCheckoutStatus() {
 	return run("git", ["status", "--porcelain=v1", "--untracked-files=all"]).stdout;
 }
 
+/** Diagnose mode: a read-only agent in a detached worktree; no install, no gates, no branch, no PR. */
+function diagnoseOnly(issue: ScannedIssue, wt: string) {
+	const mainBefore = mainCheckoutStatus();
+	const { answer, costUsd, durationMs } = callAgent(brief(issue, `sentry/${issue.shortId}`), wt);
+	const { patch: proposed, ...fields } = answer;
+	const warnings: string[] = [];
+	if (mainCheckoutStatus() !== mainBefore)
+		warnings.push(
+			"the main checkout's git status changed while the agent ran; check it by hand (nothing there was reverted)",
+		);
+	const touched = changedPaths(wt);
+	if (touched.length) {
+		warnings.push(
+			`the read-only agent changed ${touched.join(", ")} in the worktree; discarded, not recorded as the patch`,
+		);
+		discard(wt);
+	}
+	const record: TriageRecord = {
+		...baseRecord(issue),
+		...fields,
+		agentFix: answer.fix,
+		costUsd,
+		durationMs,
+		warnings,
+	};
+	if (answer.fix === "applied") {
+		record.fix = "proposed";
+		record.downgradedBecause = "diagnose mode: fixes are proposed, not applied";
+	}
+	if (proposed?.trim()) {
+		record.patch = recordPath(issue.shortId, "patch");
+		writeFileSync(record.patch, proposed.endsWith("\n") ? proposed : `${proposed}\n`);
+	}
+	writeRecord(record);
+	return { record, pr: undefined, failed: undefined };
+}
+
 function diagnose(issue: ScannedIssue) {
 	const branch = `sentry/${issue.shortId}`;
 	const wt = join(out, `wt-${issue.shortId}`);
-	if (run("git", ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]).ok)
-		throw new Error(
-			`local branch ${branch} exists (an earlier run's PR, or a --keep); delete it or finish it first`,
-		);
-	if (must("git", ["ls-remote", "--heads", "origin", branch]).trim())
-		throw new Error(`origin already has ${branch}; review or delete its pull request first`);
+	if (mode === "fix") {
+		if (run("git", ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]).ok)
+			throw new Error(
+				`local branch ${branch} exists (an earlier run's PR, or a --keep); delete it or finish it first`,
+			);
+		if (must("git", ["ls-remote", "--heads", "origin", branch]).trim())
+			throw new Error(`origin already has ${branch}; review or delete its pull request first`);
+	}
 	if (existsSync(wt)) {
 		run("git", ["worktree", "remove", "--force", wt]);
 		rmSync(wt, { recursive: true, force: true });
@@ -558,6 +688,7 @@ function diagnose(issue: ScannedIssue) {
 	let pr: string | undefined;
 	let failed: string | undefined;
 	try {
+		if (mode === "diagnose") return diagnoseOnly(issue, wt);
 		must("git", ["switch", "--quiet", "-c", branch], { cwd: wt });
 		must("bun", ["install", "--frozen-lockfile"], { cwd: wt, timeout: GATE_TIMEOUT_MS });
 		// Whatever the worktree shows from here on is the agent's change, so it must start clean.
@@ -579,9 +710,11 @@ function diagnose(issue: ScannedIssue) {
 				`the agent moved git state in the worktree (branch ${branchNow || "detached"}, HEAD ${head.slice(0, 12)})`,
 			);
 
+		// A patch field from the agent is not this mode's: the record's patch is the worktree's diff.
+		const { patch: _unused, ...fields } = answer;
 		const record: TriageRecord = {
 			...baseRecord(issue),
-			...answer,
+			...fields,
 			agentFix: answer.fix,
 			costUsd,
 			durationMs,
@@ -644,7 +777,8 @@ function diagnose(issue: ScannedIssue) {
 	} finally {
 		if (!keep) {
 			run("git", ["worktree", "remove", "--force", wt]);
-			if (!pr) run("git", ["branch", "-D", branch]);
+			// Diagnose mode made no branch; never delete one an earlier fix run left.
+			if (!pr && mode === "fix") run("git", ["branch", "-D", branch]);
 		}
 	}
 }
@@ -744,11 +878,13 @@ if (!dry) {
 for (const [n, issue] of chosen.entries()) {
 	try {
 		if (dry) {
-			console.log(`${issue.shortId}  none  low  ${dryRun(issue, n === 0)}`);
+			console.log(`${issue.shortId}  none  low  ${dryRun(issue, n === 0)}  (${mode})`);
 			continue;
 		}
 		const { record, pr, failed } = diagnose(issue);
-		console.log(`${issue.shortId}  ${record.fix}  ${record.confidence}  ${pr ?? "no PR"}`);
+		console.log(
+			`${issue.shortId}  ${record.fix}  ${record.confidence}  ${pr ?? "no PR"}  (${mode})`,
+		);
 		if (record.warnings?.length) console.log(`  warning: ${record.warnings.join("; ")}`);
 		if (failed) failures++;
 	} catch (e) {
@@ -757,7 +893,7 @@ for (const [n, issue] of chosen.entries()) {
 			process.exit(3);
 		}
 		failures++;
-		console.log(`${issue.shortId}  failed  -  no PR`);
+		console.log(`${issue.shortId}  failed  -  no PR  (${mode})`);
 		console.error(`  ${e instanceof Error ? e.message : String(e)}`.replace(/\n/g, "\n  "));
 	}
 }

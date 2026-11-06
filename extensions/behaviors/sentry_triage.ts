@@ -26,6 +26,12 @@ const GlobalArgsSchema = z.object({
 		.default(3)
 		.describe("How many issues one triage run diagnoses"),
 	model: z.string().default("claude-opus-5-5").describe("The model the diagnosis runs on"),
+	agentMode: z
+		.enum(["diagnose", "fix"])
+		.default("diagnose")
+		.describe(
+			"diagnose: the agent reads only and proposes a patch (what unattended runs do); fix: it edits, the gates run and a pull request opens (attended only; FINDINGS.md, sentry:diagnose and untrusted error text)",
+		),
 	ledger: z
 		.string()
 		.default(".sentry-triage")
@@ -78,6 +84,11 @@ const TriageSchema = z.object({
 	files: z.array(z.string()),
 	branch: z.string().optional(),
 	pr: z.string().optional().describe("The pull request's URL when a fix was applied"),
+	patch: z
+		.string()
+		.optional()
+		.describe("The diff the agent proposed or applied, as a file beside the record"),
+	diagnosis: z.string().optional(),
 	gates: z
 		.object({ lint: z.boolean(), check: z.boolean(), test: z.boolean() })
 		.partial()
@@ -169,7 +180,7 @@ async function scan(context: Context): Promise<{ name: string }[]> {
 
 /** Scan, then diagnose the newest issues without a record; each record written since the start becomes a resource. */
 async function triage(context: Context): Promise<{ name: string }[]> {
-	const { maxIssues, model, ledger } = context.globalArgs;
+	const { maxIssues, model, ledger, agentMode } = context.globalArgs;
 	const dir = await Deno.makeTempDir({ prefix: "sentry-triage-" });
 	const started = Date.now();
 	try {
@@ -188,6 +199,8 @@ async function triage(context: Context): Promise<{ name: string }[]> {
 			ledger,
 			"--model",
 			model,
+			"--mode",
+			agentMode,
 		]);
 		if (result.code === 3)
 			throw new Error("claude is not signed in on this machine; nothing was diagnosed");
@@ -224,7 +237,7 @@ async function triage(context: Context): Promise<{ name: string }[]> {
 
 export const behavior = {
 	type: "@kevin/sentry-triage",
-	version: "2026.11.06.1",
+	version: "2026.11.06.2",
 	description:
 		"Sentry triage: production's unresolved issues as data, and a headless Claude Code diagnosing the newest ones, with a pull request against dev when the fix is small",
 	globalArguments: GlobalArgsSchema,
