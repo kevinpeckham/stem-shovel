@@ -173,8 +173,9 @@ so it is not in `vercel.json`. What it allows and why:
 
 - `script-src 'self'` plus the nonce — no third-party scripts.
 - `style-src 'self' 'unsafe-inline'` — `style:` attributes and transitions.
-- `font-src` adds `https://fonts.bunny.net` (UnoCSS inlines the `@font-face`
-  CSS at build time, so only the font files are fetched).
+- `font-src 'self' data:` — the web fonts are self-hosted (`static/fonts`,
+  declared in `uno.config.ts`; docs/styling.md), the chart's and the PDF's
+  fonts arrive as data URLs.
 - `media-src`, `img-src`, `frame-src` (the song page's PDF viewer) and `connect-src` add `https://*.public.blob.vercel-storage.com`
   and `https://*.private.blob.vercel-storage.com` (presigned URLs)
   (`<audio>` plays mixes and demos from the store; the player fetches

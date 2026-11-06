@@ -1,52 +1,60 @@
 import extractorSvelte from "@unocss/extractor-svelte";
 import presetWind4 from "@unocss/preset-wind4";
-import {
-	defineConfig,
-	presetIcons,
-	presetWebFonts,
-	transformerDirectives,
-	transformerVariantGroup,
-} from "unocss";
+import { defineConfig, presetIcons, transformerDirectives, transformerVariantGroup } from "unocss";
 
 /**
  * Mirrors lightningjar.com's uno.config (lightning-jar/lj-website) so the
- * app shares its look: wind4 + reset, Atkinson Hyperlegible / Bungee Shade
- *  * from bunny, the same palette and shortcuts. On top of that, the
+ * app shares its look: wind4 + reset, self-hosted web fonts (static/fonts),
+ * the same palette and shortcuts. On top of that, the
  * app's semantic colour tokens; the waveform canvas reads its colour from the
  * element (a `text-*` utility), so nothing imports the palette.
  */
 export default defineConfig({
 	extractors: [extractorSvelte()],
+	preflights: [
+		{
+			// Self-hosted web fonts (static/fonts, OFL): Noto Sans 400/600/700 and
+			// Noto Serif 400 regular and italic (barmark's `###` note lines are
+			// italic), latin and latin-ext. They came from presetWebFonts' bunny
+			// provider, which fetches bunny's CSS API when the config loads; on
+			// 2026-11-05 that API began answering with cdn.jsdelivr.net URLs, which
+			// the CSP's font-src blocked, and the live site fell back to system
+			// fonts (FINDINGS.md). Serving them from 'self' also removes the fetch
+			// that CI's test job had to skip. Keep the filenames in sync with the
+			// preloads in src/app.html. The mono stack is the system's: "Noto
+			// Mono" was never a face the provider had.
+			layer: "preflights",
+			getCSS: () =>
+				[
+					'@font-face{font-family:"Noto Sans";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/noto-sans-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}',
+					'@font-face{font-family:"Noto Sans";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/noto-sans-latin-ext-400-normal.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}',
+					'@font-face{font-family:"Noto Sans";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/noto-sans-latin-600-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}',
+					'@font-face{font-family:"Noto Sans";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/noto-sans-latin-ext-600-normal.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}',
+					'@font-face{font-family:"Noto Sans";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/noto-sans-latin-700-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}',
+					'@font-face{font-family:"Noto Sans";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/noto-sans-latin-ext-700-normal.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}',
+					'@font-face{font-family:"Noto Serif";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/noto-serif-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}',
+					'@font-face{font-family:"Noto Serif";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/noto-serif-latin-ext-400-normal.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}',
+					'@font-face{font-family:"Noto Serif";font-style:italic;font-weight:400;font-display:swap;src:url(/fonts/noto-serif-latin-400-italic.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}',
+					'@font-face{font-family:"Noto Serif";font-style:italic;font-weight:400;font-display:swap;src:url(/fonts/noto-serif-latin-ext-400-italic.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}',
+				].join("\n"),
+		},
+	],
 	presets: [
 		presetWind4({ preflights: { reset: true } }),
 		// Phosphor icons as classes (`i-ph-play-fill`), as in replicator
 		presetIcons({
 			warn: true,
 		}),
-		// The fonts are fetched from the provider when the config loads, which CI's
-		// test job cannot always reach (and never needs): skip them under Vitest and
-		// in the no-1Password CI environment; builds still inline them.
-		// Always the same preset (a conditional spread here broke CSS hot reload in
-		// dev, 2026-09-25); under Vitest and in the no-1Password CI environment the
-		// "none" provider emits nothing and fetches nothing (CI's test job cannot
-		// always reach the font provider, and never needs it). Builds inline them.
-		presetWebFonts({
-			provider: process.env.VITEST || process.env.SKIP_VARLOCK ? "none" : "bunny",
-			fonts: {
-				// brand: "Bangers",
-				// display: "Bahiana",
-				mono: "Noto Mono",
-				// Two entries: barmark's `###` note lines are italic, and `italic: true` on one entry would load only the italic.
-				serif: [
-					{ name: "Noto Serif", weights: ["400"] },
-					{ name: "Noto Serif", weights: ["400"], italic: true },
-				],
-				sans: "Noto Sans:400,600,700",
-				// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
-			},
-		}),
 	],
 	theme: {
+		// `font` is the wind4 theme key (fontFamily is ignored by presetWind4);
+		// the stacks presetWebFonts used to emit, the web fonts declared in the
+		// preflight above.
+		font: {
+			sans: '"Noto Sans",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"',
+			serif: '"Noto Serif",ui-serif,Georgia,Cambria,"Times New Roman",Times,serif',
+			mono: 'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace',
+		},
 		colors: {
 			accent: "#ebf92f",
 			"accent-1": "#ebf92f",

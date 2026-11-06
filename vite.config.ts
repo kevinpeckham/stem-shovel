@@ -131,7 +131,7 @@ export default defineConfig({
 					"style-src": ["self", "unsafe-inline"],
 					// Pictures of accounts, artists and songs live in the Blob stores too.
 					"img-src": ["self", "data:", "blob:", BLOB_STORE, BLOB_PRIVATE_STORE],
-					"font-src": ["self", "data:", "https://fonts.bunny.net"],
+					"font-src": ["self", "data:"],
 					"media-src": ["self", "blob:", BLOB_STORE, BLOB_PRIVATE_STORE],
 					"connect-src": [
 						"self",

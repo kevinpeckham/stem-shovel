@@ -1,8 +1,12 @@
 # Styling
 
 The look is lightningjar.com's. `uno.config.ts` mirrors
-lightning-jar/lj-website's config: wind4 with its reset, Atkinson Hyperlegible
-and Bungee Shade from bunny, the same palette and shortcuts (`button`,
+lightning-jar/lj-website's config: wind4 with its reset, self-hosted web
+fonts (Noto Sans 400/600/700 and Noto Serif 400 regular and italic, latin
+and latin-ext, as woff2 in `static/fonts`, declared in a preflight with
+`theme.font` stacks; Bunny Fonts' CSS API started answering with jsdelivr
+URLs on 2026-11-05 and the CSP blocked them, FINDINGS.md), the same palette
+and shortcuts (`button`,
 `button-accent`, `page-x-padding`, `main-y-padding`, `max-w-article`,
 `app-page-heading`, `heading-2`), Phosphor icons via `presetIcons` (`i-ph-…`,
 `@iconify-json/ph`), and `@unocss/extractor-svelte`.

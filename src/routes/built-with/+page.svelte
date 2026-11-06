@@ -42,9 +42,9 @@
 				},
 				{ name: "Phosphor Icons", url: "https://phosphoricons.com", what: "The icon set." },
 				{
-					name: "Noto Sans, Serif and Mono",
-					url: "https://fonts.bunny.net",
-					what: "The typefaces, chosen to read well at small sizes, served by Bunny Fonts (no tracking).",
+					name: "Noto Sans and Noto Serif",
+					url: "https://fonts.google.com/noto",
+					what: "The typefaces, chosen to read well at small sizes, served from the site itself (no third party, no tracking).",
 				},
 			],
 		},

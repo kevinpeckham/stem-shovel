@@ -4,6 +4,21 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" href="%sveltekit.assets%/icons/stem-shovel-icon.svg" />
+		<!-- the web fonts are self-hosted (static/fonts, declared in uno.config.ts); preloading the two latin sans faces gets them in before first paint -->
+		<link
+			rel="preload"
+			as="font"
+			type="font/woff2"
+			href="%sveltekit.assets%/fonts/noto-sans-latin-400-normal.woff2"
+			crossorigin
+		/>
+		<link
+			rel="preload"
+			as="font"
+			type="font/woff2"
+			href="%sveltekit.assets%/fonts/noto-sans-latin-700-normal.woff2"
+			crossorigin
+		/>
 		<!-- barmark's chart font, registered once on the document (a browser ignores @font-face inside the chart's shadow root); the element sees this and leaves it alone. The literal is fontFaceCss("/fonts/barmark/Edwin-Roman.otf"), checked by src/lib/server/barmarkFont.test.ts. -->
 		<!-- prettier-ignore -->
 		<style data-barmark-font>@font-face{font-family:"barmark Edwin";src:url("/fonts/barmark/Edwin-Roman.otf") format("opentype");font-display:swap}</style>
