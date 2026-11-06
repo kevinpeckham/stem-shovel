@@ -56,7 +56,6 @@ const ALLOWED_TOOLS = [
 	"Grep",
 	"Bash(bun run lint)",
 	"Bash(bun run check)",
-	"Bash(SKIP_VARLOCK=1 bun run test:*)",
 	"Bash(bun run test:*)",
 	"Bash(bunx vp fmt:*)",
 	"Bash(git diff:*)",
@@ -298,7 +297,7 @@ function brief(issue: ScannedIssue, branch: string) {
 		`You are in a git worktree of stem-shovel, checked out on branch ${branch} from origin/${BASE_BRANCH}. Read CLAUDE.md first and follow its conventions. The latest event's release is a git sha: \`git log\` tells you whether the code has changed since.`,
 		"",
 		"1. Diagnose the root cause from the data above and the code. Say so when the error is outside the app's control (a network failure, a stale deployment chunk, a browser extension) or already fixed on this branch.",
-		`2. If and only if the cause is clear and the fix is small and safe (one or a few files, at most ${MAX_FILES}, under src/, scripts/ or tests/; no schema or migration, no package.json, no dependency, no change to what plays or to user data), apply it, with a test beside the code where one fits. Format what you change with \`bunx vp fmt <file>\`, then run \`bun run lint\`, \`bun run check\` and \`SKIP_VARLOCK=1 bun run test\`, and fix what they report. Set fix to "applied" and list the files.`,
+		`2. If and only if the cause is clear and the fix is small and safe (one or a few files, at most ${MAX_FILES}, under src/, scripts/ or tests/; no schema or migration, no package.json, no dependency, no change to what plays or to user data), apply it, with a test beside the code where one fits. Format what you change with \`bunx vp fmt <file>\`, then run \`bun run lint\`, \`bun run check\` and \`bun run test\`, and fix what they report. Set fix to "applied" and list the files.`,
 		'3. Otherwise do not edit anything: set fix to "proposed" (with the change you recommend) or "none" (nothing worth changing), and files to [].',
 		"",
 		"Never commit, push, create branches or otherwise change git state; the caller does that after checking your work. Do not edit files outside this worktree.",
@@ -328,7 +327,8 @@ function isAnswer(x: unknown): x is Answer {
 	);
 }
 function callAgent(prompt: string, cwd: string): AgentResult {
-	const env = { ...process.env };
+	// No 1Password in the worktree (.env.local is not copied): the gates run as CI does.
+	const env: NodeJS.ProcessEnv = { ...process.env, SKIP_VARLOCK: "1" };
 	delete env.CLAUDECODE;
 	delete env.CLAUDE_CODE_ENTRYPOINT;
 	const r = run(
@@ -666,7 +666,7 @@ function openPr(
 		must("git", ["push", "--quiet", "-u", "origin", branch], { cwd: wt });
 		const passed = Object.entries(gateResults)
 			.filter(([, ok]) => ok)
-			.map(([k]) => (k === "test" ? "`SKIP_VARLOCK=1 bun run test`" : `\`bun run ${k}\``))
+			.map(([k]) => (k === "test" ? "`bun run test`" : `\`bun run ${k}\``))
 			.join(", ");
 		writeFileSync(
 			bodyFile,
