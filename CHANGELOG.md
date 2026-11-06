@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.228.0] - 2026-11-06
+
 ### Added
 
 - **Changing the sign-in email** on `/settings/security`: Better Auth's `changeEmail` (`user.changeEmail` in `src/lib/auth.ts`, `sendChangeEmailConfirmEmail` in email.ts) sends a confirmation link to the current address, then the verification link to the new one; both land back on the page, which tells the two steps apart from the address it kept in localStorage. An address another user holds gets the plugin's silent success (docs/auth.md).

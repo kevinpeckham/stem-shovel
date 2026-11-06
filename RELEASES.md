@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.228.0] - 2026-11-06
+
 ### Added
 
 - **Change the email you sign in with.** Security, in the account menu, now shows your sign-in address with a **Change email** button. A link goes to your current address to confirm, then a link to the new one to verify it; the change takes effect once both are opened. Everything else about your account stays as it is.
