@@ -18,13 +18,21 @@
 	import SongActionsMenu from "#lib/components/SongActionsMenu.svelte";
 	import SongCommentPopover from "#lib/components/SongCommentPopover.svelte";
 	import SongCommentCard from "#lib/components/SongCommentCard.svelte";
-	import CommentDeleteButton from "#lib/components/CommentDeleteButton.svelte";
 	import { SongComments } from "#lib/state/songComments.svelte.js";
 	import { SongDownloads } from "#lib/state/songDownloads.svelte.js";
 	import { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
-	import SongChat from "#lib/components/SongChat.svelte";
+	import SongChatPanel from "#lib/components/SongChatPanel.svelte";
+	import SongCommentsPanel from "#lib/components/SongCommentsPanel.svelte";
+	import SongAttachmentsPanel from "#lib/components/SongAttachmentsPanel.svelte";
+	import SongPointerMenus from "#lib/components/SongPointerMenus.svelte";
+	import { SongChat } from "#lib/state/songChat.svelte.js";
+	import { SongHistory } from "#lib/state/songHistory.svelte.js";
+	import {
+		SongPointerMenus as PointerMenus,
+		commentHere,
+	} from "#lib/state/songPointerMenus.svelte.js";
 	import ChartHtml from "#lib/components/ChartHtml.svelte";
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
 	import { chartDefaults } from "#lib/utils/chartDefaults.js";
@@ -35,13 +43,10 @@
 	import StemVersionOffer from "#lib/components/StemVersionOffer.svelte";
 	import { StemActions } from "#lib/state/stemActions.svelte.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
-	import PointerMenu from "#lib/components/PointerMenu.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
 	import MixList from "#lib/components/MixList.svelte";
-	import SongFilesPanel from "#lib/components/SongFilesPanel.svelte";
 	import SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
-	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import SongAmpPanel from "#lib/components/SongAmpPanel.svelte";
 	import SongInfoPopover from "#lib/components/SongInfoPopover.svelte";
@@ -53,10 +58,8 @@
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, secondsAtBar } from "#lib/audio/measures.js";
-	import { formatDate } from "#lib/utils/formatDate.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { dayText } from "#lib/utils/sessionName.js";
-	import { unreadCount } from "#lib/utils/groupChat.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { copyShortLink } from "#lib/utils/copyShortLink.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
@@ -77,7 +80,7 @@
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
-	import { onDestroy, onMount, tick, type ComponentProps } from "svelte";
+	import { onDestroy, onMount, tick } from "svelte";
 
 	let { data } = $props();
 
@@ -106,7 +109,7 @@
 	/** Demo recordings, uploaded from settings, the Demos view and the stem actions menu. */
 	const demos = new DemoUploads({ song: () => data.song, onuploaded: refreshAll });
 	/** The Docs panel's Attachments tab; the Uploads menu and the panel's ⋯ menu open its picker. */
-	let filesPanel = $state<SongFilesPanel | null>(null);
+	let attachments = $state<SongAttachmentsPanel | null>(null);
 
 	// Credits by role (song_credit rows with their artist); the song-info popover spells the rest out itself.
 	const creditsOf = (role: CreditRole) =>
@@ -227,15 +230,13 @@
 		void amp.setOn(false);
 		songAmp.dispose();
 	});
-	let chatOpen = $state(false);
+	/** The chat (docs/chat.md): its panel, messages and read mark. */
 	// svelte-ignore state_referenced_locally
-	let chatMessages = $state(data.chat?.messages ?? []);
-	// svelte-ignore state_referenced_locally
-	let chatReadAt = $state<number | null>(data.chat?.readAt ?? null);
+	const chat = new SongChat(data.chat, () => data.user?.id ?? null);
 	/** A chat notification's link ends in ?open=chat (docs/chat.md): the panel opens and the query goes, so a reload does not reopen it. */
 	function openChatFromUrl() {
 		if (!data.chat || page.url.searchParams.get("open") !== "chat") return;
-		chatOpen = true;
+		chat.open = true;
 		const url = new URL(page.url.href);
 		url.searchParams.delete("open");
 		replaceState(url, {});
@@ -250,16 +251,12 @@
 		replaceState(url, {});
 	}
 	afterNavigate(() => {
-		chatMessages = data.chat?.messages ?? [];
-		chatReadAt = data.chat?.readAt ?? null;
+		chat.reset(data.chat);
 		openChatFromUrl();
 		openCommentsFromUrl();
 		openMixFromUrl();
 		void openDemoFromUrl();
 	});
-	let chatUnread = $derived(
-		data.chat ? unreadCount(chatMessages, chatReadAt, data.user?.id ?? null) : 0,
-	);
 	/** The tabs and the Attachments button carry their counts, as the player's Stems and Demos tabs do (Kevin): the attachments (the scores among them), the comments, and the Chart's uploads (notation files and attachments marked as notation), or 1 for chart text with no uploads. */
 	let fileCount = $derived(
 		data.song.files.filter((p) => p.status === "ready").length +
@@ -290,26 +287,12 @@
 	function togglePlayer() {
 		setPlayerMode(playerMode === "minimised" ? playerRestore : "minimised");
 	}
-	/** The Attachments panel's picker, from the Uploads menu: the panel opened, then the picker. */
-	async function pickFiles() {
-		filesOpen = true;
-		await tick();
-		filesPanel?.pick();
-	}
-	/** The history panel's subject: a document (the project's or the user's own note) or a comment (docs/data-model.md). */
-	let history = $state<
-		| { kind: "doc"; songId: string; doc: SongDocSaveKind; label: string; current?: string }
-		| { kind: "comment"; commentId: string; label: string }
-		| null
-	>(null);
-	let historyRestorable = $derived.by(() => {
-		if (history?.kind === "doc") return history.doc === "mynotes" || data.canEdit;
-		if (history?.kind === "comment") {
-			const id = history.commentId;
-			const c = data.comments.find((x) => x.id === id);
-			return !!c && (comments.canEdit(c) || comments.canDelete(c));
-		}
-		return false;
+	/** The history panel: which document or comment it shows, and whether this user may restore a version. */
+	const history = new SongHistory({
+		canEdit: () => data.canEdit,
+		comments: () => data.comments,
+		canEditComment: (c) => comments.canEdit(c),
+		canDeleteComment: (c) => comments.canDelete(c),
 	});
 	// Comments: who may do what, and the popover form (one popover, create or edit).
 	const comments = new SongComments({
@@ -326,13 +309,6 @@
 			.map((c) => ({ id: c.id, title: c.title, at: c.at ?? 0 }))
 			.sort((a, b) => a.at - b.at),
 	);
-	/** The ⌘-click menu on a demo's waveform: Seek here, Comment here. */
-	let demoMenuAt = $state<{
-		demo: { id: string; label: string };
-		seconds: number;
-		x: number;
-		y: number;
-	} | null>(null);
 	/** A comment notification's link ends in ?demo=<id>: the Demos view opens on that demo, and the query goes. */
 	async function openDemoFromUrl() {
 		const url = new URL(page.url.href);
@@ -346,23 +322,8 @@
 		demoPanel?.show(id);
 	}
 
-	// Ctrl / ⌘-click (or right-click) on a waveform: a menu at the pointer (PointerMenu). The player
-	// has its own for the stem rows, with "Seek here"; the page adds "Comment here" to it and keeps the
-	// menus of the Comments row's mix waveform and of a demo's.
-	type MenuItem = NonNullable<ComponentProps<typeof PointerMenu>["items"]>[number];
-	const seekHere = (action: () => void): MenuItem => ({
-		label: "Seek here",
-		iconClass: "i-ph-skip-forward",
-		action,
-	});
-	/** The comment form opens with the spot's position filled in. */
-	const commentHere = (action: () => void): MenuItem => ({
-		label: "Comment here",
-		iconClass: "i-ph-hands-clapping-bold",
-		action,
-	});
-	/** Where the Comments row's mix waveform was Ctrl / ⌘-clicked or right-clicked. */
-	let mixMenuAt = $state<{ seconds: number; x: number; y: number } | null>(null);
+	/** The menus at the pointer on a demo's waveform and on the Comments row's mix (SongPointerMenus). */
+	const pointerMenus = new PointerMenus();
 	onMount(() => {
 		docs.load();
 		try {
@@ -458,7 +419,7 @@
 		chordDraft: () => chordDraft,
 		engineStatus: () => playerEngine?.status ?? null,
 		hasGrid: () => !!posCtx.grid,
-		onhistory: (target) => (history = target),
+		onhistory: (target) => history.open(target),
 	});
 	/** Scan stems, the uploader's detection and the AI's song check (the Tempo & key tab). */
 	const check = new SongCheck({
@@ -614,13 +575,13 @@
 					<button
 						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent relative"
 						type="button"
-						title={chatUnread ? `Chat: ${chatUnread} new` : "Chat about this song"}
-						aria-label="Chat{chatUnread ? ` (${chatUnread} new)` : ''}"
-						aria-pressed={chatOpen}
-						onclick={() => (chatOpen = !chatOpen)}
+						title={chat.unread ? `Chat: ${chat.unread} new` : "Chat about this song"}
+						aria-label="Chat{chat.unread ? ` (${chat.unread} new)` : ''}"
+						aria-pressed={chat.open}
+						onclick={() => chat.toggle()}
 					>
 						<span class="block i-ph-chat-circle-dots"></span>
-						{#if chatUnread}
+						{#if chat.unread}
 							<span
 								class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"
 								aria-hidden="true"
@@ -828,7 +789,7 @@
 						canComment={data.canComment}
 						card={demoCommentCard}
 						oncomment={(d) => comments.open({ demoId: d.id })}
-						oncontext={(d, seconds, x, y) => (demoMenuAt = { demo: d, seconds, x, y })}
+						oncontext={(d, seconds, x, y) => pointerMenus.openDemo(d, seconds, x, y)}
 					/>
 					{#if data.sessionRecordings.length > 0}
 						<!-- The session recordings the band tied to this song (docs/uploads-and-blob.md, "Sessions"): each opens on the Sessions page. -->
@@ -1014,7 +975,7 @@
 			bind:uploader
 			onuploaded={stemActions.offer}
 			onpickmix={() => void mixUploads.pick()}
-			onpickfiles={() => void pickFiles()}
+			onpickfiles={() => void attachments?.pick()}
 			onpicknotation={() => void docs.pickNotation()}
 			onshowdemos={() => showView("demos")}
 			onresetmix={() => player?.resetMix()}
@@ -1386,157 +1347,42 @@
 			{/if}
 		</FloatingPanel>
 		<DocHistoryPanel
-			target={history}
-			canRestore={historyRestorable}
-			onclose={() => (history = null)}
+			target={history.target}
+			canRestore={history.restorable}
+			onclose={() => history.close()}
 			onrestored={() => refreshAll()}
 		/>
 	</section>
-	<!-- The comments (docs/data-model.md "comment"): a panel of their own, opened from the Comments row's button under the stems; the list as the Docs tab had it. -->
-	<div class="{commentsOpen ? '' : 'hidden'} max-w-full lg:contents">
-		<FloatingPanel
-			open={commentsOpen}
-			title="Comments"
-			storageKey="stemshovel.song.comments-panel"
-			width={520}
-			height={640}
-			onminimise={() => (commentsOpen = false)}
-		>
-			{#snippet controls()}
-				{#if data.canComment}
-					<button
-						class="button button-xs flex items-center"
-						type="button"
-						title="Add a comment"
-						aria-label="Add a comment"
-						onclick={() => comments.open()}
-					>
-						<span class="i-ph-plus"></span>
-					</button>
-				{/if}
-			{/snippet}
-			<div
-				class="h-full min-h-full bg-blue-300/5 border rounded-md border-current/40 px-6 pt-6 pb-8"
-			>
-				{#if data.comments.length === 0}
-					<p class="opacity-80">No comments yet.</p>
-				{:else}
-					<ol class="grid gap-4">
-						{#each data.comments as c (c.id)}
-							<li
-								class="rounded-md border border-white/10 bg-black/20 px-4 py-3"
-								id="comment-{c.id}"
-							>
-								<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-									<h3 class="font-600">{c.title}</h3>
-									<span class="text-12px opacity-70">
-										{c.authorName} · {formatDate(c.createdAt)}
-										{#if c.editedAt}<button
-												type="button"
-												class="ml-1 rounded border border-current/30 px-1 text-9px uppercase tracking-wider hover:border-current/70"
-												title="Edited {formatDate(c.editedAt)}: see the earlier versions"
-												onclick={() =>
-													(history = { kind: "comment", commentId: c.id, label: `“${c.title}”` })}
-												>edited</button
-											>{/if}
-									</span>
-								</div>
-								{#if c.at !== null}
-									<button
-										type="button"
-										class="mt-1 text-12px link-dim"
-										onclick={() => playerEngine?.seek(c.at ?? 0)}
-										title="Go to this position"
-									>
-										<span class="i-ph-map-pin mr-1" aria-hidden="true"></span>{showPos(c.at)}
-									</button>
-								{/if}
-								<p class="mt-2 whitespace-pre-line text-15px">{c.body}</p>
-								{#if comments.canEdit(c) || comments.canDelete(c)}
-									<div class="mt-2 flex gap-3 text-12px">
-										{#if comments.canEdit(c)}
-											<button type="button" class="link-dim" onclick={() => comments.edit(c)}
-												>Edit</button
-											>
-										{/if}
-										{#if comments.canDelete(c)}
-											<CommentDeleteButton id={c.id} title={c.title} key={c.id} />
-										{/if}
-									</div>
-								{/if}
-							</li>
-						{/each}
-					</ol>
-				{/if}
-			</div>
-		</FloatingPanel>
-	</div>
-	{#if data.chat}
-		<!-- The chat (docs/chat.md): its own panel, closed until the header's button opens it; floats from lg, a block under the docs below (`contents` keeps it out of the grid from lg). -->
-		<div class="{chatOpen ? '' : 'hidden'} max-w-full lg:contents">
-			<FloatingPanel
-				open={chatOpen}
-				title="Chat"
-				storageKey="stemshovel.song.chat-panel"
-				width={440}
-				height={600}
-				onminimise={() => (chatOpen = false)}
-			>
-				<SongChat
-					songId={data.song.id}
-					bind:messages={chatMessages}
-					bind:readAt={chatReadAt}
-					me={data.user ? { id: data.user.id, name: data.user.name } : null}
-					isAdmin={comments.isAdmin}
-					canWrite={data.canComment}
-					onseek={(s) => playerEngine?.seek(s)}
-				/>
-			</FloatingPanel>
-		</div>
-	{/if}
-	<!-- The attachments (docs/uploads-and-blob.md, "Attachments"): every file of the song, the scores among them, in a panel of their own, closed until the toolbar's button opens it (Kevin). -->
-	<div class="{filesOpen ? '' : 'hidden'} max-w-full lg:contents">
-		<FloatingPanel
-			open={filesOpen}
-			title="Attachments"
-			storageKey="stemshovel.song.files-panel"
-			width={600}
-			height={640}
-			onminimise={() => (filesOpen = false)}
-		>
-			{#snippet controls()}
-				{#if data.canEdit}
-					<button
-						class="button button-xs flex items-center"
-						type="button"
-						title="Upload attachments: PDFs, images, audio, text, MIDI"
-						aria-label="Upload attachments"
-						onclick={() => filesPanel?.pick()}
-					>
-						<span class="i-ph-plus"></span>
-					</button>
-				{/if}
-			{/snippet}
-			<SongFilesPanel
-				bind:this={filesPanel}
-				songId={data.song.id}
-				songTitle={data.song.title}
-				files={data.song.files}
-				scores={data.song.notation}
-				canEdit={data.canEdit}
-				onnotation={async (files) => {
-					await docs.uploadNotation(files);
-				}}
-			/>
-		</FloatingPanel>
-	</div>
-	<SongAmpPanel
-		amp={songAmp}
+	<SongCommentsPanel
+		bind:open={commentsOpen}
+		{comments}
+		list={data.comments}
+		canComment={data.canComment}
 		engine={playerEngine}
-		sitePresets={data.ampSitePresets}
-		account={data.ampAccount}
-		presets={data.ampPresets}
-		presetAdmin={data.presetAdmin}
+		{showPos}
+		onhistory={(t) => history.open(t)}
+	/>
+	{#if data.chat}
+		<SongChatPanel
+			{chat}
+			songId={data.song.id}
+			me={data.user ? { id: data.user.id, name: data.user.name } : null}
+			isAdmin={comments.isAdmin}
+			canWrite={data.canComment}
+			onseek={(s) => playerEngine?.seek(s)}
+		/>
+	{/if}
+	<SongAttachmentsPanel
+		bind:this={attachments}
+		bind:open={filesOpen}
+		songId={data.song.id}
+		songTitle={data.song.title}
+		files={data.song.files}
+		scores={data.song.notation}
+		canEdit={data.canEdit}
+		onnotation={async (files) => {
+			await docs.uploadNotation(files);
+		}}
 	/>
 </main>
 <SongInfoPopover
@@ -1570,45 +1416,15 @@
 			onedit={() => comments.editDemo(c)}
 		/>{/if}
 {/snippet}
-
-<!-- Ctrl / ⌘-click menu on a demo's waveform, at the pointer -->
-<PointerMenu
-	at={demoMenuAt}
-	items={demoMenuAt
-		? [
-				{
-					kind: "notice",
-					notice: `${demoMenuAt.demo.label} · ${formatTime(demoMenuAt.seconds, 1)}`,
-				},
-				seekHere(() => demoPanel?.seekTo(demoMenuAt?.seconds ?? 0)),
-				...(data.canComment
-					? [
-							commentHere(() =>
-								comments.open({
-									at: formatTime(demoMenuAt?.seconds ?? 0, 2),
-									demoId: demoMenuAt?.demo.id ?? "",
-								}),
-							),
-						]
-					: []),
-			]
-		: []}
-	ariaLabel="Actions at this spot in the demo"
-/>
-
-<!-- Ctrl / ⌘-click menu on the Comments row's mix waveform, at the pointer (the stem rows' is the player's own) -->
-<PointerMenu
-	at={mixMenuAt}
-	items={mixMenuAt
-		? [
-				{ kind: "notice", notice: `Mix · ${showPos(mixMenuAt.seconds)}` },
-				seekHere(() => playerEngine?.seek(mixMenuAt?.seconds ?? 0)),
-				...(data.canEdit
-					? [commentHere(() => comments.open({ at: changes.editPos(mixMenuAt?.seconds ?? 0) }))]
-					: []),
-			]
-		: []}
-	ariaLabel="Actions at this spot in the mix"
+<SongPointerMenus
+	menus={pointerMenus}
+	{demoPanel}
+	engine={playerEngine}
+	{comments}
+	editPos={(s) => changes.editPos(s)}
+	canComment={data.canComment}
+	canEdit={data.canEdit}
+	{showPos}
 />
 
 {#snippet commentCard(id: string)}
@@ -1688,7 +1504,7 @@
 			canComment={data.canComment}
 			count={data.comments.length}
 			onopen={() => (commentsOpen = !commentsOpen)}
-			oncontext={(seconds, x, y) => (mixMenuAt = { seconds, x, y })}
+			oncontext={(seconds, x, y) => pointerMenus.openMix(seconds, x, y)}
 		/>
 	{/if}
 	<!-- The player's tips under the rows, as the instruments wear them (Kevin: the comment gesture is not obvious). -->

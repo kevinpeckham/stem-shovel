@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Song page, step 10 of the breakup** (docs/song-page.md): the Comments, Chat and Attachments panels are components (`SongCommentsPanel`, `SongChatPanel`, `SongAttachmentsPanel`), the chat's messages and read mark, the history panel's target and the pointer menus are state classes (`SongChat`, `SongHistory`, `SongPointerMenus`); the page is 1,540 lines, from 1,725. No behavior change; `link-dim` → `link` on the comment list.
+- **Sentry mails when the nightly smoke test fails**: a "Nightly smoke failed" workflow on the cron monitor's detector (docs/security.md "Nightly, from GitHub"; FINDINGS on the detectors-and-workflows API).
+
 ## [0.232.0] - 2026-11-06
 
 ### Technical

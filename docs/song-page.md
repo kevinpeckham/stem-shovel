@@ -8,7 +8,7 @@ popovers and menus behind them. On 2026-10-30 it was 4,928 lines (the
 script to line 2037, 86 `$state` variables, 74 functions), and Fallow
 scored its template at cyclomatic 320 the day a parser-hiding expression
 was replaced (FINDINGS.md). Kevin asked for it to be broken up with more
-components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page was 2,007 lines (script 630, 28 `$state`), down from 4,928; step 9 (2026-11-06) took it to 1,725. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
+components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page was 2,007 lines (script 630, 28 `$state`), down from 4,928; steps 9 and 10 (2026-11-06) took it to 1,540. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
 
 ## The principle: extract by state ownership
 
@@ -189,10 +189,33 @@ step so it shrinks with the page and still fails on anything new.
    - The health baseline for the page went from 2 critical, 1 high, 2
      CRAP high and 8 CRAP moderate to 2 critical, 1 moderate, 1 CRAP
      high and 6 CRAP moderate.
-10. Then the page is the layout, the floating panels and the data. Left
-    by ownership: the Comments, Chat and Attachments panel wrappers
-    (thin), the history panel and the pointer menus (they cross panels),
-    and the player's mode and view plumbing (the layout's own).
+10. **The Comments, Chat and Attachments panels, the history state and
+    the pointer menus** (2026-11-06, done): the page lost 185 lines
+    (1,725 → 1,540; script 540 → 475; 13 `$state` left).
+    - `components/SongCommentsPanel.svelte`: the Comments FloatingPanel
+      with its list (`bind:open`, `comments`, `list`, `canComment`,
+      `engine`, `showPos`, `onhistory`); `link-dim` → `link`.
+    - `state/songChat.svelte.ts`, `SongChat`: `open`, `messages`,
+      `readAt`, `unread`, `toggle`, `reset(chat)` for the next song;
+      `components/SongChatPanel.svelte` binds the messages and read mark
+      into the chat. The `?open=chat` link stays on the page.
+    - `components/SongAttachmentsPanel.svelte`: the Attachments
+      FloatingPanel around SongFilesPanel, with `pick()` (open, then the
+      picker) for the Uploads menu.
+    - `state/songHistory.svelte.ts`, `SongHistory`: the history panel's
+      `target` and `restorable` (an editor for a project document, anyone
+      for their own note, the author or an admin for a comment), `open`,
+      `close`.
+    - `state/songPointerMenus.svelte.ts`, `SongPointerMenus`: `demoAt`
+      and `mixAt` with `openDemo`/`openMix`, and the `seekHere` and
+      `commentHere` item builders (the player's stem-row menu takes
+      `commentHere` too); `components/SongPointerMenus.svelte` renders
+      both menus.
+    - The health baseline: 2 critical, 1 moderate, 5 CRAP moderate (the
+      CRAP high is gone).
+11. Then the page is the layout and the data. Left by ownership: the
+    player's mode and view plumbing, the demo and mix views' wiring, and
+    the uploads (they are the layout's own, and small).
 
 ## Effect on the client, as a pilot
 
