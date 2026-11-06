@@ -83,6 +83,9 @@ bunx varlock run -- swamp workflow run site-audit --input stage=production   # S
 bun run check:swing  # renders drum patterns through the machine's own code and measures the onsets: swing must move the odd sixteenths (dev server only)
 bun run shot <path>  # full-page PNG of a dev-server page into .screenshots/ — then Read it
                      # signed in as the Screenshot Bot when PREVIEW_AUTH_TOKEN is set (docs/agent-screenshots.md)
+                     # SHOT_BASE=https://www.stemshovel.com for a live stage: SMOKETEST_TOKEN rides along as the firewall's bypass header (docs/security.md "Bot protection and the smoke-test token")
+bun run shot:remote <path>   # the same page rendered by Browserless (BROWSERLESS_TOKEN), the view from outside the VM; SHOT_BASE defaults to production (docs/agent-screenshots.md "Remote captures")
+bun run firewall:smoketest   # create the firewall rule that matches x-smoketest-token = SMOKETEST_TOKEN with bypass, or write a rotated token into it; --check reports the rule's state
 bun run db:generate / db:migrate / db:seed / db:studio   # drizzle-kit via varlock
 bun run db:migrate:steps                # db:migrate one statement at a time, when Turso answers 502 to the batch (same journal)
 bun run db:status                       # the last migration applied and any pending (APP_ENV=preview for staging); check production before a push to main

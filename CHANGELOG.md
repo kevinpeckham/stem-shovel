@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **The firewall's bot protection is bypassed by a header, not an address**: a custom rule matches `x-smoketest-token` (`SMOKETEST_TOKEN`, the dev 1Password environment), which `smoke:urls`, `audit:seo`, the site-audit workflow and `bun run shot` send to the stage's own origin alone (`scripts/lib/smoketestHeaders.mjs`, slx-web's pattern); `bun run firewall:smoketest` creates the rule or writes a rotated token into it through `vercel api`. The VM's egress address changed on 2026-11-06 and the address-matching rule stopped letting the audits through (FINDINGS.md). `bun run shot:remote` captures a page of a deployed stage through Browserless (`BROWSERLESS_TOKEN`), as replicator does.
+
 ## [0.228.0] - 2026-11-06
 
 ### Added

@@ -121,6 +121,29 @@ export type CoercedEnvSchema = {
   PREVIEW_AUTH_TOKEN?: string;
   
   /**
+   * **SMOKETEST_TOKEN** 🔐 _sensitive_  
+   * The firewall's bypass header: a custom rule matches `x-smoketest-token`  
+   * equal to this value and lets the request past the managed bot protection,  
+   * whatever address it comes from (docs/security.md "Bot protection and the  
+   * smoke-test token"). The audit scripts, the site-audit workflow and the  
+   * screenshot scripts send it to the stage's own origin alone; `bun run  
+   * firewall:smoketest` writes it into the rule. 32+ random characters, from  
+   * the dev 1Password environment; the app never reads it.  
+   * ![icon](data:image/svg+xml;utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20fill%3D%22%23808080%22%20d%3D%22M29%2022h-5a2.003%202.003%200%200%201-2-2v-6a2%202%200%200%201%202-2h5v2h-5v6h5ZM18%2012h-4V8h-2v14h6a2.003%202.003%200%200%200%202-2v-6a2%202%200%200%200-2-2m-4%208v-6h4v6Zm-6-8H3v2h5v2H4a2%202%200%200%200-2%202v2a2%202%200%200%200%202%202h6v-8a2%202%200%200%200-2-2m0%208H4v-2h4Z%22%2F%3E%3C%2Fsvg%3E)   
+   */
+  SMOKETEST_TOKEN?: string;
+  
+  /**
+   * **BROWSERLESS_TOKEN** 🔐 _sensitive_  
+   * Browserless.io token for `bun run shot:remote`: a page of a deployed stage  
+   * rendered by Browserless's own browsers, from outside the VM  
+   * (docs/agent-screenshots.md "Remote captures"). From the dev 1Password  
+   * environment only; the app never reads it.  
+   * ![icon](data:image/svg+xml;utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20fill%3D%22%23808080%22%20d%3D%22M29%2022h-5a2.003%202.003%200%200%201-2-2v-6a2%202%200%200%201%202-2h5v2h-5v6h5ZM18%2012h-4V8h-2v14h6a2.003%202.003%200%200%200%202-2v-6a2%202%200%200%200-2-2m-4%208v-6h4v6Zm-6-8H3v2h5v2H4a2%202%200%200%200-2%202v2a2%202%200%200%200%202%202h6v-8a2%202%200%200%200-2-2m0%208H4v-2h4Z%22%2F%3E%3C%2Fsvg%3E)   
+   */
+  BROWSERLESS_TOKEN?: string;
+  
+  /**
    * **SWAMP_API_KEY** 🔐 _sensitive_  
    * Swamp (https://swamp-club.com) needs a swamp-club.com credential for every  
    * command; the VM has no terminal for the browser login, so the agent runs  
@@ -215,11 +238,11 @@ export type CoercedEnvSchema = {
   
 };
 
-type _CoercedEnvSchema_7dccd202 = CoercedEnvSchema;
+type _CoercedEnvSchema_5792953f = CoercedEnvSchema;
 
 declare module 'varlock/env' {
-  export interface TypedEnvSchema extends Readonly<_CoercedEnvSchema_7dccd202> {}
-  export interface PublicTypedEnvSchema extends Readonly<Pick<_CoercedEnvSchema_7dccd202, 'VERCEL_ENV' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_GIT_COMMIT_SHA' | 'APP_ENV' | 'BLOB_STORE_ID' | 'BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY' | 'BLOB_PRIVATE_STORE_ID' | 'BLOB_WEBHOOK_PUBLIC_KEY' | 'TURSO_DATABASE_URL' | 'TEXT_TO_BEAT_MODEL' | 'RESEND_MAIL_DOMAIN' | 'KV_REST_API_URL' | 'SHORT_LINK_ORIGIN'>> {}
+  export interface TypedEnvSchema extends Readonly<_CoercedEnvSchema_5792953f> {}
+  export interface PublicTypedEnvSchema extends Readonly<Pick<_CoercedEnvSchema_5792953f, 'VERCEL_ENV' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_GIT_COMMIT_SHA' | 'APP_ENV' | 'BLOB_STORE_ID' | 'BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY' | 'BLOB_PRIVATE_STORE_ID' | 'BLOB_WEBHOOK_PUBLIC_KEY' | 'TURSO_DATABASE_URL' | 'TEXT_TO_BEAT_MODEL' | 'RESEND_MAIL_DOMAIN' | 'KV_REST_API_URL' | 'SHORT_LINK_ORIGIN'>> {}
 }
 
 
@@ -229,17 +252,17 @@ export type EnvSchemaAsStrings = {
       : (NonNullable<CoercedEnvSchema[Property]> extends boolean ? ('true' | 'false') : string)
 };
 
-type _EnvSchemaAsStrings_7dccd202 = EnvSchemaAsStrings;
+type _EnvSchemaAsStrings_5792953f = EnvSchemaAsStrings;
 declare global {
 
   // add types for global import.meta.env
-  interface ImportMetaEnv extends _EnvSchemaAsStrings_7dccd202 {}
+  interface ImportMetaEnv extends _EnvSchemaAsStrings_5792953f {}
   interface ImportMeta {
     readonly env: ImportMetaEnv;
   }
 
   // add types for global process.env
   namespace NodeJS {
-    interface ProcessEnv extends _EnvSchemaAsStrings_7dccd202 {}
+    interface ProcessEnv extends _EnvSchemaAsStrings_5792953f {}
   }
 }

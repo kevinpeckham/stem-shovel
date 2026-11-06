@@ -35,6 +35,8 @@
 		"interop:audacity": "node scripts/interop/audacity.mjs",
 		"interop:sandyne": "bun scripts/interop/sandyne.ts",
 		"shot": "varlock run -- node scripts/screenshot.mjs",
+		"shot:remote": "varlock run -- node scripts/screenshot-remote.mjs",
+		"firewall:smoketest": "varlock run -- node scripts/firewall-smoketest-rule.mjs",
 		"db:generate": "varlock run -- drizzle-kit generate",
 		"db:migrate": "varlock run -- drizzle-kit migrate",
 		"db:migrate:steps": "varlock run -- bun scripts/migrate-steps.ts",

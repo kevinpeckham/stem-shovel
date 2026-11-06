@@ -36,6 +36,7 @@ import {
 	ROUTES,
 	SEO_EXPECTATIONS,
 } from "./lib/siteRoutes.mjs";
+import { smoketestHeaders } from "./lib/smoketestHeaders.mjs";
 
 const base = (process.env.SEO_BASE ?? "http://localhost:5173").replace(/\/$/, "");
 const argPath = (flag: string) => {
@@ -82,7 +83,7 @@ const isRedirect = (status: number) => status >= 300 && status < 400;
 /** The route's own response, and the redirect chain from it followed by hand (five hops at most). */
 async function fetchChain(path: string) {
 	const url = base + path;
-	const first = await fetch(url, { redirect: "manual" });
+	const first = await fetch(url, { headers: smoketestHeaders(url, base), redirect: "manual" });
 	const chain = [{ status: first.status, url }];
 	await follow(first, url, chain);
 	const type = first.headers.get("content-type") ?? "";
@@ -93,7 +94,7 @@ async function follow(res: Response, url: string, chain: { status: number; url: 
 	let location = res.headers.get("location");
 	while (location && isRedirect(res.status) && chain.length < 6) {
 		url = new URL(location, url).href;
-		res = await fetch(url, { redirect: "manual" });
+		res = await fetch(url, { headers: smoketestHeaders(url, base), redirect: "manual" });
 		chain.push({ status: res.status, url });
 		location = res.headers.get("location");
 	}
@@ -383,8 +384,12 @@ async function auditPath(route: string, path: string, ctx: Context): Promise<Pag
 
 /** robots.txt, the sitemap and vercel.json's header rules, and which stage the base is. */
 async function loadContext(): Promise<Context> {
-	const liveRobots = await (await fetch(`${base}/robots.txt`)).text();
-	const liveSitemap = await (await fetch(`${base}/sitemap.xml`)).text();
+	const liveRobots = await (
+		await fetch(`${base}/robots.txt`, { headers: smoketestHeaders(base, base) })
+	).text();
+	const liveSitemap = await (
+		await fetch(`${base}/sitemap.xml`, { headers: smoketestHeaders(base, base) })
+	).text();
 	const production = /^Allow:/m.test(liveRobots);
 	const { robots, sitemap, dynamic } = crawlerFiles(production, liveRobots, liveSitemap);
 	const rules = JSON.parse(readFileSync("vercel.json", "utf8")).headers as VercelHeaderRule[];

@@ -238,6 +238,30 @@ lists, or it stays hidden: `isIndexablePath`, the `robots.txt` route,
 vercel.json's `X-Robots-Tag` rule and `sitemap.xml` (the Dawn features
 page shipped in v0.165.0 with only the first and last of them).
 
+### Bot protection and the smoke-test token
+
+The firewall's managed bot protection runs in challenge mode, and a
+script never answers a challenge: curl, the audits and a headless browser
+all get a 429 "Vercel Security Checkpoint" (`x-vercel-mitigated:
+challenge`), the jobs function's own fetches of the site included
+(docs/environment.md). A custom rule with the action `bypass` lets the
+project's own tooling through: **Smoke-test token bypass** matches the
+header `x-smoketest-token` equal to a secret (`SMOKETEST_TOKEN`, the dev
+1Password environment, through varlock), from any address.
+`scripts/lib/smoketestHeaders.mjs` adds the header to a request for the
+stage's own origin alone, so a redirect or a sitemap entry to another host
+never carries it (slx-web's smoke test has the same rule and the same
+care); `smoke:urls`, `audit:seo`, the site-audit workflow, `bun run shot`
+(through a Playwright route for the app's origin) and `shot:remote` send
+it. `bun run firewall:smoketest` creates the rule, or writes a rotated
+token into it, through `vercel api`: the firewall's config API edits the
+active configuration, live at once, no publish step; `--check` reports
+the rule's state without the value. The token only skips the bot check:
+it signs nothing in, and the app never reads it. The older rule, **Agent
+VM bypass**, matched the VM's egress address; the address changed without
+notice on 2026-11-06 and every request from the VM answered 429
+(FINDINGS.md), which is what the header replaces.
+
 ### Indexability audit
 
 `bun run audit:seo` (`scripts/seo-audit.ts`) checks the four lists against
@@ -291,7 +315,10 @@ URL), and `workflows/workflow-site-audit.yaml` runs both methods against
     bunx varlock run -- swamp data query 'behavior("site-production") && name == "seo"' --select content
     bunx varlock run -- swamp workflow history search --json                    # every run
 
-The run fails on a finding, like the scripts. Every swamp command needs a
+The run fails on a finding, like the scripts. `SMOKETEST_TOKEN` reaches the
+scripts the same way as every other variable, so the production run passes
+bot protection from any address ("Bot protection and the smoke-test token"
+above). Every swamp command needs a
 swamp-club.com credential, which `.env.schema` declares as
 `SWAMP_API_KEY` and `SWAMP_SIGNIN_TOKEN` (a collective token and its signin
 token, in the dev 1Password environment only), hence the `varlock run`.

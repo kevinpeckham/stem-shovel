@@ -6,6 +6,8 @@
  *   bun run smoke:urls                                   # dev server, both passes
  *   SMOKE_BASE=https://staging.stemshovel.dev bun run smoke:urls  # staging (bot pass once its token is there)
  *   SMOKE_BASE=https://www.stemshovel.com bun run smoke:urls   # production (anonymous pass only)
+ *   SMOKETEST_TOKEN, when set, rides along as x-smoketest-token to the stage's
+ *   own origin: the firewall rule that lets the probe past bot protection.
  *   bun run smoke:urls --json out.json                          # also write every check as JSON
  *
  * Dynamic segments are filled from the database (an account the bot
@@ -22,6 +24,7 @@
 import { writeFileSync } from "node:fs";
 
 import { fillUrl, loadSegments, missingRoutes, ROUTES } from "./lib/siteRoutes.mjs";
+import { smoketestHeaders } from "./lib/smoketestHeaders.mjs";
 
 const base = (process.env.SMOKE_BASE ?? "http://localhost:5173").replace(/\/$/, "");
 const token = process.env.PREVIEW_AUTH_TOKEN ?? "";
@@ -73,7 +76,10 @@ const fill = (url) => fillUrl(url, segments);
 
 async function probe(url, headers) {
 	const started = Date.now();
-	const res = await fetch(base + url, { headers, redirect: "manual" });
+	const res = await fetch(base + url, {
+		headers: { ...smoketestHeaders(base + url, base), ...headers },
+		redirect: "manual",
+	});
 	const type = res.headers.get("content-type") ?? "";
 	const body = type.includes("text/html") ? await res.text() : "";
 	const bad = BAD_BODY.find((b) => body.includes(b));

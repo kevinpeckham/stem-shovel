@@ -7,10 +7,15 @@
  * `preview_token` cookie for the app's origin only, so the page renders as the
  * Screenshot Bot (src/lib/server/previewAuth.ts) and the token never reaches
  * Blob or any other host. `SHOT_ANON=1` captures the signed-out view instead.
+ * `SMOKETEST_TOKEN`, when set, rides along as the firewall's bypass header on
+ * requests to the app's origin alone (a route adds it), so `SHOT_BASE` can be
+ * a deployed stage whatever the VM's address (docs/security.md "Bot
+ * protection and the smoke-test token").
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { smoketestHeaders } from "./lib/smoketestHeaders.mjs";
 
 const base = process.env.SHOT_BASE ?? "http://localhost:5173";
 const [
@@ -26,6 +31,14 @@ const token = process.env.SHOT_ANON === "1" ? "" : (process.env.PREVIEW_AUTH_TOK
 const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 const page = await browser.newPage({ viewport: { width: Number(w), height: Number(h) } });
 if (token) await page.context().addCookies([{ name: "preview_token", value: token, url: base }]);
+const origin = new URL(base).origin;
+await page.route(
+	(url) => url.origin === origin,
+	(route) =>
+		route.continue({
+			headers: { ...route.request().headers(), ...smoketestHeaders(route.request().url(), base) },
+		}),
+);
 const errors = [];
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => {

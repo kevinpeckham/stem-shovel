@@ -44,3 +44,28 @@ it), compares in constant time, never logs the token and never creates the
 bot user from a request. It works wherever the token is set, and dev and
 production share one database — so keep the token in `.env.local`, not in
 1Password, unless you want live signed-in captures too.
+
+## Live stages: the smoke-test token
+
+`SHOT_BASE=https://www.stemshovel.com` (or staging) meets the firewall's
+bot protection, which challenges a headless browser like any other script.
+With `SMOKETEST_TOKEN` set (the dev 1Password environment, through varlock)
+the script routes every request to the app's origin through Playwright and
+adds the `x-smoketest-token` header the firewall's bypass rule matches
+(docs/security.md "Bot protection and the smoke-test token"); requests to
+Blob and other hosts never carry it. Production has no preview token, so a
+production capture is always the signed-out view.
+
+## Remote captures: Browserless
+
+`bun run shot:remote /pricing [out.png] [width] [height]` renders a page of
+a deployed stage in Browserless's own browsers instead of the VM's Chromium,
+the way replicator captures production: a POST to Browserless's
+`/screenshot` REST endpoint with the URL, the viewport, the full-page option
+and the same knobs (`SHOT_BASE`, default production; `SHOT_VIEWPORT`,
+`SHOT_WAIT`, `SHOT_ANON`). It needs `BROWSERLESS_TOKEN` (dev 1Password) and,
+with `SMOKETEST_TOKEN` set, sends the bypass header on every request of the
+page (Browserless sets extra headers per page, not per host; the token only
+skips the bot check). The preview cookie goes to the stage's host alone. Use
+it for the view from outside the VM; `bun run shot` with `SHOT_BASE` is the
+everyday way to look at a live page.
