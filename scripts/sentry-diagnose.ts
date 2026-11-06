@@ -446,7 +446,9 @@ function gates(cwd: string): { gates: Gates; output: string } {
 	const steps: [keyof Gates, string[]][] = [
 		["lint", ["run", "lint"]],
 		["check", ["run", "check"]],
-		["test", ["run", "test"]],
+		// The component tests flake under load (a Retry assertion in studioQueue.svelte.test.ts failed
+		// a gate while the dev server and a lint ran beside it, and passed alone); a retried test is not a finding.
+		["test", ["run", "test", "--retry", "2"]],
 	];
 	const result: Gates = {};
 	const output: string[] = [];
