@@ -327,6 +327,28 @@ The scripts resolve their own env the same way inside the behavior, so
 Swamp holds no secret of the app's. The run data lives in `.swamp/`
 (gitignored); the type, definitions and workflow are committed.
 
+### Nightly, from GitHub
+
+`.github/workflows/smoke.yml` runs `scripts/smoke-nightly.mjs` every day
+at 09:00 UTC (and on demand, `gh workflow run smoke.yml`, with a `base`
+input for another stage) from GitHub's network, so it sees the site the way
+a visitor does, independent of Vercel and of the agent's VM. The script
+runs `smoke:urls` and `audit:seo` against production and reports to Sentry
+the way slx-web's sitemap smoke test does: a cron monitor
+(`nightly-smoke`, two bad runs in a row before an issue, one good run to
+recover) wraps the run, so a run that fails and a run that never happens
+both reach whoever Sentry's alert rules name, and each failing URL
+(fingerprint by path), each finding without an exception (by route and check) and an
+outage above 25 failures (one event) is an event in the `smoketest`
+environment of the app's own Sentry project. The runner has no database,
+so `SMOKE_SEGMENTS`, a repository variable holding the dynamic routes'
+sample values as JSON (`bun run smoke:segments` prints them from a stage's
+database), fills the account, project and song routes; without it those
+routes are skipped, not failed. `SMOKETEST_TOKEN` is a repository secret,
+the same value as the firewall rule's ("Bot protection and the smoke-test
+token" above). `bun run smoke:nightly` runs the same script from the VM
+through varlock; `NIGHTLY_DRY=1` keeps it off Sentry.
+
 ## Error reports
 
 Sentry (`@sentry/sveltekit`; `src/hooks.client.ts` for the browser,

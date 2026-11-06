@@ -77,6 +77,8 @@ bun run stems        # generate the static test WAVs (gitignored)
 bun run smoke:blob   # create a smoke project + song and upload through the real flow
 bun run smoke:urls   # every route answers as expected, signed out and as the bot; SMOKE_BASE=https://www.stemshovel.com for production
 bun run audit:seo    # every route's indexability: sitemap, robots.txt, X-Robots-Tag (hook + vercel.json rule), robots meta, title/description/h1 against isIndexablePath; SEO_BASE=https://www.stemshovel.com for production; exits 1 on a finding (docs/security.md "Indexability audit")
+bun run smoke:nightly   # smoke:urls + audit:seo against production, reported to Sentry (cron monitor + events); what .github/workflows/smoke.yml runs daily from GitHub; NIGHTLY_DRY=1 sends nothing (docs/security.md "Nightly, from GitHub")
+bun run smoke:segments  # the dynamic routes' sample values as the JSON SMOKE_SEGMENTS takes (the GitHub repository variable), from the stage's database
 bun run audit:effects # every $effect in the components with the rationale on the line before it; exits 1 on one without (docs/testing.md "The $effect audit")
 bunx varlock run -- swamp workflow run code-audit   # Swamp: the repo-level audits (audit:effects), asserted and kept as data
 bunx varlock run -- swamp workflow run site-audit --input stage=production   # Swamp: audit:seo and smoke:urls against one stage (dev|staging|production), asserted, the results kept as data (docs/security.md "Through Swamp"); every swamp command runs through varlock, which supplies its swamp-club.com credential

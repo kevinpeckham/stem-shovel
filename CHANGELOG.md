@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **A nightly smoke test from GitHub**: `.github/workflows/smoke.yml` runs `scripts/smoke-nightly.mjs` daily, `smoke:urls` and `audit:seo` against production from GitHub's network, reported to Sentry as a cron monitor (`nightly-smoke`) plus an event per failing URL or finding, slx-web's pattern; `SMOKETEST_TOKEN` as a repository secret gets the runner past bot protection, and `SMOKE_SEGMENTS` (a repository variable, printed by `bun run smoke:segments`) supplies the dynamic routes' values where there is no database, the scripts skipping those routes without it. The Sentry DSN moved to `src/lib/constants/sentryDsn.ts`, shared by the browser, the server and the smoke test.
+
 ## [0.229.0] - 2026-11-06
 
 ### Fixed

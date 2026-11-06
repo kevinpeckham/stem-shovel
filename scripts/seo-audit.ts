@@ -35,6 +35,7 @@ import {
 	missingRoutes,
 	ROUTES,
 	SEO_EXPECTATIONS,
+	unfilled,
 } from "./lib/siteRoutes.mjs";
 import { smoketestHeaders } from "./lib/smoketestHeaders.mjs";
 
@@ -414,13 +415,24 @@ async function segmentsFor(sitemap: string[]) {
 async function auditAll(ctx: Context) {
 	const segments = await segmentsFor(ctx.sitemap);
 	const pages: Page[] = [];
+	let skipped = 0;
 	for (const [route, url, anonymous] of ROUTES as Expectation[]) {
-		const page = await auditPath(route, fillUrl(url, segments), ctx);
+		const target = fillUrl(url, segments);
+		// A route needing a segment the environment has no value for (no database, no SMOKE_SEGMENTS): skipped, not failed.
+		if (unfilled(target)) {
+			skipped++;
+			continue;
+		}
+		const page = await auditPath(route, target, ctx);
 		// A public route this stage has nothing for (no published post yet): the smoke list expects no 200.
 		const statuses = typeof anonymous === "function" ? anonymous(segments) : anonymous;
 		page.absent = page.intent === "public" && !statuses.includes(200);
 		pages.push(page);
 	}
+	if (skipped)
+		console.log(
+			`skipped ${skipped} route(s) that need a segment the environment has no value for\n`,
+		);
 	const audited = new Set(pages.map((p) => p.path));
 	for (const path of ctx.sitemap.filter((path) => !audited.has(path)))
 		pages.push(await auditPath(`${routeOf(path) ?? "(unknown)"} [sitemap]`, path, ctx));

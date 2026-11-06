@@ -222,9 +222,14 @@ export function missingRoutes(dir = "src/routes") {
  * The values for dynamic segments, from the database in the environment:
  * an account the bot belongs to (or the oldest), its first public project
  * and song with a mix, the first user doc and the newest published post
- * (undefined on a stage with none).
+ * (undefined on a stage with none). `SMOKE_SEGMENTS` supplies the same
+ * object as JSON where there is no database (the nightly run on GitHub;
+ * `bun run smoke:segments` prints it), and with neither the result is empty:
+ * `fillUrl` leaves the placeholder and the scripts skip that route.
  */
 export async function loadSegments() {
+	if (process.env.SMOKE_SEGMENTS) return JSON.parse(process.env.SMOKE_SEGMENTS);
+	if (!process.env.TURSO_DATABASE_URL) return {};
 	const db = createClient({
 		// Turso's newer dashboard prints turso:// URLs; the client wants libsql:// (src/lib/utils/libsqlUrl.ts).
 		url: process.env.TURSO_DATABASE_URL.replace(/^turso:\/\//i, "libsql://"),
@@ -259,12 +264,15 @@ export async function loadSegments() {
 	return { acct, proj, song, doc, post };
 }
 
-/** A ROUTES url with its {placeholders} filled from `loadSegments`. */
+/** A ROUTES url with its {placeholders} filled from `loadSegments`; one with no value stays, and `unfilled` says so. */
 export const fillUrl = (url, s) =>
 	url
-		.replace("{account}", s.acct.slug)
-		.replace("{project}", s.proj.slug)
-		.replace("{song}", s.song.slug)
-		.replace("{songId}", s.song.id)
-		.replace("{doc}", s.doc.slug)
+		.replace("{account}", s.acct?.slug ?? "{account}")
+		.replace("{project}", s.proj?.slug ?? "{project}")
+		.replace("{song}", s.song?.slug ?? "{song}")
+		.replace("{songId}", s.song?.id ?? "{songId}")
+		.replace("{doc}", s.doc?.slug ?? "{doc}")
 		.replace("{post}", s.post?.slug ?? "no-post-yet");
+
+/** Whether a filled url still needs a segment the environment did not have. */
+export const unfilled = (url) => /\{[a-zA-Z]+\}/.test(url);

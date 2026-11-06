@@ -23,7 +23,7 @@
  */
 import { writeFileSync } from "node:fs";
 
-import { fillUrl, loadSegments, missingRoutes, ROUTES } from "./lib/siteRoutes.mjs";
+import { fillUrl, loadSegments, missingRoutes, ROUTES, unfilled } from "./lib/siteRoutes.mjs";
 import { smoketestHeaders } from "./lib/smoketestHeaders.mjs";
 
 const base = (process.env.SMOKE_BASE ?? "http://localhost:5173").replace(/\/$/, "");
@@ -129,7 +129,15 @@ async function pass(name, headers, pick) {
 		url,
 		typeof ok === "function" ? ok(segments) : ok,
 	]);
-	for (const [url, ok] of checks) if (!(await check(url, ok, headers))) failed++;
+	let skipped = 0;
+	for (const [url, ok] of checks) {
+		if (unfilled(fill(url))) skipped++;
+		else if (!(await check(url, ok, headers))) failed++;
+	}
+	if (skipped)
+		console.log(
+			`  skipped ${skipped} route(s) that need a segment (no database in the environment and no SMOKE_SEGMENTS)`,
+		);
 	return failed;
 }
 

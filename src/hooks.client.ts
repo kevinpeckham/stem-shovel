@@ -1,5 +1,6 @@
 import { dev } from "$app/env";
 import * as Sentry from "@sentry/sveltekit";
+import { SENTRY_DSN } from "#lib/constants/sentryDsn.js";
 
 /**
  * Sentry in the browser (docs/environment.md). The DSN is a public value.
@@ -9,7 +10,7 @@ import * as Sentry from "@sentry/sveltekit";
  * development too; the environment tag keeps it apart.
  */
 Sentry.init({
-	dsn: "https://d6929e5d1424ced35084d71f487d9aca@o4505247956860928.ingest.us.sentry.io/4512102516457472",
+	dsn: SENTRY_DSN,
 	// The server tags by VERCEL_ENV; the browser has only its hostname to go on.
 	environment: dev
 		? "development"

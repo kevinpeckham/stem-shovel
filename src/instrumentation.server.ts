@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { SENTRY_DSN } from "#lib/constants/sentryDsn.js";
 
 /**
  * Sentry on the server, loaded before the app (SvelteKit's
@@ -10,7 +11,7 @@ import * as Sentry from "@sentry/node";
  * esbuild and Babel into every cold start. No tracing: errors only.
  */
 Sentry.init({
-	dsn: "https://d6929e5d1424ced35084d71f487d9aca@o4505247956860928.ingest.us.sentry.io/4512102516457472",
+	dsn: SENTRY_DSN,
 	environment: process.env.VERCEL_ENV ?? "development",
 	tracesSampleRate: 0,
 	// Sentry 11's per-category switches, all off: no user identity, cookies, headers, bodies or query strings.

@@ -1,0 +1,49 @@
+name: Nightly smoke test
+
+# Probes every route of production from GitHub's network, independent of
+# Vercel and of the agent's VM, and reports to Sentry: a cron monitor
+# check-in around the run and an event per failing URL or indexability
+# finding (scripts/smoke-nightly.mjs; docs/security.md "Nightly, from
+# GitHub"). The firewall's bot protection lets the runner through on the
+# x-smoketest-token header, since GitHub's runners have no stable address.
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # 09:00 UTC daily, best-effort; the Sentry monitor expects the same
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "The stage to probe"
+        required: false
+        default: "https://www.stemshovel.com"
+
+permissions:
+  contents: read
+
+# A slow run must not collide with the next schedule.
+concurrency:
+  group: nightly-smoke
+  cancel-in-progress: false
+
+# No 1Password here: the scripts read their variables from the job's env.
+env:
+  SKIP_VARLOCK: "1"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/smoke-nightly.mjs
+        env:
+          SMOKE_BASE: ${{ github.event.inputs.base || 'https://www.stemshovel.com' }}
+          # The firewall rule "Smoke-test token bypass" matches this header (repository secret).
+          SMOKETEST_TOKEN: ${{ secrets.SMOKETEST_TOKEN }}
+          # The dynamic routes' sample values as JSON (repository variable, from `bun run smoke:segments`);
+          # unset, the routes that need one are skipped.
+          SMOKE_SEGMENTS: ${{ vars.SMOKE_SEGMENTS }}
