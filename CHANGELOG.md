@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.232.0] - 2026-11-06
+
 ### Technical
 
 - **Song page, step 9 of the breakup** (docs/song-page.md): the song-info and share-by-email popovers are components (`SongInfoPopover`, `SongSharePopover`), the practice amp panel and its play-along transport are `SongAmp` + `SongAmpPanel`, and the MIDI views are `MidiViews`; the page is 1,725 lines, from 1,987. No behavior change; `link-dim` → `link` on the info popover's project link.
