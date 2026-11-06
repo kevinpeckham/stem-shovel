@@ -260,7 +260,8 @@ the rule's state without the value. The token only skips the bot check:
 it signs nothing in, and the app never reads it. The older rule, **Agent
 VM bypass**, matched the VM's egress address; the address changed without
 notice on 2026-11-06 and every request from the VM answered 429
-(FINDINGS.md), which is what the header replaces.
+(FINDINGS.md), which is what the header replaces; it is switched off,
+kept only as a record of the shape.
 
 ### Indexability audit
 
