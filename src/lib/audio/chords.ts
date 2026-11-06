@@ -55,6 +55,22 @@ const TEMPLATES: { suffix: string; intervals: number[] }[] = [
  * nearly as well (a bar of the same chord should not flicker between
  * spellings that share its notes).
  */
+/**
+ * A template tone carrying less of the bar's profile than this is missing: a
+ * power chord's ninth harmonic leaks a faint second into the transcription
+ * (about a tenth of the bar on stem-bench's synthetic set), which must not
+ * turn B5 into Bsus2 (stem-bench Study 1 fixture, FINDINGS.md "AI features").
+ */
+const PRESENT_SHARE = 0.12;
+/** What each missing template tone costs: more than the leak gains the wider template. */
+const MISSING_PENALTY = 0.12;
+/**
+ * The bass note must sound for this share of the bar to earn the root bonus:
+ * a pickup into the next bar's chord (a few hundredths of a second at the
+ * bar's end) used to rename the whole bar after the chord that follows.
+ */
+const BASS_MIN_SHARE = 0.15;
+
 export function chordOf(
 	profile: ArrayLike<number>,
 	bass: number | null,
@@ -71,14 +87,15 @@ export function chordOf(
 			for (let pc = 0; pc < 12; pc++) {
 				if (!inChord.has(pc)) continue;
 				inside += profile[pc];
-				if (profile[pc] < total * 0.05) missing += 1;
+				if (profile[pc] < total * PRESENT_SHARE) missing += 1;
 			}
 			// Share of the profile the chord explains, less a little per tone beyond
 			// a triad (a seventh must earn its place) and more per chord tone that
-			// does not sound: a bar of root and fifth is a power chord, not a major
-			// or a sus with its third or its second missing (stem-bench Study 1,
-			// FINDINGS.md "AI features").
-			const score = inside / total - 0.03 * Math.max(0, t.intervals.length - 3) - 0.08 * missing;
+			// does not sound, or barely does: a bar of root and fifth is a power
+			// chord, not a major or a sus with its third or its second missing
+			// (stem-bench Study 1, FINDINGS.md "AI features").
+			const score =
+				inside / total - 0.03 * Math.max(0, t.intervals.length - 3) - MISSING_PENALTY * missing;
 			scored.push({
 				chord: `${NAMES[root]}${t.suffix}`,
 				root,
@@ -117,6 +134,7 @@ export function chordsPerBar(notes: Note[], barStarts: number[]): ChordSegment[]
 			profile[((n.pitch % 12) + 12) % 12] += weight;
 			if (
 				n.pitch < 60 &&
+				overlap >= (to - from) * BASS_MIN_SHARE &&
 				(!lowest || n.pitch < lowest.pitch || (n.pitch === lowest.pitch && weight > lowest.weight))
 			) {
 				lowest = { pitch: n.pitch, weight };

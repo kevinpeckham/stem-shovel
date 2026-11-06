@@ -25,6 +25,15 @@ describe("chordOf", () => {
 		expect(chordOf(profileOf([2, 6, 9]), 2).chord).toBe("D");
 		expect(chordOf(profileOf([2, 7, 9]), 2).chord).toBe("Dsus4");
 	});
+	test("a faint second beside root and fifth is a harmonic, not a sus2", () => {
+		// B 63 %, F# 27 %, C# 10 %: stem-bench's power-chord song as Basic Pitch hears it.
+		const faint = [0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 63];
+		faint[1] = 10;
+		expect(chordOf(faint, 11).chord).toBe("B5");
+		const real = [...faint];
+		real[1] = 25;
+		expect(chordOf(real, 11).chord).toBe("Bsus2");
+	});
 	test("silence is no chord", () => {
 		expect(chordOf(profileOf([]), null).chord).toBe("N.C.");
 	});
@@ -37,6 +46,22 @@ describe("chordsPerBar", () => {
 		end: (start + bars) * bar,
 		pitch,
 		amplitude: 0.8,
+	});
+	test("a bass pickup into the next bar does not rename this one", () => {
+		// Two bars of E5 (E2, E3, E4), then C#m; the bass plays C#2 for the last tenth of bar 2.
+		const notes = [
+			note(0, 2, 40),
+			note(0, 2, 52),
+			note(0, 2, 64),
+			{ start: 1.9 * bar, end: 2 * bar, pitch: 37, amplitude: 0.8 },
+			note(2, 1, 37),
+			note(2, 1, 52),
+			note(2, 1, 56),
+		];
+		expect(chordsPerBar(notes, [0, bar, 2 * bar, 3 * bar]).map((s) => s.chord)).toEqual([
+			"E5",
+			"C#m",
+		]);
 	});
 	test("one chord per bar, merged when it holds", () => {
 		const notes = [

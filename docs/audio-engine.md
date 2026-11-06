@@ -137,8 +137,11 @@ fields are `$state`, so components read `engine.position` directly.
   Pitch (Apache 2.0; model files in `static/basic-pitch`, TensorFlow.js
   loaded on demand, pre-bundled in dev by `optimizeDeps`). Each bar's notes
   become a pitch-class profile (duration × loudness, the lowest note
-  doubled as the likely root) matched against chord templates (major,
-  minor, 7, maj7, m7, sus4, 7sus4, sus2, dim, aug, 5); a chord rooted on
+  doubled as the likely root when it sounds for at least 15 % of the bar,
+  so a pickup into the next chord does not rename this one) matched
+  against chord templates (major, minor, 7, maj7, m7, sus4, 7sus4, sus2,
+  dim, aug, 5); a template tone under 12 % of the profile counts as
+  missing (a power chord's faint harmonic is not a sus2), a chord rooted on
   the bass gets a bonus, the previous bar's chord is kept when it fits
   nearly as well, and a bass outside the chord shows as a slash chord.
   Consecutive equal bars merge; the result shows as `| D | A | Bm | G |`

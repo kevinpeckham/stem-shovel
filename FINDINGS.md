@@ -343,6 +343,29 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Two bar-level leaks in the chord matcher, found by re-scoring
+  stem-bench's stored notes (2026-11-06).** The bench's synthetic
+  fixture (16 songs, 440 bars, `corpus/fixture.json` with the notes
+  Basic Pitch produced) re-scored through the app's own `chordsPerBar`
+  reproduces the bench's 424/440 exactly, which makes it a free
+  regression harness for the matcher. Two faults, eight and seven bars:
+  (1) the bass pickup: `chordsPerBar` took the lowest note of the bar as
+  the bass whatever its length, so a pickup into the next section (C#2
+  for 0.01–0.14 s at the end of a bar of E5) earned the root bonus and
+  renamed the bar C#m7 — bar 15 of five songs, always the relative minor
+  seventh of the truth; a bass must now sound for 15 % of the bar.
+  (2) the harmonic leak: a power chord's ninth harmonic reaches the
+  transcription as a second at about a tenth of the profile, over the
+  5 % "missing" line, so sus2 explained 100 % of the bar and the power
+  chord 90 %; the line is 12 % and a missing tone costs 0.12. Result
+  439/440 (the last is a silent bar the synth left one note in). On the
+  two real Badverbs recordings (Study 13's `barNotes` lines rebuilt into
+  notes, an approximation: notes under 150 ms and their start times are
+  gone, so the baseline there reads 48/76 against the stored 29/76) the
+  bass rule alone is +13 and +2 bars; the presence rule trades strict
+  power chords won (D5, F#5, E5, A5) for majors with a weak third read
+  as power chords, net −2 and 0, the better failure for a chart hint.
+  A proper amendment over the real notes is the bench's to run.
 - **Study 17 verdict: ChordMini on the mix is the measured chord front
   end for real recordings — and do NOT run the reconciler on its
   output** (stem-bench, 2026-11-04; ~$0.30; full section in the repo's

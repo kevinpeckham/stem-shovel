@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Detected chords read power chords and bar changes better.** A bass note that leads into the next bar no longer renames the bar it ends, and a faint overtone no longer turns a power chord into a sus2.
+
 ## [0.230.0] - 2026-11-06
 
 Maintenance release with no user-visible changes.
