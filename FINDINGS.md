@@ -62,6 +62,29 @@ Found drawing the documentation PDF's chart from barmark's model
   cells a narrow width must divide the row by the section's widest count
   of _bars_, not by `columns`.
 
+## sentry:diagnose hands untrusted error text to an agent that can write and run code with the caller's env (2026-11-06)
+
+Flagged by an automated security review in the bench agent's session,
+verified in `scripts/sentry-diagnose.ts` (v0.230.0), routed here for the
+repo's agent to fix; the bench does not edit app pipelines.
+
+- **The chain:** the prompt embeds the Sentry issue title and breadcrumb
+  messages, which anyone who can trigger an error on the public site
+  can influence. The agent's allowlist has no open Bash, but it has
+  Write/Edit plus `Bash(bun run test:*)`, and writing a test file then
+  running the test suite IS arbitrary code execution. `callAgent` and
+  the gates spread `{ ...process.env }`, so a run launched under
+  `bunx varlock run` hands that code the resolved secrets, before any
+  human sees the PR.
+- **Cheapest fix first:** pass a minimal env to the agent and the gates
+  (PATH, HOME, the Claude credential; never the varlock secrets) instead
+  of spreading `process.env` — this cuts the exfiltration payload even
+  if injection succeeds. Stronger: run diagnosis unattended with
+  Read/Glob/Grep only, and let a human apply and gate fixes; or keep
+  Write+test but inside a no-egress sandbox.
+- Until one of those lands, treat `sentry:diagnose` as a command Kevin
+  runs attended, not a schedule.
+
 ## `@barmark/musicxml` exports nothing for a chart that plays with an error, and goes one way only (2026-11-04)
 
 Found adding "Chart as MusicXML" (`src/lib/utils/chartMusicXml.ts`,
