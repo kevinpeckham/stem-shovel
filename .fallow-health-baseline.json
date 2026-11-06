@@ -16,8 +16,6 @@
 			}
 		}
 	},
-	"target_keys": [
-		"src/routes/[account]/projects/[project]/[song]/+page.svelte:complexity"
-	],
+	"target_keys": ["src/routes/[account]/projects/[project]/[song]/+page.svelte:complexity"],
 	"runtime_coverage_findings": []
 }
