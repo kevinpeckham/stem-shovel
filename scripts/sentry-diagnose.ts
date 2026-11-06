@@ -692,9 +692,6 @@ function openPr(
 				`Gates passed: ${passed}. Confidence: ${answer.confidence}.`,
 				"",
 				"Opened by scripts/sentry-diagnose.ts; review before merging.",
-				"",
-				"🤖 Generated with [Claude Code](https://claude.com/claude-code)",
-				"",
 			].join("\n"),
 		);
 		const labels = run(
