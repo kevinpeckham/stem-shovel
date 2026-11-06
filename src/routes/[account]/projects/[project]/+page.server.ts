@@ -17,14 +17,29 @@ import {
 	canViewSong,
 } from "#lib/server/viewAccess.js";
 import { mixKeyOf } from "#lib/server/mix.js";
-import { scheduleMix } from "#lib/server/jobs.js";
+import { scheduleChords, scheduleMix } from "#lib/server/jobs.js";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { renamedProjectPath } from "#lib/server/slugAlias.js";
 import { error, redirect } from "@sveltejs/kit";
+import { songsWantingChords } from "#lib/utils/songsWantingChords.js";
 import type { PageServerLoad } from "./$types";
 
 /** Missing mixes render after the response, inside this function's lifetime. */
 export const config: Config = { maxDuration: 300 };
+
+/**
+ * Backstops a visit posts: songs whose cached mix predates their current
+ * stems, and, for a member, songs the chord model has not read (as the song
+ * page does for one).
+ */
+function scheduleBackstops(
+	songs: Parameters<typeof songsWantingMix>[0][number][] & Parameters<typeof songsWantingChords>[0],
+	project: { noAi: boolean },
+	canEdit: boolean,
+) {
+	scheduleMix(songsWantingMix(songs, mixKeyOf));
+	if (canEdit) scheduleChords(songsWantingChords(songs, project));
+}
 
 export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	const { account, who, shareGrants } = await parent();
@@ -48,8 +63,7 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 			shareGrants,
 		),
 	);
-	// Backstop: songs whose cached mix predates their current stems.
-	scheduleMix(songsWantingMix(songs, mixKeyOf));
+	scheduleBackstops(songs, project, canEdit);
 	// The playlist plays each song's newest mix (docs/mixes.md), else the stems' bounce, or its demos
 	// (the rendition where it is ready, the upload otherwise); a private song's need presigned URLs.
 	// The tiles count each song's charts (scores and files marked as notation) and the viewer's own private notes.

@@ -3888,6 +3888,34 @@ export async function releaseSongChords(songId: string) {
 	await db.update(song).set({ chordsStartedAt: null }).where(eq(song.id, songId));
 }
 
+/** The songs whose chord-model read is missing or behind their mix, AI allowed, no run under way: ids oldest first, and how many there are. */
+export async function songsWantingChordsAdmin(limit: number) {
+	const stale = Date.now() - CHORDS_STALE_MS;
+	const wanting = and(
+		eq(song.status, "active"),
+		eq(song.noAi, false),
+		eq(project.noAi, false),
+		isNotNull(song.mixUrl),
+		or(isNull(song.chordsKey), ne(song.chordsKey, song.mixKey)),
+		or(isNull(song.chordsStartedAt), lt(song.chordsStartedAt, new Date(stale))),
+	);
+	const [[{ count }], rows] = await Promise.all([
+		db
+			.select({ count: sql<number>`count(*)` })
+			.from(song)
+			.innerJoin(project, eq(project.id, song.projectId))
+			.where(wanting),
+		db
+			.select({ id: song.id })
+			.from(song)
+			.innerJoin(project, eq(project.id, song.projectId))
+			.where(wanting)
+			.orderBy(asc(song.createdAt))
+			.limit(limit),
+	]);
+	return { count: Number(count), ids: rows.map((r) => r.id) };
+}
+
 /**
  * The stored chords for a member's page: the runs when they were read from
  * the song's current mix, else null, with whether a run is under way (a claim
