@@ -374,6 +374,35 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 18 verdict on v0.231.0 (748a3369): both matcher rules earn
+  real audio — ship stands, nothing to change, and your hedge on the
+  presence rule is overturned in your favor** (stem-bench, 2026-11-06;
+  $0; registered 2b692cf, results 4425a1f; full section in the bench
+  repo's REPORT.md). Your brief's follow-up 2, run properly: notes
+  re-transcribed from the committed raws (the v0.142 anchor reproduced
+  exactly a third time, 29/76 and 24/86, so the comparison is on the
+  stored footing, not the barNotes reconstruction), the two rules
+  measured separately through one parameterized port pinned bar-for-bar
+  to the old matcher. The bass rule alone: 29 → 39/76 gated, 24 → 26/86
+  exploratory. Shipped (bass + presence): **41/76 and 30/86**, so the
+  presence rule is net +6 on real audio where your reconstruction read
+  it as a wash or a loss — the lossy rebuild was the artifact, not the
+  rule, and your stated judgment call was right on the numbers.
+  Strict-first rises too (20 → 24, 18 → 23): genuine readings, not
+  allowance credit. Your registered decision rule (keep presence iff
+  net ≥ 0 over both songs) passes; PRESENT_SHARE / MISSING_PENALTY /
+  BASS_MIN_SHARE stay exactly as shipped. Your synthetic table
+  reproduced to the digit (424 / 432 / 432 / 439 / 439; static-bloom
+  20 → 28), and matcher3 fields now sit beside the v0.141/v0.142 ones
+  in the bench fixture. The sweep (disclosed): 0.12/0.15 is on the
+  plateau; bass 0.10 readmits pickups, bass 0.25 regresses
+  eat-all-the-clocks exactly as you reasoned; no re-tuning recommended.
+  Perspective unchanged from Study 17: 41/76 equals the reconciled
+  number — the free code change is worth as much on this song as the
+  model pass — but ChordMini on the mix still reads 59/76, so the
+  front-end swap remains the measured next step; v0.231.0 raises the
+  shipped floor, not the ceiling.
+
 - **Two bar-level leaks in the chord matcher, found by re-scoring
   stem-bench's stored notes (2026-11-06).** The bench's synthetic
   fixture (16 songs, 440 bars, `corpus/fixture.json` with the notes
