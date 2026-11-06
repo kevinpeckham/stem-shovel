@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **An account's viewing links on one page.** `/<account>/links` (Settings → "Manage viewing links", and "All of this account's viewing links" under any page's own list) lists every share link the account has handed out, newest first: what it opens (a song, a mix, a project, a session, a recording or a set list, linked), the code, who made it, uses, expiry and the note; the open ones first, the revoked, expired and used-up ones folded away. Any member may look and copy; an editor revokes. `listAccountShareLinks` in data.ts, the pure `accountShareLinkOf` mapper, `ShareLinkTable` and `AccountLinksNote` components, tests beside each; docs/security.md "Viewing".
+- **The Releases page in pages of 50.** `/releases?page=N`, newest first, with Newer / Older and "Page N of M" under the list; `?page=1` and a malformed page redirect to `/releases`, a page past the last is a 404, and `?v=x.y.z` redirects to the page that holds that version at its anchor. Canonical, prev and next links per page. `RELEASES_PER_PAGE`, the pure `pageSlice` helper and a loader test against the real RELEASES.md.
+
 ## [0.234.0] - 2026-11-06
 
 ### Fixed
