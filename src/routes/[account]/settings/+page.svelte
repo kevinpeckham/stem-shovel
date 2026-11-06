@@ -165,6 +165,19 @@
 	</section>
 
 	<section class="max-w-article">
+		<h2 class="heading-2">Viewing links</h2>
+		<p class="mb-3 text-sm opacity-90">
+			A viewing link opens a private song, project, session or set list to anyone who has it. Every
+			link this account has handed out is listed in one place, with what it opens and whether it
+			still works, and any of them can be revoked there.
+		</p>
+		<a class="button button-sm" href="/{data.account.slug}/links">
+			<span class="i-ph-link" aria-hidden="true"></span>
+			Manage viewing links
+		</a>
+	</section>
+
+	<section class="max-w-article">
 		<h2 class="heading-2">Usage</h2>
 		<dl class="surface grid grid-cols-2 gap-x-6 gap-y-3 px-5 py-4 text-15px sm:grid-cols-4">
 			<div>

@@ -49,6 +49,8 @@ export const ROUTES = [
 	// The old address: a permanent redirect for everyone (vercel.json on a deployment, 308; src/routes/studio/+server.ts on dev, 301).
 	["studio (server)", "/studio", [301, 308], [301, 308]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
+	// The account's viewing links (docs/security.md "Viewing"): members only, the codes are on it.
+	["[account]/links", "/{account}/links", [303], [200]],
 	["[account]/artists", "/{account}/artists", [303], [200]],
 	["projects", "/projects", [303], [200]],
 	["sessions", "/sessions", [303], [200]],

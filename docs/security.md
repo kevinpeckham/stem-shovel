@@ -9,7 +9,14 @@ What protects what, and where each rule lives. The first security pass ran on
   member or a share-link code is needed (`src/lib/server/viewAccess.ts`, the
   account layout, the project and song loaders, the mix endpoint). Private
   songs' files live in a private Blob store reached only by presigned URLs
-  (docs/uploads-and-blob.md).
+  (docs/uploads-and-blob.md). A share-link code (`share_link`; a song, a
+  mix, a project, a session, a session recording or a set list) is made
+  by any editor of the account and listed and revoked on the page of what
+  it opens; since 2026-11-07 the account's whole set is on one page,
+  `/<account>/links` (members only, a viewer-role member included since
+  they can open everything already; revoke needs an editor, through the
+  same `revokeShareLink` remote function, which finds the link's account
+  itself). The page shows the codes, so it is never public.
 - **Editing** needs a signed-in member of the entity's account. Every remote
   function and API route resolves the account from the entity it touches
   (`memberOf`, `accountOf*` in `src/lib/server/access.ts`), never from the

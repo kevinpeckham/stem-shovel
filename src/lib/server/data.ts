@@ -9,6 +9,7 @@ import type { Membership } from "#lib/utils/actingMemberships.js";
 import { reorderById } from "#lib/utils/reorderById.js";
 import { sortOrderMoves } from "#lib/utils/sortOrderMoves.js";
 import { sessionDisplayName } from "#lib/utils/sessionName.js";
+import { accountShareLinkOf, type AccountShareLink } from "#lib/utils/accountShareLinkOf.js";
 import { songChangesToStudio } from "#lib/utils/studioChanges.js";
 import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
 import { flagProfanity } from "#lib/utils/profanity.js";
@@ -3216,6 +3217,29 @@ export async function listRecordingShareLinks(accountId: string) {
 		recordingId: r.recordingId as string,
 		state: shareLinkState(r),
 	}));
+}
+
+/** Every link the account has handed out, newest first, with what each opens and whether it still works (the Viewing links page, /[account]/links). */
+export async function listAccountShareLinks(
+	accountId: string,
+	accountSlug: string,
+): Promise<AccountShareLink[]> {
+	const rows = await db.query.shareLink.findMany({
+		where: eq(shareLink.accountId, accountId),
+		orderBy: [desc(shareLink.createdAt)],
+		with: {
+			creator: { columns: { name: true } },
+			song: {
+				columns: { title: true, slug: true },
+				with: { project: { columns: { name: true, slug: true } } },
+			},
+			project: { columns: { name: true, slug: true } },
+			recording: { columns: { id: true, title: true } },
+			session: { columns: { id: true, name: true, place: true, kind: true, startsOn: true } },
+			setList: { columns: { id: true, title: true } },
+		},
+	});
+	return rows.map((r) => ({ ...accountShareLinkOf(r, accountSlug), state: shareLinkState(r) }));
 }
 
 /** Every link made for the account's sessions as a whole (the Sessions page keys them by session), newest first. */

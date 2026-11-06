@@ -7,6 +7,7 @@
 	import { shareTargetIds, type ShareTarget } from "#lib/utils/shareTargetIds.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { page } from "$app/state";
+	import AccountLinksNote from "./AccountLinksNote.svelte";
 
 	/**
 	 * Viewing links for one song, one project, one session or one session
@@ -163,4 +164,5 @@
 	{:else if open.length === 0}
 		<p class="mt-2 text-12px text-dim">No links yet.</p>
 	{/if}
+	<AccountLinksNote />
 </div>
