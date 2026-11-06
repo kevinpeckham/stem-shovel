@@ -5,7 +5,6 @@
 		DOC_KINDS,
 		DOC_LABELS,
 		DOC_VIEWS,
-		type PanelMode,
 		SongDocs,
 	} from "#lib/state/songDocs.svelte.js";
 	import { MixUploads } from "#lib/state/mixUploads.svelte.js";
@@ -21,7 +20,15 @@
 	import { SongComments } from "#lib/state/songComments.svelte.js";
 	import { SongDownloads } from "#lib/state/songDownloads.svelte.js";
 	import { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
-	import KeepOnDevice from "#lib/components/KeepOnDevice.svelte";
+	import SongPlayerTabs from "#lib/components/SongPlayerTabs.svelte";
+	import SongPlayerStatus from "#lib/components/SongPlayerStatus.svelte";
+	import SongEmptyPlayer from "#lib/components/SongEmptyPlayer.svelte";
+	import StemUploadList from "#lib/components/StemUploadList.svelte";
+	import PendingStems from "#lib/components/PendingStems.svelte";
+	import SongSessionRecordings from "#lib/components/SongSessionRecordings.svelte";
+	import { SongPlayerLayout } from "#lib/state/songPlayerLayout.svelte.js";
+	import { StemUploads } from "#lib/state/stemUploads.svelte.js";
+	import { SongMix } from "#lib/state/songMix.svelte.js";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
 	import SongChatPanel from "#lib/components/SongChatPanel.svelte";
 	import SongCommentsPanel from "#lib/components/SongCommentsPanel.svelte";
@@ -56,28 +63,17 @@
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { metronome } from "#lib/audio/metronome.svelte.js";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
-	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, secondsAtBar } from "#lib/audio/measures.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
-	import { dayText } from "#lib/utils/sessionName.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { copyShortLink } from "#lib/utils/copyShortLink.js";
-	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { artistLine } from "#lib/utils/artistLine.js";
 	import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
-	import { decodedStemBytes } from "#lib/utils/decodedStemBytes.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemState } from "#lib/audio/types.js";
 
-	import { DEMO_ACCEPT, DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
-	import { STEM_ACCEPT } from "#lib/constants/stemFormats.js";
-	import {
-		deleteStem,
-		removeDemoById,
-		saveChartDraft,
-		saveSections,
-	} from "#lib/remote/songs.remote.js";
+	import { saveChartDraft, saveSections } from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import { onDestroy, onMount, tick } from "svelte";
@@ -149,8 +145,8 @@
 		onuploaded: refreshAll,
 		open: (id) => goto(mixPath(id)),
 		showMixes: () => {
-			if (playerMode === "minimised") togglePlayer();
-			showView("mixes");
+			if (layout.mode === "minimised") layout.toggle();
+			layout.show("mixes");
 		},
 	});
 	/** An older link (?view=mixes&mix=<id>): the mix's own page now, else the Mixes view. */
@@ -162,7 +158,7 @@
 			void goto(mixPath(id), { replaceState: true });
 			return;
 		}
-		chosenView = "mixes";
+		layout.chosenView = "mixes";
 		url.searchParams.delete("view");
 		url.searchParams.delete("mix");
 		replaceState(url, {});
@@ -171,21 +167,6 @@
 	// Until the visitor picks, a song with stems opens on them and a song with
 	// demos only on those; the visitor's pick sticks for the visit.
 	let demoPanel = $state<DemoPanel | null>(null);
-	/** A demo removed from its row's menu (Kevin): the file goes with it. */
-	async function removeDemo(d: { id: string; label: string }) {
-		if (!confirm(`Remove the demo "${d.label}"? The file is deleted.`)) return;
-		try {
-			await removeDemoById({ id: d.id });
-			notify(`${d.label} removed`);
-			await refreshAll();
-		} catch (e) {
-			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
-		}
-	}
-	/** The stem player's box as last shown; the demos box is at least that tall (560 is the empty box's minimum). */
-	let stemBoxHeight = $state(0);
-	type PlayerView = "stems" | "demos" | "mixes";
-	let chosenView = $state<PlayerView | null>(null);
 	/** The song's stage (docs/mixes.md, "Phase 2"): set in settings, else read from what it holds. */
 	let stage = $derived(
 		songStage({
@@ -195,30 +176,15 @@
 			hasStem: data.manifest.stems.length > 0,
 		}),
 	);
-	// Until the visitor picks, the stage decides: mixing and finished open on the mixes, writing on the demos, arranging on the stems; a view with nothing in it gives way.
-	let playerView = $derived.by<PlayerView>(() => {
-		if (chosenView) return chosenView;
-		const wanted: PlayerView[] =
-			stage === "mixing" || stage === "finished"
-				? ["mixes", "stems", "demos"]
-				: stage === "writing"
-					? ["demos", "stems", "mixes"]
-					: ["stems", "mixes", "demos"];
-		const has = (v: PlayerView) =>
-			v === "stems"
-				? data.manifest.stems.length > 0
-				: v === "mixes"
-					? readyMixes.length > 0
-					: readyDemos.length > 0;
-		return wanted.find(has) ?? "stems";
+	/** The player's layout (docked, floating or minimized, remembered per browser) and which view it shows: the stems, the demos or the mixes. */
+	const layout = new SongPlayerLayout({
+		stage: () => stage,
+		stemCount: () => data.manifest.stems.length,
+		demoCount: () => readyDemos.length,
+		mixCount: () => readyMixes.length,
+		engine: () => playerEngine,
+		demoPanel: () => demoPanel,
 	});
-	const PLAYER_VIEWS: PlayerView[] = ["stems", "demos", "mixes"];
-	/** One thing plays at a time: switching views pauses the others. */
-	function showView(view: PlayerView) {
-		chosenView = view;
-		if (view !== "stems") playerEngine?.pause();
-		if (view !== "demos") demoPanel?.pause();
-	}
 	/** The Comments panel (docs/mixes.md, "Phase 2" sibling): closed until the Comments row's button opens it, or a comment notification's link (?open=comments). */
 	let commentsOpen = $state(false);
 	/** The Attachments panel (docs/uploads-and-blob.md): closed until the toolbar's button opens it; the Uploads menu opens it to pick. */
@@ -266,27 +232,6 @@
 	let notationCount = $derived(
 		data.song.notation.filter((n) => n.status === "ready").length + notationPdfs.length,
 	);
-	/**
-	 * The player (the stems or the demos, with their tabs) the same way (Kevin):
-	 * docked, floating from lg, or minimized to the action row's Player button,
-	 * the panel kept mounted so decoded stems and playback survive; the button
-	 * lights while it plays minimized. Remembered per browser.
-	 */
-	let playerMode = $state<PanelMode>("docked");
-	let playerRestore: Exclude<PanelMode, "minimised"> = "docked";
-	const PLAYER_MODE_KEY = "stemshovel.song.player-mode";
-	function setPlayerMode(mode: PanelMode) {
-		if (mode === "minimised" && playerMode !== "minimised") playerRestore = playerMode;
-		playerMode = mode;
-		try {
-			localStorage.setItem(PLAYER_MODE_KEY, mode);
-		} catch {
-			// Private mode: the choice lasts for this page only.
-		}
-	}
-	function togglePlayer() {
-		setPlayerMode(playerMode === "minimised" ? playerRestore : "minimised");
-	}
 	/** The history panel: which document or comment it shows, and whether this user may restore a version. */
 	const history = new SongHistory({
 		canEdit: () => data.canEdit,
@@ -317,7 +262,7 @@
 		url.searchParams.delete("demo");
 		replaceState(url, {});
 		if (!readyDemos.some((d) => d.id === id)) return;
-		showView("demos");
+		layout.show("demos");
 		await tick();
 		demoPanel?.show(id);
 	}
@@ -326,20 +271,12 @@
 	const pointerMenus = new PointerMenus();
 	onMount(() => {
 		docs.load();
-		try {
-			const pm = localStorage.getItem(PLAYER_MODE_KEY);
-			if (pm === "docked" || pm === "floating" || pm === "minimised") playerMode = pm;
-		} catch {
-			// Private mode: docked.
-		}
+		layout.load();
 	});
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
-	let uploadJobs = $state<UploadJob[]>([]);
-	/** Whichever uploader is on the page (the panel's or the menu's; they share the jobs), for "Retry failed". */
-	let uploader = $state<StemUploader | null>(null);
-	let uploadNotice = $state<string | null>(null);
+	/** The stem uploads in flight (the panel's or the menu's uploader; they share the jobs) and the notice under the player. */
+	const uploads = new StemUploads();
 	let ready = $derived(data.song.stems.filter((s) => s.status === "ready" && s.url));
-
 	// The database row behind a player stem (filename, size, url).
 	let stemRows = $derived(new Map(data.song.stems.map((s) => [s.id, s])));
 
@@ -447,21 +384,8 @@
 	/** The "keep on this device" line for the status under the player's header (the player's own box is hidden); nothing until the player mounts. */
 	const NO_KEEP = { available: false, kept: null, keeping: null, onkeep() {}, onremove() {} };
 	let keepProps = $derived(player?.keepProps() ?? NO_KEEP);
-	/** The song's default mix per stem; the faders start here for everyone. */
-	let defaultGains = $derived(new Map(data.manifest.stems.map((s) => [s.id, s.gain ?? 1])));
-	let defaultPans = $derived(new Map(data.manifest.stems.map((s) => [s.id, s.pan ?? 0])));
-	/** A stem's fader or pan sits away from the song's default mix. */
-	const stemDirty = (s: { id: string; gain: number; pan: number }) =>
-		Math.abs(s.gain - (defaultGains.get(s.id) ?? 1)) > 1e-6 ||
-		Math.abs(s.pan - (defaultPans.get(s.id) ?? 0)) > 1e-6;
-	/** The listener moved something (fader, pan, mute, solo or master) away from the default mix. */
-	let mixDirty = $derived(
-		!!playerEngine &&
-			(playerEngine.master !== 1 ||
-				playerEngine.stems.some((s) => s.muted || s.soloed || stemDirty(s))),
-	);
-	/** The faders and pans alone differ from the default: there is a new default to save. */
-	let fadersDirty = $derived(!!playerEngine && playerEngine.stems.some(stemDirty));
+	/** The listener's mix against the song's default: anything moved, and whether the faders alone make a new default to save. */
+	const mix = new SongMix({ manifest: () => data.manifest, engine: () => playerEngine });
 	/** The Downloads menu and the mix actions beside it (the stems zip, the MP3 mixes, Dawn, the default mix). */
 	const downloads = new SongDownloads({
 		song: () => data.song,
@@ -541,20 +465,20 @@
 			<div class="flex flex-wrap justify-end gap-2">
 				<!-- The Player and Docs panels: minimized to these buttons and back the way they were (Kevin, as the recorder's Ideas button); Player lit while it plays minimized. -->
 				<button
-					class="button button-sm {playerMode === 'minimised'
+					class="button button-sm {layout.mode === 'minimised'
 						? playerEngine?.playing
 							? 'bg-blue-300/5 border-current/40 hover-border-accent text-accent'
 							: 'bg-blue-300/5 border-current/40 hover-border-accent'
 						: 'bg-accent text-oxford border-accent opacity-100'}"
 					type="button"
-					aria-pressed={playerMode !== "minimised"}
-					title={playerMode === "minimised"
+					aria-pressed={layout.mode !== "minimised"}
+					title={layout.mode === "minimised"
 						? playerEngine?.playing
 							? "The player is playing; show it"
 							: "Show the player"
 						: "Minimise the player"}
-					aria-label={playerMode === "minimised" ? "Show the player" : "Minimise the player"}
-					onclick={togglePlayer}
+					aria-label={layout.mode === "minimised" ? "Show the player" : "Minimise the player"}
+					onclick={() => layout.toggle()}
 				>
 					<span class="block i-ph-waveform" aria-hidden="true"></span>
 				</button>
@@ -716,107 +640,52 @@
 	<!-- 2. player: transport + waveforms, with the stem actions -->
 	<section
 		class="grid grid-cols-1 place-content-start gap-y-5 {docs.mode === 'docked' &&
-		playerMode === 'docked'
+		layout.mode === 'docked'
 			? 'min-h-560px'
 			: 'xl:col-span-2'}"
 		aria-label="Player"
 	>
 		<!-- The box shows the stems or the demos; a song with demos but no stems opens on the demos.
 		     The tabs always show (the Demos view holds Record Demo for a song without demos), in the panel's header.
-		     The panel docks here, floats from lg, or is minimized to the action row's Player button (playerMode), kept mounted. -->
+		     The panel docks here, floats from lg, or is minimized to the action row's Player button (layout.mode), kept mounted. -->
 		<FloatingPanel
-			open={playerMode !== "minimised"}
-			floating={playerMode === "floating"}
+			open={layout.mode !== "minimised"}
+			floating={layout.mode === "floating"}
 			keep={true}
 			title="Player"
 			storageKey="stemshovel.song.player-panel"
 			width={900}
 			height={760}
-			onminimise={() => setPlayerMode("minimised")}
+			onminimise={() => layout.setMode("minimised")}
 		>
 			{#snippet controls()}
-				<div
-					class="flex items-center overflow-hidden rounded border border-white/15"
-					role="tablist"
-					aria-label="Player view"
-				>
-					{#each PLAYER_VIEWS as view, index (view)}
-						<button
-							type="button"
-							role="tab"
-							aria-selected={playerView === view}
-							class="{playerView === view
-								? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
-							0
-								? 'rounded-r-none border-r-none'
-								: index === PLAYER_VIEWS.length - 1
-									? 'rounded-l-none'
-									: 'rounded-none border-r-none'}"
-							onclick={() => showView(view)}
-							>{view === "stems"
-								? `Stems (${data.manifest.stems.length})`
-								: view === "demos"
-									? `Demos (${readyDemos.length})`
-									: `Mixes (${readyMixes.length})`}</button
-						>
-					{/each}
-				</div>
-				<button
-					class="button button-xs hidden lg-inline-flex"
-					type="button"
-					title={playerMode === "floating"
-						? "Put the player back in its column"
-						: "Pop the player out into a panel"}
-					aria-label={playerMode === "floating" ? "Dock the player" : "Pop out the player"}
-					onclick={() => setPlayerMode(playerMode === "floating" ? "docked" : "floating")}
-				>
-					<span
-						class={playerMode === "floating" ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
-						aria-hidden="true"
-					></span>
-				</button>
+				<SongPlayerTabs
+					{layout}
+					stemCount={data.manifest.stems.length}
+					demoCount={readyDemos.length}
+					mixCount={readyMixes.length}
+				/>
 			{/snippet}
-			{#if playerView === "demos"}
+			{#if layout.view === "demos"}
 				<div>
 					<DemoPanel
 						bind:this={demoPanel}
 						demos={readyDemos}
-						minHeight={Math.max(560, stemBoxHeight)}
+						minHeight={Math.max(560, layout.stemBoxHeight)}
 						canEdit={data.canEdit}
-						onremove={removeDemo}
+						onremove={(d) => demos.remove(d)}
 						comments={data.demoComments}
 						canComment={data.canComment}
 						card={demoCommentCard}
 						oncomment={(d) => comments.open({ demoId: d.id })}
 						oncontext={(d, seconds, x, y) => pointerMenus.openDemo(d, seconds, x, y)}
 					/>
-					{#if data.sessionRecordings.length > 0}
-						<!-- The session recordings the band tied to this song (docs/uploads-and-blob.md, "Sessions"): each opens on the Sessions page. -->
-						<section
-							class="mt-4 rounded-md border border-current/40 bg-blue/5 px-4 py-3"
-							aria-label="Session recordings of this song"
-						>
-							<h3 class="mb-2 text-12px uppercase tracking-wider text-blue-300 opacity-90">
-								From sessions ({data.sessionRecordings.length})
-							</h3>
-							<ul class="grid gap-1 text-14px">
-								{#each data.sessionRecordings as r (r.id)}
-									<li class="flex flex-wrap items-baseline gap-x-2">
-										<a
-											class="link-dim font-500"
-											href="/{data.account.slug}/sessions?recording={r.id}"
-											title="Open it on the Sessions page">{r.title}</a
-										>
-										{#if r.source}<span class="text-12px opacity-80">{r.source}</span>{/if}
-										<span class="text-12px text-dim">{r.session} · {dayText(r.recordedOn)}</span>
-									</li>
-								{/each}
-							</ul>
-						</section>
-					{/if}
+					<SongSessionRecordings
+						recordings={data.sessionRecordings}
+						accountSlug={data.account.slug}
+					/>
 				</div>
-			{:else if playerView === "mixes"}
+			{:else if layout.view === "mixes"}
 				<!-- The mixes (docs/mixes.md): a list; each opens on its own page to listen, comment and download. -->
 				<div>
 					<MixList
@@ -824,57 +693,22 @@
 						mixes={readyMixes}
 						commentCounts={mixCommentCounts}
 						hrefOf={mixPath}
-						minHeight={Math.max(560, stemBoxHeight)}
+						minHeight={Math.max(560, layout.stemBoxHeight)}
 						canEdit={data.canEdit}
 						jobs={mixUploads.jobs}
 						onfiles={(files) => void mixUploads.upload(files)}
 					/>
 				</div>
 			{:else if data.manifest.stems.length > 0}
-				<div bind:clientHeight={stemBoxHeight}>
-					{#if playerEngine}
-						<!-- The player's status, the body's first line (the player's own box is hidden; the header has no room beside the views and the controls). -->
-						<p class="mb-2 text-13px opacity-70" aria-live="polite">
-							{#if playerEngine.status === "loading"}
-								Decoding stem {Math.min(playerEngine.loaded + 1, playerEngine.total)} of {playerEngine.total}…
-							{:else if playerEngine.status === "ready"}
-								{data.manifest.stems.length}
-								{data.manifest.stems.length === 1 ? "stem" : "stems"},
-								{#if playerEngine.mode === "streamed"}
-									streamed{#if playerEngine.buffering}, buffering…{:else}
-										<span class="i-ph-check text-green-300 align-[-2px]"></span>{/if}
-									<button
-										class="link ml-1"
-										type="button"
-										title="Decode every stem into memory instead: instant seeking, about 60 MB per four-minute stereo stem"
-										onclick={() => player?.switchMode("buffered")}>play buffered</button
-									>
-								{:else}
-									{formatBytes(playerEngine.decodedBytes)} decoded
-									<span class="i-ph-check text-green-300 align-[-2px]"></span>
-									{#if typeof AudioDecoder !== "undefined"}
-										<button
-											class="link ml-1"
-											type="button"
-											title="Decode a window around the playhead instead of the whole song, so a song of any size fits"
-											onclick={() => player?.switchMode("streamed")}>stream</button
-										>
-									{/if}
-								{/if}
-								<KeepOnDevice {...keepProps} />
-							{/if}
-						</p>
-					{/if}
-					{#if (stage === "mixing" || stage === "finished") && readyMixes.length > 0}
-						<!-- The stems are from an earlier stage (docs/mixes.md, "Phase 2"); the studio recording is in Mixes. -->
-						<p
-							class="mb-3 rounded border border-current/20 bg-blue-300/5 px-3 py-2 text-13px opacity-90"
-						>
-							These stems are from the arranging stage. The studio recording is in
-							<button type="button" class="link-dim" onclick={() => showView("mixes")}>Mixes</button
-							>.
-						</p>
-					{/if}
+				<div bind:clientHeight={layout.stemBoxHeight}>
+					<SongPlayerStatus
+						engine={playerEngine}
+						stemCount={data.manifest.stems.length}
+						{keepProps}
+						onmode={(m) => player?.switchMode(m)}
+						showStageNotice={(stage === "mixing" || stage === "finished") && readyMixes.length > 0}
+						onshowmixes={() => layout.show("mixes")}
+					/>
 					<StemPlayer
 						manifest={data.manifest}
 						streaming={data.stemStreaming}
@@ -904,56 +738,15 @@
 					</StemPlayer>
 				</div>
 			{:else}
-				<!-- The player's box, empty: the page keeps its shape before the first stem arrives. -->
-				<div
-					class="grid min-h-560px place-content-center rounded-md border border-current/40 bg-blue/5 px-4 py-3 text-center"
-				>
-					<p class="text-sm text-dim">No stems yet.</p>
-					{#if data.canEdit}
-						<p class="mt-1 text-sm opacity-80">
-							Upload stems, start with a demo recording of the idea, or record one now.
-						</p>
-						<div class="mt-4 flex flex-wrap items-center justify-center gap-3">
-							<StemUploader
-								bind:this={uploader}
-								songId={data.song.id}
-								stemCount={data.song.stems.length}
-								decodedBytes={decodedStemBytes(data.song.stems)}
-								bind:jobs={uploadJobs}
-								bind:notice={uploadNotice}
-								onuploaded={stemActions.offer}
-								onanalysis={check.applyDetection}
-								label="Upload stems"
-								class="inline-flex items-center gap-2"
-							/>
-							<label
-								class="button button-sm inline-flex cursor-pointer items-center gap-2 {demos.busy
-									? 'pointer-events-none opacity-50'
-									: ''}"
-								title="Phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
-							>
-								<span class="i-ph-microphone" aria-hidden="true"></span>
-								{demos.busy ? "Uploading…" : "Upload a demo"}
-								<input
-									class="sr-only"
-									type="file"
-									accept={DEMO_ACCEPT}
-									multiple
-									disabled={demos.busy}
-									onchange={(e) => demos.upload(e.currentTarget)}
-								/>
-							</label>
-							<a
-								class="button button-sm inline-flex items-center gap-2"
-								href="/idea-recorder?song={data.song.id}"
-								title="Idea recorder: record a riff, a melody or a demo for this song"
-							>
-								<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
-								Record a demo
-							</a>
-						</div>
-					{/if}
-				</div>
+				<SongEmptyPlayer
+					songId={data.song.id}
+					stems={data.song.stems}
+					canEdit={data.canEdit}
+					{uploads}
+					{demos}
+					onuploaded={stemActions.offer}
+					onanalysis={check.applyDetection}
+				/>
 			{/if}
 		</FloatingPanel>
 
@@ -968,111 +761,28 @@
 			{ready}
 			{readyDemos}
 			mixBusy={mixUploads.busy}
-			{mixDirty}
-			{fadersDirty}
-			bind:jobs={uploadJobs}
-			bind:notice={uploadNotice}
-			bind:uploader
+			mixDirty={mix.dirty}
+			fadersDirty={mix.fadersDirty}
+			bind:jobs={uploads.jobs}
+			bind:notice={uploads.notice}
+			bind:uploader={uploads.uploader}
 			onuploaded={stemActions.offer}
 			onpickmix={() => void mixUploads.pick()}
 			onpickfiles={() => void attachments?.pick()}
 			onpicknotation={() => void docs.pickNotation()}
-			onshowdemos={() => showView("demos")}
+			onshowdemos={() => layout.show("demos")}
 			onresetmix={() => player?.resetMix()}
 		/>
 
 		<StemVersionOffer actions={stemActions} version={data.song.version} canEdit={data.canEdit} />
-		<!-- upload notice -->
-		{#if uploadNotice}
-			<p class="text-sm px-3 py-2 border border-current/40 rounded-md mb-2 bg-blue-300/5">
-				{uploadNotice}
-			</p>
-		{/if}
-
-		{#if uploadJobs.length > 0}
-			<ul class="divide-y divide-white/10" aria-live="polite" aria-label="Uploading">
-				{#each uploadJobs as job (job.file.name)}
-					<li class="px-4 py-3">
-						<div class="flex items-baseline justify-between gap-4 text-sm">
-							<span class="truncate">{job.file.name}</span>
-							<span class="shrink-0 text-dim">
-								{#if job.status === "error"}failed{:else if job.status === "done"}{formatBytes(
-										job.file.size,
-									)}{:else if job.status === "decoding"}decoding…{:else if job.status === "uploading"}{Math.round(
-										job.percent,
-									)}%{:else}queued{/if}
-							</span>
-						</div>
-						<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
-							<div
-								class="h-full {job.status === 'error' ? 'bg-red-400' : 'bg-accent'}"
-								style:width="{job.percent}%"
-							></div>
-						</div>
-						{#if job.error}<p class="mt-1 text-xs text-red-400">{job.error}</p>{/if}
-					</li>
-				{/each}
-			</ul>
-			{#if uploadJobs.some((j) => j.status === "error") && !uploadJobs.some((j) => j.status === "uploading" || j.status === "decoding")}
-				<div class="px-4 py-2">
-					<button
-						class="button button-xs"
-						type="button"
-						title="Upload the files that failed again, to the same stems"
-						onclick={() => uploader?.retryFailed()}
-					>
-						<span class="i-ph-arrow-clockwise" aria-hidden="true"></span>
-						Retry failed
-					</button>
-				</div>
-			{/if}
-		{/if}
-
-		{#if pending.length > 0}
-			<ul class="mt-4 surface divide-y divide-white/10 text-sm" aria-label="Stems not ready">
-				{#each pending as stem (stem.id)}
-					{@const job = stemActions.replacing[stem.id]}
-					{@const remove = deleteStem.for(stem.id)}
-					<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
-						<span class="truncate">
-							{stem.label}
-							<span class="text-dim">
-								· {stem.filename} · {job
-									? job.stage === "uploading"
-										? `${Math.round(job.percent)}%`
-										: job.stage
-									: "not ready — the upload was interrupted"}
-							</span>
-						</span>
-						<span class="flex items-center gap-3">
-							{#if data.canEdit}
-								<label class="cursor-pointer link-dim">
-									Upload file
-									<input
-										class="sr-only"
-										type="file"
-										accept={STEM_ACCEPT}
-										disabled={!!job}
-										onchange={(e) => stemActions.replace(stem.id, e.currentTarget)}
-									/>
-								</label>
-								<form {...remove}>
-									<input {...remove.fields.id.as("hidden", stem.id)} />
-									<button class="link-dim" disabled={!!remove.pending}>Remove</button>
-								</form>
-							{/if}
-						</span>
-						{#if job?.error}<p class="w-full text-xs text-red-400">{job.error}</p>{/if}
-					</li>
-				{/each}
-			</ul>
-		{/if}
+		<StemUploadList {uploads} />
+		<PendingStems {pending} actions={stemActions} canEdit={data.canEdit} />
 	</section>
 
 	<!-- 3. the Docs panel: chart, lyrics, notes, comments and PDFs (Kevin). Docked in this column, floating from lg, or minimized to the action row's Docs button (docs.mode); its tabs and menus in the panel's header. Away from the column the player takes both. -->
 	<section
 		class="{docs.mode === 'docked'
-			? `h-full min-h-560px ${playerMode === 'docked' ? '' : 'xl:col-span-2'}`
+			? `h-full min-h-560px ${layout.mode === 'docked' ? '' : 'xl:col-span-2'}`
 			: docs.mode === 'floating'
 				? 'xl:col-span-2 xl:h-0 xl:min-h-0'
 				: 'hidden'} max-w-full"

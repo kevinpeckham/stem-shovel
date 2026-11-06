@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Song page, step 11 of the breakup** (docs/song-page.md): the player's layout and view are `SongPlayerLayout` with `SongPlayerTabs` and `SongPlayerStatus`, the stem uploads `StemUploads` with `StemUploadList` and `SongEmptyPlayer`, the pending stems and the session recordings their own components, the mix-dirty state `SongMix`, and `removeDemo` joined `DemoUploads`; the page is 1,250 lines, from 1,540. No behavior change; `link-dim` → `link` on the moved markup.
+
 ## [0.233.0] - 2026-11-06
 
 ### Fixed

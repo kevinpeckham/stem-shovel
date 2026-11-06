@@ -8,7 +8,7 @@ popovers and menus behind them. On 2026-10-30 it was 4,928 lines (the
 script to line 2037, 86 `$state` variables, 74 functions), and Fallow
 scored its template at cyclomatic 320 the day a parser-hiding expression
 was replaced (FINDINGS.md). Kevin asked for it to be broken up with more
-components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page was 2,007 lines (script 630, 28 `$state`), down from 4,928; steps 9 and 10 (2026-11-06) took it to 1,540. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
+components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page was 2,007 lines (script 630, 28 `$state`), down from 4,928; steps 9 to 11 (2026-11-06) took it to 1,250. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
 
 ## The principle: extract by state ownership
 
@@ -213,9 +213,36 @@ step so it shrinks with the page and still fails on anything new.
       both menus.
     - The health baseline: 2 critical, 1 moderate, 5 CRAP moderate (the
       CRAP high is gone).
-11. Then the page is the layout and the data. Left by ownership: the
-    player's mode and view plumbing, the demo and mix views' wiring, and
-    the uploads (they are the layout's own, and small).
+11. **The player's layout and view, its header tabs, status line and
+    empty box, the stem uploads, the pending stems, the session
+    recordings and the mix-dirty state** (2026-11-06, done): the page
+    lost 290 lines (1,540 → 1,250; script 475 → 399; 7 `$state` left).
+    - `state/songPlayerLayout.svelte.ts`, `SongPlayerLayout`: `mode`
+      (docked, floating, minimized; `setMode`, `toggle`, `load` from
+      localStorage), `view` (the visitor's pick, else what the stage
+      and the song's contents decide), `show(view)` pausing the others,
+      `stemBoxHeight`. `components/SongPlayerTabs.svelte`: the view
+      tablist and the pop-out / dock button.
+    - `components/SongPlayerStatus.svelte`: the decoding / streamed /
+      buffered line with its mode buttons and KeepOnDevice, and the
+      "from the arranging stage" notice.
+    - `state/stemUploads.svelte.ts`, `StemUploads`: the jobs, the notice
+      and whichever uploader is on the page, with `canRetry` and
+      `retryFailed`; `components/StemUploadList.svelte` draws them;
+      `components/SongEmptyPlayer.svelte` is the box before the first
+      stem (Upload stems, Upload a demo, Record a demo).
+    - `components/PendingStems.svelte`: the stems not ready, with
+      Upload file and Remove. `components/SongSessionRecordings.svelte`:
+      the "From sessions" list under the demos.
+    - `state/songMix.svelte.ts`, `SongMix`: the default gains and pans,
+      `dirty` and `fadersDirty` for the actions menu.
+    - `removeDemo` joined `DemoUploads` as `remove(d)`.
+    - `link-dim` → `link` throughout. The health baseline: 2 critical, 3
+      CRAP moderate.
+12. Then the page is the layout and the data. Left by ownership: the Docs
+    panel's FloatingPanel with its four ContextMenus (the one block over
+    a hundred lines), the settings popover's props, the comment card
+    snippets.
 
 ## Effect on the client, as a pilot
 

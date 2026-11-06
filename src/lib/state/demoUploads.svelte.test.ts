@@ -13,6 +13,12 @@ const uploadDemoFile = vi.hoisted(() =>
 );
 const postJson = vi.hoisted(() => vi.fn(async () => ({ demoId: "d1", pathname: "p" })));
 vi.mock("#lib/upload.js", () => ({ uploadDemoFile, postJson }));
+const removeDemoById = vi.hoisted(() =>
+	vi.fn<(d: { id: string }) => Promise<{ deleted: boolean }>>(async () => ({ deleted: true })),
+);
+vi.mock("#lib/remote/songs.remote.js", () => ({ removeDemoById }));
+const notify = vi.hoisted(() => vi.fn());
+vi.mock("#lib/state/notifications.svelte.js", () => ({ notify }));
 
 const { DemoUploads } = await import("./demoUploads.svelte.js");
 const { MAX_DEMOS_PER_SONG } = await import("#lib/constants/demoFormats.js");
@@ -39,6 +45,9 @@ function setup(demoCount = 0) {
 beforeEach(() => {
 	uploadDemoFile.mockClear();
 	postJson.mockClear();
+	removeDemoById.mockClear();
+	notify.mockClear();
+	vi.unstubAllGlobals();
 });
 
 describe("DemoUploads", () => {
@@ -100,5 +109,38 @@ describe("DemoUploads", () => {
 			{ name: "a.mp3", percent: 100 },
 			{ name: "bad.mp3", percent: 0, error: "Upload refused" },
 		]);
+	});
+});
+
+describe("DemoUploads.remove", () => {
+	const demo = { id: "d1", label: "Voice memo" };
+
+	test("confirmed: removes the demo, says so and refreshes", async () => {
+		const confirm = vi.fn(() => true);
+		vi.stubGlobal("confirm", confirm);
+		const { demos, onuploaded } = setup();
+		await demos.remove(demo);
+		expect(confirm).toHaveBeenCalledWith('Remove the demo "Voice memo"? The file is deleted.');
+		expect(removeDemoById).toHaveBeenCalledWith({ id: "d1" });
+		expect(notify).toHaveBeenCalledWith("Voice memo removed");
+		expect(onuploaded).toHaveBeenCalledOnce();
+	});
+
+	test("not confirmed: nothing happens", async () => {
+		vi.stubGlobal("confirm", () => false);
+		const { demos, onuploaded } = setup();
+		await demos.remove(demo);
+		expect(removeDemoById).not.toHaveBeenCalled();
+		expect(notify).not.toHaveBeenCalled();
+		expect(onuploaded).not.toHaveBeenCalled();
+	});
+
+	test("refused: an error notification, no refresh", async () => {
+		vi.stubGlobal("confirm", () => true);
+		removeDemoById.mockRejectedValueOnce(new Error("Demo not found"));
+		const { demos, onuploaded } = setup();
+		await demos.remove(demo);
+		expect(notify).toHaveBeenCalledWith("Could not remove it: Demo not found", { kind: "error" });
+		expect(onuploaded).not.toHaveBeenCalled();
 	});
 });

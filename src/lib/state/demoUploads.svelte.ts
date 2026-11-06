@@ -1,5 +1,7 @@
 import { DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
+import { removeDemoById } from "#lib/remote/songs.remote.js";
+import { notify } from "#lib/state/notifications.svelte.js";
 import { type DemoReservation, postJson, uploadDemoFile } from "#lib/upload.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
@@ -12,11 +14,11 @@ export interface DemosSong {
 	demos: readonly unknown[];
 }
 
-/** What the page supplies: the song and what to do once a batch has gone up. */
+/** What the page supplies: the song and what to do once a batch has gone up or a demo has gone. */
 export interface DemoUploadsOptions {
 	/** The song as saved (the page's data, so a function). */
 	song: () => DemosSong;
-	/** After a batch: the page's data again (refreshAll). */
+	/** After a batch or a removal: the page's data again (refreshAll). */
 	onuploaded: () => Promise<void>;
 }
 
@@ -44,7 +46,8 @@ function refusalOf(picked: File[], room: number): string | null {
  * Demo recordings uploaded from the song page (the settings' Demos tab, the
  * player's Demos view and the stem actions menu): no decoding, just the file,
  * checked for format, size and room first, then sent one at a time with its
- * progress. They are played and downloaded from the Demos view.
+ * progress. They are played and downloaded from the Demos view, and removed
+ * from its row menu.
  */
 export class DemoUploads {
 	/** The batch in flight, a row per file; cleared when every file went up. */
@@ -91,5 +94,17 @@ export class DemoUploads {
 		await this.#opts.onuploaded();
 		this.busy = false;
 		if (this.jobs.every((j) => !j.error)) this.jobs = [];
+	}
+
+	/** A demo removed from its row's menu (Kevin): the file goes with it. */
+	async remove(d: { id: string; label: string }) {
+		if (!confirm(`Remove the demo "${d.label}"? The file is deleted.`)) return;
+		try {
+			await removeDemoById({ id: d.id });
+			notify(`${d.label} removed`);
+			await this.#opts.onuploaded();
+		} catch (e) {
+			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
+		}
 	}
 }

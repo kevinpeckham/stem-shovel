@@ -5,11 +5,8 @@
 			"complexity_critical": {
 				"count": 2
 			},
-			"complexity_moderate": {
-				"count": 1
-			},
 			"crap_moderate": {
-				"count": 5
+				"count": 3
 			}
 		}
 	},
