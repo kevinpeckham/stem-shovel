@@ -88,6 +88,18 @@ export const song = table(
 		notesKey: t.text("notes_key"),
 		notesDoneSeconds: t.real("notes_done_seconds").default(0).notNull(),
 		notesStartedAt: t.integer("notes_started_at", { mode: "timestamp_ms" }),
+		/**
+		 * Chords read from the original mix by the ChordMini model on the
+		 * server (src/lib/server/chordmini.ts; docs/audio-engine.md, "The chord
+		 * model"): runs of frames with one chord symbol each, at `frameSec` a
+		 * frame. `chordsKey` names the mix (mixKey) they were read from;
+		 * `chordsStartedAt` is the job's claim.
+		 */
+		chordsJson: t
+			.text("chords_json", { mode: "json" })
+			.$type<import("../../../utils/chordminiRuns").ChordminiRuns>(),
+		chordsKey: t.text("chords_key"),
+		chordsStartedAt: t.integer("chords_started_at", { mode: "timestamp_ms" }),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

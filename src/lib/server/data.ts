@@ -133,6 +133,8 @@ import {
 import { SlugSchema } from "#lib/val/SlugSchema.js";
 import type { PlaybackStatus } from "#lib/val/PlaybackStatusSchema.js";
 import { NOTES_STALE_MS } from "#lib/constants/notesStale.js";
+import { CHORDS_STALE_MS } from "#lib/constants/chordsStale.js";
+import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import {
 	MY_NOTES_KIND,
 	type SongDocKind,
@@ -3838,6 +3840,77 @@ export async function finishSongNotes(songId: string) {
 
 export async function releaseSongNotes(songId: string) {
 	await db.update(song).set({ notesStartedAt: null }).where(eq(song.id, songId));
+}
+
+// ---- the chord model (src/lib/server/chords.ts) -----------------------------
+
+/** What a chords run needs: the mix to read and the run's state. */
+export function songForChords(songId: string) {
+	return db.query.song.findFirst({
+		where: eq(song.id, songId),
+		columns: {
+			id: true,
+			noAi: true,
+			mixUrl: true,
+			mixKey: true,
+			chordsKey: true,
+			chordsStartedAt: true,
+		},
+		with: { project: { columns: { noAi: true } } },
+	});
+}
+
+/** Marks the run started (a stale claim is taken over); the key is written with the result. */
+export async function claimSongChords(songId: string) {
+	const now = Date.now();
+	const rows = await db
+		.update(song)
+		.set({ chordsStartedAt: new Date(now) })
+		.where(
+			and(
+				eq(song.id, songId),
+				sql`(${song.chordsStartedAt} is null or ${song.chordsStartedAt} < ${now - CHORDS_STALE_MS})`,
+			),
+		)
+		.returning({ id: song.id });
+	return rows.length > 0;
+}
+
+/** The run's result for the mix `key`, and the claim cleared. */
+export async function setSongChords(songId: string, key: string, runs: ChordminiRuns) {
+	await db
+		.update(song)
+		.set({ chordsJson: runs, chordsKey: key, chordsStartedAt: null })
+		.where(eq(song.id, songId));
+}
+
+export async function releaseSongChords(songId: string) {
+	await db.update(song).set({ chordsStartedAt: null }).where(eq(song.id, songId));
+}
+
+/**
+ * The stored chords for a member's page: the runs when they were read from
+ * the song's current mix, else null, with whether a run is under way (a claim
+ * within CHORDS_STALE_MS) so the page can wait for it.
+ */
+export async function songChordsFor(accountId: string, songId: string) {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: {
+			chordsJson: true,
+			chordsKey: true,
+			chordsStartedAt: true,
+			mixKey: true,
+			mixUrl: true,
+		},
+	});
+	if (!row) return null;
+	const current = !!row.mixUrl && row.chordsKey !== null && row.chordsKey === row.mixKey;
+	return {
+		chords: current ? row.chordsJson : null,
+		inFlight: !!row.chordsStartedAt && Date.now() - row.chordsStartedAt.getTime() < CHORDS_STALE_MS,
+		hasMix: !!row.mixUrl,
+	};
 }
 
 /** The stored notes for a member's page, with whether they are complete for the current stems. */

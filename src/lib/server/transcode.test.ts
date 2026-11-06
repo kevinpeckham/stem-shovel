@@ -47,6 +47,7 @@ const h = vi.hoisted(() => ({
 		playbackPathname: vi.fn((p: string) => p.replace(/\.[a-z0-9]+$/i, "") + ".play-x.m4a"),
 	},
 	mix: { ensureOriginalMix: vi.fn() },
+	chords: { ensureSongChords: vi.fn() },
 	notes: { ensureSongNotes: vi.fn() },
 	fs: { removed: [] as string[], written: new Map<string, Buffer>() },
 	ffmpegPath: "/opt/ffmpeg" as string | null,
@@ -114,6 +115,7 @@ vi.mock("node:stream/promises", () => ({ pipeline: vi.fn(async () => {}) }));
 vi.mock("#lib/server/data.js", () => h.data);
 vi.mock("#lib/server/blob.js", () => h.blob);
 vi.mock("#lib/server/mix.js", () => h.mix);
+vi.mock("#lib/server/chords.js", () => h.chords);
 vi.mock("#lib/server/notes.js", () => h.notes);
 vi.mock("#lib/server/reportError.js", () => ({ reportError: h.reportError }));
 
@@ -259,6 +261,7 @@ describe("renderStems", () => {
 		await renderStems(["a", "b", "c", "d"]);
 		expect(h.runs).toHaveLength(3);
 		expect(h.mix.ensureOriginalMix.mock.calls).toEqual([["song-1"], ["song-2"]]);
+		expect(h.chords.ensureSongChords.mock.calls).toEqual([["song-1"], ["song-2"]]);
 		expect(h.notes.ensureSongNotes.mock.calls).toEqual([["song-1"], ["song-2"]]);
 	});
 	it("does nothing for a stem another job holds", async () => {

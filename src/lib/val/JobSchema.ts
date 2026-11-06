@@ -5,6 +5,7 @@ import { NanoIdSchema } from "./NanoIdSchema";
 export const JOB_KINDS = [
 	"mix",
 	"notes",
+	"chords",
 	"stem-playback",
 	"demo-playback",
 	"mix-playback",

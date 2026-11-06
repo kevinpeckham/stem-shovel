@@ -9,12 +9,13 @@ import {
 	songChat,
 	stemStreaming,
 } from "#lib/server/data.js";
+import { songWantsChords } from "#lib/utils/songWantsChords.js";
 import { songWantsNotes } from "#lib/utils/songWantsNotes.js";
 import { linkMentions } from "#lib/utils/linkMentions.js";
 import { mentionTargets } from "#lib/utils/mentionTargets.js";
 import { mixKeyOf } from "#lib/server/mix.js";
 import { aiAvailable } from "#lib/server/aiDetect.js";
-import { scheduleNotationPdf, scheduleNotes } from "#lib/server/jobs.js";
+import { scheduleChords, scheduleNotationPdf, scheduleNotes } from "#lib/server/jobs.js";
 import { songView } from "#lib/server/songView.js";
 import { canCommentProject, canEditProject, canViewSong } from "#lib/server/viewAccess.js";
 import { renamedProjectPath } from "#lib/server/slugAlias.js";
@@ -24,6 +25,21 @@ import type { PageServerLoad } from "./$types";
 
 /** Missing renditions render after the response, inside this function's lifetime. */
 export const config: Config = { maxDuration: 300 };
+
+/**
+ * The background jobs a song is missing, posted by a member's visit as a
+ * backstop: the chart draft's notes are made after a stem upload, and the
+ * chord model reads the mix after it renders, so a visit posts either only
+ * when it is missing, behind the stems or the mix, or stuck (a resume, a
+ * recovery).
+ */
+function scheduleBackstops(
+	song: { id: string } & Parameters<typeof songWantsNotes>[0] &
+		Parameters<typeof songWantsChords>[0],
+) {
+	if (songWantsNotes(song, mixKeyOf)) scheduleNotes([song.id]);
+	if (songWantsChords(song)) scheduleChords([song.id]);
+}
 
 export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	const { account, who, shareGrants } = await parent();
@@ -39,10 +55,8 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	}
 	// The project's own answer (a restricted project narrows the account's).
 	const canEdit = canEditProject(song.project, who);
-	// The chart draft's notes are made after a stem upload; a member's visit only
-	// posts the job when they are missing, behind the stems or stuck (a resume, a recovery).
 	const noAi = song.noAi || song.project.noAi;
-	if (canEdit && songWantsNotes(song, mixKeyOf)) scheduleNotes([song.id]);
+	if (canEdit) scheduleBackstops(song);
 	// A score uploaded before the PDFs existed (or whose render was lost): its PDF is rendered on the next visit.
 	for (const score of song.notation) {
 		if (score.status === "ready" && score.pdfStatus === null) scheduleNotationPdf(score.id);

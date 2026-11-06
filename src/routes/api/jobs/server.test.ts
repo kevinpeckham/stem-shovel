@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
 	contexts: [] as unknown[],
 	reportError: vi.fn(),
 	ensureOriginalMix: vi.fn(),
+	ensureSongChords: vi.fn(async () => {}),
 	ensureSongNotes: vi.fn(),
 	traceTranscriptionDeps: vi.fn(),
 	renderNotationPdf: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock("#lib/server/background.js", () => ({
 }));
 vi.mock("#lib/server/reportError.js", () => ({ reportError: h.reportError }));
 vi.mock("#lib/server/mix.js", () => ({ ensureOriginalMix: h.ensureOriginalMix }));
+vi.mock("#lib/server/chords.js", () => ({ ensureSongChords: h.ensureSongChords }));
 vi.mock("#lib/server/notes.js", () => ({
 	ensureSongNotes: h.ensureSongNotes,
 	traceTranscriptionDeps: h.traceTranscriptionDeps,

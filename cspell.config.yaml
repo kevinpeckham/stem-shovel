@@ -21,6 +21,18 @@ ignoreRegExpList:
   - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
   - "/https?:\\/\\/\\S+/g" # urls
 words:
+  - ChordMini
+  - chordmini
+  - ChordNet
+  - librosa
+  - soxr
+  - onnxruntime
+  - musetric
+  - firwin
+  - rfft
+  - hdim
+  - STFT
+  - ptnghia
   - barkup
   - MVCC
   - unparseable

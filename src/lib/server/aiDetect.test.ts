@@ -13,7 +13,8 @@ vi.mock("ai", () => ({ generateText: vi.fn() }));
 
 const { logAiRequest } = await import("#lib/server/data.js");
 const { generateText } = await import("ai");
-const { chartCacheKey, readChartWithAi, reconcileChordsWithAi } = await import("./aiDetect");
+const { chartCacheKey, draftBarLines, readChartWithAi, reconcileChordsWithAi } =
+	await import("./aiDetect");
 
 const log = vi.mocked(logAiRequest);
 const generate = vi.mocked(generateText);
@@ -36,6 +37,37 @@ const answers = (text: string) =>
 beforeEach(() => {
 	vi.clearAllMocks();
 	env.AI_GATEWAY_API_KEY = "test-key";
+});
+
+describe("draftBarLines", () => {
+	const chords = [
+		{ bar: 1, bars: 2, chord: "D" },
+		{ bar: 3, bars: 1, chord: "A" },
+	];
+	it("the matcher's chords ride each bar's notes as a hint", () => {
+		const bars = [
+			{ bar: 1, notes: "D2×1.6@0.8" },
+			{ bar: 2, notes: "" },
+			{ bar: 3, notes: "A2×1@0.5" },
+		];
+		expect(draftBarLines({ chords, bars, source: "matcher" })).toBe(
+			"bar 1 [matcher: D]: D2×1.6@0.8\nbar 2 [matcher: %]: \nbar 3 [matcher: A]: A2×1@0.5",
+		);
+	});
+	it("the model's chords stand alone when the notes are not transcribed, one line per bar", () => {
+		expect(draftBarLines({ chords, bars: [], source: "model" })).toBe(
+			"bar 1 [model: D]: (not transcribed)\nbar 2 [model: %]: (not transcribed)\nbar 3 [model: A]: (not transcribed)",
+		);
+	});
+	it("a bar with notes but no chord, and the bars run to the last of either list", () => {
+		expect(
+			draftBarLines({
+				chords: [{ bar: 2, bars: 1, chord: "G" }],
+				bars: [{ bar: 1, notes: "x" }],
+				source: "matcher",
+			}),
+		).toBe("bar 1: x\nbar 2 [matcher: G]: ");
+	});
 });
 
 describe("reconcileChordsWithAi", () => {

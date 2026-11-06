@@ -85,6 +85,15 @@ describe("SongTempoKeyTab", () => {
 		expect(screen.getByText("draft card")).toBeTruthy();
 	});
 
+	test("the chord card's hedge follows the chords' source", () => {
+		const { props, chordDraft } = setup();
+		chordDraft.chordSegments = [{ bar: 1, bars: 2, start: 0, chord: "D", confidence: 1 }];
+		chordDraft.chordSource = "model";
+		render(SongTempoKeyTab, { props });
+		expect(screen.getByText(/Read from the mix by the chord model/)).toBeTruthy();
+		expect(screen.queryByText(/A rough read/)).toBeNull();
+	});
+
 	test("the song-check card when the AI has answered", () => {
 		const { props, check } = setup();
 		check.aiAnswer = {

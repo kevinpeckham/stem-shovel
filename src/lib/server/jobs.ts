@@ -61,6 +61,8 @@ function scheduleJob(kind: JobKind, ids: string[]) {
 export const scheduleMix = (songIds: string[]) => scheduleJob("mix", songIds);
 /** Transcribes the songs' notes for the chart draft (each picks up where it left off). */
 export const scheduleNotes = (songIds: string[]) => scheduleJob("notes", songIds);
+/** The chord model over a song's mix (src/lib/server/chords.ts): after the mix renders, and from the song page as a backstop. */
+export const scheduleChords = (songIds: string[]) => scheduleJob("chords", songIds);
 /** Renders the stems' playback renditions, then their songs' mixes and notes. */
 export const schedulePlayback = (stemIds: string[]) => scheduleJob("stem-playback", stemIds);
 /** Demo recordings become MP3s. */

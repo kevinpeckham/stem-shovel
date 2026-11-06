@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **Detect chords listens to the mix.** On the song page, "Detect chords" now reads the chords from the song's mix with a chord model that runs on the server, soon after the stems are uploaded. On a real recording it names about three bars in four right, up from about one in three. It knows roots and plain chords (major, minor, sevenths, diminished, suspended), not power chords or inversions, so check the colors against your ears before you draft or save. A song with no mix yet still gets the older read from the transcribed stems.
+
 ## [0.235.0] - 2026-11-07
 
 ### Added

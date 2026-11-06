@@ -40,6 +40,7 @@ import {
 	chartExamples,
 	getSongById,
 	setDefaultMix,
+	songChordsFor,
 	songNotesFor,
 	songSlugs,
 	updateSong as update,
@@ -442,7 +443,7 @@ async function aiOrError<T>(work: Promise<T>): Promise<T> {
 }
 
 /** Names sections, progressions and a chart from the browser's chord detection (members; a few per hour). */
-export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars }) => {
+export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, source }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, id);
@@ -467,6 +468,7 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 				existingSections,
 				chords,
 				bars,
+				source,
 				examples: (await chartExamples(accountId, id)).map((e) => ({
 					title: e.title,
 					sections: e.sections.map((s) => ({ name: s.name })),
@@ -526,6 +528,20 @@ export const saveChartDraft = command(ChartSaveSchema, async ({ id, markdown, re
 });
 
 /** The notes the server transcribed for the chart draft (members), and whether they are complete. */
+/**
+ * The song's chords as the chord model read them from its current mix
+ * (src/lib/server/chords.ts), any member: `chords` null when they are not
+ * read yet (then `inFlight` says a run is under way, `hasMix` whether there
+ * is a mix to read at all).
+ */
+export const songChords = query(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	const found = await songChordsFor(accountId, id);
+	if (!found) error(404, "Song not found");
+	return found;
+});
+
 export const songNotes = query(IdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfSong, id);

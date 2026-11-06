@@ -99,6 +99,7 @@
 		"marked-footnote": "^1.4.0",
 		"mediabunny": "^1.62.1",
 		"nanoid": "6.0.2",
+		"onnxruntime-web": "1.31.1",
 		"parse5": "^8.0.1",
 		"pdf-lib": "^1.17.1",
 		"pdfjs-dist": "^6.4.299",

@@ -1,6 +1,7 @@
 import { eachJob } from "#lib/server/eachJob.js";
 import { renderDawprojectExport } from "#lib/server/dawprojectExport.js";
 import { ensureOriginalMix } from "#lib/server/mix.js";
+import { ensureSongChords } from "#lib/server/chords.js";
 import { ensureSongNotes } from "#lib/server/notes.js";
 import { renderNotationPdf } from "#lib/server/notationPdf.js";
 import {
@@ -25,8 +26,13 @@ import type { JobKind } from "#lib/val/JobSchema.js";
  * without a kind.
  */
 export const RUNNERS = {
-	mix: (ids) => eachJob("mix", ids, ensureOriginalMix),
+	// A mix rendered again (stems removed or reordered) is read again by the chord model; one already read is skipped.
+	mix: async (ids) => {
+		await eachJob("mix", ids, ensureOriginalMix);
+		await eachJob("chords", ids, ensureSongChords);
+	},
 	notes: (ids) => eachJob("notes", ids, ensureSongNotes),
+	chords: (ids) => eachJob("chords", ids, ensureSongChords),
 	"stem-playback": renderStems,
 	"demo-playback": renderDemos,
 	"mix-playback": renderMixes,

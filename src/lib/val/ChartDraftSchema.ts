@@ -18,8 +18,13 @@ export const ChartDraftSchema = v.object({
 	id: NanoIdSchema,
 	/** The template matcher's chords, as a hint. */
 	chords: v.pipe(v.array(ChordSegmentSchema), v.minLength(1), v.maxLength(1000)),
-	/** The notes per bar, which the model reads like a chart reader would. */
-	bars: v.pipe(v.array(BarNotesSchema), v.minLength(1), v.maxLength(1000)),
+	/**
+	 * The notes per bar, which the model reads like a chart reader would; empty
+	 * when the chords came from the chord model before the stems were transcribed.
+	 */
+	bars: v.pipe(v.array(BarNotesSchema), v.minLength(0), v.maxLength(1000)),
+	/** Where the chords came from: the notes' template matcher, or the chord model that read the mix (docs/audio-engine.md "The chord model"). */
+	source: v.optional(v.picklist(["matcher", "model"]), "matcher"),
 });
 
 /** Saving a drafted chart; `replace` confirms overwriting one that has content. */

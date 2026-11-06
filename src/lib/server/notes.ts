@@ -324,10 +324,12 @@ export function ensureSongNotes(songId: string): Promise<void> {
 /**
  * Never called. The child process above resolves tfjs and Basic Pitch by
  * name, which Vercel's file tracer cannot see; these literal imports make
- * it pack both with the jobs function (they were missing on Vercel until
+ * it pack them with the jobs function (they were missing on Vercel until
  * 2026-09-19, so notes were never transcribed there).
  */
 export async function traceTranscriptionDeps(): Promise<void> {
 	await import("@tensorflow/tfjs");
 	await import("@spotify/basic-pitch");
+	// The chord model's runtime (src/lib/server/chordmini/infer.ts resolves it by URL for its child).
+	await import("onnxruntime-web");
 }

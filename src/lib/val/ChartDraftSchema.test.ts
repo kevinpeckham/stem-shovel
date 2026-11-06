@@ -12,10 +12,10 @@ describe("ChartDraftSchema", () => {
 		bars: [{ bar: 1, notes: "D3 x 2.0 @ 0.8" }],
 	};
 	const okWith = (patch: object) => ok(ChartDraftSchema, { ...draft, ...patch });
-	it("trims a chord and needs at least one segment and one bar", () => {
+	it("trims a chord and needs at least one segment; the bars' notes may be empty", () => {
 		expect(v.parse(ChartDraftSchema, draft).chords[0].chord).toBe("D5");
 		expect(okWith({ chords: [] })).toBe(false);
-		expect(okWith({ bars: [] })).toBe(false);
+		expect(okWith({ bars: [] })).toBe(true);
 	});
 	it("bounds bars from 1 and the text per segment and per bar", () => {
 		expect(okWith({ chords: [{ bar: 0, bars: 1, chord: "A" }] })).toBe(false);

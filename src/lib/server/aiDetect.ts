@@ -565,7 +565,46 @@ export interface ChartDraftInput {
 	existingSections: { name: string; bar: number }[];
 	chords: ChordSegmentInput[];
 	bars: BarNotesInput[];
+	/** Who named the chords: the notes' template matcher (a hint), or the chord model that read the mix (an answer to color). */
+	source: "matcher" | "model";
 	examples: { title: string; sections: { name: string }[]; chart: string }[];
+}
+
+/**
+ * One line per bar for the draft prompt: the chord in brackets with its
+ * source, then the transcribed notes when there are any. The bars run to
+ * the last one either list reaches, so the model's chords are all there
+ * when the notes are not transcribed yet (`bars` empty).
+ */
+export function draftBarLines(input: Pick<ChartDraftInput, "chords" | "bars" | "source">): string {
+	const hint = new Map<number, string>();
+	for (const c of input.chords) {
+		for (let i = 0; i < c.bars; i++) hint.set(c.bar + i, i === 0 ? c.chord : "%");
+	}
+	const notes = new Map(input.bars.map((b) => [b.bar, b.notes]));
+	const last = Math.max(0, ...hint.keys(), ...notes.keys());
+	const lines: string[] = [];
+	for (let bar = 1; bar <= last; bar++) {
+		const chord = hint.has(bar) ? ` [${input.source}: ${hint.get(bar)}]` : "";
+		const heard = notes.get(bar);
+		lines.push(`bar ${bar}${chord}: ${heard ?? (input.bars.length ? "" : "(not transcribed)")}`);
+	}
+	return lines.join("\n");
+}
+
+/** The draft's instructions: how to read the bars, by who named their chords (`source`). */
+function draftSystemPrompt(source: ChartDraftInput["source"]): string {
+	return `You are a music director preparing a chord chart for a band from a transcription of their recording.
+For each bar you get the notes an automatic transcriber (Spotify Basic Pitch) heard, lowest to highest, as pitch+octave×seconds sounding@loudness 0..1. The transcription is noisy: weak, short notes are often wrong; long, loud, low notes are reliable. ${
+		source === "model"
+			? "A chord recognition model read each bar's chord from the band's mix, in brackets: on a real recording it names about three bars in four right, and it hears roots and plain qualities (major, minor, 7ths, dim, sus) only, never a power chord, a slash bass or a color the band would play. Keep its roots unless the notes plainly contradict them; spell the chords the way this band would. Some bars may have no notes yet: the bracket is all you have for them. "
+			: "A simple template matcher's guess follows each bar in brackets — a hint, not an answer. "
+	}You also get the tempo, key and time signature, and the way this band writes its charts (examples). Do four things:
+0. Name the chord in every bar, in this band's chart notation (D, Bm, A7, G5, D7sus4, Dsus4, G/B); think like a rock musician reading a chart — simple, plausible progressions in the key over exotic spellings; power chords (5) and sus chords are common here. Give them as ONE space-separated string in bar order, "%" for a bar that repeats the previous chord and "N.C." for silence — e.g. "D7sus4 % % C5 G5 D7sus4 % %".
+1. Split the song into sections (Intro, Verse, Chorus, Bridge, Solo, Outro… reuse names the band uses; a section that comes back keeps the same name). Each section gets a name and the bar it starts on. If the song already has sections, keep their names and starts unless the chords plainly say otherwise.
+2. Write each section's chord progression as a compact line, one chord per bar, "|"-separated, with "x2"/"x4" for repeats, in the band's own notation (see the examples: e.g. "| D | A | Bm | G |").
+3. Draft the chart in barmark, the band's chart notation (see the examples): "key: D, time: 4/4, tempo: 120" first, a "## Name" heading per section with its bar lines under it ("| D | A | Bm | G |", "x2" after a line's closing pipe repeats it, "%" repeats a bar, "/" holds), written once each; then the form of the song as bare "## Name" headings in play order, each playing that section again ("## Chorus x2" twice). No structure line, no roman numerals in headings. Do not invent lyrics.
+Reply with JSON only, no prose before or after, keep the chart under 3000 characters: {"chords":"D7sus4 % % C5 G5 …","sections":[{"name":"Intro","bar":1},…],"progressions":[{"section":"Intro","chords":"…"}],"chart":"markdown…","notes":"one sentence on anything uncertain"}`;
 }
 
 /**
@@ -579,28 +618,14 @@ export async function draftChartWithAi(
 ): Promise<ChartDraftAnswer> {
 	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
 	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
-	const hint = new Map<number, string>();
-	for (const c of input.chords) {
-		for (let i = 0; i < c.bars; i++) hint.set(c.bar + i, i === 0 ? c.chord : "%");
-	}
-	const barLines = input.bars
-		.map(
-			(b) => `bar ${b.bar}${hint.has(b.bar) ? ` [matcher: ${hint.get(b.bar)}]` : ""}: ${b.notes}`,
-		)
-		.join("\n");
+	const barLines = draftBarLines(input);
 	const examples = input.examples
 		.map(
 			(e, i) =>
 				`EXAMPLE ${i + 1}: "${e.title}"\nsections: ${e.sections.map((s) => s.name).join(", ")}\nchart:\n${e.chart}`,
 		)
 		.join("\n\n");
-	const system = `You are a music director preparing a chord chart for a band from a transcription of their recording.
-For each bar you get the notes an automatic transcriber (Spotify Basic Pitch) heard, lowest to highest, as pitch+octave×seconds sounding@loudness 0..1. The transcription is noisy: weak, short notes are often wrong; long, loud, low notes are reliable. A simple template matcher's guess follows each bar in brackets — a hint, not an answer. You also get the tempo, key and time signature, and the way this band writes its charts (examples). Do four things:
-0. Name the chord in every bar, in this band's chart notation (D, Bm, A7, G5, D7sus4, Dsus4, G/B); think like a rock musician reading a chart — simple, plausible progressions in the key over exotic spellings; power chords (5) and sus chords are common here. Give them as ONE space-separated string in bar order, "%" for a bar that repeats the previous chord and "N.C." for silence — e.g. "D7sus4 % % C5 G5 D7sus4 % %".
-1. Split the song into sections (Intro, Verse, Chorus, Bridge, Solo, Outro… reuse names the band uses; a section that comes back keeps the same name). Each section gets a name and the bar it starts on. If the song already has sections, keep their names and starts unless the chords plainly say otherwise.
-2. Write each section's chord progression as a compact line, one chord per bar, "|"-separated, with "x2"/"x4" for repeats, in the band's own notation (see the examples: e.g. "| D | A | Bm | G |").
-3. Draft the chart in barmark, the band's chart notation (see the examples): "key: D, time: 4/4, tempo: 120" first, a "## Name" heading per section with its bar lines under it ("| D | A | Bm | G |", "x2" after a line's closing pipe repeats it, "%" repeats a bar, "/" holds), written once each; then the form of the song as bare "## Name" headings in play order, each playing that section again ("## Chorus x2" twice). No structure line, no roman numerals in headings. Do not invent lyrics.
-Reply with JSON only, no prose before or after, keep the chart under 3000 characters: {"chords":"D7sus4 % % C5 G5 …","sections":[{"name":"Intro","bar":1},…],"progressions":[{"section":"Intro","chords":"…"}],"chart":"markdown…","notes":"one sentence on anything uncertain"}`;
+	const system = draftSystemPrompt(input.source);
 	const question = `SONG: "${input.title}"${input.tempo ? `, ${input.tempo} bpm` : ""}${input.key ? `, ${input.key}` : ""}${input.meter ? `, ${input.meter}` : ""}
 ${input.existingSections.length ? `EXISTING SECTIONS: ${input.existingSections.map((s) => `${s.name} @ bar ${s.bar}`).join(", ")}\n` : ""}NOTES PER BAR:
 ${barLines}

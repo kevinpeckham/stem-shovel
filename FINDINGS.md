@@ -7,6 +7,50 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## librosa's CQT bakes into a sparse plan; ffmpeg `-ac 1` is the arithmetic mean; onnxruntime-web runs in Node (2026-11-06)
+
+From porting ChordMini's front end for the chord model (docs/audio-engine.md "The chord model"; src/lib/server/chords.ts, src/lib/utils/chordminiCqt.ts).
+
+- **librosa's `cqt` need not be ported, only evaluated.** With `scale=True`
+  and `sparsity=0.01` it is a fixed recipe: one early 2:1 halving of the
+  signal, then per octave an STFT of `n_fft` (512 here) at a halving hop,
+  multiplied by a sparse complex kernel matrix (1818 coefficients across 144
+  bins), each octave then halving the signal again. Dumping the kernels
+  (pre-multiplied by `sqrt(sr_octave / sr)` and `1/sqrt(length)`) to JSON and
+  evaluating that in TypeScript reproduces librosa 0.11 to 3e-5 on a
+  synthetic clip. Two details that cost time: the STFT is **rectangular**
+  (the Hann window is already in the kernel), centered with `n_fft/2` zeros
+  of constant padding, and the frame count is `1 + floor(len / hop)`,
+  trimmed to the shortest octave; and `scale=True` multiplies by √2 after
+  every 2:1 resample (`resample(..., scale=True)`) and `fix_length`s to
+  `ceil(n/2)`.
+- **librosa's resampler is soxr (`soxr_hq`), and a Kaiser FIR stands in for
+  it.** A 255-tap `scipy.signal.firwin(255, 0.48, window=("kaiser", 12))`
+  applied zero-phase (delay 127, constant padding) and decimated by two
+  matched soxr's chord frames 100 % on two real songs (max feature
+  difference 0.05 in log space, far under the margin between chord
+  classes). Anything sharper than 0.48 leaks the top of the band into the
+  next octave's lowest bins.
+- **`ffmpeg -ac 1` downmixes stereo as `(L + R) / 2`**, the arithmetic mean
+  (verified against a decode of both channels), the same as the bench's
+  runner and librosa's `to_mono`. Not the `-0.5 / sqrt(2)` pan law of a
+  mixing console: the model is trained on the mean, so keep it.
+- **onnxruntime-web runs in Node from its `node` export** (`import
+  "onnxruntime-web"` resolves `dist/ort.node.min.mjs` under Node) with the
+  `wasm` execution provider; it loads the 14.8 MB `.wasm` beside it. 0.7 s
+  to load the 17 MB ChordMini graph and about 0.9 s per group of 16 windows
+  on one thread, so two seconds for a four-minute song. The alternative,
+  `onnxruntime-node`, ships a 46 MB platform binary that Vercel's tracer
+  cannot see through its dynamic `require`, and a 294 MB package; the wasm
+  path needs no native module. The model goes in a JSON file as base64 so
+  the tracer packs it: a `.onnx` next to the code is a static file the
+  function never gets (CLAUDE.md, "Shipping a file with a function").
+- **Models in a child process, as the notes job**: ORT's wasm backend holds
+  the event loop for the whole run, so the jobs function runs it in
+  `execFile(process.execPath, ["--input-type=module", "-e", script, …])`
+  with the package's URL from `import.meta.resolve`, as `notes.ts` does for
+  Basic Pitch.
+
 ## Swamp's scheduler is `swamp serve`; a local extension's version must be zero-padded CalVer; headless Claude Code needs its normal mode (2026-11-06)
 
 From building the Sentry triage pipeline (docs/security.md "Sentry triage") and the serve daemon for it.

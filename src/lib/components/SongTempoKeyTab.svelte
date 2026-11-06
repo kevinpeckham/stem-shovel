@@ -153,8 +153,14 @@
 			</span>
 		</div>
 		<p class="mt-1 text-12px text-dim">
-			A rough read: on a real recording about half the bars come out right, so check these against
-			your ears before you draft or save.
+			{#if chordDraft.chordSource === "model"}
+				Read from the mix by the chord model: on a real recording it names about three bars in four
+				right. It spells roots and plain chords only, never a power chord or a slash bass, so check
+				the colors against your ears before you draft or save.
+			{:else}
+				A rough read: on a real recording about half the bars come out right, so check these against
+				your ears before you draft or save.
+			{/if}
 		</p>
 		<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{chordChart(
 				segments,
@@ -284,7 +290,7 @@
 		disabled={!!chordDraft.chordBusy || !engine || engine.status !== "ready" || !grid}
 		title={!grid
 			? "Needs a tempo and a time signature first"
-			: "Transcribe the tonal stems and read a chord per bar (takes a while) — a rough read on real recordings"}
+			: "Read a chord per bar from the mix with the chord model, or from the transcribed stems when there is no mix yet"}
 		onclick={() => chordDraft.detectChords()}
 	>
 		<span class="i-ph-music-notes" aria-hidden="true"></span>

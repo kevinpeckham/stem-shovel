@@ -46,6 +46,7 @@ import { ffmpegBitrateDuration } from "#lib/utils/ffmpegBitrateDuration.js";
 import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
 import type { JobKind } from "#lib/val/JobSchema.js";
 import { playbackPathname } from "#lib/server/blob.js";
+import { ensureSongChords } from "#lib/server/chords.js";
 import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes } from "#lib/server/notes.js";
 import { eachJob } from "#lib/server/eachJob.js";
@@ -127,7 +128,8 @@ const sizeOf = (file: string) => Effect.promise(() => stat(file)).pipe(Effect.ma
 /**
  * Renders the stems in turn (one ffmpeg at a time keeps memory flat), then
  * refreshes the cached original mix of every song touched, then the notes
- * the chart draft reads (skipped for no-AI songs; resumes if cut short).
+ * the chart draft reads (skipped for no-AI songs; resumes if cut short), the
+ * chord model having read the mix first.
  */
 export async function renderStems(stemIds: string[]): Promise<void> {
 	const songIds = new Set<string>();
@@ -136,6 +138,8 @@ export async function renderStems(stemIds: string[]): Promise<void> {
 		if (songId) songIds.add(songId);
 	});
 	await eachJob("mix", [...songIds], ensureOriginalMix);
+	// The chord model reads the new mix (src/lib/server/chords.ts), then the notes are transcribed for the draft.
+	await eachJob("chords", [...songIds], ensureSongChords);
 	await eachJob("notes", [...songIds], ensureSongNotes);
 }
 

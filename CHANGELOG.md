@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Detect chords reads the mix with a chord model.** The song page's "Detect chords" now asks ChordMini (ptnghia-j/ChordMini, MIT; the ONNX export from `musetric/chordmini-onnx`), run on the server over the song's original mix, before the transcribed-notes path: stem-bench Study 17 measured it at 59 of 76 bars right on a real recording against 29 for the notes matcher (44 after the AI check). The model's chords are not sent through the AI check (the bench found it breaks them); the notes path, with its check, remains for a song with no mix yet. The card says which read it shows.
+
+### Technical
+
+- **The `chords` job** (`src/lib/server/chords.ts`): run after the original mix renders (the rendition and mix runners) and posted from a member's song-page visit when the chords are missing or behind the mix (`songWantsChords`); claims the row (`chords_started_at`), decodes the mix with ffmpeg to mono 22050 Hz, computes librosa's log-CQT from a baked plan (`src/lib/server/chordmini/cqt-plan.json`, evaluated by `src/lib/utils/chordminiCqt.ts` with a Kaiser half-band FIR in place of soxr; parity-tested against the Python pipeline's answer in `chordminiCqt.fixture.json`), runs the model in a child process under onnxruntime-web's wasm backend (`src/lib/server/chordmini/infer.ts`; the 17 MB model is bundled as base64 JSON with its SHA-256), smooths and argmaxes the logits as the reference does, and stores run-length frames on the song (`chords_json`, `chords_key`). `songChords` query remote; `chordminiBarChords` votes a chord per bar on the page. Migration 0112 adds the three columns. docs/audio-engine.md "The chord model"; a Study 19 brief for the bench in docs/.
+- **New dependency** `onnxruntime-web` 1.31.1.
+
 ## [0.235.0] - 2026-11-07
 
 ### Added

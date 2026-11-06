@@ -948,3 +948,65 @@ about a cent a song. Both findings shipped.
   same in short. The honest ceiling is the transcription: the next
   investment, if chord drafts matter, is a transcriber that holds up on
   real timbres, not more model.
+
+## The chord model (2026-11-06)
+
+"Detect chords" reads a song's chords from its original mix with ChordMini
+first, and from the transcribed stems only when the song has no mix yet.
+ChordMini (ptnghia-j/ChordMini, MIT) is a 170-class chord transformer
+(ChordNet 2E1D, 24 roots × 7 qualities plus "N" and "X"); stem-bench Study 17
+measured it on the band's recordings at 59 of 76 bars right against 29 for
+the notes path (44 after the AI check), and found the AI check _breaks_ its
+bars (16 right ones), so the check runs only on the notes path.
+
+**On the server, as a job.** `src/lib/server/chords.ts` is the `chords` job
+kind (`POST /api/jobs`, like the notes): run by the rendition job after the
+mixes it renders (`renderStems`, before the notes), by the `mix` runner after
+a mix rendered again, and from the song page as a backstop when a member's
+visit finds the chords missing or behind the mix (`songWantsChords`, the
+same rules as the job minus the claim). The job claims the song row
+(`chords_started_at`, a claim older than `CHORDS_STALE_MS` is taken over),
+downloads the mix, decodes it with ffmpeg to float32 mono at 22050 Hz
+(`-ac 1`, the arithmetic mean of the channels, which is how the bench's
+runner decoded and what the model was trained on), computes the features,
+runs the model, and stores run-length frames on the row (`chords_json`,
+keyed by the mix's `chords_key`). A song or project marked "no AI" is skipped.
+
+**The features are librosa's CQT, baked.** The reference pipeline is librosa
+0.11's `cqt(hop 2048, fmin C1, 144 bins, 24 per octave, norm 1, sparsity
+0.01, hann, scale)`, then `log(|CQT| + 1e-6)`. Rather than port librosa,
+`src/lib/server/chordmini/cqt-plan.json` holds what its CQT computes: one
+early halving of the signal, then six octaves (top first), each an STFT of
+512 at that octave's hop with the sparse complex kernel rows for its 24
+bins, scale factors folded in. `src/lib/utils/chordminiCqt.ts` evaluates the
+plan: a 255-tap Kaiser half-band FIR (`kaiserHalfBand.ts`, `decimateHalf.ts`,
+×√2 as librosa's `scale=True`) stands in for librosa's soxr resampler, and
+agrees with it on 100 % of chord frames on two real songs. The baked plan
+reproduces librosa to 3e-5 on a synthetic signal.
+`src/lib/utils/chordminiCqt.fixture.json` is the Python pipeline's answer on
+a clip the test regenerates, so the port is checked against the reference
+in CI.
+
+**The model runs in a child process** (`src/lib/server/chordmini/infer.ts`,
+the notes job's pattern): the ONNX export from Hugging Face
+`musetric/chordmini-onnx` (MIT; 17 MB, its SHA-256 pinned in `model.json`,
+which carries the bytes as base64 so Vercel's tracer packs it) under
+onnxruntime-web's wasm backend, one thread, 16 windows of 108 frames per
+run, about two seconds for a four-minute song. The logits are smoothed over
+nine frames within each window and argmax'd (`chordminiSmooth.ts`, the
+reference's rule), run-length encoded (`chordminiRunsOf.ts`) and mapped to
+chart symbols with the bench's table (`chart-symbols.json`: `C:min7` → `Cm7`,
+`C:hdim7` → `Cdim`, `N` → `N.C.`).
+
+**On the page**, `SongChordDraft` asks `songChords` first: stored chords
+become one chord per bar by majority vote over each bar's frames
+(`chordminiBarChords.ts`, Study 17's registered read), in the shape
+`chordsPerBar` returns, so the card, the AI draft and the chart flow are
+unchanged. While the mix exists but the model has not read it, the page
+waits for the job (polling the query) before falling back to the notes
+path. The card says which read it shows (`chordSource`).
+
+**What the model cannot say**: it names roots and plain qualities (major,
+minor, 7ths, dim, aug, sus) at the model's resolution, never power chords
+or inversions; stem-bench grades it root-level. Study 19's brief
+(docs/bench-brief-chordmini-2026-11-06.md) asks the bench to gate the port.

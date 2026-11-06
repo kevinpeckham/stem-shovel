@@ -2,8 +2,10 @@ import { extractFeatures } from "#lib/audio/analysis.js";
 import { chordsPerBar, describeBars, type ChordSegment, type Note } from "#lib/audio/chords.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
-import { draftChart, reconcileChords, songNotes } from "#lib/remote/songs.remote.js";
+import { draftChart, reconcileChords, songChords, songNotes } from "#lib/remote/songs.remote.js";
 import { notify } from "#lib/state/notifications.svelte.js";
+import { chordminiBarChords } from "#lib/utils/chordminiBarChords.js";
+import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
 import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
@@ -29,6 +31,12 @@ export interface SongChordDraftOptions {
 const attempt = <A>(thunk: (signal: AbortSignal) => PromiseLike<A>) =>
 	Effect.tryPromise({ try: thunk, catch: (e) => e });
 
+/** How often, and for how long, a run waits for the chord model to read a song's mix on the server. */
+const MODEL_POLL_SECONDS = 3;
+/** How long a posted job may take to claim the song before the page stops waiting for it. */
+const MODEL_CLAIM_SECONDS = 9;
+const MODEL_WAIT_SECONDS = 90;
+
 /** Where each bar of the song starts on the grid, and where the last one ends. */
 function barStartsOf(grid: BarGrid, duration: number): number[] {
 	const barStarts: number[] = [];
@@ -43,8 +51,10 @@ function barStartsOf(grid: BarGrid, duration: number): number[] {
 
 /**
  * "Detect chords" and "Draft chart with AI" (SongTempoKeyTab.svelte, the Docs
- * panel's ⋯ menu): Basic Pitch on the tonal stems, one chord per bar on the
- * song's grid, checked by the AI; then the AI turns them into sections, a
+ * panel's ⋯ menu): one chord per bar on the song's grid, from the chord
+ * model's read of the mix on the server when the song has a mix (waited for
+ * while it runs), otherwise from Basic Pitch on the tonal stems, checked by
+ * the AI (never the model's chords: stem-bench Study 17 G4); then the AI turns them into sections, a
  * progression per section and a chart, each saved on request by the page's
  * draft card. Each run is an Effect fiber: Cancel, or a new run, interrupts
  * it, so nothing after its current step happens (docs/song-page.md "Effect
@@ -54,6 +64,8 @@ export class SongChordDraft {
 	/** What a run is doing ("Listening… 40%"), or null when none is. */
 	chordBusy = $state<string | null>(null);
 	chordSegments = $state<ChordSegment[] | null>(null);
+	/** Which path produced `chordSegments`: the chord model on the mix, or the notes. */
+	chordSource = $state<"model" | "notes" | null>(null);
 	chordBars = $state<{ bar: number; notes: string }[]>([]);
 	/** How many bars the AI corrected from the notes; null when it did not check them. */
 	chordsChecked = $state<{ changed: number } | null>(null);
@@ -91,6 +103,7 @@ export class SongChordDraft {
 	/** The chord card's Dismiss: the chords and any draft from them go. */
 	dismiss = () => {
 		this.chordSegments = null;
+		this.chordSource = null;
 		this.draft = null;
 	};
 
@@ -120,15 +133,90 @@ export class SongChordDraft {
 			this.chordBusy = "Listening…";
 			this.chordError = null;
 			this.chordSegments = null;
+			this.chordSource = null;
 			this.chordsChecked = null;
 			this.draft = null;
-			const duration = engine.duration;
-			yield* this.#notes(engine).pipe(
-				Effect.map((notes) => this.#readBars(notes, barStartsOf(grid, duration))),
+			const barStarts = barStartsOf(grid, engine.duration);
+			const fromModel = Effect.gen({ self: this }, function* () {
+				const chords = yield* this.#modelChords();
+				if (!chords) return false;
+				yield* this.#readModelBars(chords, barStarts);
+				return true;
+			});
+			const fromNotes = Effect.sync(() => (this.chordBusy = "Listening…")).pipe(
+				Effect.andThen(this.#notes(engine)),
+				Effect.map((notes) => this.#readBars(notes, barStarts)),
 				Effect.andThen(this.#checkChords()),
+			);
+			yield* fromModel.pipe(
+				Effect.flatMap((done) => (done ? Effect.void : fromNotes)),
 				Effect.catch((e) => Effect.sync(() => this.#fail("Chord detection failed", e))),
 				Effect.ensuring(Effect.sync(() => (this.chordBusy = null))),
 			);
+		});
+	}
+
+	/** The song's chord-model state on the server, or null when the query fails (signed out, say). */
+	#storedChords(id: string) {
+		return attempt(() => {
+			// A query is cached while its proxy lives: refresh, so each poll asks the server again.
+			const query = songChords({ id });
+			return query.refresh().then(() => query);
+		}).pipe(Effect.orElseSucceed(() => null));
+	}
+
+	/**
+	 * The chord model's frames for the song's current mix: at once when stored;
+	 * when the song has a mix the model has not read yet, polled every few
+	 * seconds (each wait a sleep, so Cancel interrupts it) until they arrive or
+	 * the wait runs out; null without a mix, after the wait, or when the
+	 * query fails, so the notes path runs instead.
+	 */
+	#modelChords(): Effect.Effect<ChordminiRuns | null> {
+		return Effect.gen({ self: this }, function* () {
+			const id = this.#opts.songId();
+			const first = yield* this.#storedChords(id);
+			if (first?.chords) return first.chords;
+			if (!first?.hasMix) return null;
+			this.chordBusy = "Reading the chords from the mix on the server…";
+			return yield* this.#awaitModelChords(id);
+		});
+	}
+
+	/**
+	 * Polls for the model's frames until they arrive, the wait runs out, or,
+	 * once a posted job should have claimed the song, none has (it failed, or
+	 * AI is off for the song): null then, so the notes path runs.
+	 */
+	#awaitModelChords(id: string): Effect.Effect<ChordminiRuns | null> {
+		return Effect.gen({ self: this }, function* () {
+			for (let waited = 0; waited < MODEL_WAIT_SECONDS; waited += MODEL_POLL_SECONDS) {
+				yield* Effect.sleep(`${MODEL_POLL_SECONDS} seconds`);
+				const stored = yield* this.#storedChords(id);
+				if (stored?.chords) return stored.chords;
+				if (waited >= MODEL_CLAIM_SECONDS && stored && !stored.inFlight) return null;
+			}
+			return null;
+		});
+	}
+
+	/**
+	 * A chord per bar from the model's frames, never checked by the AI (stem-bench
+	 * Study 17 G4: the reconciler broke right bars). Each bar's notes ride along
+	 * for the draft when the server's transcription is complete; the browser
+	 * never transcribes for this.
+	 */
+	#readModelBars(chords: ChordminiRuns, barStarts: number[]): Effect.Effect<void> {
+		return Effect.gen({ self: this }, function* () {
+			const notes = yield* attempt(() => songNotes({ id: this.#opts.songId() })).pipe(
+				Effect.orElseSucceed(() => null),
+			);
+			this.chordBars = notes?.complete ? describeBars(notes.notes, barStarts) : [];
+			this.chordSegments = chordminiBarChords(chords, barStarts);
+			this.chordSource = "model";
+			this.chordsChecked = null;
+			if (this.chordSegments.length === 0)
+				this.chordError = "No bars to read; check the tempo and time signature.";
 		});
 	}
 
@@ -144,6 +232,7 @@ export class SongChordDraft {
 		if (import.meta.env.DEV)
 			(window as unknown as { __stemNotes?: unknown }).__stemNotes = { notes, barStarts };
 		this.chordSegments = chordsPerBar(notes, barStarts);
+		this.chordSource = "notes";
 		this.chordBars = describeBars(notes, barStarts);
 		if (this.chordSegments.length === 0)
 			this.chordError = "No bars to read; check the tempo and time signature.";
@@ -223,6 +312,7 @@ export class SongChordDraft {
 					id: this.#opts.songId(),
 					chords: segments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
 					bars: this.chordBars,
+					source: this.chordSource === "model" ? "model" : "matcher",
 				}),
 			).pipe(
 				Effect.map((answer) => (this.draft = answer)),
