@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.231.0] - 2026-11-06
+
 ### Fixed
 
 - **Detected chords: a bass pickup no longer renames the bar, and a faint harmonic no longer turns a power chord into a sus2.** The matcher's bass must sound for 15 % of the bar to earn the root bonus, and a template tone under 12 % of the profile counts as missing (`src/lib/audio/chords.ts`). On stem-bench's 440-bar fixture the matcher goes from 424 to 439 right; the power-chord song from 20 to 28 of 28 (FINDINGS "AI features").

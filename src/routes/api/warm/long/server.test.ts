@@ -15,7 +15,12 @@ it("GET /api/warm/long: one round trip to the database, then an uncached ok", as
 	expect(await res.json()).toEqual({ ok: true });
 });
 
-it("declares the Idea Recorder's config, so the adapter bundles it into that function", async () => {
-	const recorder = await import("../../../idea-recorder/+page.server");
-	expect(config).toEqual(recorder.config);
-});
+// The Idea Recorder's load module pulls in its data layer; transforming that tree under a full-suite load has passed 5 s (FINDINGS, 2026-11-06).
+it(
+	"declares the Idea Recorder's config, so the adapter bundles it into that function",
+	{ timeout: 30_000 },
+	async () => {
+		const recorder = await import("../../../idea-recorder/+page.server");
+		expect(config).toEqual(recorder.config);
+	},
+);
