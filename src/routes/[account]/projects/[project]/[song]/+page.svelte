@@ -786,6 +786,14 @@
 			await docs.uploadNotation(files);
 		}}
 	/>
+	<SongAmpPanel
+		amp={songAmp}
+		engine={playerEngine}
+		sitePresets={data.ampSitePresets}
+		account={data.ampAccount}
+		presets={data.ampPresets}
+		presetAdmin={data.presetAdmin}
+	/>
 </main>
 <SongInfoPopover
 	song={data.song}

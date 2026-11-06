@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The song page's Practice amp opens again.** v0.233.0 (step 10 of the page's breakup) dropped the panel's line from the page: the header's button lit but nothing opened. A browser test (tests/e2e/amp.spec.ts) now opens and closes it on the bot's song.
+
 ### Technical
 
 - **Song page, step 12 of the breakup** (docs/song-page.md): the Docs panel is `SongDocsPanel` with `SongDocsControls` and `SongDocsToolbar`, the AI draft card `SongDraftCard` and `SongDraftInPanel`, the player tips `PlayerTips`; the page is 901 lines, from 1,250. No behavior change; `link-dim` → `link` on the moved markup.

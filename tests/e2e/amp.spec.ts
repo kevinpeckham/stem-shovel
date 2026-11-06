@@ -155,3 +155,27 @@ test("turns on at the first touch, and Mute keeps the input while the output is 
 	await until(page, ([w]) => w.__amp.on === false);
 	expect(errors).toEqual([]);
 });
+
+/**
+ * The song page's Practice amp (docs/practice-amp.md, "The band"): the
+ * header's button opens the panel with the amp inside, and closes it
+ * again. Step 10 of the page's breakup (2026-11-06) dropped the panel's
+ * line from the page and nothing caught it before production.
+ */
+test("the song page's Practice amp button opens the amp panel and closes it", async ({
+	page,
+	errors,
+}) => {
+	await open(page, process.env.E2E_SONG ?? "/mmkk/projects/badverbs/eat-all-the-clocks");
+	const button = page.getByRole("button", { name: "Practice amp" });
+	await expect(button).toBeVisible();
+	await button.click();
+	const panel = page
+		.getByRole("region", { name: "Practice amp" })
+		.or(page.locator("text=/^Practice amp$/"));
+	await expect(panel.first()).toBeVisible();
+	await expect(page.getByRole("button", { name: "Turn the amp on" })).toBeVisible();
+	await page.getByRole("button", { name: "Close the practice amp" }).click();
+	await expect(page.getByRole("button", { name: "Turn the amp on" })).toBeHidden();
+	expect(errors).toEqual([]);
+});

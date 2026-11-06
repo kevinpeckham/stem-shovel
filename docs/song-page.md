@@ -239,6 +239,13 @@ step so it shrinks with the page and still fails on anything new.
     - `removeDemo` joined `DemoUploads` as `remove(d)`.
     - `link-dim` → `link` throughout. The health baseline: 2 critical, 3
       CRAP moderate.
+    - **A regression, caught in production (v0.233.0):** step 10's slice of
+      the panels ended one block early, and its replacement left the
+      `<SongAmpPanel>` line out; the Practice amp button lit and nothing
+      opened. The step's screenshots covered only the blocks being moved.
+      Lesson: after a step, press every header button, not only the moved
+      ones, and keep a browser test per panel (tests/e2e/amp.spec.ts has
+      the amp's now).
 12. **The Docs panel, the AI draft card and the player tips**
     (2026-11-06, done): the page lost 349 lines (1,250 → 901; script
     399 → 347; 7 `$state` left).
