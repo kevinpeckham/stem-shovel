@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.234.0] - 2026-11-06
+
 ### Fixed
 
 - **The song page's Practice amp opens again.** v0.233.0 (step 10 of the page's breakup) dropped the panel's line from the page: the header's button lit but nothing opened. A browser test (tests/e2e/amp.spec.ts) now opens and closes it on the bot's song.

@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.234.0] - 2026-11-06
+
 ### Fixed
 
 - The Practice amp opens again from the song page. Since the last release its button lit up but the panel stayed away.
