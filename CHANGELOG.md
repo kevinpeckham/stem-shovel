@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.229.0] - 2026-11-06
+
 ### Fixed
 
 - **The site's typefaces are back.** Since 2026-11-05 every page had rendered in the browser's system fonts: the font provider's stylesheet began pointing at a host the site's security policy does not allow. Noto Sans and Noto Serif now ship with the site itself.

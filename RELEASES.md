@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.229.0] - 2026-11-06
+
+### Fixed
+
+- **The site's typefaces are back.** Since the evening of November 5 every page had rendered in your browser's standard fonts instead of Stem Shovel's own. The fonts now ship with the site itself.
+
 ## [0.228.0] - 2026-11-06
 
 ### Added
