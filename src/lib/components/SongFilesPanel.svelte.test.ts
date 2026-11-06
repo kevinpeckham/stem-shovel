@@ -161,11 +161,11 @@ describe("SongFilesPanel: tiles", () => {
 	test("says so when there is nothing yet, with the upload hint for an editor only", () => {
 		const { unmount } = render(SongFilesPanel, { props: base({ files: [], canEdit: false }) });
 		expect(screen.getByText(/No attachments yet\./)).not.toHaveTextContent("Upload a chart");
-		expect(screen.queryByText("Upload Attachments")).toBeNull();
+		expect(screen.queryByText("Upload attachments")).toBeNull();
 		unmount();
 		render(SongFilesPanel, { props: base({ files: [] }) });
 		expect(screen.getByText(/No attachments yet\./)).toHaveTextContent("Upload a chart, a photo");
-		expect(screen.getByText("Upload Attachments")).toBeInTheDocument();
+		expect(screen.getByText("Upload attachments")).toBeInTheDocument();
 	});
 	test("filter chips appear with a mixed set and narrow the list by kind or to the scores", async () => {
 		const user = userEvent.setup();
@@ -411,7 +411,7 @@ describe("SongFilesPanel: uploading", () => {
 		expect(h.uploadFile).toHaveBeenCalledTimes(2);
 		await tick();
 		expect(screen.queryByRole("list", { name: "Attachment uploads" })).toBeNull();
-		expect(screen.getByText("Upload Attachments")).toBeInTheDocument();
+		expect(screen.getByText("Upload attachments")).toBeInTheDocument();
 		expect(picker().value).toBe("");
 	});
 	test("a file over its kind's ceiling is refused on the spot and a refused upload keeps its message in the list", async () => {

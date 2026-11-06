@@ -80,7 +80,7 @@ describe("SongActionsMenu", () => {
 			"Replace Stems",
 			"Upload Demos",
 			"Upload Mix",
-			"Upload Attachments",
+			"Upload attachments",
 			"Upload Notation",
 			"Drum Machine",
 		])

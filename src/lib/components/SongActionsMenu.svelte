@@ -239,7 +239,7 @@
 				onclick={onpickfiles}
 			>
 				<span class="i-ph-paperclip mr-2" aria-hidden="true"></span>
-				Upload Attachments
+				Upload attachments
 			</button>
 			<button
 				class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"

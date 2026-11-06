@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- The Attachments panel's empty state reads properly again, with a space before its upload hint.
+
 ## [0.232.0] - 2026-11-06
 
 Maintenance release with no user-visible changes.

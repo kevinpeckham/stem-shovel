@@ -314,8 +314,8 @@
 	{/if}
 	{#if ready.length === 0 && readyScores.length === 0 && jobs.length === 0}
 		<p class="opacity-70 text-14px">
-			No attachments yet.{#if canEdit}
-				Upload a chart, a photo, a scrap of audio for the band to hear, a text file, a MIDI file{projectView
+			No attachments yet.{#if canEdit}{" "}Upload a chart, a photo, a scrap of audio for the band to
+				hear, a text file, a MIDI file{projectView
 					? ", for the project or to attach to a song later"
 					: ""}.{/if}
 		</p>
@@ -683,7 +683,7 @@
 				title="PDFs, images, audio, text, MIDI; MusicXML goes to the Chart tab"
 			>
 				<span class="i-ph-paperclip" aria-hidden="true"></span>
-				{busy ? "Uploading…" : "Upload Attachments"}
+				{busy ? "Uploading…" : "Upload attachments"}
 				<input
 					class="sr-only"
 					type="file"
