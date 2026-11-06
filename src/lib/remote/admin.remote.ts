@@ -1,7 +1,10 @@
 import { command, form, getRequestEvent } from "$app/server";
 import * as v from "valibot";
+import { scheduleChords } from "#lib/server/jobs.js";
+import { CHORDS_BATCH } from "#lib/constants/chordsBatch.js";
 import { requireStudioAccess, requireSuperAdmin, requireSystemAdmin } from "#lib/server/access.js";
 import {
+	songsWantingChordsAdmin,
 	createInviteCode,
 	deleteAccount,
 	listPublicSongs,
@@ -162,6 +165,20 @@ export const setHomeStudioSong = command(
 );
 
 /** The featured song's stems as a fresh Dawn song of the admin's, made the home demo at once. */
+/**
+ * Reads the chords of the songs the chord model has not read yet
+ * (docs/audio-engine.md "The chord model"): one batch posted to the jobs
+ * function, the rest counted. The project and song pages post their own
+ * as members open them; this catches up the quiet ones.
+ */
+export const readMissingChords = command(v.object({}), async () => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	const { count, ids } = await songsWantingChordsAdmin(CHORDS_BATCH);
+	scheduleChords(ids);
+	return { scheduled: ids.length, remaining: count - ids.length };
+});
+
 export const makeHomeStudioSong = command(v.object({}), async () => {
 	const { locals } = getRequestEvent();
 	const user = requireSystemAdmin(locals);

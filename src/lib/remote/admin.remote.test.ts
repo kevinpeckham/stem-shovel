@@ -119,6 +119,16 @@ const cases: Case[] = [
 		outcome: { mode: "always" },
 	},
 	{
+		name: "readMissingChords",
+		fn: admin.readMissingChords,
+		input: {},
+		arrange: () =>
+			data.songsWantingChordsAdmin.mockResolvedValue({ count: 3, ids: ["song-a", "song-b"] }),
+		dataFn: "songsWantingChordsAdmin",
+		args: [40],
+		outcome: { scheduled: 2, remaining: 1 },
+	},
+	{
 		name: "setFeaturedSong",
 		fn: admin.setFeaturedSong,
 		input: { songId: SONG },

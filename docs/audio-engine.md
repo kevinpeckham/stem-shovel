@@ -962,9 +962,12 @@ bars (16 right ones), so the check runs only on the notes path.
 **On the server, as a job.** `src/lib/server/chords.ts` is the `chords` job
 kind (`POST /api/jobs`, like the notes): run by the rendition job after the
 mixes it renders (`renderStems`, before the notes), by the `mix` runner after
-a mix rendered again, and from the song page as a backstop when a member's
-visit finds the chords missing or behind the mix (`songWantsChords`, the
-same rules as the job minus the claim). The job claims the song row
+a mix rendered again, and as a backstop from the song page and the project
+page when a member's visit finds chords missing or behind the mix
+(`songWantsChords`, `songsWantingChords`: the same rules as the job minus
+the claim). The songs nobody opens are caught up from /admin/playback,
+"Chord model": a count and a button that posts a batch of forty
+(`readMissingChords`, `songsWantingChordsAdmin`). The job claims the song row
 (`chords_started_at`, a claim older than `CHORDS_STALE_MS` is taken over),
 downloads the mix, decodes it with ffmpeg to float32 mono at 22050 Hz
 (`-ac 1`, the arithmetic mean of the channels, which is how the bench's
