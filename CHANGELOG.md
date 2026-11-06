@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.233.0] - 2026-11-06
+
 ### Fixed
 
 - **The Attachments panel's empty state** ran "No attachments yet." into the upload hint without a space; the upload button is "Upload attachments" (sentence case, as the rest of the UI).
