@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.235.0] - 2026-11-07
+
 ### Added
 
 - **An account's viewing links on one page.** `/<account>/links` (Settings → "Manage viewing links", and "All of this account's viewing links" under any page's own list) lists every share link the account has handed out, newest first: what it opens (a song, a mix, a project, a session, a recording or a set list, linked), the code, who made it, uses, expiry and the note; the open ones first, the revoked, expired and used-up ones folded away. Any member may look and copy; an editor revokes. `listAccountShareLinks` in data.ts, the pure `accountShareLinkOf` mapper, `ShareLinkTable` and `AccountLinksNote` components, tests beside each; docs/security.md "Viewing".

@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.235.0] - 2026-11-07
+
 ### Added
 
 - **Every viewing link in one place.** An account's settings now lead to a page listing every viewing link the account has handed out: what it opens, who made it, how often it was used and whether it still works, with the open ones first. Any of them can be revoked there, and the list is a link away from any song's, project's or session's own links.
