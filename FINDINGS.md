@@ -62,6 +62,15 @@ Found drawing the documentation PDF's chart from barmark's model
   cells a narrow width must divide the row by the section's widest count
   of _bars_, not by `columns`.
 
+## Sentry's issue-alert `rules/` endpoints are gone; alerts are detectors and workflows on the region host, and a member is not a user (2026-11-06)
+
+From wiring an email alert to the `nightly-smoke` cron monitor (docs/security.md "Nightly, from GitHub").
+
+- **`/api/0/projects/<org>/<project>/rules/` and `/organizations/<org>/combined-rules/` answer an HTML 404** on `sentry.io`, `us.sentry.io` and the org host alike, with a token that carries `alerts:read` and `alerts:write`. The alerts live in the newer model: `GET /organizations/<org>/detectors/?project=<id>` lists the sources (an `error` monitor, the `issue_stream`, and each cron monitor as a `monitor_check_in_failure` detector), and `/organizations/<org>/workflows/` the automations, each with `detectorIds`. A cron monitor arrives with an empty `workflowIds`: nothing mails on its failure until a workflow is connected, and the monitor's own `alertRule` field was null.
+- **Those endpoints want the region host.** `GET /api/0/organizations/<org>/` gives `links.regionUrl` (`https://us.sentry.io` here); `sentry.io` serves the control-silo endpoints (the project, members, monitors) and 404s for the rest.
+- **The email action's `targetIdentifier` is the user id, as a string of digits**, not the organization member id: the members list carries both (`id` is the membership, `user.id` the user); the membership id is refused as "User does not belong to this organization", and a blank one as "must be a valid integer".
+- **A working create**: `POST /organizations/<org>/workflows/` with `triggers: {logicType: "any-short", conditions: [{type: "first_seen_event", comparison: true, conditionResult: true}, …regression_event, reappeared_event]}`, `actionFilters: [{logicType: "any-short", conditions: [], actions: [{type: "email", integrationId: null, data: {}, config: {targetType: "user", targetIdentifier: "<userId>"}, status: "active"}]}]`, `config: {frequency: 0}`, `detectorIds: ["<the monitor's detector>"]`, `enabled: true`; the detector's `workflowIds` shows the link afterwards. The project's default "Send a notification for high priority issues" workflow stays on the issue stream alone.
+
 ## sentry:diagnose hands untrusted error text to an agent that can write and run code with the caller's env (2026-11-06)
 
 Flagged by an automated security review in the bench agent's session,

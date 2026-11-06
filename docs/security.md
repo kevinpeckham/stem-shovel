@@ -337,10 +337,14 @@ runs `smoke:urls` and `audit:seo` against production and reports to Sentry
 the way slx-web's sitemap smoke test does: a cron monitor
 (`nightly-smoke`, two bad runs in a row before an issue, one good run to
 recover) wraps the run, so a run that fails and a run that never happens
-both reach whoever Sentry's alert rules name, and each failing URL
+both reach whoever Sentry's alert rules name (the "Nightly smoke failed"
+workflow on the monitor's detector emails Kevin when the monitor's issue
+is new, regresses or reappears; set 2026-11-06 through the API, see
+FINDINGS), and each failing URL
 (fingerprint by path), each finding without an exception (by route and check) and an
 outage above 25 failures (one event) is an event in the `smoketest`
-environment of the app's own Sentry project. The runner has no database,
+environment of the app's own Sentry project, where the project's default
+"high priority issues" workflow mails the error-level ones. The runner has no database,
 so `SMOKE_SEGMENTS`, a repository variable holding the dynamic routes'
 sample values as JSON (`bun run smoke:segments` prints them from a stage's
 database), fills the account, project and song routes; without it those
