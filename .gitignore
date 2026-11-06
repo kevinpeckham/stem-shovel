@@ -29,6 +29,8 @@ static/stems/*.wav
 
 # agent screenshots (bun run shot)
 .screenshots/
+# Sentry triage records and worktrees (bun run sentry:diagnose)
+.sentry-triage/
 .snapshots/
 
 # Sentry Config File

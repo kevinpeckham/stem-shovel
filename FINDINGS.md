@@ -7,6 +7,14 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Swamp's scheduler is `swamp serve`; a local extension's version must be zero-padded CalVer; headless Claude Code needs its normal mode (2026-11-06)
+
+From building the Sentry triage pipeline (docs/security.md "Sentry triage") and the serve daemon for it.
+
+- **Swamp schedules workflows, but only under `swamp serve`.** A workflow's `trigger.schedule` (cron) plus `trigger.inputs` fires from a running serve, with `swamp workflow schedule list/pause/resume` to manage it; nothing fires from the CLI alone, and missed runs are not caught up. serve needs a swamp-club credential with the `serve:*` scope: the collective token the VM runs every command with has only `extensions:*`, and `swamp serve` exits with "Your collective token lacks the serve:* scope". The systemd user unit `swamp-serve-stem-shovel.service` runs serve through varlock like the dev server, so no secret sits in the unit; it ran once Kevin rotated the token to one with the scope (serve lists the schedule in `/health`).
+- **A local extension registers itself** (`.swamp/bundles/`, re-bundled when a command loads the catalog), but a `version` that is not zero-padded CalVer (`2026.11.06.1`, not `2026.11.6.1`) fails validation silently from `swamp behavior create`'s point of view: it reports "Unknown behavior type" and lists the others. `swamp doctor extensions --verbose` names the real reason. `files` specs take `contentType`, not an extension.
+- **`claude -p` from a subprocess works with the VM's login, but not with `--bare`**: bare mode skips the stored OAuth credential (it answered "Not logged in"); without it a one-word prompt answered fine. Unset `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT` when launching from inside a session. One trivial headless call cost about half a dollar on the default model: pass `--model` for anything that runs on a schedule.
+
 ## Bunny Fonts' CSS API started handing out jsdelivr URLs, and the CSP blocked every web font (2026-11-06)
 
 - **What happened.** Production rendered system fonts: the browser console showed `cdn.jsdelivr.net/fontsource/fonts/noto-sans@5.3.0/…woff2` blocked by `font-src 'self' data: https://fonts.bunny.net`. UnoCSS's `presetWebFonts` bunny provider fetches `fonts.bunny.net/css?…&display=swap` when the config loads, and since 2026-11-05 that endpoint answers with jsdelivr file URLs (without `&display=swap` it still returns bunny's); lj-website lost its fonts the same day (its commit 4cd52510). On the dev server the same config still produced bunny URLs, so the breakage was only visible on a deployed build.

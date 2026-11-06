@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- **Sentry triage, phase one**: `bun run sentry:scan` lists production's unresolved issues with their latest event, and `bun run sentry:diagnose` has a headless Claude Code diagnose the newest ones in a worktree, opening a pull request against dev only for a small change under `src/`, `scripts/` or `tests/` that passes lint, svelte-check and the tests there; everything else is recorded as a proposal under `.sentry-triage/`. The `@kevin/sentry-triage` Swamp type keeps each scan and diagnosis as data, and the `sentry-triage` workflow carries a nightly schedule that `swamp serve`, now a systemd user unit on the VM, fires (docs/security.md "Sentry triage").
 - **A nightly smoke test from GitHub**: `.github/workflows/smoke.yml` runs `scripts/smoke-nightly.mjs` daily, `smoke:urls` and `audit:seo` against production from GitHub's network, reported to Sentry as a cron monitor (`nightly-smoke`) plus an event per failing URL or finding, slx-web's pattern; `SMOKETEST_TOKEN` as a repository secret gets the runner past bot protection, and `SMOKE_SEGMENTS` (a repository variable, printed by `bun run smoke:segments`) supplies the dynamic routes' values where there is no database, the scripts skipping those routes without it. The Sentry DSN moved to `src/lib/constants/sentryDsn.ts`, shared by the browser, the server and the smoke test.
 
 ## [0.229.0] - 2026-11-06

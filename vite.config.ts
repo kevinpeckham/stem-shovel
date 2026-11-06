@@ -84,7 +84,8 @@ export default defineConfig({
 	ssr: { noExternal: [/^better-auth(\/|$)/, /^effect(\/|$)/] },
 	// Playwright writes its traces and screenshots under .screenshots/ (playwright.config.ts
 	// outputDir); the dev server watching them reloaded the page under test (FINDINGS, 2026-10-28).
-	server: { watch: { ignored: ["**/.screenshots/**"] } },
+	// The Sentry triage keeps its records and worktrees (with node_modules) under .sentry-triage/.
+	server: { watch: { ignored: ["**/.screenshots/**", "**/.sentry-triage/**"] } },
 	plugins: [
 		// Sentry (docs/environment.md): instruments load functions and, on Vercel
 		// builds only, uploads source maps with SENTRY_AUTH_TOKEN. Before SvelteKit.

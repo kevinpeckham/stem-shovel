@@ -349,6 +349,44 @@ the same value as the firewall rule's ("Bot protection and the smoke-test
 token" above). `bun run smoke:nightly` runs the same script from the VM
 through varlock; `NIGHTLY_DRY=1` keeps it off Sentry.
 
+### Sentry triage
+
+The pipeline that reads Sentry and proposes fixes (Kevin's self-healing
+direction, 2026-11-06; phase one is read-and-propose, nothing merges by
+itself). Two scripts hold the logic and run through varlock with the
+`SENTRY_AUTH_TOKEN` already in the environment: `bun run sentry:scan`
+lists production's unresolved issues of the last N hours with each one's
+latest event (frames, tags, request), and `bun run sentry:diagnose` takes
+that scan and, for the newest issues without a record under
+`.sentry-triage/` (gitignored, the ledger), runs a headless Claude Code in
+a worktree of `origin/dev` with the issue as its brief. The agent answers
+a structured diagnosis (confidence, a fix applied or proposed, the risk);
+the script, not the agent, decides whether a change becomes a pull
+request: only files under `src/`, `scripts/` or `tests/`, at most six,
+never package.json, migrations, vercel.json, the workflows, the env schema
+or the release files, and only after lint, svelte-check and the tests pass
+in the worktree. Then it commits by path, pushes `sentry/<shortId>` and
+opens a PR against `dev` with the diagnosis for review. Anything else is
+recorded as proposed, with the recommendation. `--dry` prints the brief
+without calling Claude.
+
+Swamp wraps it (`extensions/behaviors/sentry_triage.ts`, type
+`@kevin/sentry-triage`; `models/@kevin/sentry-triage/sentry-production`):
+`scan` records the issue list as data, `triage` records a `triage`
+resource per diagnosis with its Markdown report as a file, so
+`swamp data query 'behavior("sentry-production")'` and the reports show
+what each night found. `workflows/workflow-sentry-triage.yaml` runs it
+(`bunx varlock run -- swamp workflow run sentry-triage`, `--input
+mode=scan` to list only) and carries `trigger.schedule: "30 9 * * *"`,
+which `swamp serve` fires on the VM: the systemd user unit
+`swamp-serve-stem-shovel.service` (`/home/exedev/bin/swamp-serve-stem-shovel`,
+token auth on localhost:9094, through varlock, with a collective token that
+carries the `serve:*` scope) runs it; `swamp workflow schedule
+list|pause|resume sentry-triage` manages the schedule, and
+`curl localhost:9094/health` shows the next run. Phase two, merging a PR
+the gates and a reviewer accept, and a page in the app to approve from, is
+not built.
+
 ## Error reports
 
 Sentry (`@sentry/sveltekit`; `src/hooks.client.ts` for the browser,

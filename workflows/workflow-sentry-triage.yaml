@@ -1,0 +1,35 @@
+id: fde1c954-9479-4825-b669-f5935de37e05
+name: sentry-triage
+description: >-
+  Nightly Sentry triage (docs/security.md "Sentry triage"): sentry-production
+  scans the unresolved production issues of the last day and has a headless
+  Claude Code diagnose the newest ones without a record, opening a pull
+  request against dev when the cause is clear and the fix is small; every
+  diagnosis is kept as data with its report. `swamp workflow run
+  sentry-triage` by hand, or the serve daemon's schedule; `--input mode=scan`
+  only lists.
+tags:
+  area: sentry-triage
+trigger:
+  schedule: "30 9 * * *"
+  inputs:
+    mode: triage
+inputs:
+  properties:
+    mode:
+      type: string
+      enum: [scan, triage]
+      default: triage
+      description: scan lists the issues only; triage diagnoses them too
+  required: [mode]
+jobs:
+  - name: triage
+    description: Scan Sentry, then diagnose the newest issues
+    steps:
+      - name: run
+        description: The scan (and, in triage mode, the diagnoses)
+        task:
+          type: behavior
+          behavior: sentry-production
+          methodName: ${{ inputs.mode }}
+version: 1

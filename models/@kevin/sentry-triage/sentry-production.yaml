@@ -1,0 +1,13 @@
+type: "@kevin/sentry-triage"
+typeVersion: 2026.11.06.1
+id: c0241c92-3ae0-4a33-b22d-179277361b7f
+name: sentry-production
+version: 1
+tags: {}
+globalArguments:
+  environment: production
+  hours: 24
+  maxIssues: 3
+  model: claude-opus-5-5
+  ledger: .sentry-triage
+methods: {}
