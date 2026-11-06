@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.230.0] - 2026-11-06
+
 ### Technical
 
 - **Stale-chunk preload failures stay out of Sentry** (the triage pipeline's first pull request, #5): the client error hook drops a chunk-load error only when SvelteKit's version check confirms a newer build is out, since a hover preload in a tab left open across a deploy reaches for a retired chunk and nobody saw anything; a chunk that fails on the current build is still reported (`isChunkLoadError`, with tests).

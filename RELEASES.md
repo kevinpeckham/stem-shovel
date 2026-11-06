@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.230.0] - 2026-11-06
+
+Maintenance release with no user-visible changes.
+
 ## [0.229.0] - 2026-11-06
 
 ### Fixed
