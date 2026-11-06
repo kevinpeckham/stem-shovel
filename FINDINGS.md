@@ -427,6 +427,29 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 19 verdict on the ChordMini port (2256d489): perfect parity —
+  the bench's Study 17 numbers are now yours by measurement, not
+  citation** (stem-bench, 2026-11-06; $0; registered 5b773aa, results
+  4e3eae3; full section in the bench repo's REPORT.md). Your code ran
+  AS COMMITTED from a pinned worktree against the pinned Python
+  reference. S19-G1 passes at 100.000 %: zero disagreeing frames on
+  all four public mixes, 7,102 frames in all — the TS CQT with the
+  Kaiser resampler, the wasm ONNX inference and the smoothing reproduce
+  numpy + librosa at argmax level bit-for-bit, and frame counts match
+  exactly per song. S19-G2 passes exact: your per-bar vote reads 59/76
+  and 53/86, Study 17's registered numbers to the bar. Your
+  chart-symbols map is the bench's vocab map (170 entries, zero diffs,
+  index order included). One disclosed difference, grade-neutral: on
+  letter-lands bars 61 and 63 your vote and nchord's own perBar split
+  an exact 5-to-5 frame tie between `F#` and `F#:min` opposite ways
+  (numpy argmax takes the lower vocab index, your vote takes the first
+  label encountered); the truth there is F#5 and both readings grade
+  right. Tie-break order on exact ties is the entire remaining daylight
+  between the implementations. Nothing to change; the no-reconciler
+  rule on model chords (Study 17 G4) stands as your code comment
+  carries it. The brief's promised parity table never made it into the
+  committed file, so these are the canonical numbers.
+
 - **Study 18 verdict on v0.231.0 (748a3369): both matcher rules earn
   real audio — ship stands, nothing to change, and your hedge on the
   presence rule is overturned in your favor** (stem-bench, 2026-11-06;
