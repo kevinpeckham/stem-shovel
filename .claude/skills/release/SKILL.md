@@ -90,9 +90,12 @@ Pushing `main` deploys to production. Wait for the deployment with
 Vercel's own wait, never a polling loop (Kevin, 2026-11-02): the new
 deployment is the first row of `vercel ls --prod` within seconds of the
 push (stdout is URLs only), and `vercel inspect <url> --wait --timeout 5m`
-blocks until it is Ready. Then one `curl -s https://www.stemshovel.com/ |
-grep -o 'v0\.[0-9]*\.[0-9]*' | sort -V | tail -1` confirms the version (the
-page carries other `v0.x.y` strings, so take the highest), and confirm the
+blocks until it is Ready. Then one curl confirms the version; it must carry
+the firewall's bypass header, since bot protection challenges a plain curl
+from the VM (docs/security.md "Bot protection and the smoke-test token"):
+`bunx varlock run -- bash -c 'curl -s -H "x-smoketest-token: $SMOKETEST_TOKEN"
+https://www.stemshovel.com/ | grep -o "v0\.[0-9]*\.[0-9]*" | sort -V | tail -1'`
+(the page carries other `v0.x.y` strings, so take the highest), and confirm the
 live pages respond before reporting the release as done:
 `bunx varlock run -- swamp workflow run site-audit --input stage=production`
 runs the smoke test and the indexability audit together and fails on a
