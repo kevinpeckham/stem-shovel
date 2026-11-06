@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.236.0] - 2026-11-07
+
 ### Changed
 
 - **Detect chords reads the mix with a chord model.** The song page's "Detect chords" now asks ChordMini (ptnghia-j/ChordMini, MIT; the ONNX export from `musetric/chordmini-onnx`), run on the server over the song's original mix, before the transcribed-notes path: stem-bench Study 17 measured it at 59 of 76 bars right on a real recording against 29 for the notes matcher (44 after the AI check). The model's chords are not sent through the AI check (the bench found it breaks them); the notes path, with its check, remains for a song with no mix yet. The card says which read it shows.
