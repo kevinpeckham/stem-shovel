@@ -8,7 +8,7 @@ popovers and menus behind them. On 2026-10-30 it was 4,928 lines (the
 script to line 2037, 86 `$state` variables, 74 functions), and Fallow
 scored its template at cyclomatic 320 the day a parser-hiding expression
 was replaced (FINDINGS.md). Kevin asked for it to be broken up with more
-components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page is 2,007 lines (script 630, 28 `$state`), down from 4,928. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
+components and shared utilities; this is the plan and the record. After the eight steps of 2026-10-30 the page was 2,007 lines (script 630, 28 `$state`), down from 4,928; step 9 (2026-11-06) took it to 1,725. The built page chunk went from 57.0 to 60.1 kB gzip over the eight steps (the component and class boundaries cost about 3 kB; the code itself did not grow), measured with `bun run build` before and after.
 
 ## The principle: extract by state ownership
 
@@ -165,7 +165,34 @@ step so it shrinks with the page and still fails on anything new.
    - `state/mixUploads.svelte.ts`, `MixUploads`: `jobs`, `busy`, the
      `MixList` instance, `upload(picked)` one at a time with the format,
      size and room refusals, `pick()` through the page's `showMixes`.
-9. Then the page is the layout, the floating panels and the data.
+9. **The song-info and share popovers, the practice amp panel and the
+   MIDI views** (2026-11-06, done): the page lost 262 lines (1,987 → 1,725;
+   script 631 → 540).
+   - `components/SongInfoPopover.svelte`: the `#song-info` popover with
+     its own `metaLine` and `writtenLine` from the song's changes and
+     credits (`song`, `account`, `readyCount`, `canEdit`); the page keeps
+     `performers` and `artistName` for its header. `link-dim` → `link`.
+   - `components/SongSharePopover.svelte`: the `#song-share` popover
+     with the form's state and `sendShare` inside, and `ShareLinks`
+     under it (`song`, `shareLinks`); the page keeps the `{#if
+     data.canEdit}` around it and the header button that targets it.
+   - `state/songAmp.svelte.ts`, `SongAmp`: `open`, `countIn`,
+     `countingIn`; `toggle`, `play(fromStart)`, `stop`, `dispose` (the
+     count-in timer and clicks; the page still turns the amp off in its
+     own `onDestroy`), with the engine as a function and the metronome
+     injectable. `components/SongAmpPanel.svelte`: the FloatingPanel
+     with the play-along transport in its `controls` snippet and
+     `PracticeAmp` inside (`amp`, `engine`, the four preset props).
+   - `state/midiViews.svelte.ts`, `MidiViews`: `views` and
+     `toggle(stemId, url)` with the parse cache; the page keeps the
+     badge snippet and the player's `midiViews` prop as one-liners.
+   - The health baseline for the page went from 2 critical, 1 high, 2
+     CRAP high and 8 CRAP moderate to 2 critical, 1 moderate, 1 CRAP
+     high and 6 CRAP moderate.
+10. Then the page is the layout, the floating panels and the data. Left
+    by ownership: the Comments, Chat and Attachments panel wrappers
+    (thin), the history panel and the pointer menus (they cross panels),
+    and the player's mode and view plumbing (the layout's own).
 
 ## Effect on the client, as a pilot
 

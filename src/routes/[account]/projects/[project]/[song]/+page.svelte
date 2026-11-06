@@ -30,7 +30,6 @@
 	import { chartDefaults } from "#lib/utils/chartDefaults.js";
 	import { STAGE_LABEL, STAGE_PHASE } from "#lib/constants/songStages.js";
 	import { songStage } from "#lib/utils/songStage.js";
-	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
 	import StemMenu from "#lib/components/StemMenu.svelte";
 	import StemVersionOffer from "#lib/components/StemVersionOffer.svelte";
@@ -44,11 +43,14 @@
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
 	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
-	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
+	import SongAmpPanel from "#lib/components/SongAmpPanel.svelte";
+	import SongInfoPopover from "#lib/components/SongInfoPopover.svelte";
+	import SongSharePopover from "#lib/components/SongSharePopover.svelte";
+	import { SongAmp } from "#lib/state/songAmp.svelte.js";
+	import { MidiViews } from "#lib/state/midiViews.svelte.js";
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { metronome } from "#lib/audio/metronome.svelte.js";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
-	import { type MidiSummary, parseMidi } from "#lib/audio/midi.js";
 	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, secondsAtBar } from "#lib/audio/measures.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
@@ -60,11 +62,7 @@
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { artistLine } from "#lib/utils/artistLine.js";
 	import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
-	import { formatMonth } from "#lib/utils/formatMonth.js";
 	import { decodedStemBytes } from "#lib/utils/decodedStemBytes.js";
-	import { SONG_CHANGE_KINDS } from "#lib/constants/songChanges.js";
-	import { formatSongChange } from "#lib/utils/formatSongChange.js";
-	import { keyLine } from "#lib/utils/keyLine.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemState } from "#lib/audio/types.js";
 
@@ -76,7 +74,6 @@
 		removeDemoById,
 		saveChartDraft,
 		saveSections,
-		shareSong,
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
@@ -111,38 +108,12 @@
 	/** The Docs panel's Attachments tab; the Uploads menu and the panel's ⋯ menu open its picker. */
 	let filesPanel = $state<SongFilesPanel | null>(null);
 
-	// "Written by X, first written June 2019" under the title.
-	// Shown in the song-info popover: the song's fixed tempo, key and meter, and its version.
-	// The key names every key the song moves through ("C major (also A♭ major, F major)", a user's wording).
-	let metaLine = $derived(
-		SONG_CHANGE_KINDS.map((kind) =>
-			kind === "key"
-				? keyLine(data.song.changes)
-				: (() => {
-						const c = data.song.changes.find((x) => x.kind === kind);
-						return c ? formatSongChange(c) : "";
-					})(),
-		)
-			.filter((line) => line !== "")
-			.join(" · "),
-	);
-	// Credits by role (song_credit rows with their artist).
+	// Credits by role (song_credit rows with their artist); the song-info popover spells the rest out itself.
 	const creditsOf = (role: CreditRole) =>
 		data.song.credits.filter((c) => c.role === role && c.artist).map((c) => c.artist.name);
 	let performers = $derived(creditsOf("performer"));
 	/** The artist line under the title: the performers, or the account's name when none is credited. */
 	let artistName = $derived(artistLine(performers) || data.account.name);
-	let composerLine = $derived(artistLine(creditsOf("composer")));
-	let producerLine = $derived(artistLine(creditsOf("producer")));
-	let writtenLine = $derived(
-		[
-			composerLine ? `Written by ${composerLine}` : "",
-			producerLine ? `produced by ${producerLine}` : "",
-			data.song.writtenOn ? `first written ${formatMonth(data.song.writtenOn)}` : "",
-		]
-			.filter(Boolean)
-			.join(", "),
-	);
 
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
 	/** While a demo's MP3 renders or its waveform is measured in the jobs function, the page refreshes itself (ten minutes at most). */
@@ -250,50 +221,12 @@
 	/** The Attachments panel (docs/uploads-and-blob.md): closed until the toolbar's button opens it; the Uploads menu opens it to pick. */
 	let filesOpen = $state(false);
 	/** The Practice Amp's panel (docs/practice-amp.md, "The band"): play along with the stems or a mix; off again on leaving the page. */
-	let ampOpen = $state(false);
-	onDestroy(() => void amp.setOn(false));
-	/**
-	 * The play-along transport in the amp panel's header (docs/practice-amp.md,
-	 * "The band"): the stems from the top or where they are, with a bar of
-	 * clicks first when Count in is on (the metronome, which the amp hosts),
-	 * so the song and the guitar arrive together.
-	 */
-	let ampCountIn = $state(true);
-	let ampCountingIn = $state(false);
-	let ampCountTimer: ReturnType<typeof setTimeout> | null = null;
-	async function ampPlay(fromStart: boolean) {
-		const engine = playerEngine;
-		if (!engine || engine.status !== "ready") return;
-		if (engine.playing && !fromStart) {
-			engine.pause();
-			return;
-		}
-		if (fromStart) engine.seek(0);
-		if (!ampCountIn) {
-			await engine.play();
-			return;
-		}
-		if (ampCountTimer) clearTimeout(ampCountTimer);
-		metronome.load();
-		ampCountingIn = true;
-		await metronome.start();
-		const bar = (60 / metronome.bpm) * metronome.beatsPerBar;
-		ampCountTimer = setTimeout(() => {
-			metronome.stop();
-			ampCountingIn = false;
-			ampCountTimer = null;
-			void engine.play();
-		}, bar * 1000);
-	}
-	function ampStop() {
-		if (ampCountTimer) clearTimeout(ampCountTimer);
-		ampCountTimer = null;
-		if (ampCountingIn) metronome.stop();
-		ampCountingIn = false;
-		playerEngine?.pause();
-	}
-	// The chat (docs/chat.md) is its own panel, closed until the header's button opens it (Kevin: chat and read the docs at once).
-	// Its messages and read mark live here so closing and reopening keeps them; SongChat binds to them.
+	/** The Practice Amp's panel and its play-along transport (docs/practice-amp.md, "The band"); the amp itself is off again on leaving the page. */
+	const songAmp = new SongAmp({ engine: () => playerEngine });
+	onDestroy(() => {
+		void amp.setOn(false);
+		songAmp.dispose();
+	});
 	let chatOpen = $state(false);
 	// svelte-ignore state_referenced_locally
 	let chatMessages = $state(data.chat?.messages ?? []);
@@ -502,58 +435,8 @@
 
 	// The MIDI badge toggles a piano roll in place of the row's waveform; files
 	// are fetched from Blob and parsed once per URL.
-	let midiViews = $state<Record<string, MidiSummary>>({});
-	const midiCache = new Map<string, Promise<MidiSummary>>();
-	async function toggleMidiView(stemId: string) {
-		if (midiViews[stemId]) {
-			midiViews = Object.fromEntries(Object.entries(midiViews).filter(([id]) => id !== stemId));
-			return;
-		}
-		const url = stemRows.get(stemId)?.midiUrl;
-		if (!url) return;
-		let parsed = midiCache.get(url);
-		if (!parsed) {
-			parsed = fetch(url).then(async (res) => {
-				if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-				return parseMidi(await res.arrayBuffer());
-			});
-			midiCache.set(url, parsed);
-		}
-		try {
-			midiViews = { ...midiViews, [stemId]: await parsed };
-		} catch (e) {
-			midiCache.delete(url);
-			alert(`Could not read the MIDI file: ${errorMessage(e)}`);
-		}
-	}
-
-	// Share by email: the song's public link plus a note, sent through Resend.
-	let sharePanel = $state<HTMLDivElement | null>(null);
-	let shareTo = $state("");
-	let shareMessage = $state("");
-	let shareBusy = $state(false);
-	let shareError = $state<string | null>(null);
-	async function sendShare(e: SubmitEvent) {
-		e.preventDefault();
-		shareError = null;
-		shareBusy = true;
-		try {
-			const { sent } = await shareSong({
-				songId: data.song.id,
-				to: shareTo,
-				message: shareMessage,
-			});
-			shareTo = "";
-			shareMessage = "";
-			notify(`Sent to ${sent}`);
-			sharePanel?.hidePopover();
-		} catch (err) {
-			shareError = errorMessage(err);
-		} finally {
-			shareBusy = false;
-		}
-	}
-
+	/** A stem's MIDI file drawn under its row when its badge is on. */
+	const midi = new MidiViews();
 	// The player's engine, for the custom mix (the download row lives outside the player).
 	let playerEngine = $state<StemEngine | null>(null);
 	/** Detect chords and the AI's chart draft (the Tempo & key tab, the Docs panel's ⋯ menu and draft card). */
@@ -788,16 +671,16 @@
 				</button>
 				<!-- The Practice Amp's panel (docs/practice-amp.md): an instrument through the amp, alongside the song. -->
 				<button
-					class="button button-sm relative {ampOpen
+					class="button button-sm relative {songAmp.open
 						? 'bg-accent text-oxford border-accent opacity-100'
 						: amp.on
 							? 'bg-blue-300/5 border-current/40 text-accent'
 							: 'bg-blue-300/5 border-current/40 hover-border-accent'}"
 					type="button"
-					aria-pressed={ampOpen}
-					title={ampOpen ? "Close the practice amp" : "Play along through the practice amp"}
-					aria-label={ampOpen ? "Close the practice amp" : "Practice amp"}
-					onclick={() => (ampOpen = !ampOpen)}
+					aria-pressed={songAmp.open}
+					title={songAmp.open ? "Close the practice amp" : "Play along through the practice amp"}
+					aria-label={songAmp.open ? "Close the practice amp" : "Practice amp"}
+					onclick={() => songAmp.toggle()}
 				>
 					<span class="block i-ph-speaker-high"></span>
 				</button>
@@ -1037,7 +920,7 @@
 						showStatus={false}
 						{stemMenu}
 						{stemBadge}
-						{midiViews}
+						midiViews={midi.views}
 						sections={data.song.sections}
 						changes={data.song.changes}
 						startAt={data.song.startAt}
@@ -1647,173 +1530,24 @@
 			/>
 		</FloatingPanel>
 	</div>
-	<div class="{ampOpen ? '' : 'hidden'} max-w-full lg:contents">
-		<FloatingPanel
-			open={ampOpen}
-			title="Practice amp"
-			storageKey="stemshovel.song.amp-panel"
-			width={900}
-			height={600}
-			onminimise={() => (ampOpen = false)}
-		>
-			{#snippet controls()}
-				<!-- The play-along transport: the stems, with a count-in from the metronome. -->
-				<div class="flex items-center gap-1 text-12px" role="group" aria-label="Play along">
-					<button
-						class="button button-xs flex items-center gap-1"
-						type="button"
-						disabled={!playerEngine || playerEngine.status !== "ready"}
-						title={playerEngine?.playing ? "Pause the song" : "Play the song along with the amp"}
-						aria-label={playerEngine?.playing || ampCountingIn ? "Pause the song" : "Play the song"}
-						onclick={() =>
-							playerEngine?.playing || ampCountingIn ? ampStop() : void ampPlay(false)}
-					>
-						<span
-							class={ampCountingIn
-								? "i-ph-metronome"
-								: playerEngine?.playing
-									? "i-ph-pause"
-									: "i-ph-play"}
-							aria-hidden="true"
-						></span>
-						{ampCountingIn ? "Count-in…" : playerEngine?.playing ? "Pause" : "Play"}
-					</button>
-					<button
-						class="button button-xs flex items-center"
-						type="button"
-						disabled={!playerEngine || playerEngine.status !== "ready"}
-						title="From the top, with the count-in"
-						aria-label="Play the song from the top"
-						onclick={() => void ampPlay(true)}
-					>
-						<span class="i-ph-skip-back" aria-hidden="true"></span>
-					</button>
-					<label
-						class="flex items-center gap-1 px-1"
-						title="A bar of clicks before the song starts"
-					>
-						<input type="checkbox" class="accent-maximumYellow" bind:checked={ampCountIn} />
-						Count in
-					</label>
-				</div>
-			{/snippet}
-			<div class="p-2">
-				<PracticeAmp
-					sitePresets={data.ampSitePresets}
-					account={data.ampAccount}
-					presets={data.ampPresets}
-					presetAdmin={data.presetAdmin}
-				/>
-			</div>
-		</FloatingPanel>
-	</div>
+	<SongAmpPanel
+		amp={songAmp}
+		engine={playerEngine}
+		sitePresets={data.ampSitePresets}
+		account={data.ampAccount}
+		presets={data.ampPresets}
+		presetAdmin={data.presetAdmin}
+	/>
 </main>
-
-<!-- Song info: what the header used to spell out, for anyone who opens it. -->
-<div
-	id="song-info"
-	popover="auto"
-	class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
->
-	<div class="mb-4 flex items-center justify-between gap-4">
-		<h2 class="heading-2 mb-0">{data.song.title}</h2>
-		<button
-			class="button button-xs"
-			type="button"
-			popovertarget="song-info"
-			popovertargetaction="hide"
-		>
-			Close
-		</button>
-	</div>
-	<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-15px">
-		{#if data.song.description}
-			<dt class="opacity-70">About</dt>
-			<dd class="max-w-prose whitespace-pre-line">{data.song.description}</dd>
-		{/if}
-		{#if writtenLine}
-			<dt class="opacity-70">Written</dt>
-			<dd>{writtenLine.replace(/^Written by /, "")}</dd>
-		{/if}
-		{#if metaLine}
-			<dt class="opacity-70">Music</dt>
-			<dd>{metaLine}</dd>
-		{/if}
-		<dt class="opacity-70">Version</dt>
-		<dd>v{data.song.version}</dd>
-		<dt class="opacity-70">Stems</dt>
-		<dd>
-			{ready.length}
-			{ready.length === 1 ? "stem" : "stems"}{#if data.song.stemsUpdatedAt}, last changed {formatDate(
-					data.song.stemsUpdatedAt,
-				)}{/if}
-		</dd>
-		<dt class="opacity-70">Project</dt>
-		<dd>
-			<a class="link-dim" href="/{data.account.slug}/projects/{data.song.project.slug}"
-				>{data.song.project.name}</a
-			>
-			from {data.account.name}
-		</dd>
-	</dl>
-	{#if !data.song.description && !writtenLine && !metaLine && data.canEdit}
-		<p class="mt-4 text-sm opacity-70">
-			Add a description, credits, tempo, key and time signature in song settings.
-		</p>
-	{/if}
-</div>
-
+<SongInfoPopover
+	song={data.song}
+	account={data.account}
+	readyCount={ready.length}
+	canEdit={data.canEdit}
+/>
 {#if data.canEdit}
-	<div
-		id="song-share"
-		popover="auto"
-		bind:this={sharePanel}
-		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
-	>
-		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">Share by email</h2>
-			<button
-				class="button button-xs"
-				type="button"
-				popovertarget="song-share"
-				popovertargetaction="hide"
-			>
-				Close
-			</button>
-		</div>
-		<p class="mb-3 text-sm text-dim">
-			{#if data.song.isPrivate || data.song.project.isPrivate}
-				Sends a viewing link to this song, made for the recipient (it appears below and can be
-				revoked). With it they can listen, read the chart and download the mixes.
-			{:else}
-				Sends the link to this page. Anyone with it can listen, read the chart and download the
-				mixes.
-			{/if}
-		</p>
-		<form class="grid gap-3" onsubmit={sendShare}>
-			<label class="block">
-				<span class="text-sm text-dim">To</span>
-				<input class="mt-1 field" type="email" bind:value={shareTo} required autocomplete="off" />
-			</label>
-			<label class="block">
-				<span class="text-sm text-dim">Note <span class="opacity-60">(optional)</span></span>
-				<textarea class="mt-1 field text-sm" rows="3" bind:value={shareMessage}></textarea>
-			</label>
-			{#if shareError}<p class="text-sm text-red-400" role="alert">{shareError}</p>{/if}
-			<button class="button-accent justify-self-start" disabled={shareBusy}>
-				{shareBusy ? "Sending…" : "Send"}
-			</button>
-		</form>
-		<div class="mt-6 border-t border-white/15 pt-4">
-			<ShareLinks
-				target={{ songId: data.song.id }}
-				links={data.shareLinks}
-				isPrivate={data.song.isPrivate || data.song.project.isPrivate}
-			/>
-		</div>
-	</div>
+	<SongSharePopover song={data.song} shareLinks={data.shareLinks} />
 {/if}
-
 {#if data.canEdit}
 	<SongCommentPopover
 		{comments}
@@ -1978,7 +1712,10 @@
 
 {#snippet stemBadge(stem: StemState)}
 	{#if stemRows.get(stem.id)?.midiUrl}
-		<MidiBadge active={!!midiViews[stem.id]} onclick={() => toggleMidiView(stem.id)} />
+		<MidiBadge
+			active={!!midi.views[stem.id]}
+			onclick={() => void midi.toggle(stem.id, stemRows.get(stem.id)?.midiUrl ?? undefined)}
+		/>
 	{/if}
 {/snippet}
 

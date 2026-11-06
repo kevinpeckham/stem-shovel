@@ -5,17 +5,19 @@
 			"complexity_critical": {
 				"count": 2
 			},
-			"complexity_high": {
+			"complexity_moderate": {
 				"count": 1
 			},
 			"crap_high": {
-				"count": 2
+				"count": 1
 			},
 			"crap_moderate": {
-				"count": 8
+				"count": 6
 			}
 		}
 	},
-	"target_keys": ["src/routes/[account]/projects/[project]/[song]/+page.svelte:complexity"],
+	"target_keys": [
+		"src/routes/[account]/projects/[project]/[song]/+page.svelte:complexity"
+	],
 	"runtime_coverage_findings": []
 }

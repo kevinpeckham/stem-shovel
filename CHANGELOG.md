@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Song page, step 9 of the breakup** (docs/song-page.md): the song-info and share-by-email popovers are components (`SongInfoPopover`, `SongSharePopover`), the practice amp panel and its play-along transport are `SongAmp` + `SongAmpPanel`, and the MIDI views are `MidiViews`; the page is 1,725 lines, from 1,987. No behavior change; `link-dim` → `link` on the info popover's project link.
+- **Sentry triage hardened** after the bench agent's security review (FINDINGS, 2026-11-06): the headless agent and the gates get an allowlisted environment, never the varlock secrets, and unattended runs use `--mode diagnose` (read-only tools, the change proposed as a diff in the record); `--mode fix` (edit, gates, pull request) is attended only. The nightly schedule stays paused until it is resumed by hand.
+
 ## [0.231.0] - 2026-11-06
 
 ### Fixed
