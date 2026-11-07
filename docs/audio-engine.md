@@ -1013,3 +1013,9 @@ path. The card says which read it shows (`chordSource`).
 minor, 7ths, dim, aug, sus) at the model's resolution, never power chords
 or inversions; stem-bench grades it root-level. Study 19's brief
 (docs/bench-brief-chordmini-2026-11-06.md) asks the bench to gate the port.
+Study 20 (docs/bench-brief-chord-colors-2026-11-07.md, "Result") tried
+to color the model's roots from the bar's transcribed notes (power, sus,
+slash, a major/minor flip) and every gate failed: on real recordings the
+note profiles carry a third or a fourth the guitars never played, so the
+colors are unreachable from the notes, and the recoloring cost credited
+roots. The model's reading ships uncolored; the hedge on the card stays.

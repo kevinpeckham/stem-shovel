@@ -55,3 +55,28 @@ Notes channel: the app's server notes weight every tonal stem by its tonal share
 ## What to tell us
 
 Per arm and song: G1–G4, the constants used, the flip's record, the vocal-stem comparison. The candidate's constants and the rule order you recommend, and any bar where the right color is not reachable from the notes at all (a sus4 the transcription never heard, say), so the app can set the card's hedge honestly. If A1 or A2 passes, the app ships `colorChord` on the page after the vote, keeps the reconciler off the model path (Study 17 G4), and the hedge changes from "never a power chord" to what you measured.
+
+## Result (2026-11-07, stem-bench 9e55733)
+
+Every gate failed, and the hypothesis is refuted as specified. Strict
+reads 22/76 and 14/86 against pass lines of 46 and 38; root-level fell
+from 59 to 55 on letter-lands and 53 to 33 on eat-all-the-clocks; the
+cost of guessing was 4 and 20; and the negative control (the matcher's
+own templates with the root forced, sevenths allowed) beat the candidate,
+48 strict to 36, so the seventh fence was never the protective piece.
+
+Why the notes cannot color these bars: the re-transcription's profile
+shows a third or a fourth above the 12 % line on about 50 of
+letter-lands' 74 power bars that the guitars never played (harmonic
+smear and bleed, Study 13's artifact class), so the right color is
+unreachable by any profile-threshold rule; the sus rules turned credited
+triads into wrong sus chords (33 calls, none right); the slash rule
+fired 14 times against zero slash truth; the flip fired 3 times, none
+right. The vocal-stem split moved the candidate by one bar.
+
+The app does not ship `colorChord`; the card's hedge ("never a power
+chord or a slash bass") stays. The one asset the bench measured: the
+power rule alone (root and fifth dominant, third, fourth and second all
+absent) was right 22 of 23 times when it fired, worth about 22/76 strict
+at a cost of about 1 as a hint on top of the model's reading, untouched
+otherwise. That is a fresh brief if wanted, not a change to this one.
