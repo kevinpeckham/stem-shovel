@@ -180,6 +180,14 @@ MusicXML import as "not yet", so this item still waits. The export is a
 candidate feature of its own: a chart as a `.musicxml` download from the
 song page's Download menu and in `charts.zip`, for MuseScore and Dorico.
 
+2026-11-07: `@barmark/musicxml` 0.6.0 imports: `importMusicXml(xml, { part? })`
+reads a `score-partwise` file (a `.mxl` through `readMxl`, bytes through
+`decodeXmlBytes`) into a canonical barmark chart with diagnostics, lead
+sheets with melodies and verses included, checked against MuseScore 4 and
+Dorico files. "Chart from score" (a song's MusicXML attachment → its chord
+chart) is now buildable: parse on the server beside `chartHtml.ts`, show
+the diagnostics, save as the chart on request. Not started.
+
 ### 7. Studio markers from the chart (S) — done 2026-11-02; chart from the Studio (L, later)
 
 `song.sections` (`[{ name, start }]`, names matching `## Name`) have no
