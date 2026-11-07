@@ -48,6 +48,8 @@ const h = await vi.hoisted(async () => {
 			) => `accounts/${accountId}/projects/${projectId}/files/${fileId}.${ext(filename)}`,
 			eventFilePathname: (accountId: string, eventId: string, fileId: string, filename: string) =>
 				`accounts/${accountId}/events/${eventId}/files/${fileId}.${ext(filename)}`,
+			chatAttachmentPathname: (accountId: string, id: string, filename: string) =>
+				`accounts/${accountId}/chat/${id}.${ext(filename)}`,
 			notationPathname: (accountId: string, songId: string, notationId: string, filename: string) =>
 				`accounts/${accountId}/songs/${songId}/notation/${notationId}.${ext(filename)}`,
 			midiPathname: (accountId: string, songId: string, stemId: string, filename: string) =>

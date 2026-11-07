@@ -163,6 +163,7 @@ describe("deleteSongRows", () => {
 			"song_user_note",
 			"comment_version",
 			"comment",
+			"chat_attachment",
 			"chat_reaction",
 			"chat_message",
 			"chat_read",
@@ -311,6 +312,17 @@ describe("deleteSessionReviewRows", () => {
 			"session:rs2",
 			"song:rs1",
 		]);
+	});
+	test("the sessions' chat files go before their messages", async () => {
+		fake.reset({
+			chatAttachment: [
+				{ id: "f1", sessionId: "rs1" },
+				{ id: "f2", sessionId: "rs2" },
+			],
+		});
+		await deleteSessionReviewRows(["rs1"], []);
+		expect(fake.rows("chatAttachment").map((r) => r.id)).toEqual(["f2"]);
+		expect(position("chat_attachment")).toBeLessThan(position("session_chat_message"));
 	});
 	test("a recording alone leaves the session's pins", async () => {
 		fake.reset({
@@ -602,6 +614,18 @@ describe("deleteAccountRows", () => {
 		await deleteAccountRows("a1");
 		expect(fake.rows("dashboardPin").map((p) => p.targetId)).toEqual(["s9"]);
 	});
+	test("the account's chat files go, sent or pending, before its messages; another account's stay", async () => {
+		fake.reset({
+			account: [{ id: "a1" }, { id: "a2" }],
+			chatAttachment: [
+				{ id: "f1", accountId: "a1", songId: null, sessionId: null },
+				{ id: "f2", accountId: "a2", songId: null, sessionId: null },
+			],
+		});
+		await deleteAccountRows("a1");
+		expect(fake.rows("chatAttachment").map((r) => r.id)).toEqual(["f2"]);
+		expect(position("chat_attachment")).toBeLessThan(position("session_chat_message"));
+	});
 	test("covers every table with a foreign key to account", async () => {
 		await deleteAccountRows("a1");
 		expect(missingFor(schema.account)).toEqual([]);
@@ -706,6 +730,26 @@ describe("deleteUserRows", () => {
 		});
 		await deleteUserRows("u1");
 		expect(fake.rows("dashboardPin").map((p) => p.userId)).toEqual(["u2"]);
+	});
+	test('the files on their messages and their unsent ones go; a file on another\'s message stays (docs/chat.md, "Attachments")', async () => {
+		fake.reset({
+			user: [{ id: "u1" }, { id: "u2" }],
+			chatMessage: [
+				{ id: "m1", userId: "u1", songId: "s1" },
+				{ id: "m2", userId: "u2", songId: "s1" },
+			],
+			sessionChatMessage: [{ id: "sm1", userId: "u1", sessionId: "x1" }],
+			chatAttachment: [
+				{ id: "f1", messageId: "m1", sessionMessageId: null, uploadedBy: "u1" },
+				{ id: "f2", messageId: null, sessionMessageId: "sm1", uploadedBy: "u1" },
+				{ id: "f3", messageId: null, sessionMessageId: null, uploadedBy: "u1" },
+				{ id: "f4", messageId: "m2", sessionMessageId: null, uploadedBy: "u2" },
+			],
+		});
+		await deleteUserRows("u1");
+		expect(fake.rows("chatAttachment").map((r) => r.id)).toEqual(["f4"]);
+		expect(position("chat_attachment")).toBeLessThan(position("chat_message"));
+		expect(position("chat_attachment")).toBeLessThan(position("session_chat_message"));
 	});
 	test("every cascade foreign key to user is deleted and every set-null one is nulled", async () => {
 		await deleteUserRows("u1");

@@ -1,16 +1,8 @@
 import { accountOfFile, memberOf } from "#lib/server/access.js";
 import { isOurBlobUrl } from "#lib/server/blob.js";
 import { failFile, findFileById, markFileReady } from "#lib/server/data.js";
-import { headOfBlob } from "#lib/server/headOfBlob.js";
 import { pageCountOf, readyFormOf, storeFileThumbnail } from "#lib/server/readyForm.js";
-import { FILE_KIND_LABELS, type FileKind } from "#lib/constants/fileFormats.js";
-import {
-	isPdfBytes,
-	looksLikeText,
-	startsLikeAudio,
-	startsLikeImage,
-	startsLikeMidi,
-} from "#lib/utils/fileSignatures.js";
+import { notLikeKindMessage, startsLikeKind } from "#lib/server/startsLikeKind.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -39,22 +31,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	if (!(await startsLikeKind(url, kind))) {
 		await failFile(accountId, params.id);
-		error(
-			415,
-			`That file does not look like ${
-				kind === "pdf"
-					? "a PDF"
-					: kind === "image"
-						? "an image"
-						: kind === "audio"
-							? "audio"
-							: kind === "text"
-								? "text"
-								: kind === "midi"
-									? "MIDI"
-									: `a ${FILE_KIND_LABELS[kind].toLowerCase()}`
-			}`,
-		);
+		error(415, notLikeKindMessage(kind));
 	}
 
 	const row = await markFileReady(accountId, params.id, {
@@ -65,28 +42,3 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (!row) error(404, "File not found");
 	return Response.json({ ok: true, shareCode: row.shareCode, kind: row.kind });
 };
-
-/** Whether the file as stored starts the way its kind should; "other" needs only to be there. */
-async function startsLikeKind(url: string, kind: FileKind): Promise<boolean> {
-	const head = await headOfBlob(url);
-	if (!head) return false;
-	switch (kind) {
-		case "pdf":
-			return isPdfBytes(head);
-		case "image":
-			return startsLikeImage(head);
-		case "audio":
-			return startsLikeAudio(head);
-		case "midi":
-			return startsLikeMidi(head);
-		case "text":
-			return looksLikeText(head);
-		case "dawproject":
-			// A zip: "PK\u0003\u0004" (one uploaded by hand; the jobs function's own never passes here).
-			return (
-				head.length > 4 && head[0] === 0x50 && head[1] === 0x4b && head[2] === 3 && head[3] === 4
-			);
-		case "other":
-			return head.length > 0;
-	}
-}

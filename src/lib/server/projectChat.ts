@@ -1,3 +1,4 @@
+import { chatAttachmentsOf, type ChatAttachmentRow } from "#lib/server/data.js";
 import { db, schema } from "#lib/server/db/index.js";
 import { PROJECT_CHAT_FEED_LIMIT, PROJECT_CHAT_FEED_MAX } from "#lib/val/ProjectChatSchema.js";
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
@@ -15,6 +16,8 @@ export interface ProjectChatFeedRow {
 	body: string;
 	createdAt: number;
 	editedAt: number | null;
+	/** The files it carries, oldest first (docs/chat.md, "Attachments"); none is []. */
+	attachments: ChatAttachmentRow[];
 }
 
 /**
@@ -48,7 +51,9 @@ export async function projectChatFeed(
 		limit: take + 1,
 		with: { author: { columns: { id: true, name: true } } },
 	});
-	const messages = rows.slice(0, take).map((m) => {
+	const page = rows.slice(0, take);
+	const files = await chatAttachmentsOf(page.map((m) => m.id));
+	const messages = page.map((m) => {
 		const s = bySong.get(m.songId);
 		return {
 			id: m.id,
@@ -60,6 +65,7 @@ export async function projectChatFeed(
 			body: m.body,
 			createdAt: m.createdAt.getTime(),
 			editedAt: m.editedAt?.getTime() ?? null,
+			attachments: files.get(m.id) ?? [],
 		};
 	});
 	return { messages, more: rows.length > take };

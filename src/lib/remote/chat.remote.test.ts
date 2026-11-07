@@ -44,6 +44,7 @@ const ROW = {
 	editedAt: null,
 	mentions: [],
 	reactions: [],
+	attachments: [],
 };
 
 beforeEach(() => {
@@ -67,7 +68,7 @@ describe("sendMessage", () => {
 	it("a viewer of the account writes", async () => {
 		asViewerOf(ACCOUNT);
 		await expect(call(chat.sendMessage, input)).resolves.toEqual({ message: ROW });
-		expect(data.createChatMessage).toHaveBeenCalledWith(ACCOUNT, SONG, USER, "Louder bass", []);
+		expect(data.createChatMessage).toHaveBeenCalledWith(ACCOUNT, SONG, USER, "Louder bass", [], []);
 	});
 	it("a project viewer from outside the account writes under the song's account", async () => {
 		asOutsider();
@@ -79,6 +80,7 @@ describe("sendMessage", () => {
 			OTHER_USER,
 			"Louder bass",
 			[],
+			[],
 		);
 	});
 	it("a member not added to a restricted project may not", async () => {
@@ -86,10 +88,65 @@ describe("sendMessage", () => {
 		data.projectRestricted.mockResolvedValue(true);
 		await expect(call(chat.sendMessage, input)).rejects.toMatchObject(httpError(404));
 	});
-	it("an empty message is refused by the schema", async () => {
+	it("an empty message without a file is refused", async () => {
 		asEditorOf(ACCOUNT);
 		await expect(call(chat.sendMessage, { songId: SONG, body: "   " })).rejects.toBeDefined();
 		expect(data.createChatMessage).not.toHaveBeenCalled();
+	});
+	it('a message may be files alone: the ids go to the data layer, which attaches the sender\'s own (docs/chat.md, "Attachments")', async () => {
+		asViewerOf(ACCOUNT);
+		const FILE = fakeId("chatfile-one");
+		await expect(
+			call(chat.sendMessage, { songId: SONG, body: "", attachments: [FILE] }),
+		).resolves.toEqual({ message: ROW });
+		expect(data.createChatMessage).toHaveBeenCalledWith(ACCOUNT, SONG, USER, "", [], [FILE]);
+	});
+	it("more than ten files is refused by the schema", async () => {
+		asEditorOf(ACCOUNT);
+		const many = Array.from({ length: 11 }, (_, i) => fakeId(`f${i}`));
+		await expect(
+			call(chat.sendMessage, { songId: SONG, body: "", attachments: many }),
+		).rejects.toBeDefined();
+		expect(data.createChatMessage).not.toHaveBeenCalled();
+	});
+});
+
+describe('removePendingChatAttachment (docs/chat.md, "Attachments")', () => {
+	const FILE = fakeId("chatfile-one");
+	beforeEach(() => {
+		givenRow("chatAttachment", { accountId: ACCOUNT, song: { projectId: PROJECT } });
+		data.removePendingChatAttachment.mockResolvedValue(true);
+	});
+	it("401 signed out, 404 for a stranger to the account", async () => {
+		asSignedOut();
+		await expect(call(chat.removePendingChatAttachment, { id: FILE })).rejects.toMatchObject(
+			httpError(401),
+		);
+		asOutsider();
+		await expect(call(chat.removePendingChatAttachment, { id: FILE })).rejects.toMatchObject(
+			httpError(404),
+		);
+		expect(data.removePendingChatAttachment).not.toHaveBeenCalled();
+	});
+	it("anyone who writes in the chat removes their own pending file", async () => {
+		asViewerOf(ACCOUNT);
+		await expect(call(chat.removePendingChatAttachment, { id: FILE })).resolves.toEqual({
+			ok: true,
+		});
+		expect(data.removePendingChatAttachment).toHaveBeenCalledWith(ACCOUNT, USER, FILE);
+	});
+	it("a project viewer from outside the account, by the song's project", async () => {
+		asOutsider();
+		data.projectRoleOf.mockResolvedValue("viewer");
+		await call(chat.removePendingChatAttachment, { id: FILE });
+		expect(data.removePendingChatAttachment).toHaveBeenCalledWith(ACCOUNT, OTHER_USER, FILE);
+	});
+	it("404 when it is not theirs, already sent or gone", async () => {
+		asEditorOf(ACCOUNT);
+		data.removePendingChatAttachment.mockResolvedValue(false);
+		await expect(call(chat.removePendingChatAttachment, { id: FILE })).rejects.toMatchObject(
+			httpError(404),
+		);
 	});
 });
 
@@ -213,7 +270,14 @@ describe('a session\'s chat (docs/chat.md, "Sessions")', () => {
 		await expect(call(chat.sendMessage, { sessionId: SESSION, body: "Hi" })).resolves.toEqual({
 			message: ROW,
 		});
-		expect(data.createSessionChatMessage).toHaveBeenCalledWith(ACCOUNT, SESSION, USER, "Hi", []);
+		expect(data.createSessionChatMessage).toHaveBeenCalledWith(
+			ACCOUNT,
+			SESSION,
+			USER,
+			"Hi",
+			[],
+			[],
+		);
 		expect(data.createChatMessage).not.toHaveBeenCalled();
 	});
 	it("404 for a stranger to the account", async () => {
@@ -274,7 +338,14 @@ describe('a session\'s chat (docs/chat.md, "Sessions")', () => {
 		await expect(call(chat.sendMessage, { sessionId: SESSION, body: "Hi" })).resolves.toEqual({
 			message: ROW,
 		});
-		expect(data.createSessionChatMessage).toHaveBeenCalledWith(ACCOUNT, SESSION, USER, "Hi", []);
+		expect(data.createSessionChatMessage).toHaveBeenCalledWith(
+			ACCOUNT,
+			SESSION,
+			USER,
+			"Hi",
+			[],
+			[],
+		);
 		expect(data.createChatMessage).not.toHaveBeenCalled();
 	});
 	it("404 for a stranger to the account", async () => {
@@ -336,7 +407,7 @@ describe('mentions (docs/chat.md, "Mentions")', () => {
 			mentions: [SAM, STRANGER, SAM],
 		});
 		expect(data.chatAudience).toHaveBeenCalledWith(ACCOUNT, { songId: SONG, sessionId: "" });
-		expect(data.createChatMessage).toHaveBeenCalledWith(ACCOUNT, SONG, USER, "@Sam hi", [SAM]);
+		expect(data.createChatMessage).toHaveBeenCalledWith(ACCOUNT, SONG, USER, "@Sam hi", [SAM], []);
 		await runBackground();
 		expect(notifications.notifyChat).toHaveBeenCalledWith(ACCOUNT, SONG, USER, [SAM]);
 		expect(notifications.notifyMention).toHaveBeenCalledWith(ACCOUNT, "song", SONG, USER, [SAM]);

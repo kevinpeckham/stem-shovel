@@ -21,8 +21,10 @@ vi.mock("@vercel/blob", () => ({
 
 const {
 	blobAuth,
+	chatAttachmentPathname,
 	eventFilePathname,
 	fileThumbnailPathname,
+	isChatAttachmentPathname,
 	isEventFilePathname,
 	isFilePathname,
 	isOurBlobUrl,
@@ -87,5 +89,16 @@ describe("blob helpers", () => {
 		const pub = `https://${PUBLIC_HOST}/${p}`;
 		expect(isOurBlobUrl(pub, p)).toBe(true);
 		expect(isOurBlobUrl(pub, "accounts/acc/events/ev1/files/f2.png")).toBe(false);
+	});
+	test('a chat attachment lives under the account\'s chat folder, in no song or project (docs/chat.md, "Attachments")', () => {
+		const p = chatAttachmentPathname("acc", "f1", "Shot.JPG");
+		expect(p).toBe("accounts/acc/chat/f1.jpg");
+		expect(chatAttachmentPathname("acc", "f1", "noext")).toBe("accounts/acc/chat/f1.bin");
+		expect(isChatAttachmentPathname(p)).toBe(true);
+		expect(isChatAttachmentPathname(fileThumbnailPathname(p, "webp"))).toBe(false);
+		expect(isFilePathname(p)).toBe(false);
+		expect(isEventFilePathname(p)).toBe(false);
+		expect(songIdOfPathname(p)).toBeNull();
+		expect(isChatAttachmentPathname("accounts/acc/songs/s/files/f.pdf")).toBe(false);
 	});
 });

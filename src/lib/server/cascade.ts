@@ -1,5 +1,6 @@
 import { db, schema } from "#lib/server/db/index.js";
 import { deleteAliasesOf } from "#lib/server/slugAlias.js";
+import { userChatAttachments } from "#lib/server/userChatAttachments.js";
 import { and, eq, inArray, type SQL, type SQLWrapper } from "drizzle-orm";
 
 /**
@@ -24,6 +25,7 @@ const {
 	authAccount,
 	bugReport,
 	bugReportVote,
+	chatAttachment,
 	chatMessage,
 	chatReaction,
 	chatRead,
@@ -97,7 +99,7 @@ export async function deleteCommentRows(where: SQL): Promise<void> {
 	await db.delete(comment).where(where);
 }
 
-/** What a session's review leaves behind (docs/uploads-and-blob.md, "Sessions"): the comments on its recordings, the share links to them and to the sessions, the dashboard pins of the sessions, its chat and the read marks. */
+/** What a session's review leaves behind (docs/uploads-and-blob.md, "Sessions"): the comments on its recordings, the share links to them and to the sessions, the dashboard pins of the sessions, its chat with its files (docs/chat.md, "Attachments") and the read marks. */
 export async function deleteSessionReviewRows(
 	sessionIds: string[],
 	recordingIds: string[],
@@ -111,6 +113,7 @@ export async function deleteSessionReviewRows(
 	await db
 		.delete(dashboardPin)
 		.where(and(eq(dashboardPin.kind, "session"), inArray(dashboardPin.targetId, sessionIds)));
+	await db.delete(chatAttachment).where(inArray(chatAttachment.sessionId, sessionIds));
 	await deleteChatReactionsOf(
 		db
 			.select({ id: sessionChatMessage.id })
@@ -121,13 +124,14 @@ export async function deleteSessionReviewRows(
 	await db.delete(sessionChatRead).where(inArray(sessionChatRead.sessionId, sessionIds));
 }
 
-/** Songs and everything hanging off them: stems, demos, attachments, notation files, dashboard pins, comments and their revisions, chat messages and read marks, links, doc versions (shared and private), private notes, credits; AI requests lose their song. */
+/** Songs and everything hanging off them: stems, demos, attachments, notation files, dashboard pins, comments and their revisions, chat messages with their files and read marks, links, doc versions (shared and private), private notes, credits; AI requests lose their song. */
 export async function deleteSongRows(songIds: string[]): Promise<void> {
 	if (songIds.length === 0) return;
 	await db.delete(songCredit).where(inArray(songCredit.songId, songIds));
 	await db.delete(songDocVersion).where(inArray(songDocVersion.songId, songIds));
 	await db.delete(songUserNote).where(inArray(songUserNote.songId, songIds));
 	await deleteCommentRows(inArray(comment.songId, songIds));
+	await db.delete(chatAttachment).where(inArray(chatAttachment.songId, songIds));
 	await deleteChatReactionsOf(
 		db.select({ id: chatMessage.id }).from(chatMessage).where(inArray(chatMessage.songId, songIds)),
 	);
@@ -281,6 +285,8 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));
 	await db.delete(ampPreset).where(eq(ampPreset.accountId, accountId));
 	await deleteCommentRows(eq(comment.accountId, accountId));
+	// The chat's files in either chat, sent or pending (docs/chat.md, "Attachments").
+	await db.delete(chatAttachment).where(eq(chatAttachment.accountId, accountId));
 	await deleteChatReactionsOf(
 		db.select({ id: chatMessage.id }).from(chatMessage).where(eq(chatMessage.accountId, accountId)),
 	);
@@ -343,7 +349,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(account).where(eq(account.id, accountId));
 }
 
-/** A user: memberships, sign-in records, sessions, two-factor, dashboard pins, votes, comments (with their revisions), chat messages and read marks, private song notes and their revisions go; what else they made stays without an author. */
+/** A user: memberships, sign-in records, sessions, two-factor, dashboard pins, votes, comments (with their revisions), chat messages (with their files) and read marks, private song notes and their revisions go; what else they made stays without an author. */
 export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(accountMember).where(eq(accountMember.userId, userId));
 	await db.delete(projectMember).where(eq(projectMember.userId, userId));
@@ -361,6 +367,8 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(bugReport).set({ userId: null }).where(eq(bugReport.userId, userId));
 	await deleteCommentRows(eq(comment.userId, userId));
 	await db.delete(chatReaction).where(eq(chatReaction.userId, userId));
+	// The files on their messages and their own unsent ones (docs/chat.md, "Attachments"); the rest lose the uploader below.
+	await db.delete(chatAttachment).where(await userChatAttachments(userId));
 	await deleteChatReactionsOf(
 		db.select({ id: chatMessage.id }).from(chatMessage).where(eq(chatMessage.userId, userId)),
 	);
@@ -394,6 +402,10 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(songMix).set({ uploadedBy: null }).where(eq(songMix.uploadedBy, userId));
 	await db.update(songFile).set({ uploadedBy: null }).where(eq(songFile.uploadedBy, userId));
 	await db.update(eventFile).set({ uploadedBy: null }).where(eq(eventFile.uploadedBy, userId));
+	await db
+		.update(chatAttachment)
+		.set({ uploadedBy: null })
+		.where(eq(chatAttachment.uploadedBy, userId));
 	await db
 		.update(songNotation)
 		.set({ uploadedBy: null })

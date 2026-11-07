@@ -122,6 +122,21 @@ export function eventFilePathname(
 	return `accounts/${accountId}/events/${eventId}/files/${fileId}.${ext}`;
 }
 
+/**
+ * Blob pathname for a file on a chat message (docs/chat.md, "Attachments"):
+ * under the account's `chat/` folder by the row's id, the extension as
+ * uploaded, lower-cased. No song or project in it, so `accessOfPathname`
+ * sends it to the public store: the chat is members-only and the id is
+ * unguessable. The thumbnail goes beside it (`fileThumbnailPathname`).
+ */
+export function chatAttachmentPathname(accountId: string, id: string, filename: string) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/chat/${id}.${ext}`;
+}
+/** A chat attachment's own pathname (not its thumbnail). */
+export const isChatAttachmentPathname = (pathname: string) =>
+	/^accounts[/][^/]+[/]chat[/][^/.]+[.][a-z0-9]+$/.test(pathname);
+
 /** Blob pathname for a notation file attached to a song (docs/uploads-and-blob.md, "Notation files"): the extension as uploaded, lower-cased. */
 export function notationPathname(
 	accountId: string,

@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Chat attachments** (docs/chat.md "Attachments"). A message in a song's or a session's chat may carry files: the paperclip, a drop on the box or a pasted picture uploads each at once (`uploadChatAttachment`; `POST /api/chat/attachments` reserves, `POST /api/chat-attachments/<id>/ready` checks the bytes by kind), a strip above the box holds them with a × until the message is sent (`removePendingChatAttachment`), and the message carries them (`ChatAttachments.svelte`: a picture as a thumbnail opening `/f/<code>`, anything else as a chip downloading it). A message may be files alone. Deleting the message removes its files.
+
+### Technical
+
+- **Migration 0115**: `chat_attachment` (the attachments' upload columns, thumbnail and share code under a song's or a session's chat, tied to its message once sent; swept a day later when never sent). `startsLikeKind` is a shared server helper of the two ready routes. The files count in the account's storage and go with the song, the session, the account and the author.
+
 ## [0.242.0] - 2026-11-07
 
 ### Added

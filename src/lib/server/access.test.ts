@@ -33,6 +33,7 @@ vi.mock("#lib/server/blob.js", () => ({
 	isSessionPathname: (pathname: string) => pathname.includes("/sessions/"),
 	isEventFilePathname: (pathname: string) =>
 		/^accounts\/[^/]+\/events\/[^/]+\/files\//.test(pathname),
+	isChatAttachmentPathname: (pathname: string) => /^accounts\/[^/]+\/chat\//.test(pathname),
 }));
 vi.mock("#lib/server/background.js", () => ({
 	background: (work: () => Promise<void>) => {
@@ -287,8 +288,17 @@ describe("accountOfUploadPathname", () => {
 				{ id: "n1", accountId: "a6", pathname: "accounts/a6/songs/s6/notation/n1.xml" },
 			],
 			eventFile: [{ id: "ef1", accountId: "a7", pathname: "accounts/a7/events/e7/files/ef1.png" }],
+			chatAttachment: [{ id: "ca1", accountId: "a8", pathname: "accounts/a8/chat/ca1.png" }],
 		}),
 	);
+	test('a chat attachment finds its owner from its own table alone (docs/chat.md, "Attachments")', async () => {
+		fake.calls.length = 0;
+		expect(await access.accountOfUploadPathname("accounts/a8/chat/ca1.png")).toBe("a8");
+		expect(await access.accountOfUploadPathname("accounts/a8/chat/none.png")).toBeNull();
+		expect(fake.calls.map((c) => c.table)).toEqual(["chat_attachment", "chat_attachment"]);
+		expect(await access.accountOfChatAttachment("ca1")).toBe("a8");
+		expect(await access.accountOfChatAttachment("nope")).toBeNull();
+	});
 	test("an event's poster or photo finds its owner from its own table alone", async () => {
 		fake.calls.length = 0;
 		expect(await access.accountOfUploadPathname("accounts/a7/events/e7/files/ef1.png")).toBe("a7");
@@ -344,8 +354,31 @@ describe("memberOf", () => {
 			song: [{ id: "s1", accountId: "a1", projectId: "p1" }],
 			stem: [{ id: "st1", accountId: "a1", songId: "s1" }],
 			idea: [{ id: "i1", accountId: "a1" }],
+			chatAttachment: [
+				{ id: "ca1", accountId: "a1", songId: "s1", pathname: "accounts/a1/chat/ca1.png" },
+				{ id: "ca2", accountId: "a1", sessionId: "rs1", pathname: "accounts/a1/chat/ca2.png" },
+			],
 		}),
 	);
+	test("a chat attachment's project is its song's, by id or by pathname; a session's file has none", async () => {
+		data.projectRestricted.mockResolvedValue(true);
+		for (const [lookup, key] of [
+			[access.accountOfChatAttachment, "ca1"],
+			[access.accountOfUploadPathname, "accounts/a1/chat/ca1.png"],
+		] as const) {
+			expect(
+				await statusOf(() => access.memberOf(locals("member"), lookup, key, { viewers: true })),
+			).toBe(404);
+		}
+		expect(data.projectRestricted).toHaveBeenCalledWith("p1");
+		data.projectRestricted.mockClear();
+		expect(
+			await access.memberOf(locals("viewer"), access.accountOfChatAttachment, "ca2", {
+				viewers: true,
+			}),
+		).toEqual(membership("viewer"));
+		expect(data.projectRestricted).not.toHaveBeenCalled();
+	});
 	test("an id nobody has is a 404 before any membership is looked at", async () => {
 		expect(
 			await statusOf(() => access.memberOf(locals("owner"), access.accountOfSong, "nope")),

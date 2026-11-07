@@ -113,8 +113,9 @@ describe("createChatMessage and updateChatMessage", () => {
 	test("the mentions are stored with the message (none as null) and come back by name", async () => {
 		reset({ user: users, song: [{ id: "s1", accountId: "a1" }], chatMessage: [] });
 		const made = await createChatMessage("a1", "s1", "u1", "@Bob hi", ["u2"]);
-		expect(made?.mentions).toEqual([{ id: "u2", name: "Bob" }]);
-		expect(made?.reactions).toEqual([]);
+		if (!made || made === "empty") throw new Error("no message");
+		expect(made.mentions).toEqual([{ id: "u2", name: "Bob" }]);
+		expect(made.reactions).toEqual([]);
 		expect(callsTo("insert", "chat_message")[0].values).toMatchObject({ mentions: ["u2"] });
 		await createChatMessage("a1", "s1", "u1", "hi");
 		expect(callsTo("insert", "chat_message")[1].values).toMatchObject({ mentions: null });

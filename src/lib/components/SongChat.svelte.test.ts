@@ -54,6 +54,7 @@ const msg = (id: string, userId: string, body: string, offset: number) => ({
 	editedAt: null as number | null,
 	mentions: [] as { id: string; name: string }[],
 	reactions: [] as { emoji: "👍" | "🔥"; count: number; mine: boolean; names: string[] }[],
+	attachments: [],
 });
 const base = (over: Record<string, unknown> = {}) => ({
 	songId: "V1StGXR8_Z5jdHi6B-myT",

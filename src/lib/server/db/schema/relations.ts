@@ -10,6 +10,7 @@ import { accountMember } from "./accountMember";
 import { authAccount } from "./authAccount";
 import { bugReport } from "./bugReport";
 import { bugReportVote } from "./bugReportVote";
+import { chatAttachment } from "./chatAttachment";
 import { chatMessage } from "./chatMessage";
 import { chatReaction } from "./chatReaction";
 import { chatRead } from "./chatRead";
@@ -215,6 +216,23 @@ export const chatMessageRelations = relations(chatMessage, ({ one, many }) => ({
 	song: one(song, { fields: [chatMessage.songId], references: [song.id] }),
 	author: one(user, { fields: [chatMessage.userId], references: [user.id] }),
 	reactions: many(chatReaction),
+	/** The files it carries (docs/chat.md, "Attachments"). */
+	attachments: many(chatAttachment),
+}));
+
+export const chatAttachmentRelations = relations(chatAttachment, ({ one }) => ({
+	account: one(account, { fields: [chatAttachment.accountId], references: [account.id] }),
+	song: one(song, { fields: [chatAttachment.songId], references: [song.id] }),
+	session: one(recordingSession, {
+		fields: [chatAttachment.sessionId],
+		references: [recordingSession.id],
+	}),
+	message: one(chatMessage, { fields: [chatAttachment.messageId], references: [chatMessage.id] }),
+	sessionMessage: one(sessionChatMessage, {
+		fields: [chatAttachment.sessionMessageId],
+		references: [sessionChatMessage.id],
+	}),
+	uploader: one(user, { fields: [chatAttachment.uploadedBy], references: [user.id] }),
 }));
 
 export const dashboardPinRelations = relations(dashboardPin, ({ one }) => ({
@@ -314,6 +332,8 @@ export const sessionCommentRelations = relations(sessionComment, ({ one }) => ({
 
 export const sessionChatMessageRelations = relations(sessionChatMessage, ({ one, many }) => ({
 	reactions: many(chatReaction),
+	/** The files it carries (docs/chat.md, "Attachments"). */
+	attachments: many(chatAttachment),
 	session: one(recordingSession, {
 		fields: [sessionChatMessage.sessionId],
 		references: [recordingSession.id],

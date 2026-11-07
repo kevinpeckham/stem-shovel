@@ -14,6 +14,7 @@ function message(id: string, userId: string, createdAt: number): ChatMessageRow 
 		editedAt: null,
 		mentions: [],
 		reactions: [],
+		attachments: [],
 	};
 }
 

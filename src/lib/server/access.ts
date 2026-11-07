@@ -1,6 +1,11 @@
 import { getRequestEvent } from "$app/server";
 import { background } from "#lib/server/background.js";
-import { isEventFilePathname, isRecordingPathname, isSessionPathname } from "#lib/server/blob.js";
+import {
+	isChatAttachmentPathname,
+	isEventFilePathname,
+	isRecordingPathname,
+	isSessionPathname,
+} from "#lib/server/blob.js";
 import { db, schema } from "#lib/server/db/index.js";
 import {
 	logAudit,
@@ -19,7 +24,7 @@ import {
 	type Viewer,
 } from "#lib/server/viewAccess.js";
 import { error, redirect } from "@sveltejs/kit";
-import { eq } from "drizzle-orm";
+import { eq, type SQL } from "drizzle-orm";
 
 /**
  * Tenant checks. The account a request may touch is never taken from the
@@ -136,6 +141,7 @@ export function viewerOf(
 }
 
 const {
+	chatAttachment,
 	project,
 	song,
 	stem,
@@ -351,6 +357,15 @@ export async function accountOfEventFile(fileId: string) {
 	return row?.accountId ?? null;
 }
 
+/** A chat attachment's account (docs/chat.md, "Attachments"); its project, for `memberOf`, is its song's. */
+export async function accountOfChatAttachment(attachmentId: string) {
+	const row = await db.query.chatAttachment.findFirst({
+		where: eq(chatAttachment.id, attachmentId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
 /** An event payout's account (docs/band-plan.md, "The books"). */
 export async function accountOfEventPayout(payoutId: string) {
 	const row = await db.query.eventPayout.findFirst({
@@ -462,23 +477,48 @@ export async function accountOfRecording(recordingId: string) {
 	return row?.accountId ?? null;
 }
 
+/**
+ * The pathnames whose shape names their table, each with that table's
+ * lookup: a session recording (docs/uploads-and-blob.md, "Sessions"), a
+ * file on a chat message (docs/chat.md, "Attachments"), a show's or
+ * practice's poster or photo (docs/band-plan.md, "Posters, pictures and
+ * video"). Nothing else is consulted for them. (The predicates are called
+ * through, so a test's Blob double need not carry them all.)
+ */
+const OWN_TABLE_PATHNAMES: [
+	(pathname: string) => boolean,
+	(pathname: string) => Promise<{ accountId: string } | undefined>,
+][] = [
+	[
+		(pathname) => isSessionPathname(pathname),
+		(pathname) =>
+			db.query.sessionRecording.findFirst({
+				where: eq(sessionRecording.pathname, pathname),
+				columns: { accountId: true },
+			}),
+	],
+	[
+		(pathname) => isChatAttachmentPathname(pathname),
+		(pathname) =>
+			db.query.chatAttachment.findFirst({
+				where: eq(chatAttachment.pathname, pathname),
+				columns: { accountId: true },
+			}),
+	],
+	[
+		(pathname) => isEventFilePathname(pathname),
+		(pathname) =>
+			db.query.eventFile.findFirst({
+				where: eq(eventFile.pathname, pathname),
+				columns: { accountId: true },
+			}),
+	],
+];
+
 /** The account owning whatever reserved this upload pathname: a stem, its MIDI file, a demo or a recording. */
 export async function accountOfUploadPathname(pathname: string) {
-	if (isSessionPathname(pathname)) {
-		const row = await db.query.sessionRecording.findFirst({
-			where: eq(sessionRecording.pathname, pathname),
-			columns: { accountId: true },
-		});
-		return row?.accountId ?? null;
-	}
-	// A show's or practice's poster or photo (docs/band-plan.md, "Posters, pictures and video").
-	if (isEventFilePathname(pathname)) {
-		const row = await db.query.eventFile.findFirst({
-			where: eq(eventFile.pathname, pathname),
-			columns: { accountId: true },
-		});
-		return row?.accountId ?? null;
-	}
+	const own = OWN_TABLE_PATHNAMES.find(([kindOf]) => kindOf(pathname));
+	if (own) return (await own[1](pathname))?.accountId ?? null;
 	const fromStem = await accountOfStemPathname(pathname);
 	if (fromStem) return fromStem;
 	if (isRecordingPathname(pathname)) {
@@ -521,6 +561,15 @@ export async function accountOfUploadPathname(pathname: string) {
 		columns: { accountId: true },
 	});
 	return notation?.accountId ?? null;
+}
+
+/** A chat attachment's project (docs/chat.md, "Attachments"): its song's; none for a session's. */
+async function projectOfChatAttachment(where: SQL) {
+	const row = await db.query.chatAttachment.findFirst({
+		where,
+		with: { song: { columns: { projectId: true } } },
+	});
+	return row?.song?.projectId ?? null;
 }
 
 /** The project an entity belongs to, for the lookups that have one (access.ts memberOf checks restriction with it). */
@@ -585,11 +634,14 @@ const PROJECT_OF = new Map<
 				})
 			)?.projectId ?? null,
 	],
+	[accountOfChatAttachment, (id) => projectOfChatAttachment(eq(chatAttachment.id, id))],
 	[
 		accountOfUploadPathname,
 		async (pathname) => {
-			// A take and an event's file belong to no project.
+			// A take and an event's file belong to no project; a chat attachment to its song's, when it is a song's.
 			if (isRecordingPathname(pathname) || isEventFilePathname(pathname)) return null;
+			if (isChatAttachmentPathname(pathname))
+				return projectOfChatAttachment(eq(chatAttachment.pathname, pathname));
 			const s = await db.query.stem.findFirst({
 				where: eq(stem.pathname, pathname),
 				with: { song: { columns: { projectId: true } } },

@@ -82,6 +82,8 @@ address (Kevin: a notification lands with the chat open).
   (`cascade.ts`).
 - **chat_read** — (`user_id`, `song_id`) primary key, `read_at`. Deleted
   with the song and the user.
+- **chat_attachment** — a file on a message, or waiting to be sent
+  ("Attachments"): migration 0115.
 - Migration 0082.
 
 ## Code
@@ -210,8 +212,42 @@ not sees the chips without tapping.
   `listSessionChatMessages(sessionId, after, viewerId)` take one
   (`songChat` and `chatSince` pass it).
 
+## Attachments (2026-11-07)
+
+A message may carry files: anything the Attachments tab takes
+(`FILE_KINDS`, with the kind's `FILE_MAX_BYTES` ceiling), at most
+`MAX_CHAT_ATTACHMENTS` (10) a message. The flow is upload first, send
+after, as in Slack: the composer's Attach button (a drop on the box or a
+paste that carries files does the same) reserves each file at `POST
+/api/chat/attachments` (`{ songId | sessionId, filename, sizeBytes }`:
+anyone who may write in the chat; the account's storage room), the
+browser puts the bytes in Blob under `accounts/<a>/chat/<id>.<ext>` in
+the public store (the chat is members-only and the pathname unguessable;
+a private song's chat files are not relocated), renders a thumbnail for
+an image or a PDF, and reports `POST /api/chat-attachments/<id>/ready`,
+where the server checks the first bytes by kind (`startsLikeKind`,
+shared with the attachments' ready route) before calling the row ready.
+Ready, unattached rows show in a strip above the box with a × that
+removes them (`removePendingChatAttachment`, the uploader's own only).
+`sendMessage` takes their ids and attaches the sender's own ready rows
+of that chat to the new message; a message may have an empty body when
+it carries files ("Write something or attach a file." otherwise).
+Rows nobody sent are swept at the uploader's next reserve once a day
+old (`CHAT_ATTACHMENT_STALE_MS`), blobs too; there is no cron.
+
+A `ChatMessageRow` (and a project feed row) carries `attachments`;
+`ChatAttachments.svelte` renders them under the text: an image as a
+thumbnail opening `/f/<code>` in a new tab, anything else as a chip
+(kind icon, filename, size) linking to `/f/<code>?download=1`, the
+permanent address shared with the other files. Deleting a message
+removes its files, rows and blobs; an edit leaves them. The files go
+with the song, the session, the account and the author (cascade.ts;
+blobs gathered by `deleteSong`, `deleteRecordingSession` and
+`deleteAccount`) and count in the account's storage. Table
+`chat_attachment` (docs/data-model.md), migration 0115.
+
 ## Not built
 
-Attachments in messages, a project-wide chat, and
+A project-wide chat, and
 push delivery (the poll is enough for a band page). A deletion by someone
 else reaches other open pages on their next load.

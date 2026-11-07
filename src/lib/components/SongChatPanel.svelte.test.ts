@@ -27,6 +27,7 @@ const message: ChatMessageRow = {
 	editedAt: null,
 	mentions: [],
 	reactions: [],
+	attachments: [],
 };
 
 function setup(open: boolean) {

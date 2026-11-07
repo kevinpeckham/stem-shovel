@@ -1,6 +1,7 @@
 import { presentUrl, readBlob } from "#lib/server/blob.js";
 import {
 	fileByShareCode as attachmentByShareCode,
+	chatAttachmentByShareCode,
 	eventFileByShareCode,
 	notationByShareCode,
 } from "#lib/server/data.js";
@@ -20,7 +21,8 @@ interface Served {
  * A file's permanent link (docs/uploads-and-blob.md, "Attachments" and
  * "Notation files"; docs/band-plan.md, "Posters, pictures and video"):
  * `/f/<code>` finds the file by its share code (an attachment's first, then
- * a notation file's, then a show's poster or photo) and sends the visitor to where it is now, in
+ * a notation file's, then a show's poster or photo, then a chat message's
+ * file, docs/chat.md "Attachments") and sends the visitor to where it is now, in
  * either store (a presigned URL, good for twelve hours, for a private
  * song's), so the link outlives renames and privacy moves. With
  * `?download=1` it streams the file instead, as an attachment under its
@@ -86,15 +88,11 @@ async function fileByShareCode(code: string): Promise<(Served & { pdf: Served | 
 					: null,
 		};
 	}
-	// A show's or practice's poster or photo: the type it was stored with; a PDF poster is its own PDF.
-	const eventFile = await eventFileByShareCode(code);
-	if (eventFile) {
-		const served = {
-			url: eventFile.url,
-			filename: eventFile.filename,
-			contentType: eventFile.contentType,
-		};
-		return { ...served, pdf: eventFile.contentType === "application/pdf" ? served : null };
+	// A show's or practice's poster or photo, or a chat message's file: the type it was stored with; a PDF is its own PDF.
+	const stored = (await eventFileByShareCode(code)) ?? (await chatAttachmentByShareCode(code));
+	if (stored) {
+		const served = { url: stored.url, filename: stored.filename, contentType: stored.contentType };
+		return { ...served, pdf: stored.contentType === "application/pdf" ? served : null };
 	}
 	return null;
 }

@@ -14,6 +14,8 @@ import {
 	recordFileUrl,
 	findUploadingEventFile,
 	recordEventFileUrl,
+	findUploadingChatAttachment,
+	recordChatAttachmentUrl,
 	findUploadingNotation,
 	recordNotationUrl,
 	findUploadingRecording,
@@ -35,6 +37,7 @@ import {
 } from "#lib/server/data.js";
 import {
 	blobAuth,
+	isChatAttachmentPathname,
 	isDrumSamplePathname,
 	isEventFilePathname,
 	isFilePathname,
@@ -84,18 +87,64 @@ async function studioUploadToken(locals: App.Locals, pathname: string) {
 	};
 }
 
-/** The token for a show's or practice's poster or photo (docs/band-plan.md, "Posters, pictures and video"): an attachment's types, the size the reservation claimed under its kind's ceiling; the bytes are checked at ready. */
+/** A reserved file's token: an attachment's types, the size the reservation claimed under its kind's ceiling (by its name); the bytes are checked at ready. */
+const reservedFileToken = (file: { id: string; filename: string; sizeBytes: number }) => ({
+	allowedContentTypes: FILE_CONTENT_TYPES,
+	maximumSizeInBytes: Math.min(file.sizeBytes, FILE_MAX_BYTES[fileKindOf(file.filename)]),
+	addRandomSuffix: false,
+	allowOverwrite: true,
+	tokenPayload: JSON.stringify({ id: file.id }),
+});
+
+/** The token for a show's or practice's poster or photo (docs/band-plan.md, "Posters, pictures and video"). */
 async function eventFileUploadToken(accountId: string, pathname: string) {
 	const file = await findUploadingEventFile(accountId, pathname);
 	if (!file) throw new Error(`No reservation for "${pathname}"`);
-	return {
-		allowedContentTypes: FILE_CONTENT_TYPES,
-		maximumSizeInBytes: Math.min(file.sizeBytes, FILE_MAX_BYTES[fileKindOf(file.filename)]),
-		addRandomSuffix: false,
-		allowOverwrite: true,
-		tokenPayload: JSON.stringify({ id: file.id }),
-	};
+	return reservedFileToken(file);
 }
+
+/** The token for a file on a chat message (docs/chat.md, "Attachments"): its uploader's alone. */
+async function chatAttachmentUploadToken(accountId: string, pathname: string, userId: string) {
+	const file = await findUploadingChatAttachment(accountId, pathname);
+	if (!file || file.uploadedBy !== userId) throw new Error(`No reservation for "${pathname}"`);
+	return reservedFileToken(file);
+}
+
+/** The account the upload is filed under: a take is the user's own, whichever account holds its files; everything else needs membership of the owner's account (a chat's file: anyone who writes in the chat, docs/chat.md "Attachments"). */
+async function uploadAccount(locals: App.Locals, pathname: string) {
+	if (isRecordingPathname(pathname)) return ownRecordingAccount(locals, pathname);
+	const viewers = isChatAttachmentPathname(pathname);
+	return (await memberOf(locals, accountOfUploadPathname, pathname, { viewers })).accountId;
+}
+
+/** The token of a file whose own table holds the reservation, a show's poster or photo or a chat message's file; null for any other pathname. */
+function ownFileToken(locals: App.Locals, accountId: string, pathname: string) {
+	if (isEventFilePathname(pathname)) return eventFileUploadToken(accountId, pathname);
+	if (isChatAttachmentPathname(pathname))
+		return chatAttachmentUploadToken(accountId, pathname, requireUser(locals).id);
+	return null;
+}
+
+/**
+ * The completion webhook's recorders by pathname (the row the URL lands
+ * on), first match wins; a stem when none matches.
+ */
+const RECORDERS: [
+	(pathname: string) => boolean,
+	(pathname: string, url: string) => Promise<unknown>,
+][] = [
+	[isDrumSamplePathname, recordDrumSampleUrl],
+	[isMidi, recordStemMidiUrl],
+	[isDemo, recordDemoUrl],
+	[isMix, recordMixUrl],
+	[isSessionPathname, recordSessionUrl],
+	[isEventFilePathname, recordEventFileUrl],
+	[isChatAttachmentPathname, recordChatAttachmentUrl],
+	[isFilePathname, recordFileUrl],
+	[isNotationPathname, recordNotationUrl],
+	[isRecordingPathname, recordRecordingUrl],
+	[isStudioPathname, recordStudioSourceUrl],
+];
 
 /** The account of a take's reserved pathname when the caller recorded it (ideas are the user's own), else 404. */
 async function ownRecordingAccount(locals: App.Locals, pathname: string) {
@@ -146,11 +195,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					};
 				}
 				if (isStudioPathname(pathname)) return studioUploadToken(locals, pathname);
-				// A take is the user's own, whichever account holds its files; everything else needs membership of the song's account.
-				const accountId = isRecordingPathname(pathname)
-					? await ownRecordingAccount(locals, pathname)
-					: (await memberOf(locals, accountOfUploadPathname, pathname)).accountId;
-				if (isEventFilePathname(pathname)) return eventFileUploadToken(accountId, pathname);
+				const accountId = await uploadAccount(locals, pathname);
+				const ownFile = ownFileToken(locals, accountId, pathname);
+				if (ownFile) return ownFile;
 				// A file attached to a song (docs/uploads-and-blob.md, "Attachments"): the types browsers label these files with, the ceiling of the reserved row's kind; the bytes are checked at ready.
 				if (isFilePathname(pathname)) {
 					const file = await findUploadingFile(accountId, pathname);
@@ -216,21 +263,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				// Vercel calls this after the browser finishes — in production only,
 				// it cannot reach localhost. The browser normally reports first via
 				// /api/stems/[id]/ready; this is the backstop if that never arrives.
-				if (isDrumSamplePathname(blob.pathname)) await recordDrumSampleUrl(blob.pathname, blob.url);
-				else if (isMidi(blob.pathname)) await recordStemMidiUrl(blob.pathname, blob.url);
-				else if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
-				else if (isMix(blob.pathname)) await recordMixUrl(blob.pathname, blob.url);
-				else if (isSessionPathname(blob.pathname)) await recordSessionUrl(blob.pathname, blob.url);
-				else if (isEventFilePathname(blob.pathname))
-					await recordEventFileUrl(blob.pathname, blob.url);
-				else if (isFilePathname(blob.pathname)) await recordFileUrl(blob.pathname, blob.url);
-				else if (isNotationPathname(blob.pathname))
-					await recordNotationUrl(blob.pathname, blob.url);
-				else if (isRecordingPathname(blob.pathname))
-					await recordRecordingUrl(blob.pathname, blob.url);
-				else if (isStudioPathname(blob.pathname))
-					await recordStudioSourceUrl(blob.pathname, blob.url);
-				else await recordStemUrl(blob.pathname, blob.url);
+				const record = RECORDERS.find(([kindOf]) => kindOf(blob.pathname))?.[1] ?? recordStemUrl;
+				await record(blob.pathname, blob.url);
 			},
 		});
 		return Response.json(result);

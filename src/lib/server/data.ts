@@ -40,6 +40,7 @@ import {
 } from "#lib/val/AmpPresetSchema.js";
 import type { AmpInstrument } from "#lib/val/AmpSchema.js";
 import {
+	chatAttachmentPathname,
 	copyBlob,
 	deleteBlobs,
 	demoPathname,
@@ -80,8 +81,11 @@ import {
 	FILE_CONTENT_TYPE_OF,
 	MAX_FILES_PER_PROJECT,
 	MAX_FILES_PER_SONG,
+	fileKindOf,
 	type FileKind,
 } from "#lib/constants/fileFormats.js";
+import { CHAT_ATTACHMENT_STALE_MS } from "#lib/constants/chatAttachments.js";
+import { userChatAttachments } from "#lib/server/userChatAttachments.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { arrangementHash } from "#lib/utils/arrangementHash.js";
 import { staleAutosaves } from "#lib/utils/staleAutosaves.js";
@@ -233,6 +237,7 @@ const {
 	sessionChatRead,
 	invitation,
 	inviteCode,
+	chatAttachment,
 	chatMessage,
 	chatReaction,
 	chatRead,
@@ -389,6 +394,11 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${eventFile.sizeBytes})` })
 		.from(eventFile)
 		.where(and(eq(eventFile.accountId, accountId), ne(eventFile.status, "failed")));
+	// And the files on chat messages (docs/chat.md, "Attachments"), pending ones included.
+	const [chatFiles] = await db
+		.select({ bytes: sql<number | null>`sum(${chatAttachment.sizeBytes})` })
+		.from(chatAttachment)
+		.where(and(eq(chatAttachment.accountId, accountId), ne(chatAttachment.status, "failed")));
 	// Session recordings (docs/uploads-and-blob.md, "Sessions") are the account's too.
 	const [sessions] = await db
 		.select({ bytes: sql<number | null>`sum(${sessionRecording.sizeBytes})` })
@@ -405,6 +415,7 @@ export async function accountStorageBytes(accountId: string) {
 		(samples.bytes ?? 0) +
 		(files.bytes ?? 0) +
 		(eventFiles.bytes ?? 0) +
+		(chatFiles.bytes ?? 0) +
 		(notation.bytes ?? 0)
 	);
 }
@@ -1189,7 +1200,11 @@ export async function deleteSong(accountId: string, songId: string) {
 		})
 		.from(songNotation)
 		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.songId, songId)));
+	const chatFiles = await chatAttachmentBlobs(
+		and(eq(chatAttachment.accountId, accountId), eq(chatAttachment.songId, songId)),
+	);
 	await deleteBlobs([
+		...chatFiles,
 		...rows.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...mixes.flatMap((m) => [m.url, m.playbackUrl ?? ""]),
@@ -1748,6 +1763,8 @@ export interface ChatMessageRow {
 	mentions: { id: string; name: string }[];
 	/** Per emoji with a count, in the fixed set's order ("Reactions"). */
 	reactions: ChatReactionSummary[];
+	/** The files it carries, oldest first ("Attachments"); none is []. */
+	attachments: ChatAttachmentRow[];
 }
 
 /** What a chat row is read with, whichever table holds it. */
@@ -1782,6 +1799,7 @@ async function chatRows(rows: ChatRaw[], viewerId?: string | null): Promise<Chat
 				})
 			: [];
 	const nameOf = new Map(people.map((p) => [p.id, p.name]));
+	const files = await chatAttachmentsOf(rows.map((m) => m.id));
 	return rows.map((m) => ({
 		id: m.id,
 		userId: m.userId,
@@ -1795,6 +1813,7 @@ async function chatRows(rows: ChatRaw[], viewerId?: string | null): Promise<Chat
 			return name ? [{ id, name }] : [];
 		}),
 		reactions: chatReactionSummary(m.reactions, viewerId),
+		attachments: files.get(m.id) ?? [],
 	}));
 }
 
@@ -1833,14 +1852,15 @@ export async function listChatMessages(
 	return chatRows(rows, viewerId);
 }
 
-/** Sends a message; null when the song is not the account's. The row comes back whole so the page can show it at once. */
+/** Sends a message with the sender's pending files among `attachments` (docs/chat.md, "Attachments"); null when the song is not the account's. The row comes back whole so the page can show it at once. */
 export async function createChatMessage(
 	accountId: string,
 	songId: string,
 	userId: string,
 	body: string,
 	mentions: string[] = [],
-): Promise<ChatMessageRow | null> {
+	attachments: string[] = [],
+): Promise<ChatMessageRow | "empty" | null> {
 	const s = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
 		columns: { id: true },
@@ -1850,6 +1870,12 @@ export async function createChatMessage(
 		.insert(chatMessage)
 		.values({ accountId, songId, userId, body, mentions: mentions.length > 0 ? mentions : null })
 		.returning({ id: chatMessage.id });
+	const attached = await attachChatAttachments(accountId, { songId }, userId, row.id, attachments);
+	// Files alone, and none of them the sender's pending ones: nothing to say, so no message.
+	if (!body && attached === 0) {
+		await db.delete(chatMessage).where(eq(chatMessage.id, row.id));
+		return "empty";
+	}
 	return chatRowOf("song", row.id, userId);
 }
 
@@ -1878,8 +1904,9 @@ export async function updateChatMessage(
 	return own ? chatRowOf("song", id, own.userId) : null;
 }
 
-/** A message and its reactions (docs/chat.md, "Reactions"). */
+/** A message, its reactions (docs/chat.md, "Reactions") and its files, rows and blobs ("Attachments"). */
 export async function deleteChatMessage(id: string) {
+	await deleteChatAttachmentsWhere(eq(chatAttachment.messageId, id));
 	await db.delete(chatReaction).where(eq(chatReaction.messageId, id));
 	const [row] = await db
 		.delete(chatMessage)
@@ -3113,7 +3140,10 @@ export async function deleteUser(id: string) {
 		columns: { id: true },
 	});
 	if (!exists) return null;
+	// The files on their chat messages and their unsent ones (docs/chat.md, "Attachments") go with the rows.
+	const chatFiles = await chatAttachmentBlobs(await userChatAttachments(id));
 	await deleteUserRows(id);
+	if (chatFiles.length > 0) await deleteBlobs(chatFiles);
 	let accountsRemoved = 0;
 	for (const { accountId } of memberships) {
 		const left = await db.query.accountMember.findFirst({
@@ -3441,7 +3471,9 @@ export async function deleteAccount(id: string) {
 		.select({ url: eventFile.url, thumbnailUrl: eventFile.thumbnailUrl })
 		.from(eventFile)
 		.where(eq(eventFile.accountId, id));
+	const chatFiles = await chatAttachmentBlobs(eq(chatAttachment.accountId, id));
 	await deleteBlobs([
+		...chatFiles,
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...sessions.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
@@ -4212,11 +4244,14 @@ export async function deleteRecordingSession(accountId: string, sessionId: strin
 			url: sessionRecording.url,
 			playbackUrl: sessionRecording.playbackUrl,
 		});
+	const chatFiles = await chatAttachmentBlobs(
+		and(eq(chatAttachment.accountId, accountId), eq(chatAttachment.sessionId, sessionId)),
+	);
 	await deleteSessionReviewRows(
 		[sessionId],
 		gone.map((r) => r.id),
 	);
-	await deleteBlobs(gone.flatMap((r) => [r.url, r.playbackUrl ?? ""]));
+	await deleteBlobs([...chatFiles, ...gone.flatMap((r) => [r.url, r.playbackUrl ?? ""])]);
 	return true;
 }
 
@@ -4953,14 +4988,15 @@ export async function listSessionChatMessages(
 	return chatRows(rows, viewerId);
 }
 
-/** Sends a message to a session's chat; null when the session is not the account's. */
+/** Sends a message to a session's chat with the sender's pending files among `attachments` (docs/chat.md, "Attachments"); null when the session is not the account's. */
 export async function createSessionChatMessage(
 	accountId: string,
 	sessionId: string,
 	userId: string,
 	body: string,
 	mentions: string[] = [],
-): Promise<ChatMessageRow | null> {
+	attachments: string[] = [],
+): Promise<ChatMessageRow | "empty" | null> {
 	const s = await db.query.recordingSession.findFirst({
 		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
 		columns: { id: true },
@@ -4970,6 +5006,18 @@ export async function createSessionChatMessage(
 		.insert(sessionChatMessage)
 		.values({ accountId, sessionId, userId, body, mentions: mentions.length > 0 ? mentions : null })
 		.returning({ id: sessionChatMessage.id });
+	const attached = await attachChatAttachments(
+		accountId,
+		{ sessionId },
+		userId,
+		row.id,
+		attachments,
+	);
+	// Files alone, and none of them the sender's pending ones: nothing to say, so no message.
+	if (!body && attached === 0) {
+		await db.delete(sessionChatMessage).where(eq(sessionChatMessage.id, row.id));
+		return "empty";
+	}
 	return chatRowOf("session", row.id, userId);
 }
 
@@ -4997,8 +5045,9 @@ export async function updateSessionChatMessage(
 	return own ? chatRowOf("session", id, own.userId) : null;
 }
 
-/** A session's message and its reactions. */
+/** A session's message, its reactions and its files, rows and blobs (docs/chat.md, "Attachments"). */
 export async function deleteSessionChatMessage(id: string) {
+	await deleteChatAttachmentsWhere(eq(chatAttachment.sessionMessageId, id));
 	await db.delete(chatReaction).where(eq(chatReaction.messageId, id));
 	await db.delete(sessionChatMessage).where(eq(sessionChatMessage.id, id));
 }
@@ -12633,4 +12682,259 @@ function eventFileRowOf(r: typeof eventFile.$inferSelect): EventFileRow {
 		shareCode: r.shareCode,
 		createdAt: r.createdAt,
 	};
+}
+
+// ---- chat attachments (docs/chat.md, "Attachments") ----
+
+/** A file on a chat message as the chat and the routes return it (docs/chat.md, "Attachments"). */
+export interface ChatAttachmentRow {
+	id: string;
+	filename: string;
+	kind: FileKind;
+	contentType: string;
+	sizeBytes: number;
+	url: string;
+	thumbnailUrl: string | null;
+	width: number | null;
+	height: number | null;
+	shareCode: string;
+}
+
+function chatAttachmentRowOf(r: typeof chatAttachment.$inferSelect): ChatAttachmentRow {
+	return {
+		id: r.id,
+		filename: r.filename,
+		kind: r.kind,
+		contentType: r.contentType,
+		sizeBytes: r.sizeBytes,
+		url: r.url,
+		thumbnailUrl: r.thumbnailUrl,
+		width: r.width,
+		height: r.height,
+		shareCode: r.shareCode,
+	};
+}
+
+/** The blobs (each file and its thumbnail) of the chat attachments `where` selects, for a delete to remove with the rows. */
+async function chatAttachmentBlobs(where: SQL | undefined): Promise<string[]> {
+	const rows = await db
+		.select({ url: chatAttachment.url, thumbnailUrl: chatAttachment.thumbnailUrl })
+		.from(chatAttachment)
+		.where(where);
+	return rows.flatMap((f) => [f.url, f.thumbnailUrl ?? ""]);
+}
+
+/** Removes the chat attachments `where` selects, rows and blobs; how many went. */
+async function deleteChatAttachmentsWhere(where: SQL | undefined): Promise<number> {
+	const gone = await db
+		.delete(chatAttachment)
+		.where(where)
+		.returning({ url: chatAttachment.url, thumbnailUrl: chatAttachment.thumbnailUrl });
+	if (gone.length > 0) await deleteBlobs(gone.flatMap((f) => [f.url, f.thumbnailUrl ?? ""]));
+	return gone.length;
+}
+
+/** Of the user's rows in the account, those not on a message (`and`-ed with `more`). */
+const pendingOf = (accountId: string, userId: string, ...more: (SQL | undefined)[]) =>
+	and(
+		eq(chatAttachment.accountId, accountId),
+		eq(chatAttachment.uploadedBy, userId),
+		isNull(chatAttachment.messageId),
+		isNull(chatAttachment.sessionMessageId),
+		...more,
+	);
+
+/** The ready files of these messages (either chat's), oldest first, by message id; one query. */
+export async function chatAttachmentsOf(
+	messageIds: string[],
+): Promise<Map<string, ChatAttachmentRow[]>> {
+	const out = new Map<string, ChatAttachmentRow[]>();
+	if (messageIds.length === 0) return out;
+	const rows = await db.query.chatAttachment.findMany({
+		where: and(
+			eq(chatAttachment.status, "ready"),
+			or(
+				inArray(chatAttachment.messageId, messageIds),
+				inArray(chatAttachment.sessionMessageId, messageIds),
+			),
+		),
+		orderBy: [asc(chatAttachment.createdAt), asc(chatAttachment.id)],
+	});
+	for (const r of rows) {
+		const key = r.messageId ?? r.sessionMessageId;
+		if (!key) continue;
+		out.set(key, [...(out.get(key) ?? []), chatAttachmentRowOf(r)]);
+	}
+	return out;
+}
+
+/**
+ * Step 1 of a chat attachment's upload: the row in `uploading` state under
+ * the chat it was dropped into (a song's or a session's), its kind and
+ * content type from the extension, its pathname under the account's
+ * `chat/` folder and a share code. First the user's pending files in the
+ * account older than `CHAT_ATTACHMENT_STALE_MS` go, rows and blobs: the
+ * feature cleans up after itself without a cron. Null when the song or
+ * session is not the account's.
+ */
+export async function createChatAttachment(input: {
+	accountId: string;
+	userId: string;
+	songId?: string;
+	sessionId?: string;
+	filename: string;
+	sizeBytes: number;
+}) {
+	const { accountId, userId, filename } = input;
+	const sessionId = input.sessionId || null;
+	const songId = sessionId ? null : input.songId || null;
+	const owned = sessionId
+		? await db.query.recordingSession.findFirst({
+				where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
+				columns: { id: true },
+			})
+		: songId
+			? await db.query.song.findFirst({
+					where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+					columns: { id: true },
+				})
+			: undefined;
+	if (!owned) return null;
+	await deleteChatAttachmentsWhere(
+		pendingOf(
+			accountId,
+			userId,
+			lt(chatAttachment.createdAt, new Date(Date.now() - CHAT_ATTACHMENT_STALE_MS)),
+		),
+	);
+	const id = nanoid();
+	const [row] = await db
+		.insert(chatAttachment)
+		.values({
+			id,
+			accountId,
+			songId,
+			sessionId,
+			kind: fileKindOf(filename),
+			url: "",
+			pathname: chatAttachmentPathname(accountId, id, filename),
+			filename,
+			contentType: FILE_CONTENT_TYPE_OF(filename),
+			sizeBytes: input.sizeBytes,
+			shareCode: nanoid(16),
+			uploadedBy: userId,
+		})
+		.returning();
+	return row!;
+}
+
+/** The account's chat attachment, every column, or null. */
+export async function findChatAttachmentById(accountId: string, id: string) {
+	const row = await db.query.chatAttachment.findFirst({
+		where: and(eq(chatAttachment.accountId, accountId), eq(chatAttachment.id, id)),
+	});
+	return row ?? null;
+}
+
+/** The upload token's check (`/api/upload`): the reservation at this pathname, still uploading. */
+export async function findUploadingChatAttachment(accountId: string, pathname: string) {
+	const row = await db.query.chatAttachment.findFirst({
+		where: and(
+			eq(chatAttachment.accountId, accountId),
+			eq(chatAttachment.pathname, pathname),
+			eq(chatAttachment.status, "uploading"),
+		),
+	});
+	return row ?? null;
+}
+
+/** Vercel's completion webhook (production only): the URL lands even if the browser's own report never does; the bytes are checked when it does. */
+export async function recordChatAttachmentUrl(pathname: string, url: string) {
+	await db
+		.update(chatAttachment)
+		.set({ url })
+		.where(and(eq(chatAttachment.pathname, pathname), eq(chatAttachment.status, "uploading")));
+}
+
+/** Step 3: the file checked, its thumbnail stored, the row ready to be sent. Null when it is not the account's. */
+export async function markChatAttachmentReady(
+	accountId: string,
+	id: string,
+	data: {
+		url: string;
+		thumbnailUrl: string | null;
+		thumbnailPathname: string | null;
+		width: number | null;
+		height: number | null;
+	},
+): Promise<ChatAttachmentRow | null> {
+	const [row] = await db
+		.update(chatAttachment)
+		.set({ ...data, status: "ready" })
+		.where(and(eq(chatAttachment.accountId, accountId), eq(chatAttachment.id, id)))
+		.returning();
+	return row ? chatAttachmentRowOf(row) : null;
+}
+
+/** The upload was not what its name said (or never finished): the row goes, and whatever landed. */
+export async function failChatAttachment(accountId: string, id: string) {
+	await deleteChatAttachmentsWhere(
+		and(eq(chatAttachment.accountId, accountId), eq(chatAttachment.id, id)),
+	);
+}
+
+/** The composer's ×: the uploader's own file not yet sent goes, row and blobs; false when there is no such file. */
+export async function removePendingChatAttachment(
+	accountId: string,
+	userId: string,
+	id: string,
+): Promise<boolean> {
+	return (
+		(await deleteChatAttachmentsWhere(pendingOf(accountId, userId, eq(chatAttachment.id, id)))) > 0
+	);
+}
+
+/**
+ * A sent message takes its files: of `ids`, the sender's ready, pending
+ * rows uploaded to this chat get the message's id (`messageId` in a song's
+ * chat, `sessionMessageId` in a session's). Anything else among the ids
+ * (another's file, another chat's, one still uploading or already sent) is
+ * left alone. How many were attached.
+ */
+export async function attachChatAttachments(
+	accountId: string,
+	scope: { songId?: string; sessionId?: string },
+	userId: string,
+	messageId: string,
+	ids: string[],
+): Promise<number> {
+	const chat = scope.sessionId
+		? eq(chatAttachment.sessionId, scope.sessionId)
+		: scope.songId
+			? eq(chatAttachment.songId, scope.songId)
+			: undefined;
+	if (ids.length === 0 || !chat) return 0;
+	const rows = await db
+		.update(chatAttachment)
+		.set(scope.sessionId ? { sessionMessageId: messageId } : { messageId })
+		.where(
+			pendingOf(
+				accountId,
+				userId,
+				chat,
+				eq(chatAttachment.status, "ready"),
+				inArray(chatAttachment.id, ids),
+			),
+		)
+		.returning({ id: chatAttachment.id });
+	return rows.length;
+}
+
+/** The ready chat attachment a permanent link names (`/f/<code>`), with the type stored at reserve time. */
+export async function chatAttachmentByShareCode(code: string) {
+	const row = await db.query.chatAttachment.findFirst({
+		where: and(eq(chatAttachment.shareCode, code), eq(chatAttachment.status, "ready")),
+		columns: { url: true, filename: true, contentType: true, kind: true },
+	});
+	return row ?? null;
 }

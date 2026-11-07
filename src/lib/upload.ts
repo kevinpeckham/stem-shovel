@@ -121,6 +121,47 @@ export async function uploadFile(
 }
 
 /**
+ * The middle of an event file's and a chat attachment's upload: the bytes to
+ * Blob under the content type the name says, beside a thumbnail made in the
+ * browser (a PDF's first page; an image shrunk to WebP with its pixel size).
+ * Answers the ready form: the URL, and the thumbnail when one was made.
+ */
+async function sendWithThumbnail(
+	pathname: string,
+	access: "public" | "private",
+	file: File,
+	onProgress?: (percent: number) => void,
+): Promise<FormData> {
+	const kind = fileKindOf(file.name, file.type);
+	const [blob, thumb] = await Promise.all([
+		upload(pathname, file, {
+			access,
+			handleUploadUrl: "/api/upload",
+			contentType: FILE_CONTENT_TYPE_OF(file.name),
+			multipart: true,
+			onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+		}),
+		(kind === "pdf"
+			? pdfThumbnail(file).then((t) => (t ? { image: t.image, width: null, height: null } : null))
+			: // An odd name can still be a picture (imageThumbnail answers null when it is not).
+				kind === "image" || kind === "other"
+				? imageThumbnail(file)
+				: Promise.resolve(null)
+		).catch(() => null),
+	]);
+	const form = new FormData();
+	form.set("url", blob.url);
+	if (thumb) {
+		form.set("thumbnail", thumb.image, "thumbnail.webp");
+		if (thumb.width && thumb.height) {
+			form.set("width", String(thumb.width));
+			form.set("height", String(thumb.height));
+		}
+	}
+	return form;
+}
+
+/**
  * An event's poster or one of its photos (docs/band-plan.md, "Event"):
  * reserve under the event, send the bytes to Blob under the content type
  * its name says, and report the URL with a thumbnail made here in the
@@ -143,32 +184,41 @@ export async function uploadEventFile<Row>(
 		pathname: string;
 		access?: "public" | "private";
 	}>(`/api/events/${eventId}/files`, { kind, filename: file.name, sizeBytes: file.size });
-	const pdf = fileKindOf(file.name, file.type) === "pdf";
-	const [blob, thumb] = await Promise.all([
-		upload(pathname, file, {
-			access,
-			handleUploadUrl: "/api/upload",
-			contentType: FILE_CONTENT_TYPE_OF(file.name),
-			multipart: true,
-			onUploadProgress: ({ percentage }) => onProgress?.(percentage),
-		}),
-		(pdf
-			? pdfThumbnail(file).then((t) => (t ? { image: t.image, width: null, height: null } : null))
-			: imageThumbnail(file)
-		).catch(() => null),
-	]);
-	const form = new FormData();
-	form.set("url", blob.url);
-	if (thumb) {
-		form.set("thumbnail", thumb.image, "thumbnail.webp");
-		if (thumb.width && thumb.height) {
-			form.set("width", String(thumb.width));
-			form.set("height", String(thumb.height));
-		}
-	}
+	const form = await sendWithThumbnail(pathname, access, file, onProgress);
 	const ready = await fetch(`/api/event-files/${fileId}/ready`, { method: "POST", body: form });
 	if (!ready.ok) throw new Error(await errorText(ready));
 	return ((await ready.json()) as { file: Row }).file;
+}
+
+/**
+ * A file on a chat message (docs/chat.md, "Attachments"): reserve it in the
+ * song's or the session's chat, send the bytes to Blob under the content type
+ * its name says, and report the URL with a thumbnail made here in the browser
+ * for an image or a PDF (as `uploadEventFile` does). The server checks the
+ * bytes by kind before the row is ready; the answer is the ready attachment,
+ * which waits unattached until a message is sent with its id.
+ */
+export async function uploadChatAttachment<Row>(
+	scope: { songId?: string; sessionId?: string },
+	file: File,
+	onProgress?: (percent: number) => void,
+): Promise<Row> {
+	const {
+		fileId,
+		pathname,
+		access = "public",
+	} = await postJson<{
+		fileId: string;
+		pathname: string;
+		access?: "public" | "private";
+	}>("/api/chat/attachments", { ...scope, filename: file.name, sizeBytes: file.size });
+	const form = await sendWithThumbnail(pathname, access, file, onProgress);
+	const ready = await fetch(`/api/chat-attachments/${fileId}/ready`, {
+		method: "POST",
+		body: form,
+	});
+	if (!ready.ok) throw new Error(await errorText(ready));
+	return ((await ready.json()) as { attachment: Row }).attachment;
 }
 
 export interface SessionReservation {

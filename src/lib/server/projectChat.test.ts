@@ -17,24 +17,24 @@ const message = (id: string, songId: string, ms: number, over: Record<string, un
 	...over,
 });
 
-beforeEach(() =>
-	reset({
-		user: [{ id: "u1", name: "Pat" }],
-		song: [
-			{ id: "s1", accountId: "a1", projectId: "p1", title: "Intro", slug: "intro" },
-			{ id: "s2", accountId: "a1", projectId: "p1", title: "Bridge", slug: "bridge" },
-			{ id: "s3", accountId: "a1", projectId: "p2", title: "Elsewhere", slug: "elsewhere" },
-			{ id: "s4", accountId: "a2", projectId: "p1", title: "Stranger", slug: "stranger" },
-		],
-		chatMessage: [
-			message("m1", "s1", 10),
-			message("m2", "s2", 20, { editedAt: at(25) }),
-			message("m3", "s1", 30),
-			message("m4", "s3", 40),
-			message("m5", "s4", 50, { accountId: "a2" }),
-		],
-	}),
-);
+const fixtures = {
+	user: [{ id: "u1", name: "Pat" }],
+	song: [
+		{ id: "s1", accountId: "a1", projectId: "p1", title: "Intro", slug: "intro" },
+		{ id: "s2", accountId: "a1", projectId: "p1", title: "Bridge", slug: "bridge" },
+		{ id: "s3", accountId: "a1", projectId: "p2", title: "Elsewhere", slug: "elsewhere" },
+		{ id: "s4", accountId: "a2", projectId: "p1", title: "Stranger", slug: "stranger" },
+	],
+	chatMessage: [
+		message("m1", "s1", 10),
+		message("m2", "s2", 20, { editedAt: at(25) }),
+		message("m3", "s1", 30),
+		message("m4", "s3", 40),
+		message("m5", "s4", 50, { accountId: "a2" }),
+	],
+};
+
+beforeEach(() => reset(fixtures));
 
 describe("projectChatFeed", () => {
 	test("the project's songs' messages, newest first, each with its song and author; other projects and accounts left out", async () => {
@@ -51,6 +51,7 @@ describe("projectChatFeed", () => {
 			body: "said m2",
 			createdAt: 20,
 			editedAt: 25,
+			attachments: [],
 		});
 	});
 	test("a page of `limit` says there is more, and `before` pages back from a message's time", async () => {
@@ -64,6 +65,56 @@ describe("projectChatFeed", () => {
 	test("a project of another account, or with no songs, has no messages", async () => {
 		expect(await projectChatFeed("a2", "p2")).toEqual({ messages: [], more: false });
 		expect(await projectChatFeed("a1", "nope")).toEqual({ messages: [], more: false });
+	});
+	test('each message carries its ready files, oldest first, in one query for the page (docs/chat.md, "Attachments")', async () => {
+		const file = (id: string, over: Record<string, unknown>) => ({
+			id,
+			accountId: "a1",
+			songId: "s1",
+			messageId: "m3",
+			sessionMessageId: null,
+			kind: "image",
+			status: "ready",
+			url: `https://blob/${id}.png`,
+			pathname: `accounts/a1/chat/${id}.png`,
+			filename: `${id}.png`,
+			contentType: "image/png",
+			sizeBytes: 10,
+			width: 4,
+			height: 3,
+			thumbnailUrl: null,
+			thumbnailPathname: null,
+			shareCode: `code-${id}`,
+			uploadedBy: "u1",
+			createdAt: at(5),
+			updatedAt: at(5),
+			...over,
+		});
+		reset({
+			...fixtures,
+			chatAttachment: [
+				file("f2", { createdAt: at(7) }),
+				file("f1", {}),
+				file("f3", { status: "uploading" }),
+				file("f4", { messageId: "m1" }),
+			],
+		});
+		const out = await projectChatFeed("a1", "p1");
+		expect(out.messages[0].attachments.map((f) => f.id)).toEqual(["f1", "f2"]);
+		expect(out.messages[0].attachments[0]).toEqual({
+			id: "f1",
+			filename: "f1.png",
+			kind: "image",
+			contentType: "image/png",
+			sizeBytes: 10,
+			url: "https://blob/f1.png",
+			thumbnailUrl: null,
+			width: 4,
+			height: 3,
+			shareCode: "code-f1",
+		});
+		expect(out.messages[1].attachments).toEqual([]);
+		expect(out.messages[2].attachments.map((f) => f.id)).toEqual(["f4"]);
 	});
 	test("the limit is held to the most", async () => {
 		const out = await projectChatFeed("a1", "p1", { limit: 1000 });

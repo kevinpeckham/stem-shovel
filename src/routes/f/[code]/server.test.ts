@@ -6,7 +6,7 @@ import { callRoute } from "../../../../tests/helpers/fakeApiEvent";
 
 /**
  * A file's permanent link: the share code finds an attachment, a notation
- * file or a show's poster or photo, in that order; the visitor is sent to
+ * file, a show's poster or photo or a chat message's file, in that order; the visitor is sent to
  * the store, or with `?download=1` (or `pdf`) gets the bytes under the
  * file's own name and type.
  */
@@ -35,6 +35,7 @@ beforeEach(() => {
 	data.fileByShareCode.mockResolvedValue(null);
 	data.notationByShareCode.mockResolvedValue(null);
 	data.eventFileByShareCode.mockResolvedValue(null);
+	data.chatAttachmentByShareCode.mockResolvedValue(null);
 	blob.presentUrl.mockImplementation(async (url: string) => url);
 	blob.readBlob.mockImplementation(
 		async () => new Response(new Uint8Array([1, 2, 3]), { headers: { "content-length": "3" } }),
@@ -47,6 +48,7 @@ describe("GET /f/[code]", () => {
 		expect(data.fileByShareCode).toHaveBeenCalledWith(CODE);
 		expect(data.notationByShareCode).toHaveBeenCalledWith(CODE);
 		expect(data.eventFileByShareCode).toHaveBeenCalledWith(CODE);
+		expect(data.chatAttachmentByShareCode).toHaveBeenCalledWith(CODE);
 	});
 	it("an attachment wins before an event file is looked up", async () => {
 		data.fileByShareCode.mockResolvedValue({
@@ -79,5 +81,25 @@ describe("GET /f/[code]", () => {
 		expect(download.headers.get("content-type")).toBe("image/jpeg");
 		expect(download.headers.get("content-disposition")).toContain("crowd.jpg");
 		await expect(get("?download=pdf")).rejects.toMatchObject(httpError(404));
+	});
+	it('a chat message\'s file (docs/chat.md, "Attachments"): looked up after event files, served under its stored type; a PDF is its own PDF', async () => {
+		data.chatAttachmentByShareCode.mockResolvedValue({
+			url: "https://store.public.blob.vercel-storage.com/accounts/a/chat/c.pdf",
+			filename: "Chart.pdf",
+			contentType: "application/pdf",
+			kind: "pdf",
+		});
+		const res = await get();
+		expect(res.status).toBe(302);
+		expect(data.eventFileByShareCode).toHaveBeenCalledWith(CODE);
+		const download = await get("?download=1");
+		expect(download.headers.get("content-type")).toBe("application/pdf");
+		expect(download.headers.get("content-disposition")).toContain("Chart.pdf");
+		expect((await get("?download=pdf")).status).toBe(200);
+	});
+	it("an event file wins before a chat message's file is looked up", async () => {
+		data.eventFileByShareCode.mockResolvedValue(photo);
+		await get();
+		expect(data.chatAttachmentByShareCode).not.toHaveBeenCalled();
 	});
 });

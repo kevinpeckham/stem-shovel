@@ -1,11 +1,13 @@
 <script lang="ts">
+	import ChatAttachments from "#lib/components/ChatAttachments.svelte";
 	import ChatText from "#lib/components/ChatText.svelte";
 	import type { ProjectChatFeedRow } from "#lib/server/projectChat.js";
 
 	/**
 	 * One message in the project's chat feed (ProjectChatFeed.svelte): its
 	 * song's title linking to that song's chat, the author (the reader's
-	 * own name in blue) and time, the text (ChatText) and an "(edited)" mark.
+	 * own name in blue) and time, the text (ChatText), an "(edited)" mark and the files it carries
+	 * (ChatAttachments).
 	 */
 	interface Props {
 		message: ProjectChatFeedRow;
@@ -29,4 +31,5 @@
 		<ChatText body={message.body} />
 		{#if message.editedAt}<span class="ml-1 text-11px opacity-50">(edited)</span>{/if}
 	</p>
+	<ChatAttachments attachments={message.attachments} />
 </li>

@@ -24,6 +24,15 @@ export function pageCountOf(form: FormData): number | null {
 	return Number.isInteger(pagesRaw) && pagesRaw > 0 && pagesRaw < 10_000 ? pagesRaw : null;
 }
 
+/** The width and height the browser measured (an image's, a PDF's first page): each a whole number of pixels it could have read, else null. */
+export function measuredSizeOf(form: FormData): { width: number | null; height: number | null } {
+	const side = (value: FormDataEntryValue | null) => {
+		const n = Number(value);
+		return value !== null && Number.isInteger(n) && n > 0 && n <= 100_000 ? n : null;
+	};
+	return { width: side(form.get("width")), height: side(form.get("height")) };
+}
+
 /**
  * The browser's thumbnail of a file (a WebP or PNG, checked by its bytes),
  * stored beside the file in the file's store; nulls when it sent none or

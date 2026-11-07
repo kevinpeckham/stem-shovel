@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Files in the chat.** Attach pictures, PDFs, audio and other files to a chat message with the paperclip, by dropping them on the box, or by pasting a picture. Pictures show as thumbnails; other files download with a click. A message can be files alone.
+
 ## [0.242.0] - 2026-11-07
 
 ### Added

@@ -59,6 +59,7 @@ const FILE = fakeId("file-one");
 const NOTATION = fakeId("notation-one");
 const EVENT = fakeId("event-one");
 const EVENT_FILE = fakeId("evfile-one");
+const CHAT_FILE = fakeId("chatfile-one");
 
 const paths = {
 	stem: `accounts/${ACCOUNT}/songs/${SONG}/${STEM}.wav`,
@@ -72,6 +73,7 @@ const paths = {
 	file: `accounts/${ACCOUNT}/songs/${SONG}/files/${FILE}.pdf`,
 	notation: `accounts/${ACCOUNT}/songs/${SONG}/notation/${NOTATION}.mxl`,
 	eventFile: `accounts/${ACCOUNT}/events/${EVENT}/files/${EVENT_FILE}.png`,
+	chatFile: `accounts/${ACCOUNT}/chat/${CHAT_FILE}.png`,
 };
 const TOKEN_RESULT = { type: "blob.generate-client-token", clientToken: "tok" };
 
@@ -98,6 +100,7 @@ beforeEach(() => {
 		"isStudioPathname",
 		"isFilePathname",
 		"isEventFilePathname",
+		"isChatAttachmentPathname",
 		"isNotationPathname",
 	] as const) {
 		blob[name].mockImplementation(realBlob[name]);
@@ -347,6 +350,46 @@ describe("onBeforeGenerateToken: attachments and notation", () => {
 		givenRow("eventFile", { accountId: OTHER_ACCOUNT });
 		await expect(tokenFor(paths.eventFile)).rejects.toMatchObject(httpError(404));
 	});
+	it("a chat's file (docs/chat.md, \"Attachments\"): its uploader alone, an attachment's labels, up to the size it reserved under its kind's ceiling", async () => {
+		givenRow("chatAttachment", { accountId: ACCOUNT, song: { projectId: PROJECT } });
+		data.findUploadingChatAttachment.mockResolvedValue({
+			id: CHAT_FILE,
+			filename: "shot.png",
+			sizeBytes: 50_000,
+			uploadedBy: USER,
+		});
+		// A viewer writes in the chat, so a viewer uploads to it.
+		await expect(tokenFor(paths.chatFile, asViewerOf(ACCOUNT))).resolves.toMatchObject({
+			allowedContentTypes: FILE_CONTENT_TYPES,
+			maximumSizeInBytes: 50_000,
+			tokenPayload: JSON.stringify({ id: CHAT_FILE }),
+		});
+		expect(data.findUploadingChatAttachment).toHaveBeenCalledWith(ACCOUNT, paths.chatFile);
+		expect(data.findUploadingFile).not.toHaveBeenCalled();
+		data.findUploadingChatAttachment.mockResolvedValue({
+			id: CHAT_FILE,
+			filename: "shot.png",
+			sizeBytes: FILE_MAX_BYTES.image * 2,
+			uploadedBy: USER,
+		});
+		await expect(tokenFor(paths.chatFile)).resolves.toMatchObject({
+			maximumSizeInBytes: FILE_MAX_BYTES.image,
+		});
+	});
+	it("a chat's file reserved by someone else, or by nobody, is refused; an outsider's is not found", async () => {
+		givenRow("chatAttachment", { accountId: ACCOUNT, song: null });
+		data.findUploadingChatAttachment.mockResolvedValue({
+			id: CHAT_FILE,
+			filename: "shot.png",
+			sizeBytes: 1,
+			uploadedBy: "someone-else",
+		});
+		await expect(tokenFor(paths.chatFile)).rejects.toThrow(/No reservation/);
+		data.findUploadingChatAttachment.mockResolvedValue(null);
+		await expect(tokenFor(paths.chatFile)).rejects.toThrow(/No reservation/);
+		givenRow("chatAttachment", { accountId: OTHER_ACCOUNT, song: null });
+		await expect(tokenFor(paths.chatFile)).rejects.toMatchObject(httpError(404));
+	});
 	it("an attachment nobody reserved is refused", async () => {
 		givenRow("songFile", { accountId: ACCOUNT, projectId: PROJECT });
 		data.findUploadingFile.mockResolvedValue(null);
@@ -362,6 +405,7 @@ describe("onUploadCompleted records the URL on the row the pathname names", () =
 		["demo", "recordDemoUrl"],
 		["file", "recordFileUrl"],
 		["eventFile", "recordEventFileUrl"],
+		["chatFile", "recordChatAttachmentUrl"],
 		["notation", "recordNotationUrl"],
 		["recording", "recordRecordingUrl"],
 		["studio", "recordStudioSourceUrl"],

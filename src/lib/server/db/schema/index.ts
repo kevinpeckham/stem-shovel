@@ -11,6 +11,7 @@ export * from "./accountVenue";
 export * from "./authAccount";
 export * from "./bugReport";
 export * from "./bugReportVote";
+export * from "./chatAttachment";
 export * from "./chatMessage";
 export * from "./chatReaction";
 export * from "./chatRead";

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChatAttachments from "#lib/components/ChatAttachments.svelte";
 	import ChatEditForm from "#lib/components/ChatEditForm.svelte";
 	import ChatReactions from "#lib/components/ChatReactions.svelte";
 	import ChatText from "#lib/components/ChatText.svelte";
@@ -12,9 +13,10 @@
 	/**
 	 * One message in a chat (docs/chat.md, SongChat.svelte): its text
 	 * (ChatText, the people it mentions picked out), an "(edited)" mark,
-	 * its reactions under it (ChatReactions), and on hover a smiley that opens the
-	 * six emoji (ContextMenu) and, for its author (or an admin, delete
-	 * only), Edit and Delete. Edit swaps in ChatEditForm. The parent hears
+	 * the files it carries (ChatAttachments), its reactions under them
+	 * (ChatReactions), and on hover a smiley that opens the six emoji
+	 * (ContextMenu) and, for its author (or an admin, delete only), Edit
+	 * and Delete. Edit swaps in ChatEditForm. The parent hears
 	 * of a change (`onchange`: an edit or a reaction) and a removal
 	 * (`onremove`).
 	 */
@@ -104,6 +106,7 @@
 			<ChatText body={message.body} mentions={message.mentions} {meId} {onseek} />
 			{#if message.editedAt}<span class="ml-1 text-11px opacity-50">(edited)</span>{/if}
 		</p>
+		<ChatAttachments attachments={message.attachments} />
 		<ChatReactions reactions={message.reactions} {canReact} busy={reacting} onreact={react} />
 		{#if canEdit || canDelete || canReact}
 			<div

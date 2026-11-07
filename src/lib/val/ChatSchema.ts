@@ -1,14 +1,16 @@
 import * as v from "valibot";
+import { MAX_CHAT_ATTACHMENTS } from "#lib/constants/chatAttachments.js";
 import { NanoIdSchema } from "./NanoIdSchema";
 
-/** The text of a chat message as typed: trimmed, something in it, not a wall. */
+/** The text of a chat message as typed: trimmed, not a wall; "" for a message that only carries files (docs/chat.md, "Attachments"). */
 export const CHAT_MESSAGE_MAX = 2000;
-const BodySchema = v.pipe(
+const SentBodySchema = v.pipe(
 	v.string(),
 	v.trim(),
-	v.minLength(1, "Write something."),
 	v.maxLength(CHAT_MESSAGE_MAX, `Keep a message under ${CHAT_MESSAGE_MAX} characters.`),
 );
+/** An edit's text: something in it, as an edit cannot empty a message. */
+const BodySchema = v.pipe(SentBodySchema, v.minLength(1, "Write something."));
 
 /** Where a chat lives (docs/chat.md): a song's, or a session's (a practice or a show). Exactly one id; the remote function checks (`oneChatScope`). */
 const scope = {
@@ -31,8 +33,16 @@ const MentionsSchema = v.optional(
 	[],
 );
 
-/** Form boundary for sending a message to a chat (docs/chat.md). */
-export const ChatSendSchema = v.object({ ...scope, body: BodySchema, mentions: MentionsSchema });
+/** Form boundary for sending a message to a chat (docs/chat.md): the text, the people named, and the ids of the uploader's pending files it carries ("Attachments"); the remote function wants one or the other. */
+export const ChatSendSchema = v.object({
+	...scope,
+	body: SentBodySchema,
+	mentions: MentionsSchema,
+	attachments: v.optional(
+		v.pipe(v.array(NanoIdSchema), v.maxLength(MAX_CHAT_ATTACHMENTS, "Attach fewer files.")),
+		[],
+	),
+});
 
 /** Form boundary for editing one's own message. */
 export const ChatEditSchema = v.object({

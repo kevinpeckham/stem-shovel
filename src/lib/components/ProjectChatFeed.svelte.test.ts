@@ -24,6 +24,7 @@ const msg = (id: string, songTitle: string, songSlug: string, offset: number) =>
 	body: `said ${id}`,
 	createdAt: T0 + offset,
 	editedAt: null as number | null,
+	attachments: [],
 });
 const props = { projectId: "p1", account: "band", project: "album", me: { id: "me" }, pollMs: 0 };
 

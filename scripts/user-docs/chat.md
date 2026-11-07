@@ -13,6 +13,10 @@ Type in the box at the bottom and press **Enter** to send; **Shift+Enter** start
 - A web address becomes a link.
 - A position written as time, like **1:23** or **0:45.5**, becomes a button that jumps the player there.
 
+## Attachments
+
+Press the paperclip to add files to a message, or drop them on the box, or paste a picture. Pictures, PDFs, audio and the other kinds the Attachments tab takes, up to ten a message, each within its kind's size limit. They show above the box while they upload; press × to drop one before sending. A message can be files alone. Pictures show as thumbnails in the chat; other files as a chip with the name and size, which downloads it. Deleting the message removes its files.
+
 ## Mentions
 
 Type **@** and start a name: a list of the people on the project appears; pick one and their name goes into the message. The person is told you mentioned them, in their inbox and, if they have email for comments and chat turned on, by email, even when the rest of the conversation is folded into one notification for them. A mentioned name is highlighted in the message; your own, when someone mentions you, more so.

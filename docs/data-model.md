@@ -499,6 +499,36 @@ A session's chat (docs/chat.md, "Sessions"): `chat_message` and
 `chat_read` under a `recording_session` instead of a song, column for
 column (`session_id` in place of `song_id`). Migration 0092.
 
+### chat_attachment
+
+A file on a chat message (docs/chat.md, "Attachments"), or one uploaded
+and not yet sent (`message_id` and `session_message_id` both null; the
+uploader's own, swept a day later). Under a song's chat (`song_id`) or a
+session's (`session_id`), one of them. The reserve → upload → ready
+lifecycle of an attachment, with a thumbnail for an image or a PDF and a
+share code for `/f/<code>`. At most `MAX_CHAT_ATTACHMENTS` (10) a
+message. Goes with its message (deleted with the message, its blobs
+too), the song or session, the account and the author (cascade.ts).
+Migration 0115.
+
+| column                            | type                                     | notes                                                      |
+| --------------------------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| id                                | text PK                                  |                                                            |
+| account_id                        | text FK → account (cascade)              | indexed                                                    |
+| song_id                           | text FK → song (cascade)                 | indexed; the song's chat, or null                          |
+| session_id                        | text FK → recording_session (cascade)    | indexed; the session's chat, or null                       |
+| message_id                        | text FK → chat_message (cascade)         | indexed; null while pending                                |
+| session_message_id                | text FK → session_chat_message (cascade) | indexed; null while pending                                |
+| kind                              | text not null                            | `FileKind` by the extension                                |
+| status, url, pathname             | text                                     | uploading / ready / failed; `accounts/<a>/chat/<id>.<ext>` |
+| filename, size_bytes              | text, integer                            |                                                            |
+| content_type                      | text not null                            | from the extension                                         |
+| width, height                     | integer                                  | an image's size as the browser measured it                 |
+| thumbnail_url, thumbnail_pathname | text                                     | null without one                                           |
+| share_code                        | text unique                              | `/f/<code>`                                                |
+| uploaded_by                       | text FK → user (set null)                | indexed                                                    |
+| created_at, updated_at            | timestamp_ms                             |                                                            |
+
 ### song_notation
 
 A notation file attached to a song (docs/uploads-and-blob.md, "Notation

@@ -1,5 +1,6 @@
 import { command, form, getRequestEvent, query } from "$app/server";
 import {
+	accountOfChatAttachment,
 	accountOfRecordingSession,
 	accountOfSong,
 	memberOf,
@@ -22,6 +23,7 @@ import {
 	listChatMessages,
 	listSessionChatMessages,
 	markChatRead as markRead,
+	removePendingChatAttachment as removePending,
 	markSessionChatRead,
 	sessionChatMessageOwnership,
 	toggleChatReaction,
@@ -37,8 +39,9 @@ import {
 	oneChatScope,
 	type ChatScope,
 } from "#lib/val/ChatSchema.js";
+import { ChatAttachmentIdSchema } from "#lib/val/ChatAttachmentSchema.js";
 import { IdSchema } from "#lib/val/SongSchema.js";
-import { error } from "@sveltejs/kit";
+import { error, invalid } from "@sveltejs/kit";
 
 /**
  * A chat (docs/chat.md): a song's, or a session's (a practice or a show,
@@ -90,24 +93,39 @@ async function mentionable(accountId: string, scope: ChatScope, picked: string[]
 	return [...new Set(picked)].filter((id) => audience.has(id));
 }
 
-export const sendMessage = form(ChatSendSchema, async ({ songId, sessionId, body, mentions }) => {
+/** Sends a message: its text, the people it names and the sender's pending files it carries ("Attachments"); text or a file, at least one. */
+export const sendMessage = form(
+	ChatSendSchema,
+	async ({ songId, sessionId, body, mentions, attachments }, issue) => {
+		if (!body && attachments.length === 0) invalid(issue.body("Write something or attach a file."));
+		const { locals } = getRequestEvent();
+		const user = requireUser(locals);
+		const { accountId } = await chatAccess(locals, { songId, sessionId });
+		const named = await mentionable(accountId, { songId, sessionId }, mentions);
+		const message = sessionId
+			? await createSessionChatMessage(accountId, sessionId, user.id, body, named, attachments)
+			: await createChatMessage(accountId, songId, user.id, body, named, attachments);
+		if (message === "empty") invalid(issue.body("Write something or attach a file."));
+		if (!message) error(404, sessionId ? "Session not found" : "Song not found");
+		const place = placeOf({ songId, sessionId });
+		background(async () => {
+			// The people named hear of it as a mention, and the chat's folded item skips them.
+			await (sessionId
+				? notifySessionChat(accountId, sessionId, user.id, named)
+				: notifyChat(accountId, songId, user.id, named));
+			await notifyMention(accountId, place.kind, place.id, user.id, named);
+		});
+		return { message };
+	},
+);
+
+/** The composer's × on a pending file (docs/chat.md, "Attachments"): the uploader's own file not yet sent goes, row and blobs; a 404 for anything else. */
+export const removePendingChatAttachment = command(ChatAttachmentIdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
-	const { accountId } = await chatAccess(locals, { songId, sessionId });
-	const named = await mentionable(accountId, { songId, sessionId }, mentions);
-	const message = sessionId
-		? await createSessionChatMessage(accountId, sessionId, user.id, body, named)
-		: await createChatMessage(accountId, songId, user.id, body, named);
-	if (!message) error(404, sessionId ? "Session not found" : "Song not found");
-	const place = placeOf({ songId, sessionId });
-	background(async () => {
-		// The people named hear of it as a mention, and the chat's folded item skips them.
-		await (sessionId
-			? notifySessionChat(accountId, sessionId, user.id, named)
-			: notifyChat(accountId, songId, user.id, named));
-		await notifyMention(accountId, place.kind, place.id, user.id, named);
-	});
-	return { message };
+	const { accountId } = await memberOf(locals, accountOfChatAttachment, id, { viewers: true });
+	if (!(await removePending(accountId, user.id, id))) error(404, "File not found");
+	return { ok: true };
 });
 
 export const editMessage = form(ChatEditSchema, async ({ id, body, mentions }) => {

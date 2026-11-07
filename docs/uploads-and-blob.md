@@ -381,6 +381,19 @@ tiles carry the poster's thumbnail. Deleting the event removes the files
 and their blobs (`cascade.ts`); the files count in the account's storage
 sums like attachments.
 
+## Chat attachments (2026-11-07)
+
+A file on a chat message (docs/chat.md, "Attachments"; table
+`chat_attachment`). The attachments' lifecycle under its own two routes:
+`POST /api/chat/attachments` reserves the row under the song's or the
+session's chat for anyone who may write there (the kind by the filename's
+extension, its `FILE_MAX_BYTES` ceiling, the account's storage room) at
+`accounts/<a>/chat/<id>.<ext>` in the public store, the browser puts the
+bytes there with a thumbnail for an image or a PDF, and `POST
+/api/chat-attachments/<id>/ready` checks the first bytes by kind before
+marking it ready. The message is sent after, naming the ids; a file never
+sent is swept a day later. The permanent address is `/f/<code>`.
+
 ## Sessions (2026-10-18)
 
 The band's practice and show recordings (Kevin: an area for members to
