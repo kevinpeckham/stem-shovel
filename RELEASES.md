@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.237.0] - 2026-11-07
+
 ### Changed
 
 - **Older songs get their chords read sooner.** Opening a project reads the chords of its songs that the chord model has not seen yet, so Detect chords on one of them answers at once.

@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.237.0] - 2026-11-07
+
 ### Changed
 
 - **Older songs get their chords read as their project is opened.** The project page posts the chord-model job for a member's songs the model has not read (`songsWantingChords`, beside the mix backstop), so Detect chords on one of them does not wait. The song-settings user doc describes the model read (`scripts/user-docs/song-settings.md`; update-docs on production is Kevin's step).
