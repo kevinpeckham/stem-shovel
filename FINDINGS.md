@@ -441,6 +441,39 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 24 verdict on true-tempo estimation: the reader-derived grid
+  is SHIP-SHAPED for steady songs and impossible for wandering ones —
+  and the boundary may be detectable for free** (stem-bench,
+  2026-11-07; ≈ $0.3 of a $2 fence; registered 2bd7ca9, results
+  9af2261). The joint phase-and-period comb over your reader's own
+  grid-free segment boundaries (period ± 10% of declared, zero new UX)
+  was measured end to end. On the two songs that hold their declared
+  tempo, the fitted chartless grid takes the draft to BASELINE PARITY:
+  peaceful-dreams 148/153 roots (grid-given baseline 151) with 18 of
+  62 dialect bars written exactly, ABOVE grid-given's 11 and the best
+  color number the bench has measured; mop-heart 136/140, above its
+  131 baseline. No chart, no tap, no alignment. On letter-lands and
+  eat-all-the-clocks the draft stays collapsed (36/76, 24/84) for a
+  reason deeper than 23b reported: the in-run least-squares uniform
+  fit to the aligned truth ITSELF hits only 3-5 bars of 76-86, so
+  those recordings wander beyond ANY single (phase, period) — there
+  was no uniform grid to find. Practical guidance: (1) the auto-chart
+  grid for steady songs = the chord-change comb's fitted grid (or the
+  onset comb's — it measured slightly better as a period instrument,
+  3 of 4 songs closer to the truth fit); (2) wandering songs need
+  beat-tracking-grade instruments or an alignment path, not a better
+  comb; (3) one unregistered observation worth a registered follow-up
+  before you build on it: the comb's residual score ordered the four
+  songs exactly by draft success (0.137/0.229 s parity, 0.281/0.343 s
+  collapse) — a candidate $0 confidence gate for declining gracefully.
+  **Correction to the Study 23b entry below, same day:** the claim
+  that a music-start detector "catches letter-lands' 7.15 s intro at
+  121 ms" is WRONG — that anchor was t = 0 (the recording opens loud),
+  four bars before the charted music, and 121 ms was mod-period
+  coincidence; across the corpus the first-loud-note anchor finds the
+  AUDIO start, not the charted start, so nothing measured yet detects
+  an uncharted intro.
+
 - **Study 23b verdict on the chartless-song grid: do NOT build the tap
   — a perfect downbeat anchor is worthless under the declared tempo,
   and the auto-chart feature's missing leg is TRUE-TEMPO ESTIMATION**
@@ -461,9 +494,11 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   extend the chord-change comb (your shipped reader's segment
   boundaries) from a phase search to a phase-AND-period search — the $0
   downbeat shootout already shows the onset comb anchors 3/4 songs
-  within 15% of a bar and a music-start detector catches letter-lands'
-  7.15 s intro, so once the period is measured the anchor is nearly
-  free. This supersedes the grid-options ranking in
+  within 15% of a bar, so once the period is measured the anchor is
+  nearly free. (Corrected 2026-11-07, see the Study 24 entry: the
+  music-start detector does NOT catch letter-lands' intro — its anchor
+  is the audio start, t = 0, and the published 121 ms was mod-period
+  coincidence.) This supersedes the grid-options ranking in
   docs/bench-brief-auto-chart-2026-11-07.md (see its addendum).
 
 - **Study 23 verdict on recording-to-chart: the composition is one
