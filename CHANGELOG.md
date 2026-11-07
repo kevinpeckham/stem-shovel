@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A social card.** Every page carries one Open Graph image (`static/og.png`, 1200×630, drawn by `bun run og` from `scripts/og.ts` in the site's look: the wordmark, the headline and tagline in `src/lib/constants/socialCard.ts`, a player panel in CSS) with its size, alt text and `twitter:card`, set once in the root layout; a link to the site posted to social carries a picture. `audit:seo` checks the tags on every public page and that the image answers.
+
 ## [0.243.0] - 2026-11-07
 
 ### Added

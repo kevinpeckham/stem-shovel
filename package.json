@@ -27,6 +27,7 @@
 		"smoke:blob": "varlock run -- node scripts/blob-smoke.mjs",
 		"smoke:urls": "varlock run -- node scripts/smoke-urls.mjs",
 		"audit:seo": "varlock run -- bun run scripts/seo-audit.ts",
+		"og": "bun scripts/og.ts",
 		"smoke:nightly": "varlock run -- bun scripts/smoke-nightly.mjs",
 		"sentry:scan": "varlock run -- bun scripts/sentry-scan.ts",
 		"sentry:diagnose": "varlock run -- bun scripts/sentry-diagnose.ts",

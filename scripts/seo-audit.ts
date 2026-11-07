@@ -4,8 +4,10 @@
  * sitemap, allowed by robots.txt, exempt from vercel.json's X-Robots-Tag
  * rule, free of the noindex header and meta, and (public pages) has a title,
  * a description, one h1 and a lang, against what `isIndexablePath` says the
- * page is meant to be. Catches a public page that missed one of the four
- * lists (docs/security.md "Indexability audit") and app pages that leak.
+ * page is meant to be, and (public pages) the shared Open Graph card's tags,
+ * with /og.png itself answering as a PNG. Catches a public page that missed
+ * one of the four lists (docs/security.md "Indexability audit") and app pages
+ * that leak.
  *
  *   bun run audit:seo                                        # dev server
  *   SEO_BASE=https://www.stemshovel.com bun run audit:seo    # production
@@ -61,6 +63,10 @@ interface Page {
 	canonical: string | null;
 	h1: number;
 	lang: string | null;
+	ogImage: string | null;
+	ogImageWidth: string | null;
+	ogImageHeight: string | null;
+	twitterCard: string | null;
 	inSitemap: boolean;
 	robotsTxtAllows: boolean;
 	vercelRuleNoindexes: boolean;
@@ -141,6 +147,10 @@ function readHtml(body: string) {
 		canonical: attrOf(tags(head, "link"), "rel", "canonical", "href"),
 		h1: [...body.matchAll(/<h1[\s>]/gi)].length,
 		lang: attrOf(tags(body, "html"), "lang", "", "lang", true),
+		ogImage: attrOf(metas, "property", "og:image", "content"),
+		ogImageWidth: attrOf(metas, "property", "og:image:width", "content"),
+		ogImageHeight: attrOf(metas, "property", "og:image:height", "content"),
+		twitterCard: attrOf(metas, "name", "twitter:card", "content"),
 	};
 }
 
@@ -184,7 +194,22 @@ type Check = [check: string, ok: boolean | null, expected: string, actual: strin
 const isNoindex = (value: string | null) => /noindex/i.test(value ?? "");
 const orNone = (value: string | null) => value ?? "none";
 const statusOf = (p: Page) => p.chain.map((c) => c.status).join("→");
+/** The card every page shares (scripts/og.ts draws it; the root layout points at it). */
+const OG_IMAGE = `${new URL(base).origin}/og.png`;
+const ogSize = (p: Page) => `${orNone(p.ogImageWidth)}×${orNone(p.ogImageHeight)}`;
 const canonicalPath = (p: Page) => (p.canonical ? new URL(p.canonical, p.finalUrl).pathname : null);
+
+/** The shared Open Graph card's tags on a public page. */
+const cardChecks = (p: Page, ifShown: (ok: boolean) => boolean | null): Check[] => [
+	["og:image", ifShown(p.ogImage === OG_IMAGE), OG_IMAGE, orNone(p.ogImage)],
+	["og:image:size", ifShown(ogSize(p) === "1200×630"), "1200×630", ogSize(p)],
+	[
+		"twitter:card",
+		ifShown(p.twitterCard === "summary_large_image"),
+		"summary_large_image",
+		orNone(p.twitterCard),
+	],
+];
 
 function publicChecks(p: Page, production: boolean): Check[] {
 	const shown = p.status === 200 && p.chain.length === 1;
@@ -202,6 +227,7 @@ function publicChecks(p: Page, production: boolean): Check[] {
 		["description", ifShown(!!p.description), "a meta description", "none"],
 		["h1", ifShown(p.h1 === 1), "one <h1>", String(p.h1)],
 		["lang", ifShown(!!p.lang), "<html lang>", "none"],
+		...cardChecks(p, ifShown),
 	];
 	const canonical = canonicalPath(p);
 	if (canonical && canonical !== p.path) checks.push(["canonical", false, p.path, canonical]);
@@ -271,6 +297,16 @@ function allowOutliers(pages: Page[], robots: string, findings: Finding[]) {
 	}
 }
 
+/** The card itself: GET /og.png answers 200 image/png (fetched once, like robots.txt). */
+async function checkOgPng(findings: Finding[]) {
+	const res = await fetch(OG_IMAGE, { headers: smoketestHeaders(base, base) });
+	await res.arrayBuffer();
+	const actual = `${res.status} ${orNone(res.headers.get("content-type"))}`;
+	const ok = actual === "200 image/png";
+	if (!ok) findings.push({ route: "og.png", check: "og.png", expected: "200 image/png", actual });
+	return `/og.png: ${actual} ${ok ? "✓" : "✗"}`;
+}
+
 /** Pages grouped by a field's value. */
 function groupBy(pages: Page[], field: "title" | "description") {
 	const seen = new Map<string, string[]>();
@@ -307,6 +343,9 @@ const COLUMNS = [
 	"title",
 	"description",
 	"h1",
+	"og:image",
+	"og:image:size",
+	"twitter:card",
 ];
 const FINDING_COLUMNS = ["route", "path", "check", "expected", "actual"];
 const LEGEND = "✓ as intended, ✗ a finding, ~ an exception, – not applicable";
@@ -316,7 +355,7 @@ const markdownTable = (rows: string[][]) =>
 		.map((r) => `| ${r.join(" | ")} |`)
 		.join("\n");
 
-function render(pages: Page[], findings: Finding[], production: boolean) {
+function render(pages: Page[], findings: Finding[], production: boolean, ogPng: string) {
 	const real = findings.filter((f) => !f.exception);
 	const stage = production
 		? "production"
@@ -339,7 +378,7 @@ function render(pages: Page[], findings: Finding[], production: boolean) {
 		f.exception ? `${f.actual} (exception: ${f.exception})` : f.actual,
 	]);
 	const excepted = findings.length - real.length;
-	const summary = `${pages.length} pages, ${pages.filter((p) => p.intent === "public").length} public, ${real.length} findings${excepted ? ` (+${excepted} exceptions)` : ""}`;
+	const summary = `${ogPng}\n${pages.length} pages, ${pages.filter((p) => p.intent === "public").length} public, ${real.length} findings${excepted ? ` (+${excepted} exceptions)` : ""}`;
 	const findingsMd = findings.length ? markdownTable([FINDING_COLUMNS, ...findingRows]) : "None.";
 	const markdown = `# ${head}\n\n${LEGEND}\n\n${markdownTable(table)}\n\n## Findings\n\n${findingsMd}\n\n${summary}\n`;
 	return { head, table, findingRows, summary, markdown, real };
@@ -470,7 +509,8 @@ async function main() {
 	sitemapOutliers(ctx.sitemap, findings);
 	allowOutliers(pages, ctx.robots, findings);
 	checkDuplicates(pages, findings);
-	const out = render(pages, findings, ctx.production);
+	const ogPng = await checkOgPng(findings);
+	const out = render(pages, findings, ctx.production, ogPng);
 	output(out, pages, findings, ctx.production);
 	process.exit(out.real.length ? 1 : 0);
 }

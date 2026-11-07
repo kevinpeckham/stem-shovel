@@ -70,16 +70,9 @@
 	<meta name="description" content={description} />
 	<meta name="robots" content="index, follow" />
 	<link rel="canonical" href="https://www.stemshovel.com/" />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="Stem Shovel" />
 	<meta property="og:title" content="Stem Shovel" />
 	<meta property="og:description" content={description} />
 	<meta property="og:url" content="https://www.stemshovel.com/" />
-	<meta
-		property="og:image"
-		content="https://www.stemshovel.com/images/stem-shovel-screenshot-01.webp"
-	/>
-	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 {#snippet feature(id: string)}

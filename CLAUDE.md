@@ -76,6 +76,7 @@ bun run spell        # cspell over the prose (docs, user docs, README, changelog
 bun run stems        # generate the static test WAVs (gitignored)
 bun run smoke:blob   # create a smoke project + song and upload through the real flow
 bun run smoke:urls   # every route answers as expected, signed out and as the bot; SMOKE_BASE=https://www.stemshovel.com for production
+bun run og           # draw static/og.png, the social card every page shares (docs/security.md "Indexability audit"); committed, rerun after a copy or look change
 bun run audit:seo    # every route's indexability: sitemap, robots.txt, X-Robots-Tag (hook + vercel.json rule), robots meta, title/description/h1 against isIndexablePath; SEO_BASE=https://www.stemshovel.com for production; exits 1 on a finding (docs/security.md "Indexability audit")
 bun run smoke:nightly   # smoke:urls + audit:seo against production, reported to Sentry (cron monitor + events); what .github/workflows/smoke.yml runs daily from GitHub; NIGHTLY_DRY=1 sends nothing (docs/security.md "Nightly, from GitHub")
 bun run smoke:segments  # the dynamic routes' sample values as the JSON SMOKE_SEGMENTS takes (the GitHub repository variable), from the stage's database

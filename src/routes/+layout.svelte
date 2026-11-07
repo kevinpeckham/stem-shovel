@@ -7,6 +7,7 @@
 	import GlobalNav from "#lib/components/GlobalNav.svelte";
 	import Notifications from "#lib/components/Notifications.svelte";
 	import { ROBOTS_NOINDEX } from "#lib/constants/securityHeaders.js";
+	import { SOCIAL_CARD_ALT } from "#lib/constants/socialCard.js";
 	import { isIndexablePath } from "#lib/utils/isIndexablePath.js";
 	import { page } from "$app/state";
 
@@ -29,6 +30,14 @@
 	{#if !isIndexablePath(page.url.pathname) || !data.indexable}
 		<meta name="robots" content={ROBOTS_NOINDEX} />
 	{/if}
+	<!-- Every page shares one card (scripts/og.ts draws it); og:title and og:description fall back to the page's own title and description. -->
+	<meta property="og:site_name" content="Stem Shovel" />
+	<meta property="og:type" content="website" />
+	<meta property="og:image" content="{page.url.origin}/og.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content={SOCIAL_CARD_ALT} />
+	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 <GlobalNav

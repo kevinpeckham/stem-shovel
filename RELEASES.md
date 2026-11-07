@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **A picture when you share a link.** Posting a Stem Shovel page on social media now shows a card with the site's look, on every page.
+
 ## [0.243.0] - 2026-11-07
 
 ### Added

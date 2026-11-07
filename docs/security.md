@@ -282,7 +282,10 @@ answer 200 with no redirect, carry neither the noindex header nor the
 robots meta, be allowed by `robots.txt` (`robotsTxtAllows`: Google's
 longest-match rules), escape vercel.json's `X-Robots-Tag` rule
 (`vercelHeaderRuleMatches`, read from disk), be in the sitemap, and have a
-title, a meta description, one `<h1>` and `<html lang>`. An app page must
+title, a meta description, one `<h1>`, `<html lang>`, and the social
+card's tags (`og:image` = `<origin>/og.png`, 1200×630, `twitter:card`
+`summary_large_image`: the root layout sets them on every page, and
+`/og.png` itself must answer 200 `image/png`). An app page must
 be noindex by header and meta, disallowed, matched by the vercel rule and
 absent from the sitemap. It also reports sitemap entries no route serves,
 `Allow` lines no public page uses, and public pages sharing a title or a
@@ -291,6 +294,13 @@ description.
     bun run audit:seo                                      # the dev server
     SEO_BASE=https://www.stemshovel.com bun run audit:seo  # production
     bun run audit:seo --report out.md --json out.json      # also as files
+
+The card is one image for the whole site, as on barmark.dev:
+`bun run og` (`scripts/og.ts`) draws `static/og.png` with Playwright from
+a self-contained page in the site's look (the wordmark, the headline and
+tagline from `src/lib/constants/socialCard.ts`, a player panel drawn in
+CSS), and the PNG is committed; run it again after changing the copy or
+the look.
 
 Off production every page is noindex by design, so there the header and
 meta must say noindex everywhere, and the `robots.txt` and sitemap checks
