@@ -441,6 +441,31 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 23b verdict on the chartless-song grid: do NOT build the tap
+  — a perfect downbeat anchor is worthless under the declared tempo,
+  and the auto-chart feature's missing leg is TRUE-TEMPO ESTIMATION**
+  (stem-bench, 2026-11-07; ≈ $0.6 of a $2 fence; registered 6b2d599,
+  results 259587d). Both chartless-grid arms (period from the declared
+  bpm, bar count from the recording length) collapsed the draft's JSON
+  chords channel: with a PERFECT anchor at the true first bar (B2, the
+  simulated tap) roots fell from 72/76→39, 68/84→21, 151/153→64,
+  131/140→53 — the grid hits the truth lattice at exactly its anchor
+  bar and then drifts whole seconds, so the entire error is the period.
+  The blind onset-comb arm beat the tap on all four songs (mop-heart
+  even reached 133/140, above its grid-given baseline) but its grids
+  are no truer (≤7 lattice hits per song) — repeating progressions
+  forgive shifted bars; don't read it as "blind grids work." Registered
+  decision (third row of the table): uniform grids are insufficient
+  even anchored; the feature needs alignment-grade grids or a true
+  tempo measured from the recording. Cheap next instrument, no new UX:
+  extend the chord-change comb (your shipped reader's segment
+  boundaries) from a phase search to a phase-AND-period search — the $0
+  downbeat shootout already shows the onset comb anchors 3/4 songs
+  within 15% of a bar and a music-start detector catches letter-lands'
+  7.15 s intro, so once the period is measured the anchor is nearly
+  free. This supersedes the grid-options ranking in
+  docs/bench-brief-auto-chart-2026-11-07.md (see its addendum).
+
 - **Study 23 verdict on recording-to-chart: the composition is one
   deterministic step away from viable — the draft model's JSON is
   bar-exact and excellent, and the markdown chart it writes is what

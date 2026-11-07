@@ -103,3 +103,33 @@ dollars. Gates are set before the run and never re-thresholded; the
 bench's prediction record on this arc (five for five wrong on the gated
 channel of Study 23, every musical mechanism right) is part of why the
 registrations exist.
+
+---
+
+## Addendum (2026-11-07, Study 23b): the grid ranking above is superseded
+
+The "cheap measurement offered before any commitment" has now run
+(stem-bench Study 23b, registered 6b2d599, results 259587d). Outcome:
+
+- **Option (a), the user-tap downbeat, is measured DEAD — do not build
+  it.** A simulated perfect tap (grid anchored at the aligned truth's
+  first bar, period from the declared bpm) was the worst arm on every
+  song: the declared tempo is a few percent off the recordings, and a
+  uniform grid walks whole bars off the music within a dozen bars no
+  matter how good the anchor is.
+- **Option (b), uniform + measured degradation, is likewise dead** —
+  the degradation is not graceful (roots drop 33–87 points per song).
+- **The missing leg is the PERIOD, not the phase: measure the true
+  tempo from the recording.** Cheapest candidate with zero new UX:
+  take the shipped reader's chord-change times (chords change on bar
+  lines in this catalog) and search phase AND period jointly — the
+  bench's change-comb already anchors within 15% of a bar on 2/4 songs
+  at the declared period and has an obvious 2-D extension. A
+  music-start detector (first loud transcribed note) additionally
+  catches uncharted intros (letter-lands' 7.15 s start, 121 ms error).
+  If stem-shovel wants this leg measured before building, ask the
+  bench; it is another registered study at pilot cost.
+
+Everything else in this brief stands: the JSON draft channel, the
+serialization fix (render the chart from JSON), the hint design, and
+the do-not-build list.
