@@ -510,6 +510,27 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **CORRECTION 2 (same day, prompted by Kevin; stem-bench baf9d33):
+  eat-all-the-clocks never had an arrangement mismatch — the BENCH's
+  chart fixture carried 15 phantom bars (each Chorus as 12 bars where
+  chartVersion 131's 'x2' line is 8; a 4-bar Outro where the chart has
+  1 + fade).** The live 71-bar chart matches the recording bar-for-bar
+  (reader hints 65/71 on the true grid, uniform across the song), the
+  DTW aligns eat's interior fine against a 71-bar reference (0.45 s
+  mean), and the Studies 26 recipe then repairs its ends to within a
+  quarter bar. What this changes in the two entries above: eat is NOT
+  an unchartable arrangement-mismatch case — drafted on the corrected
+  chart it reaches 56/69 roots, the same 81% as its old baseline (song
+  difficulty, not grid); the recipe's refusal on eat was the
+  interior-trust check correctly detecting a WRONG CHART, which is now
+  its documented purpose — it caught the bench's own error; and Study
+  26's "forced, not seduced" cause claim is downgraded to OPEN (the
+  trim ablation was ill-posed, and the other charts do fit their
+  audio), while the recipe's measured end repairs stand. Fixture audit
+  of the other three songs: letter 76, peaceful 153, mop 140 bars, all
+  matching the live charts — note the alignment-ends brief's "80-bar"
+  Letter Lands figure; the live chart is 76.
+
 - **Studies 26/26b/26c (stem-bench 9b2460d, answers
   docs/bench-brief-alignment-ends-2026-11-07.md, all $0): the ends
   recipe is measured green — and the cause is not what the brief

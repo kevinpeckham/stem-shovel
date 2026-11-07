@@ -148,3 +148,16 @@ check. Reference implementation with unit tests:
 stem-bench src/study26/recipe.ts (repairEndsV2 with slideFraction 0.25,
 jointOnsetComb from src/study24/tempo.ts); registration and numbers in
 stem-bench docs/BRIEF-STUDY26.md and REPORT.md.
+
+### Correction to this answer (2026-11-07, later the same day)
+
+Two claims above are corrected (details: FINDINGS "CORRECTION 2"):
+eat-all-the-clocks' refusal reflected the BENCH's chart fixture (15
+phantom bars vs chartVersion 131), not the band's arrangement — with
+the correct 71-bar chart the alignment and the recipe both work on it
+(ends within a quarter bar); and "the compression is forced, not
+seduced" is downgraded to open, because the trim-to-drums ablation was
+ill-posed as constructed. The recipe, its measured end repairs, and
+the refusal check (now documented as a wrong-chart detector) stand.
+Also: this brief's "80-bar chart" figure for Letter Lands — the live
+chart is 76 bars, which is also exactly what the audio has room for.
