@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Placing a chart against the stems lands the first and last bars.** The alignment used to drift at a song's intro and ending; it now keeps the steady middle and fits the ends to the recording's own beats, so the sections and the bar timing it produces hold from the first bar to the last.
+
 ## [0.245.0] - 2026-11-07
 
 ### Added

@@ -24,7 +24,11 @@ function metersOf(changes: SongChange[]): BarGrid["meters"] {
 export function barGridOfTiming(map: TimingMap, changes: SongChange[]): BarGrid | null {
 	const entries = map.bars;
 	if (entries.length < 1) return null;
+	const startAt = entries[0]!.start;
 	const meters = metersOf(changes);
+	// The first meter holds from bar 1: a meter whose start falls after bar 1's (a repaired bar 1
+	// a few ms before 0:00, the song's 4/4 at 0:00) would read as a new bar to `barAt`.
+	if (meters[0]!.start > startAt) meters[0] = { ...meters[0]!, start: startAt };
 	const tempos: BarGrid["tempos"] = [];
 	for (let i = 0; i < entries.length; i++) {
 		const entry = entries[i]!;
@@ -35,7 +39,7 @@ export function barGridOfTiming(map: TimingMap, changes: SongChange[]): BarGrid 
 		const meter = meters.findLast((m) => entry.start >= m.start) ?? meters[0]!;
 		tempos.push({ start: entry.start, bpm: (meter.beatsPerBar * 60) / span });
 	}
-	return { tempos, meters, startAt: entries[0]!.start };
+	return { tempos, meters, startAt };
 }
 
 /** The player's grid for a song: its timing map's when it has one and follows it (falling back when the map makes none), else the declared tempo's. */

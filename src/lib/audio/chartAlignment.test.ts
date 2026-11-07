@@ -113,6 +113,14 @@ describe("alignChart", () => {
 		expect(Math.abs(alignment.lastSound - truth.samples.length / RATE)).toBeLessThanOrEqual(0.05);
 	});
 
+	test("the end repair finds the recording's bar from the 10 % slow declaration and, the path being clean, keeps every start", () => {
+		expect(alignment.repair).not.toBeNull();
+		expect(Math.abs(alignment.repair!.period - 2) / 2).toBeLessThan(0.005);
+		expect(alignment.repair!.extrapolated).toBe(0);
+		expect(alignment.repair!.confidence).toHaveLength(alignment.barStarts.length);
+		expect(alignment.rawBarStarts).toEqual(alignment.barStarts);
+	});
+
 	test("nothing to align, or a chart that cannot fit, is an error with a reason", () => {
 		expect(() => alignChart([], truth.samples, RATE)).toThrow("no bars");
 		expect(() => alignChart(barsAt(40), truth.samples, RATE)).toThrow("twice as long");

@@ -91,16 +91,34 @@ export function extractFeatures(buffer: AudioBuffer, maxSeconds = 90): Features 
 		const data = buffer.getChannelData(c);
 		for (let i = 0; i < length; i++) mono[i] += data[i] / buffer.numberOfChannels;
 	}
-	const frames = Math.max(0, Math.floor((length - FRAME) / HOP) + 1);
-	const onset = new Float32Array(frames);
+	const { onset, fps } = onsetEnvelope(mono, sr);
 	const chroma = new Float32Array(12);
 	const bassChroma = new Float32Array(12);
+	const tonal = chromaOf(mono, sr, chroma, 110, 4200, CHROMA_FRAME);
+	chromaOf(mono, sr, bassChroma, 55, 260, CHROMA_FRAME * 2);
+	return { onset, fps, chroma, bassChroma, tonal };
+}
+
+/**
+ * Onset strength per frame of a mono signal, however long (spectral flux:
+ * the summed rise of each bin's log magnitude over the frame before, a
+ * 2048-sample Hann window every 256 samples), with its frames per second.
+ * `extractFeatures` reads the first 90 s through it; the chart alignment's
+ * end repair (audio/alignmentRepair.ts) reads a whole recording.
+ */
+export function onsetEnvelope(
+	mono: Float32Array,
+	sampleRate: number,
+): { onset: Float32Array; fps: number } {
+	const frames = Math.max(0, Math.floor((mono.length - FRAME) / HOP) + 1);
+	const onset = new Float32Array(frames);
 	const window = new Float32Array(FRAME);
 	for (let i = 0; i < FRAME; i++) window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / FRAME);
 	const re = new Float32Array(FRAME);
 	const im = new Float32Array(FRAME);
 	const bins = FRAME / 2;
 	let previous = new Float32Array(bins);
+	let magnitude = new Float32Array(bins);
 	for (let t = 0; t < frames; t++) {
 		const start = t * HOP;
 		for (let i = 0; i < FRAME; i++) {
@@ -108,7 +126,6 @@ export function extractFeatures(buffer: AudioBuffer, maxSeconds = 90): Features 
 			im[i] = 0;
 		}
 		fft(re, im);
-		const magnitude = new Float32Array(bins);
 		let flux = 0;
 		for (let b = 0; b < bins; b++) {
 			const m = Math.log1p(10 * Math.hypot(re[b], im[b]));
@@ -117,11 +134,9 @@ export function extractFeatures(buffer: AudioBuffer, maxSeconds = 90): Features 
 			if (rise > 0) flux += rise;
 		}
 		onset[t] = flux;
-		previous = magnitude;
+		[previous, magnitude] = [magnitude, previous];
 	}
-	const tonal = chromaOf(mono, sr, chroma, 110, 4200, CHROMA_FRAME);
-	chromaOf(mono, sr, bassChroma, 55, 260, CHROMA_FRAME * 2);
-	return { onset, fps: sr / HOP, chroma, bassChroma, tonal };
+	return { onset, fps: sampleRate / HOP };
 }
 
 /**
@@ -214,8 +229,8 @@ export function combineFeatures(list: Features[]): Features | null {
 	return { onset, fps, chroma, bassChroma, tonal, parts: list.map((f) => f.onset) };
 }
 
-/** Removes the slow trend from an onset envelope and rectifies it. */
-function detrend(onset: Float32Array, fps: number): Float32Array {
+/** Removes the slow trend from an onset envelope (a half-second running mean) and rectifies it. */
+export function detrend(onset: Float32Array, fps: number): Float32Array {
 	const out = new Float32Array(onset.length);
 	const span = Math.max(1, Math.round(fps * 0.5));
 	let sum = 0;

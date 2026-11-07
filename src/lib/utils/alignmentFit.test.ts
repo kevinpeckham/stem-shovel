@@ -53,6 +53,19 @@ describe("alignmentFit", () => {
 		).toBe(true);
 	});
 
+	it("fails an alignment whose end repair refused; a repair, or none attempted, adds nothing", () => {
+		const barStarts = starts(0.1, [1.82], 40);
+		const base = { barStarts, cost: 0.05, controlCost: 0.45, firstSound: 0 };
+		expect(alignmentFit({ ...base, repair: null }, DECLARED)).toMatchObject({
+			ok: false,
+			reasons: [
+				"the chart's bars do not line up with the recording through its middle; is this the right chart?",
+			],
+		});
+		expect(alignmentFit({ ...base, repair: { period: 1.82 } }, DECLARED).ok).toBe(true);
+		expect(alignmentFit(base, DECLARED).ok).toBe(true);
+	});
+
 	it("needs two bar starts, and keeps the ratio's edges", () => {
 		expect(
 			alignmentFit({ barStarts: [0], cost: 0.1, controlCost: 0.5, firstSound: 0 }, DECLARED),

@@ -5,7 +5,9 @@ import {
 import { chartBarSeconds } from "#lib/utils/chartBarSeconds.js";
 import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
 import { chordPitchClasses } from "#lib/utils/chordPitchClasses.js";
-import { fft } from "./analysis.js";
+import { median } from "#lib/utils/median.js";
+import { jointOnsetComb, repairEnds } from "./alignmentRepair.js";
+import { fft, onsetEnvelope } from "./analysis.js";
 
 /**
  * A chart's bars placed in seconds in a recording, with no model
@@ -22,11 +24,30 @@ import { fft } from "./analysis.js";
  * 16.3 times the right one's). The math is the bench's (`study12/`
  * chroma, dtw, reference), ported; it runs in a worker
  * (workers/alignChart.worker.ts) because the warping is a few hundred
- * million steps for a long song.
+ * million steps for a long song. The path's weak ends are then rebuilt
+ * from the recording's onsets (audio/alignmentRepair.ts, stem-bench
+ * Study 26c); the costs stay the path's.
  */
 export interface Alignment {
-	/** Seconds in the recording where each bar starts, plus where the last one ends: bars.length + 1. */
+	/**
+	 * Seconds in the recording where each bar starts, plus where the last one
+	 * ends: bars.length + 1. The repaired starts when `repair` is set, else the path's.
+	 */
 	barStarts: number[];
+	/** The warping path's own bar starts, before the end repair (for diagnostics). */
+	rawBarStarts: number[];
+	/**
+	 * The end repair (stem-bench Study 26c): the bar it extrapolated at, each
+	 * start's confidence, how far each end slid onto the onsets and how many
+	 * starts were extrapolated. Null when it refused: the chart's bars do not
+	 * line up with the recording through its middle (a wrong chart, on the bench).
+	 */
+	repair: {
+		period: number;
+		confidence: ("aligned" | "extrapolated")[];
+		slides: { intro: number; outro: number };
+		extrapolated: number;
+	} | null;
 	/** Mean step cost of the warping path (cosine distance, 0 to 1). */
 	cost: number;
 	/** The same with every chord a tritone away: what a wrong chart costs here. */
@@ -367,9 +388,52 @@ export function audibleSpan(
 }
 
 /**
+ * The recording at about the bench's rate for its onsets: every `factor`
+ * samples averaged, `factor` the whole number of times 22 050 Hz goes into
+ * the rate (2 at 44.1 and 48 kHz, 1 below). Study 26c's onset envelopes
+ * were read at 22 050 Hz, and the spectral flux at the full rate is half
+ * the repair's time for nothing it uses.
+ */
+function onsetRate(recording: Float32Array, sampleRate: number) {
+	const factor = Math.max(1, Math.floor(sampleRate / BENCH_RATE));
+	if (factor === 1) return { samples: recording, rate: sampleRate };
+	const samples = new Float32Array(Math.floor(recording.length / factor));
+	for (let i = 0; i < samples.length; i++) {
+		let sum = 0;
+		for (let k = 0; k < factor; k++) sum += recording[i * factor + k]!;
+		samples[i] = sum / factor;
+	}
+	return { samples, rate: sampleRate / factor };
+}
+
+/**
+ * The ends of the path's bar starts rebuilt (audio/alignmentRepair.ts,
+ * stem-bench Study 26c): the onset comb near the chart's declared bar
+ * (the median over its bars) gives the period, and `repairEnds` the
+ * starts; null when it refuses.
+ */
+function repairOf(
+	bars: PadBar[],
+	raw: number[],
+	recording: Float32Array,
+	sampleRate: number,
+): { barStarts: number[]; repair: NonNullable<Alignment["repair"]> } | null {
+	const declared = median(bars.map((b) => chartBarSeconds(b.meter, b.bpm)));
+	const { samples, rate } = onsetRate(recording, sampleRate);
+	const { onset, fps } = onsetEnvelope(samples, rate);
+	if (!(declared > 0) || onset.length === 0) return null;
+	const comb = jointOnsetComb(onset, fps, declared);
+	const repaired = repairEnds(raw, onset, fps, comb.period);
+	if (!repaired) return null;
+	const { barStarts, period, confidence, slides } = repaired;
+	const extrapolated = confidence.filter((c) => c === "extrapolated").length;
+	return { barStarts, repair: { period, confidence, slides, extrapolated } };
+}
+
+/**
  * The chart's bars placed in the recording (mono, at `sampleRate`), with
- * the path's cost, the tritone control's, each bar's local cost and where
- * the recording's sound starts and ends.
+ * the path's cost, the tritone control's, each bar's local cost, where
+ * the recording's sound starts and ends, and the end repair.
  * Throws with a reason a page can show when there is nothing to align or
  * the chart cannot fit (more than twice the recording's length, or half).
  */
@@ -387,8 +451,12 @@ export function alignChart(bars: PadBar[], recording: Float32Array, sampleRate: 
 		throw new Error("The chart runs more than twice as long as the recording; check its tempo");
 	const control = dtwAlign(tritone(ref.frames), rec.frames, ref.hopSec, { subsequence: true });
 	const sound = audibleSpan(recording, sampleRate);
+	const rawBarStarts = barStarts.map(right.mapSeconds);
+	const repaired = repairOf(bars, rawBarStarts, recording, sampleRate);
 	return {
-		barStarts: barStarts.map(right.mapSeconds),
+		barStarts: repaired?.barStarts ?? rawBarStarts,
+		rawBarStarts,
+		repair: repaired?.repair ?? null,
 		cost: right.normalizedCost,
 		controlCost: control.normalizedCost,
 		localCost: barCosts(barStarts, right.frameCost, ref.hopSec),

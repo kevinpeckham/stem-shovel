@@ -50,6 +50,15 @@ describe("barGridOfTiming", () => {
 		expect(barGridOfTiming(map, [])!.tempos[1]!.bpm).toBe(120);
 	});
 
+	it("reads bar 1 at 0:00 when the map's bar 1 sits just before it", () => {
+		// A repaired alignment put bar 1 at -0.046 s; the song's 4/4 starts at 0:00.
+		const map = mapOf([-0.046, 1.773, 3.591, 5.409], 7.227);
+		const grid = barGridOfTiming(map, declared)!;
+		expect(grid.meters[0]!.start).toBe(-0.046);
+		expect(barAt(grid, 0)).toMatchObject({ bar: 1, beat: 1 });
+		expect(barAt(grid, 1.8)).toMatchObject({ bar: 2, beat: 1 });
+	});
+
 	it("counts repeated bars in recording order", () => {
 		const map = mapOf([0, 2, 4], 6);
 		map.bars = [

@@ -9,6 +9,7 @@ import {
 	extractFeatures,
 	extractKeySegments,
 	fft,
+	onsetEnvelope,
 } from "./analysis";
 
 const SR = 32_000;
@@ -79,6 +80,35 @@ describe("fft", () => {
 });
 
 // The FFT passes take a few seconds each under coverage instrumentation (`bun run test:coverage`).
+describe("onsetEnvelope", () => {
+	test("a click train peaks at the clicks, at the sample rate over 256 frames a second, with no length cap", () => {
+		const seconds = 100;
+		const buffer = clickTrack(60, 4, seconds);
+		const { onset, fps } = onsetEnvelope(buffer.getChannelData(0), SR);
+		expect(fps).toBe(SR / 256);
+		expect(onset.length).toBe(Math.floor((seconds * SR - 2048) / 256) + 1);
+		// The loudest frame within each second is within two frames of its click (a frame's
+		// window ends 2048 samples after it starts, so a click shows in the frames before it).
+		for (let s = 1; s < seconds - 1; s++) {
+			const from = Math.round((s - 0.5) * fps);
+			const to = Math.round((s + 0.5) * fps);
+			let peak = from;
+			for (let f = from; f < to; f++) if (onset[f]! > onset[peak]!) peak = f;
+			expect(Math.abs(peak - (s * fps - 2048 / 256))).toBeLessThanOrEqual(2);
+		}
+	});
+
+	test("extractFeatures reads its onsets through it, capped at 90 s", () => {
+		const buffer = clickTrack(120, 4, 95);
+		const features = extractFeatures(buffer);
+		const whole = onsetEnvelope(buffer.getChannelData(0), SR);
+		expect(features.onset.length).toBe(Math.floor((90 * SR - 2048) / 256) + 1);
+		expect(Array.from(features.onset)).toEqual(
+			Array.from(whole.onset.subarray(0, features.onset.length)),
+		);
+	});
+});
+
 describe("tempo and meter", { timeout: 30_000 }, () => {
 	test("a 120 bpm click track in four", () => {
 		const d = analyse(extractFeatures(clickTrack(120, 4)));

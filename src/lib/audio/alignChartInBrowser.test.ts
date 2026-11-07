@@ -19,6 +19,13 @@ const alignment: Alignment = {
 	hopSec: 0.1,
 	firstSound: 0,
 	lastSound: 2,
+	rawBarStarts: [0, 2],
+	repair: {
+		period: 2,
+		confidence: ["aligned", "aligned"],
+		slides: { intro: 0, outro: 0 },
+		extrapolated: 0,
+	},
 };
 const bars = [{ measure: 1, chords: ["D"], bpm: 120, meter: "4/4", key: null, section: null }];
 

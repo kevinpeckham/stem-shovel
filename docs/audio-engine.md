@@ -1108,6 +1108,31 @@ chart existed.
   still placed and an info notification says which rule failed. The Bar
   timing block shows an aligned map's agreement ("bar 1 at 0:00, bars
   1.8 s (the tempo says 1.82 s)") so a member sees it before following.
+- **The alignment's ends are repaired after the DTW** (stem-bench Studies
+  26/26b/26c, `audio/alignmentRepair.ts`). The path is good through the
+  middle of a song (0.2 to 0.4 s of the true bars on the MMKK set) and
+  bad at both ends (3 to 23 s), whatever the cause (the bench's
+  trim-to-drums ablation was ill-posed, so the sparse-intro story stays
+  open). The repair leaves the path, its costs and the same-piece gates
+  alone and works on the bar starts: (1) the bar period from an onset
+  joint comb within ±10 % of the chart's declared bar, which measured
+  within 0.02 % on all four songs where the median bar length is
+  skew-biased (1.70 s for a true 1.82 s on Letter Lands) and a fitted
+  slope 1 % off; (2) the phase from the median residual over the middle
+  60 % of bars, a bar trusted when within a quarter period of that line,
+  and a refusal when the trusted run covers under half the bars, which
+  is what a wrong chart looks like (it caught the bench's own 15-bar
+  fixture error on Eat All the Clocks); (3) the trusted span kept as
+  aligned, the ends extrapolated at the comb period; (4) each end slid
+  by at most a quarter period to the offset that maximizes detrended
+  onset energy, the fence that keeps it off the half-bar backbeat (±0.5
+  broke Peaceful Dreams' intro by 0.60 s). Measured: Letter Lands' ends
+  7.3/15.3 s → 0.05/0.02 s, Peaceful Dreams 6.6/23.3 → 0.06/0.11 s, Mop
+  Heart accepted with a 0.32 s outro residual inherited from its own
+  middle. `Alignment.barStarts` are the repaired starts, `rawBarStarts`
+  the path's own, `repair` the period, the per-bar aligned/extrapolated
+  confidence and the slides, null on a refusal, which the fit gate
+  reports as the chart not lining up through the middle.
 - **The saved draft is canonical**: `saveChartDraft` parses the text and
   stores `printChart`'s output when it parses without errors, as the editor
   normalizes; a draft with errors is stored as written and its diagnostics

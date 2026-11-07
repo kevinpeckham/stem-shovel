@@ -7,6 +7,28 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## The median bar length of a DTW alignment is skew-biased; an onset comb at the declared tempo is not (2026-11-07)
+
+From porting stem-bench Study 26c's ends repair into `src/lib/audio/alignmentRepair.ts`.
+
+- **Do not take a tempo from the median of aligned bar lengths.** When
+  a subsequence DTW compresses a song's ends, the compressed bars pull
+  the median down (1.70 s where the true bar is 1.82 s on Letter
+  Lands), and a least-squares slope over the middle is still 1 % off.
+  A joint comb over the onset envelope, searching ±10 % around the
+  chart's declared bar with a coarse-then-fine step, lands within
+  0.02 % on all four MMKK songs. The declared tempo is the prior that
+  makes the comb cheap and safe; the app always has it.
+- **A quarter bar is the slide fence.** Sliding an extrapolated end to
+  the onset-energy maximum within ±0.5 bar reaches the backbeat and
+  moved an intro by 0.60 s; ±0.25 bar is load-bearing.
+- **A refusal is a wrong-chart detector.** When fewer than half the
+  bars sit within a quarter period of the middle's line, the chart does
+  not describe the recording. The bench's own fixture for Eat All the
+  Clocks carried 15 phantom bars and was refused; the band's real 71-bar
+  chart passes. Stage copies drift too: dev's Letter Lands chart had 80
+  bars to production's 76 until Kevin fixed it.
+
 ## The chart alignment's weak ends are real in the app: bar 1 eight seconds late and half-length bars on Letter Lands (2026-11-07)
 
 Found when the player first followed an aligned timing map (`utils/barGridOfTiming.ts`,

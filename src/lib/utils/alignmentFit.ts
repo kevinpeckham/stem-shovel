@@ -21,11 +21,20 @@ const MIN_RATIO = 1.5;
  * timing (stem-bench Study 12's weakness is the first and last boundaries):
  * bar 1 within one declared bar of where the music starts (`startAt` or the
  * first sound, the later), the median bar within 15 % of the declared bar,
- * and the chart fitting the recording at least 1.5 times better than a
- * wrong one would. Each failure is a reason, in words for the user.
+ * the chart fitting the recording at least 1.5 times better than a
+ * wrong one would, and, when the alignment carries its end repair, the
+ * repair not refused (`repair` null: the chart's bars do not line up with
+ * the recording's middle, stem-bench Study 26c's wrong-chart detector).
+ * Each failure is a reason, in words for the user.
  */
 export function alignmentFit(
-	a: { barStarts: number[]; cost: number; controlCost: number; firstSound: number },
+	a: {
+		barStarts: number[];
+		cost: number;
+		controlCost: number;
+		firstSound: number;
+		repair?: object | null;
+	},
 	declared: { startAt: number; barSeconds: number },
 ): AlignmentFit {
 	const declaredBar = declared.barSeconds;
@@ -54,6 +63,11 @@ export function alignmentFit(
 	}
 	if (ratio < MIN_RATIO) {
 		reasons.push("the chart fits the recording little better than a wrong one would");
+	}
+	if (a.repair === null) {
+		reasons.push(
+			"the chart's bars do not line up with the recording through its middle; is this the right chart?",
+		);
 	}
 	return { ok: reasons.length === 0, bar1, medianBar, declaredBar, ratio, reasons };
 }

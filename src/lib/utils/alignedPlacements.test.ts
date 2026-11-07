@@ -36,6 +36,8 @@ const alignment = (over: Partial<Alignment> = {}): Alignment => ({
 	hopSec: 0.093,
 	firstSound: 0,
 	lastSound: 16,
+	rawBarStarts: [0.1, 2.4, 4.4, 6.4, 8.4, 10.4, 12, 13.6, 15.2],
+	repair: null,
 	...over,
 });
 

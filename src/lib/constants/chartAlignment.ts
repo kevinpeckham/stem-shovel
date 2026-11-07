@@ -35,3 +35,45 @@ export const ALIGNMENT_SOUND_FLOOR = 0.02;
 
 /** The RMS window for `ALIGNMENT_SOUND_FLOOR`, in seconds: short enough to place an onset within it. */
 export const ALIGNMENT_SOUND_WINDOW_SEC = 0.05;
+
+/**
+ * How far from the middle's lattice a bar start may sit and still be
+ * trusted, as a share of the bar (audio/alignmentRepair.ts
+ * `trustedSpan`; stem-bench Study 26c): a quarter bar, the tolerance the
+ * bench scored the ends at, wide enough for a played bar's wobble and
+ * narrow enough that the warping's compressed intro bars (half-length on
+ * Letter Lands) fall outside it.
+ */
+export const REPAIR_TRUST_FRACTION = 0.25;
+
+/**
+ * How far an extrapolated end may slide onto the recording's onsets, as a
+ * share of the bar (stem-bench Study 26c, the v3 fence): ±0.25 bar. Study
+ * 26b's ±0.5 reaches the half-bar backbeat, which can outscore the
+ * downbeat, and moved Peaceful Dreams' intro 0.60 s off; the quarter-bar
+ * fence fixed it and kept Letter Lands at 0.05/0.02 s.
+ */
+export const REPAIR_SLIDE_FRACTION = 0.25;
+
+/** The end slide's step in seconds (Study 26c): 10 ms, finer than the onset envelope's frames matter for. */
+export const REPAIR_SLIDE_STEP_SEC = 0.01;
+
+/**
+ * The least share of the bar starts the trusted span must cover, or the
+ * repair refuses (Study 26c): under half means the chart does not line up
+ * with the recording's middle, which on the bench marked the one wrong
+ * pairing (Eat All the Clocks against its fixture chart) and no right one.
+ */
+export const REPAIR_MIN_TRUSTED_SHARE = 0.5;
+
+/**
+ * The onset comb's search around the declared bar (stem-bench Study 24,
+ * as Study 26c uses it): ±10 %, which keeps out the half- and
+ * double-bar lattices the objective would prefer by degeneracy; a 0.2 %
+ * coarse step, then 0.02 % around the coarse best; the phase in 10 ms
+ * steps.
+ */
+export const COMB_RANGE_FRACTION = 0.1;
+export const COMB_COARSE_STEP_FRACTION = 0.002;
+export const COMB_FINE_STEP_FRACTION = 0.0002;
+export const COMB_PHASE_STEP_SEC = 0.01;
