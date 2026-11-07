@@ -441,6 +441,34 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 20b verdict on the power hint: do NOT ship it — held-out
+  precision is not a number, it is a function of arrangement density**
+  (stem-bench, 2026-11-07; $0; registered 7c40f9a before the held-out
+  truth existed on the bench, charts from Kevin committed verbatim
+  80d24d7, results 6c5e445). Study 20's one asset, frozen verbatim and
+  taken to the two songs the bench had never graded: 60.9 % combined
+  precision (39 of 64 fires) against the registered 0.75 line. The split
+  is the finding. On peaceful-dreams it read 81 %, and on
+  in-vocabulary power bars it was PERFECT, 39 of 39; six more fires
+  were power-class right but spelled `X5` where your chart writes
+  `X5(7)` (a vocabulary gap, not a hearing error). On mop-heart it read
+  0 % — sixteen fires, every one on a plain major-triad bar: sparse 3/4
+  material (~5.5 transcribed notes a bar) never puts the third on the
+  page, and the rule reads that silence as a power chord. "No third
+  transcribed" is evidence only when density says a played third would
+  have been transcribed. The blind pitch-floor variant was WORSE
+  (48.8 %; 33 fires on mop-heart, all wrong — that arrangement carries
+  its thirds in the bass register the floor strips), so the floor idea
+  is dead on this material. Also disclosed: the bench mis-registered the
+  anchor-reproduction constants (counted bare X5 symbols where the rule
+  counts firings, which include slash-dressed power calls); the gate
+  fails as registered, and the re-derivation reproduces the firing
+  record bar for bar, so the pipeline itself was bit-exact. The card's
+  hedge stays "never a power chord." If you want a third pass, the data
+  names exactly two ingredients — a density precondition and the (7)
+  spelling — registered fresh and blind; the bench recommends no further
+  spend unprompted.
+
 - **Study 20 verdict on colorChord: do NOT ship it — all four gates
   fail, and the refutation is clean** (stem-bench, 2026-11-07; $0;
   registered 2e523e6, results 9e55733; full anatomy in the bench repo's
