@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
-- **barmark 0.17.0, @barmark/render 0.15.0, @barmark/musicxml 0.6.0** (from 0.16.0, 0.14.0, 0.4.0). The grammar gains syllables on notes, `lyrics:` rows and verses in play order, which the renderer draws; four constructs change meaning (a `---` line is a break, a leading `\` is hidden, a `lyrics:` row before a bar line is lyrics, a part's bare line shares a system with its named lines): `scripts/scan-barmark-017.ts` lists the stored charts and score reads that use one, none on dev or staging; production is Kevin's run. `@barmark/musicxml` now imports MusicXML too (`importMusicXml`, `readMxl`), which makes "Chart from score" possible (docs/barmark-integration-audit.md).
+- **barmark 0.17.0, @barmark/render 0.15.0, @barmark/musicxml 0.6.0** (from 0.16.0, 0.14.0, 0.4.0). The grammar gains syllables on notes, `lyrics:` rows and verses in play order, which the renderer draws; four constructs change meaning (a `---` line is a break, a leading `\` is hidden, a `lyrics:` row before a bar line is lyrics, a part's bare line shares a system with its named lines): a one-off scan of every stage's stored charts and score reads found one line in one production chart, an escaped tilde (`\~76 bpm`), which 0.17.0 now shows as the author meant; nothing to edit. `@barmark/musicxml` now imports MusicXML too (`importMusicXml`, `readMxl`), which makes "Chart from score" possible (docs/barmark-integration-audit.md).
 
 ## [0.237.0] - 2026-11-07
 
