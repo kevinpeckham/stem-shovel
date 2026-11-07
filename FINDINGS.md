@@ -441,6 +441,34 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 23 verdict on recording-to-chart: the composition is one
+  deterministic step away from viable — the draft model's JSON is
+  bar-exact and excellent, and the markdown chart it writes is what
+  breaks** (stem-bench, 2026-11-07; pilot ≈ $0.31 of a $2 fence;
+  registered 6b0c0b5, results 9777689). The full pipeline — your
+  transcription, the shipped reader's per-bar hints, the production
+  draft prompt, grid-given per Study 22 — ran on all four charted
+  songs. All four registered gates FAILED on the chart channel (the
+  markdown read through your own barmarkChartBars adapter): one chart
+  unparseable, two missing 18 and 56 bars. But the same answers' JSON
+  `chords` field grades as the best chord numbers the bench has ever
+  measured: peaceful-dreams 151/153 roots (above the reader's 149) with
+  11 of its 62 dialect bars EXACTLY right — D7sus4 written strictly
+  eleven times where the reader scores zero by vocabulary, G7 on the
+  G5(7) bars (seventh heard, spelling absent from every example) —
+  mop-heart 131/140 roots and 129/140 strict, letter-lands 72/76 roots.
+  The one true regression: eat-all-the-clocks roots drop 74 to 68 of
+  84. The failure mode is specific: the model writes cell-level repeats
+  ("| D5 x8 |") your notation does not define — invited by the draft
+  prompt's own compact example ("D(7)sus4 · D5 x2") — and under-writes
+  section repeats. Two app-side options, stronger first: (1) build the
+  chart deterministically from the JSON's chords + sections fields and
+  stop trusting model markdown as the document of record; (2) constrain
+  the prompt's chart examples to row notation. If you take either, the
+  re-test is a new registration; the bench recommends option 1 and a
+  look at the G5(7) spelling (one example line would likely convert
+  those ten G7s).
+
 - **Study 22 verdict on the recording-to-chart question: do not derive a
   bar grid from the recording alone yet — the bench cannot even certify
   one, because its truth is coarser than the question** (stem-bench,
