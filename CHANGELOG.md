@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.244.0] - 2026-11-07
+
 ### Added
 
 - **The chart draft is built from the detections, then refined.** `draftChart` calls `@barmark/sync`'s `chartFromDetections` (`src/lib/server/chartBuild.ts`) with the page's bar grid, the chord model's stored runs (or the notes matcher's chords), the key, meter, sections and changes, and the AI refines that chart instead of writing one from per-bar votes: mid-bar changes survive, chords are spelled in the key, sections snap to bars, tempo changes are converted to barmark's beat. Without the AI the built chart is the draft (a 503 before). The builder's timing map (when each played bar starts in the mix) and confidence record are saved with the chart in `song.chart_timing` / `chart_confidence` (migration 0116), re-hashed to the refined chart or dropped when the AI changed the bar count, cleared by an edit that changes the chart; "Place from chart" saves the alignment's bar starts as an `aligned` map. Nothing reads the map yet (docs/audio-engine.md "The chart built from the detections").

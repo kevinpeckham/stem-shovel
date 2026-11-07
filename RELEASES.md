@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.244.0] - 2026-11-07
+
 ### Added
 
 - **Better chart drafts.** The AI draft now starts from a chart built straight from the detected chords on the song's bars, so chords that change mid-bar are kept, chords are spelled for the key, and sections land on bar lines. The AI refines that chart rather than writing one from scratch. A draft is available even where the AI is switched off.
