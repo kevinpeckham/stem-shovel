@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.242.0] - 2026-11-07
+
 ### Added
 
 - **The band directory.** A Members page under Manage lists everyone in the account with a phone, what they play and notes, which each member fills in for themselves. A Contacts page keeps the people around the band, promoters, booking agents and sound engineers, with how to reach them and the shows they were part of. A show's books now pick the promoter from your contacts.
