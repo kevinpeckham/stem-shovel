@@ -18,6 +18,12 @@ const CHANGED: [string, RegExp][] = [
 ];
 const flags = (text: string | null) =>
 	text ? CHANGED.filter(([, re]) => re.test(text)).map(([name]) => name) : [];
+/** The lines a changed construct matched, so the chart's author can judge them. */
+const lines = (text: string | null) =>
+	(text ?? "")
+		.split("\n")
+		.filter((line) => CHANGED.some(([, re]) => re.test(line)))
+		.map((line) => `    ${line.slice(0, 100)}`);
 
 const charts = await db.select({ slug: song.slug, text: song.chartMarkdown }).from(song);
 const reads = await db
@@ -28,7 +34,14 @@ const found = [
 	...charts.map((c) => ["chart", c.slug, flags(c.text)] as const),
 	...reads.map((r) => ["read", r.id, flags(r.text)] as const),
 ].filter(([, , f]) => f.length);
-for (const [kind, name, f] of found) console.log(kind, name, f.join(","));
+for (const [kind, name, f] of found) {
+	console.log(kind, name, f.join(","));
+	const text =
+		kind === "chart"
+			? charts.find((c) => c.slug === name)?.text
+			: reads.find((r) => r.id === name)?.text;
+	for (const line of lines(text ?? null)) console.log(line);
+}
 console.log(
 	`${charts.length} charts, ${reads.length} score reads, ${found.length} with a changed construct`,
 );
