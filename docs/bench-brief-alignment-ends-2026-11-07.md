@@ -129,3 +129,22 @@ seconds), `cost`, `controlCost`, `localCost`, `firstSound`, `lastSound`,
 and optionally a per-bar confidence. The app's acceptance gate
 (`alignmentFit`) is the bar: a recipe that gets Letter Lands through it
 without loosening it is the goal.
+
+---
+
+## Bench answer (2026-11-07, same day): see FINDINGS.md "Studies 26/26b/26c"
+
+Short form: hypothesis half right (middle good, ends bad — confirmed;
+sparse-audio cause — refuted by the trim-to-drums ablation: the
+compression is forced, not seduced). The proposed remedy works once the
+interior tempo comes from an onset comb at ±10% of the declared tempo
+instead of the median bar duration (skew-biased) or an LSQ slope (1%
+biased on Letter Lands), and the end slide stays within ±0.25 bars (the
+half-bar-ambiguity fence). Measured: Letter Lands ends to 0.05/0.02 s
+and through the acceptance gate unloosened; peaceful-dreams 0.06/0.11 s;
+mop-heart app-accepted with a 0.32 s residual from its own middle;
+eat-all-the-clocks correctly refused by the recipe's interior-trust
+check. Reference implementation with unit tests:
+stem-bench src/study26/recipe.ts (repairEndsV2 with slideFraction 0.25,
+jointOnsetComb from src/study24/tempo.ts); registration and numbers in
+stem-bench docs/BRIEF-STUDY26.md and REPORT.md.

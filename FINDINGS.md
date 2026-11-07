@@ -510,6 +510,43 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Studies 26/26b/26c (stem-bench 9b2460d, answers
+  docs/bench-brief-alignment-ends-2026-11-07.md, all $0): the ends
+  recipe is measured green — and the cause is not what the brief
+  hypothesized.** The trim-to-drums ablation refuted the hazy-audio
+  story: slicing the recording to the drum span fixes nothing, because
+  the chart still cannot fit the sliced span — the end compression is
+  FORCED by subsequence DTW having to place every chart bar, not
+  seduced by flat chroma. The middle-good/ends-bad shape was right
+  (middle 0.16–0.42 s vs true bars; ends 3–23 s), and one more fact
+  matters: the shipped bar-1 acceptance rule fails ALL FOUR MMKK songs
+  on the bench corpus, so the refusal is currently refusing the whole
+  set. The recipe that passes the registered gates, worker-ready
+  (bench src/study26/recipe.ts, unit-tested; one DTW as today + an
+  onset envelope + comb sweeps): (1) align; (2) period = onset joint
+  comb within ±10% of the chart's declared tempo (NOT the median bar
+  duration, which is skew-biased — 1.699 s vs a true 1.818 on Letter
+  Lands — and not an LSQ slope, 1% biased there; the comb measured
+  ≤0.02% on all four songs); (3) phase = median residual over the
+  middle 60% of bars, trusted = within 0.25·period of that line,
+  REFUSE when the trusted span is under half the bars; (4) keep the
+  aligned trusted span, extrapolate the ends at the comb period;
+  (5) slide each extrapolated end by the δ in ±0.25·period that
+  maximizes mean detrended onset energy — the ±0.25 fence is
+  load-bearing (±0.5 reaches the half-bar backbeat and broke
+  peaceful-dreams' intro by +0.60 s when tried); (6) emit per-bar
+  confidence, aligned vs extrapolated. Measured: Letter Lands ends
+  7.3/15.3 s → 0.05/0.02 s and through the acceptance gate unloosened;
+  peaceful-dreams 6.6/23.3 → 0.06/0.11 s; mop-heart app-accepted with
+  a 0.32 s outro residual inherited from its own DTW middle (the
+  224 bpm whole-grid phase problem — the named next remedy is
+  re-phasing, not end repair); eat-all-the-clocks refused by the
+  interior-trust check, the right message for its chart/recording
+  arrangement mismatch (~13 chart bars never played). One chart-version
+  note: the 80-bar Letter Lands chart fails the median acceptance
+  check where the bench's 76-bar chart passes; the recipe makes the
+  median land on the comb period either way.
+
 - **Study 25 (stem-bench a8ab101, follows the correction): on the true
   grid, the chartless draft reaches the chart-given baseline on two of
   three matched songs — letter-lands 72/76 (exact parity) and
