@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.238.0] - 2026-11-07
+
+### Changed
+
+- **Charts can carry lyrics.** A chart drawn on the song page now understands barmark's lyric rows and syllables on notes: a `lyrics:` line under a bar line puts the words on the beats, verses are numbered, and a line that sings draws its notes with the syllables under them. A line of three or more hyphens now ends a system, and a leading backslash hides itself, so `\~76 bpm` shows as "~76 bpm".
+
 ## [0.237.0] - 2026-11-07
 
 ### Changed
