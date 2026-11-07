@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.239.0] - 2026-11-07
+
 ### Added
 
 - **Chart from score.** A MusicXML notation file's ⋯ menu (editors) reads its chord symbols, keys, meters, tempo, sections, repeats and endings into a barmark chart through `@barmark/musicxml` 0.6.0's importer (`chartFromScore` in files.remote.ts, the row read by `notationForImport`, the Blob fetched server-side, `.mxl` unpacked by `readMxl`, 20 MB cap). The draft card shows it as "Chart from <score>" with the import's diagnostics (errors red, warnings amber) and the same Save as chart / Discard; `ChartDraft` (songChordDraft.svelte.ts) now carries `source`, `scoreName` and `diagnostics`, built by `chartDraftOfScore`, and the AI draft's chords-by-bar, sections and progressions moved to `SongDraftDetails.svelte`, each shown only with content. A score with no chord symbols notifies "Nothing to chart" with the importer's reason.
