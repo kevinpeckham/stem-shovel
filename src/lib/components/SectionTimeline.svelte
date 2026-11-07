@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
-	import { barGrid, formatBarSpan, formatPosition } from "#lib/audio/measures.js";
+	import { barGrid, formatBarSpan, formatPosition, type BarGrid } from "#lib/audio/measures.js";
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
 	import { formatSongChange } from "#lib/utils/formatSongChange.js";
@@ -17,11 +17,21 @@
 		/** Bar 1 and the song's end, drawn as lines through the blocks. */
 		startAt?: number | null;
 		endAt?: number | null;
+		/** The player's bar grid (songGrid: the chart's timing map's when the song follows it); without one, the changes' own. */
+		grid?: BarGrid | null;
 		fps?: number;
 	}
 
-	let { engine, sections, changes = [], startAt = null, endAt = null, fps = 25 }: Props = $props();
-	let ctx = $derived({ fps, grid: barGrid(changes, startAt) });
+	let {
+		engine,
+		sections,
+		changes = [],
+		startAt = null,
+		endAt = null,
+		grid,
+		fps = 25,
+	}: Props = $props();
+	let ctx = $derived({ fps, grid: grid === undefined ? barGrid(changes, startAt) : grid });
 	const at = (seconds: number) => formatPosition(readoutMode(!!ctx.grid), seconds, ctx);
 
 	// Each block runs from its start to the next start (the last to the end).

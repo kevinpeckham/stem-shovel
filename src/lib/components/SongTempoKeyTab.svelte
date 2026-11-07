@@ -1,5 +1,11 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
+	import type { TimingMap } from "@barmark/sync";
+	import { refreshAll } from "$app/navigation";
+	import { clearChartTiming, setChartTimingUse } from "#lib/remote/songs.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { timingMapLine } from "#lib/utils/timingMapLine.js";
 	import { chordChart, type ChordSegment } from "#lib/audio/chords.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { BarGrid } from "#lib/audio/measures.js";
@@ -41,6 +47,10 @@
 		onreview: () => void;
 		/** The page's AI draft card (shared with the Docs panel). */
 		draftCard: Snippet;
+		/** The song, for its chart timing map and whether the player follows it. */
+		songId: string;
+		timing: TimingMap | null;
+		useTiming: boolean;
 	}
 
 	let {
@@ -55,7 +65,35 @@
 		canReview,
 		onreview,
 		draftCard,
+		songId,
+		timing,
+		useTiming,
 	}: Props = $props();
+
+	let timingBusy = $state(false);
+	/** Runs a Bar timing action, then the page's data again so the grid follows. */
+	async function timingAction(run: () => Promise<unknown>, done: string) {
+		timingBusy = true;
+		try {
+			await run();
+			await refreshAll();
+			notify(done);
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			timingBusy = false;
+		}
+	}
+	const follow = (use: boolean) =>
+		timingAction(
+			() => setChartTimingUse({ id: songId, use }),
+			use ? "Following the chart's timing" : "Back to the song's own tempo",
+		);
+	const forget = () => {
+		if (!confirm("Forget the chart's timing map? The player goes back to the song's own tempo."))
+			return;
+		void timingAction(() => clearChartTiming({ id: songId }), "Timing map forgotten");
+	};
 </script>
 
 <div>
@@ -87,7 +125,36 @@
 		</button>
 		<button class="link-dim text-xs" type="button" onclick={changes.reset}>Discard edits</button>
 	</div>
+	{@render barTiming()}
 </div>
+
+<!-- The chart's timing map: what it holds, and whether the player's bars follow it. -->
+{#snippet barTiming()}
+	<div class="mt-5 border-t border-current/20 pt-3" data-chart-timing>
+		<h3 class="text-15px font-700">Bar timing</h3>
+		<p class="mt-1 text-sm opacity-90">{timingMapLine(timing)}</p>
+		{#if timing}
+			<div class="mt-2 flex flex-wrap items-center gap-3">
+				<button
+					class="button button-xs"
+					type="button"
+					disabled={timingBusy}
+					aria-pressed={useTiming}
+					title={useTiming
+						? "The readout, the click and the sections count bars on the map; stop to go back to the song's own tempo"
+						: "Count bars on the map: the readout, the click and the sections follow the recording's own bar lines"}
+					onclick={() => follow(!useTiming)}
+				>
+					<span class={useTiming ? "i-ph-check" : "i-ph-metronome"} aria-hidden="true"></span>
+					{useTiming ? "Following · Stop" : "Follow it"}
+				</button>
+				<button class="link text-xs" type="button" disabled={timingBusy} onclick={forget}
+					>Forget</button
+				>
+			</div>
+		{/if}
+	</div>
+{/snippet}
 
 <!-- Scan stems, Detect chords (and Cancel), Ask AI to check, Add change. -->
 {#snippet actionsRow()}

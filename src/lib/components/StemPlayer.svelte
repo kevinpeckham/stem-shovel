@@ -24,7 +24,9 @@
 	import type { StemModeChoice, StemStreamingSetting } from "#lib/utils/stemPlaybackMode.js";
 	import type { MidiSummary } from "#lib/audio/midi.js";
 	import SectionTimeline from "#lib/components/SectionTimeline.svelte";
-	import { barGrid, formatPosition } from "#lib/audio/measures.js";
+	import { formatPosition } from "#lib/audio/measures.js";
+	import { songGrid } from "#lib/utils/barGridOfTiming.js";
+	import type { TimingMap } from "@barmark/sync";
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { onMount, tick } from "svelte";
 	import { dev } from "$app/env";
@@ -58,6 +60,9 @@
 		/** Bar 1 and the song's end, seconds (null = 0 / the last stem). */
 		startAt?: number | null;
 		endAt?: number | null;
+		/** The chart's timing map, and whether the grid follows it instead of the declared tempo (barGridOfTiming). */
+		timing?: TimingMap | null;
+		useTiming?: boolean;
 		/** Frame rate for timecode. */
 		fps?: number;
 		/** When given, members get an "Add section at playhead" button. */
@@ -89,6 +94,8 @@
 		changes = [],
 		startAt = null,
 		endAt = null,
+		timing = null,
+		useTiming = false,
 		fps = 25,
 		onaddsection,
 		onengine,
@@ -100,12 +107,13 @@
 	}: Props = $props();
 
 	const engine = new StemEngine();
+	let grid = $derived(songGrid(changes, startAt, timing, useTiming)); // the declared tempo's, or the chart's timing map's
 	/** Where a row was Ctrl / ⌘-clicked or right-clicked, for the menu at the pointer (PointerMenu after the rows). */
 	let contextAt = $state<{ stem: StemState; seconds: number; x: number; y: number } | null>(null);
 	const contextMenuItems = (c: NonNullable<typeof contextAt>): MenuItems => [
 		{
 			kind: "notice",
-			notice: `${c.stem.label} · ${formatPosition(readoutMode(!!barGrid(changes, startAt)), c.seconds, { fps, grid: barGrid(changes, startAt) })}`,
+			notice: `${c.stem.label} · ${formatPosition(readoutMode(!!grid), c.seconds, { fps, grid })}`,
 		},
 		{ label: "Seek here", iconClass: "i-ph-skip-forward", action: () => engine.seek(c.seconds) },
 		...(contextItems?.(c.stem, c.seconds) ?? []),
@@ -131,7 +139,7 @@
 	}
 	const stageModel = stemMixerModel(engine);
 	/** The click in time with the stems (stemClick.svelte.ts), on the song's grid when it has one. */
-	const click = new StemClick(engine, () => barGrid(changes, startAt));
+	const click = new StemClick(engine, () => grid);
 	/** The song's default mix per stem, from the manifest. */
 	let defaults = $derived(new Map(manifest.stems.map((s) => [s.id, s.gain ?? 1])));
 	/** The song's default pans, likewise. */
@@ -361,15 +369,7 @@
 			</p>
 		{/if}
 		<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
-			<Transport
-				{engine}
-				{changes}
-				grid={barGrid(changes, startAt)}
-				{endAt}
-				{fps}
-				{keyboard}
-				{click}
-			/>
+			<Transport {engine} {changes} {grid} {endAt} {fps} {keyboard} {click} />
 			{#if onaddsection}
 				<div class="mt-2 flex justify-end">
 					<button
@@ -377,9 +377,9 @@
 						type="button"
 						disabled={engine.status !== "ready"}
 						title="Mark a section starting at the current position ({formatPosition(
-							readoutMode(!!barGrid(changes, startAt)),
+							readoutMode(!!grid),
 							engine.position,
-							{ fps, grid: barGrid(changes, startAt) },
+							{ fps, grid },
 						)})"
 						onclick={() => onaddsection(engine.position)}
 					>
@@ -421,7 +421,7 @@
 				</span>
 			</div>
 			{#if sections.length > 0 || timelineKinds(changes).length > 0}
-				<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} {fps} />
+				<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} {grid} {fps} />
 			{/if}
 			{#if view === "stage"}
 				<MixerStage model={stageModel} menu={stemMenu ? stageMenu : undefined} class="my-2" />

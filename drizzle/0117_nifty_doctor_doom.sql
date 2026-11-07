@@ -1,0 +1,1 @@
+ALTER TABLE `song` ADD `use_chart_timing` integer DEFAULT false NOT NULL;

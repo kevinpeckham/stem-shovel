@@ -1081,10 +1081,22 @@ chart existed.
   against the stored text; a chart edit whose hash no longer matches clears
   both. "Place from chart" (the chart aligned to the stems, above) saves the
   alignment's bar starts as a map with `source` "aligned" when the aligned
-  score is the band's own chart. Nothing reads the map yet: the player's
-  grid is still `audio/measures.ts`'s from the song's changes; replacing its
-  `secondsAtBar` / `barAt` with the package's over a stored map is the next
-  step, Kevin's call.
+  score is the band's own chart.
+- **The player follows the map when asked** (v0.245.0). A timing map
+  converts to the player's `BarGrid` exactly, one tempo segment per bar
+  (`utils/barGridOfTiming.ts`: the bar's beats over its span; meters from the
+  song's changes; `startAt` the first bar's start; bars counted in recording
+  order), and `songGrid(changes, startAt, timing, use)` is the one place
+  that chooses between it and the declared tempo's grid. The song page, the
+  stem player (readout, click, snapping), the section timeline, the
+  song-check and the server's position formatting all take the grid from
+  it, so with `song.use_chart_timing` on, every bar line sits where the
+  recording's bars are, and a new chord draft is built on those bars (the
+  brief's "alignment's bar starts when present"). The switch is **off by
+  default** (the click is what plays) and lives in the Tempo & key tab's
+  "Bar timing" block, which says where the map came from and how many bars
+  it has, with Follow / Stop and Forget; a chart edit that drops the map
+  turns the switch off with it.
 - **The saved draft is canonical**: `saveChartDraft` parses the text and
   stores `printChart`'s output when it parses without errors, as the editor
   normalizes; a draft with errors is stored as written and its diagnostics

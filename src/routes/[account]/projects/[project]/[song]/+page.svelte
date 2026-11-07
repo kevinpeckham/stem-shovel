@@ -56,7 +56,8 @@
 	import { MidiViews } from "#lib/state/midiViews.svelte.js";
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { metronome } from "#lib/audio/metronome.svelte.js";
-	import { barGrid, formatPosition } from "#lib/audio/measures.js";
+	import { formatPosition } from "#lib/audio/measures.js";
+	import { songGrid } from "#lib/utils/barGridOfTiming.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { copyShortLink } from "#lib/utils/copyShortLink.js";
 	import { artistLine } from "#lib/utils/artistLine.js";
@@ -76,7 +77,12 @@
 	// the form carries them as seconds, converted on the way in and out.
 	let posCtx = $derived({
 		fps: data.song.frameRate,
-		grid: barGrid(data.song.changes, data.song.startAt),
+		grid: songGrid(
+			data.song.changes,
+			data.song.startAt,
+			data.song.chartTiming,
+			data.song.useChartTiming,
+		),
 	});
 	/** The tempo, key and time signature rows (settings' Tempo & key tab), and the position helpers every editor shares. */
 	const changes = new SongChanges({
@@ -668,6 +674,8 @@
 						changes={data.song.changes}
 						startAt={data.song.startAt}
 						endAt={data.song.endAt}
+						timing={data.song.chartTiming}
+						useTiming={data.song.useChartTiming}
 						fps={data.song.frameRate}
 						onengine={(e) => (playerEngine = e)}
 						contextItems={(_stem, seconds) =>

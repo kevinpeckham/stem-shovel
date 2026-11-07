@@ -1,12 +1,23 @@
-import { render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen } from "@testing-library/svelte";
+import type { TimingMap } from "@barmark/sync";
 import { createRawSnippet } from "svelte";
 import { describe, expect, test, vi } from "vite-plus/test";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 
 /** The settings' Tempo & key tab over real state instances; the remote functions are never reached. */
-vi.mock("#lib/remote/songs.remote.js", () => ({}));
+const h = vi.hoisted(() => ({
+	setChartTimingUse: vi.fn(async (input: unknown) => ({ input })),
+	clearChartTiming: vi.fn(async (input: unknown) => ({ input })),
+	refreshAll: vi.fn(async () => {}),
+	notify: vi.fn(),
+}));
+vi.mock("#lib/remote/songs.remote.js", () => ({
+	setChartTimingUse: h.setChartTimingUse,
+	clearChartTiming: h.clearChartTiming,
+}));
 vi.mock("#lib/remote/files.remote.js", () => ({}));
-vi.mock("#lib/state/notifications.svelte.js", () => ({ notify: vi.fn() }));
+vi.mock("#lib/state/notifications.svelte.js", () => ({ notify: h.notify }));
+vi.mock("$app/navigation", () => ({ refreshAll: h.refreshAll }));
 
 const { default: SongTempoKeyTab } = await import("./SongTempoKeyTab.svelte");
 const { SongChanges } = await import("#lib/state/songChanges.svelte.js");
@@ -54,6 +65,9 @@ function setup() {
 		canReview: false,
 		onreview: () => {},
 		draftCard: createRawSnippet(() => ({ render: () => "<div>draft card</div>" })),
+		songId: song.id,
+		timing: null as TimingMap | null,
+		useTiming: false,
 	};
 	return { changes, chordDraft, check, props };
 }
@@ -109,5 +123,48 @@ describe("SongTempoKeyTab", () => {
 		expect(screen.getByText(/The AI read the chart and listened/)).toBeTruthy();
 		expect(screen.getByText("96 bpm · C major · 4/4")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Use these" })).toBeEnabled();
+	});
+
+	test("Bar timing without a map says how to make one, and offers nothing", () => {
+		const { props } = setup();
+		render(SongTempoKeyTab, { props });
+		const block = document.querySelector("[data-chart-timing]")!;
+		expect(block.textContent).toContain(
+			"No timing map yet: draft a chart from the detected chords, or place the chart from the stems.",
+		);
+		expect(screen.queryByRole("button", { name: "Follow it" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Forget" })).toBeNull();
+	});
+
+	test("Bar timing with a map: Follow it, Following · Stop and Forget", async () => {
+		const timing: TimingMap = {
+			format: "barmark-timing",
+			version: 1,
+			chart: { bars: 2, hash: "h" },
+			source: "aligned",
+			bars: [
+				{ bar: 1, start: 0 },
+				{ bar: 2, start: 2 },
+			],
+			end: 4,
+		};
+		const { props } = setup();
+		const view = render(SongTempoKeyTab, { props: { ...props, timing } });
+		expect(screen.getByText("2 bars from the aligned chart.")).toBeTruthy();
+		await fireEvent.click(screen.getByRole("button", { name: "Follow it" }));
+		expect(h.setChartTimingUse).toHaveBeenCalledWith({ id: "song1", use: true });
+		await vi.waitFor(() => expect(h.notify).toHaveBeenCalledWith("Following the chart's timing"));
+		expect(h.refreshAll).toHaveBeenCalled();
+		view.unmount();
+
+		render(SongTempoKeyTab, { props: { ...props, timing, useTiming: true } });
+		await fireEvent.click(screen.getByRole("button", { name: "Following · Stop" }));
+		expect(h.setChartTimingUse).toHaveBeenLastCalledWith({ id: "song1", use: false });
+		vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+		await fireEvent.click(screen.getByRole("button", { name: "Forget" }));
+		expect(h.clearChartTiming).not.toHaveBeenCalled();
+		await fireEvent.click(screen.getByRole("button", { name: "Forget" }));
+		expect(h.clearChartTiming).toHaveBeenCalledWith({ id: "song1" });
+		await vi.waitFor(() => expect(h.notify).toHaveBeenCalledWith("Timing map forgotten"));
 	});
 });

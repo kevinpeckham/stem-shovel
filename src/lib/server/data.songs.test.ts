@@ -313,4 +313,35 @@ describe("songGrid", () => {
 		expect(await songGrid("s1")).toEqual({ fps: 30, grid: barGrid(changes, 1.5) });
 		expect(await songGrid("nope")).toBeNull();
 	});
+
+	test("the chart's timing map's grid when the song follows it", async () => {
+		const changes: SongChange[] = [
+			{ kind: "tempo", start: 0, value: "120" },
+			{ kind: "meter", start: 0, value: "4/4" },
+		];
+		const chartTiming = {
+			format: "barmark-timing",
+			version: 1,
+			chart: { bars: 2, hash: "h" },
+			bars: [
+				{ bar: 1, start: 1 },
+				{ bar: 2, start: 2 },
+			],
+			end: 3,
+		};
+		reset({
+			song: [{ ...s1, changes, startAt: 0, frameRate: 30, chartTiming, useChartTiming: true }],
+		});
+		expect((await songGrid("s1"))?.grid).toMatchObject({
+			startAt: 1,
+			tempos: [
+				{ start: 1, bpm: 240 },
+				{ start: 2, bpm: 240 },
+			],
+		});
+		reset({
+			song: [{ ...s1, changes, startAt: 0, frameRate: 30, chartTiming, useChartTiming: false }],
+		});
+		expect((await songGrid("s1"))?.grid).toEqual(barGrid(changes, 0));
+	});
 });

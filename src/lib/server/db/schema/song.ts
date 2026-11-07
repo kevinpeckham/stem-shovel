@@ -115,6 +115,13 @@ export const song = table(
 		chartConfidence: t
 			.text("chart_confidence", { mode: "json" })
 			.$type<import("@barmark/sync").ConfidenceRecord>(),
+		/**
+		 * The player follows `chartTiming` (its bar starts as the bar grid: the
+		 * readout, the click, the sections, the draft's grid) instead of the
+		 * declared tempo's. Off by default: the click is what plays, so a member
+		 * turns it on in the Tempo & key tab once a map exists.
+		 */
+		useChartTiming: t.integer("use_chart_timing", { mode: "boolean" }).notNull().default(false),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

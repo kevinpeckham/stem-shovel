@@ -40,6 +40,8 @@ function setup() {
 		stage: null,
 		noAi: false,
 		isPrivate: false,
+		chartTiming: null,
+		useChartTiming: false,
 		project: { slug: "badverbs", noAi: false, isPrivate: false },
 		credits: [],
 		demos: [

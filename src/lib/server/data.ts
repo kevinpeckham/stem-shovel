@@ -75,7 +75,7 @@ import {
 } from "#lib/server/cascade.js";
 import { accessOfSongId } from "#lib/server/relocate.js";
 import { db, schema } from "#lib/server/db/index.js";
-import { barGrid } from "#lib/audio/measures.js";
+import { songGrid as songBarGrid } from "#lib/utils/barGridOfTiming.js";
 import { hashMarkdown, renderMarkdown } from "#lib/server/markdown.js";
 import { labelFromFilename } from "#lib/utils/labelFromFilename.js";
 import {
@@ -1545,9 +1545,20 @@ export async function updateSongChanges(
 export async function songGrid(songId: string) {
 	const s = await db.query.song.findFirst({
 		where: eq(song.id, songId),
-		columns: { changes: true, startAt: true, frameRate: true },
+		columns: {
+			changes: true,
+			startAt: true,
+			frameRate: true,
+			chartTiming: true,
+			useChartTiming: true,
+		},
 	});
-	return s ? { fps: s.frameRate, grid: barGrid(s.changes, s.startAt) } : null;
+	return s
+		? {
+				fps: s.frameRate,
+				grid: songBarGrid(s.changes, s.startAt, s.chartTiming, s.useChartTiming),
+			}
+		: null;
 }
 
 export interface CommentInput {
@@ -4037,8 +4048,9 @@ export async function songDetectionsFor(accountId: string, songId: string) {
 
 /**
  * Stores the chart's timing map and confidence (docs/audio-engine.md, "The
- * timing map"), or clears them with nulls. The caller has checked the map
- * against the stored chart (`checkTimingMap`).
+ * timing map"), or clears them with nulls; a cleared map turns the player's
+ * following of it off too. The caller has checked the map against the
+ * stored chart (`checkTimingMap`).
  */
 export async function setChartTiming(
 	accountId: string,
@@ -4048,8 +4060,22 @@ export async function setChartTiming(
 ) {
 	await db
 		.update(song)
-		.set({ chartTiming: timing, chartConfidence: confidence })
+		.set({
+			chartTiming: timing,
+			chartConfidence: confidence,
+			...(timing === null ? { useChartTiming: false } : {}),
+		})
 		.where(and(eq(song.accountId, accountId), eq(song.id, songId)));
+}
+
+/** Whether the player's bar grid follows the song's chart timing map (`song.useChartTiming`); false when the song is not this account's. */
+export async function setUseChartTiming(accountId: string, songId: string, use: boolean) {
+	const rows = await db
+		.update(song)
+		.set({ useChartTiming: use })
+		.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
+		.returning({ id: song.id });
+	return rows.length > 0;
 }
 
 /** The stored notes for a member's page, with whether they are complete for the current stems. */
@@ -8825,7 +8851,7 @@ export async function saveSongDoc(
 			[cols.markdown]: next,
 			[cols.hash]: contentHash,
 			[cols.version]: versionNumber,
-			...(staleTiming ? { chartTiming: null, chartConfidence: null } : {}),
+			...(staleTiming ? { chartTiming: null, chartConfidence: null, useChartTiming: false } : {}),
 		})
 		.where(eq(song.id, songId));
 	return { ok: true, version: versionNumber, changed: true };

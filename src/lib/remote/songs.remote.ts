@@ -44,6 +44,7 @@ import {
 	songChordsFor,
 	songDetectionsFor,
 	setChartTiming,
+	setUseChartTiming,
 	songNotesFor,
 	songSlugs,
 	updateSong as update,
@@ -80,6 +81,7 @@ import {
 	ChartDraftSchema,
 	ChartSaveSchema,
 	ChartTimingSaveSchema,
+	ChartTimingUseSchema,
 	ChordsCheckSchema,
 } from "#lib/val/ChartDraftSchema.js";
 import { buildChartFromDetections } from "#lib/server/chartBuild.js";
@@ -634,6 +636,25 @@ export const saveChartTiming = command(ChartTimingSaveSchema, async ({ id, timin
 	if (!map) error(400, "The timing map does not fit the chart");
 	await setChartTiming(accountId, id, map, null);
 	return { saved: true };
+});
+
+/**
+ * Whether the player's bar grid follows the song's chart timing map instead
+ * of the declared tempo (`song.useChartTiming`; members).
+ */
+export const setChartTimingUse = command(ChartTimingUseSchema, async ({ id, use }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	if (!(await setUseChartTiming(accountId, id, use))) error(404, "Song not found");
+	return { use };
+});
+
+/** Forgets the song's chart timing map and its confidence, and the player stops following it (members). */
+export const clearChartTiming = command(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	await setChartTiming(accountId, id, null, null);
+	return { cleared: true };
 });
 
 /** The notes the server transcribed for the chart draft (members), and whether they are complete. */

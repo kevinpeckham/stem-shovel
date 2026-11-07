@@ -59,6 +59,12 @@ export const ChartTimingSaveSchema = v.object({
 	timing: v.unknown(),
 });
 
+/** Whether the player follows the song's chart timing map (`setChartTimingUse`). */
+export const ChartTimingUseSchema = v.object({
+	id: NanoIdSchema,
+	use: v.boolean(),
+});
+
 /** What the model must return. */
 export const ChartDraftAnswerSchema = v.object({
 	/** One chord per bar, in order, space-separated: "D5 D5 A5 % G5" ("%" repeats, "N.C." for silence). */

@@ -10,7 +10,9 @@ import {
 	type KeyChange,
 } from "#lib/audio/analysis.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
-import { barGrid, barSecondsAt, snapToAnchor, snapToDownbeat } from "#lib/audio/measures.js";
+import { barSecondsAt, snapToAnchor, snapToDownbeat } from "#lib/audio/measures.js";
+import { songGrid } from "#lib/utils/barGridOfTiming.js";
+import type { TimingMap } from "@barmark/sync";
 import {
 	SONG_CHANGE_KINDS,
 	SONG_CHANGE_LABELS,
@@ -46,6 +48,9 @@ export interface CheckedSong {
 	changes: SongChange[];
 	sections: { start: number }[];
 	startAt: number | null;
+	/** The chart's timing map, and whether the player's grid follows it (barGridOfTiming). */
+	chartTiming?: TimingMap | null;
+	useChartTiming?: boolean;
 }
 
 /** What the page supplies: functions for whatever follows its data and the player. */
@@ -510,8 +515,9 @@ export class SongCheck {
 		const at0 = answerAt0(answer);
 		const replaced = at0.map((r) => r.kind);
 		// The model places a change by ear, often a beat early (a chord on the "and" of four); snap each to the bar
-		// line on the grid the answer itself makes (docs/audio-engine.md, "Snapped to the bar").
-		const grid = barGrid(
+		// line on the grid the answer itself makes, or the chart's timing map's when the song follows it
+		// (docs/audio-engine.md, "Snapped to the bar").
+		const grid = songGrid(
 			[
 				...at0.map((r) => ({ ...r, start: 0 })),
 				...answer.tempoChanges.map((c) => ({
@@ -521,6 +527,8 @@ export class SongCheck {
 				})),
 			],
 			song.startAt,
+			song.chartTiming ?? null,
+			song.useChartTiming ?? false,
 		);
 		// … and a key change within a bar of a section's start belongs to that section (they line up in practice).
 		const sectionStarts = song.sections.map((s) => s.start);

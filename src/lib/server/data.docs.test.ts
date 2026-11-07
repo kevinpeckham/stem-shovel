@@ -29,6 +29,7 @@ const {
 	saveUserDoc,
 	saveUserNote,
 	setChartTiming,
+	setUseChartTiming,
 	setProjectNoAi,
 	setSongStage,
 	setSongNoAi,
@@ -202,9 +203,10 @@ describe("the chart's timing map follows the chart text", () => {
 			chartVersion: 1,
 			chartTiming: timing(CHART),
 			chartConfidence: confidence,
+			useChartTiming: true,
 		});
 
-	test("an edit that changes the chart's hash drops the map and its confidence in the same update", async () => {
+	test("an edit that changes the chart's hash drops the map, its confidence and the switch to follow it in the same update", async () => {
 		reset({ song: [withTiming()] });
 		await saveSongDoc("a1", "u1", "sg1", "chart", "| C | Am |\n");
 		expect(callsTo("update", "song")).toHaveLength(1);
@@ -212,6 +214,7 @@ describe("the chart's timing map follows the chart text", () => {
 			chartMarkdown: "| C | Am |\n",
 			chartTiming: null,
 			chartConfidence: null,
+			useChartTiming: false,
 		});
 	});
 
@@ -222,13 +225,14 @@ describe("the chart's timing map follows the chart text", () => {
 			chartMarkdown: "|  C |G|\n",
 			chartTiming: timing(CHART),
 			chartConfidence: confidence,
+			useChartTiming: true,
 		});
 		await saveSongDoc("a1", "u1", "sg1", "lyrics", "La la");
 		expect(row("song", "sg1")?.chartTiming).toEqual(timing(CHART));
 	});
 
-	test("setChartTiming stores or clears both, scoped by the account", async () => {
-		reset({ song: [song("sg1"), song("sg2", { accountId: "a2" })] });
+	test("setChartTiming stores or clears both (a clear turns following off), scoped by the account", async () => {
+		reset({ song: [song("sg1", { useChartTiming: true }), song("sg2", { accountId: "a2" })] });
 		await setChartTiming("a1", "sg1", timing(CHART) as never, confidence as never);
 		expect(row("song", "sg1")).toMatchObject({
 			chartTiming: timing(CHART),
@@ -236,8 +240,23 @@ describe("the chart's timing map follows the chart text", () => {
 		});
 		await setChartTiming("a1", "sg2", timing(CHART) as never, null);
 		expect(row("song", "sg2")?.chartTiming).toBeUndefined();
+		expect(row("song", "sg1")?.useChartTiming).toBe(true);
 		await setChartTiming("a1", "sg1", null, null);
-		expect(row("song", "sg1")).toMatchObject({ chartTiming: null, chartConfidence: null });
+		expect(row("song", "sg1")).toMatchObject({
+			chartTiming: null,
+			chartConfidence: null,
+			useChartTiming: false,
+		});
+	});
+
+	test("setUseChartTiming sets the switch, scoped by the account", async () => {
+		reset({ song: [song("sg1"), song("sg2", { accountId: "a2" })] });
+		expect(await setUseChartTiming("a1", "sg1", true)).toBe(true);
+		expect(row("song", "sg1")?.useChartTiming).toBe(true);
+		expect(await setUseChartTiming("a1", "sg2", true)).toBe(false);
+		expect(row("song", "sg2")?.useChartTiming).toBeUndefined();
+		expect(await setUseChartTiming("a1", "sg1", false)).toBe(true);
+		expect(row("song", "sg1")?.useChartTiming).toBe(false);
 	});
 });
 

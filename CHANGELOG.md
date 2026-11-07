@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The player can follow the chart's timing map.** A stored map (from a draft built on the detections, or the chart aligned to the stems by "Place from chart") converts to the player's bar grid, one tempo segment per bar (`utils/barGridOfTiming.ts`, chosen by `songGrid`), so the bar readout, the click, the sections and the next chord draft sit on the recording's bars. Off by default: the Tempo & key tab's "Bar timing" block shows the map's source and bar count with Follow / Stop and Forget (`song.use_chart_timing`, migration 0117); a chart edit that drops the map turns it off.
+
 ## [0.244.0] - 2026-11-07
 
 ### Added

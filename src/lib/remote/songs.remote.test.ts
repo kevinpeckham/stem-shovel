@@ -352,6 +352,23 @@ describe("editor-gated functions", () => {
 			outcome: { saved: true },
 		},
 		{
+			name: "setChartTimingUse",
+			fn: songs.setChartTimingUse,
+			input: { id: SONG, use: true },
+			arrange: () => data.setUseChartTiming.mockResolvedValue(true),
+			dataFn: "setUseChartTiming",
+			args: [ACCOUNT, SONG, true],
+			outcome: { use: true },
+		},
+		{
+			name: "clearChartTiming",
+			fn: songs.clearChartTiming,
+			input: { id: SONG },
+			dataFn: "setChartTiming",
+			args: [ACCOUNT, SONG, null, null],
+			outcome: { cleared: true },
+		},
+		{
 			name: "songNotes",
 			fn: songs.songNotes,
 			input: { id: SONG },
@@ -962,5 +979,16 @@ describe("saveChartTiming", () => {
 			call(songs.saveChartTiming, { id: SONG, timing: { format: "nope" } }),
 		).rejects.toMatchObject(httpError(400));
 		expect(data.setChartTiming).not.toHaveBeenCalled();
+	});
+});
+
+describe("setChartTimingUse", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("404 when the song is gone; the switch must be a boolean", async () => {
+		data.setUseChartTiming.mockResolvedValue(false);
+		await expect(call(songs.setChartTimingUse, { id: SONG, use: false })).rejects.toMatchObject(
+			httpError(404),
+		);
+		await expect(call(songs.setChartTimingUse, { id: SONG, use: "yes" })).rejects.toThrow();
 	});
 });

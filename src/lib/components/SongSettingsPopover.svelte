@@ -18,6 +18,7 @@
 	import type { SongSections } from "#lib/state/songSections.svelte.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import type { SongStage } from "#lib/val/SongStageSchema.js";
+	import type { TimingMap } from "@barmark/sync";
 
 	/** The settings popover shows one panel at a time (too much at once otherwise, and unusable on a phone). */
 	const SETTINGS_TABS = [
@@ -46,6 +47,9 @@
 		song: ComponentProps<typeof SongDetailsTab>["song"] & {
 			stage: SongStage | null;
 			noAi: boolean;
+			/** The chart's timing map, and whether the player follows it (the Tempo & key tab's Bar timing). */
+			chartTiming: TimingMap | null;
+			useChartTiming: boolean;
 			isPrivate: boolean;
 			project: { noAi: boolean; isPrivate: boolean };
 			demos: {
@@ -349,6 +353,9 @@
 					{canReview}
 					{onreview}
 					{draftCard}
+					songId={song.id}
+					timing={song.chartTiming}
+					useTiming={song.useChartTiming}
 				/>
 			{/if}
 			{#if settingsTab === "demos"}

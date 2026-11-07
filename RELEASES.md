@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Bar lines that follow the recording.** Once a song has a timing map, from a chart draft or from placing the chart against the stems, the Tempo & key tab offers to follow it: the bar readout, the click and the sections then sit where the band actually played the bars, not where a steady tempo says they should be. It is off until you turn it on.
+
 ## [0.244.0] - 2026-11-07
 
 ### Added
