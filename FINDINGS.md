@@ -441,6 +441,28 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 21 verdict: the chord reader's roots generalize across the
+  whole charted catalog — 90.3 % combined, 97.4 % on peaceful-dreams,
+  and mop-heart is the program's first big strict result** (stem-bench,
+  2026-11-07; $0; registered fbf1110, results be046ce; anchors
+  reproduced exactly, fourth time). Graded on the two held-out charts
+  banked by Study 20b: mop-heart reads 107/140 bars EXACTLY right, no
+  allowance needed — plain triads are the model's native vocabulary,
+  and the sparse 3/4 arrangement that broke the note-channel power hint
+  does not trouble a reader that hears the mix. peaceful-dreams fails
+  the registered 50 % allowance gate at 47.7 % (the gate stands as
+  registered), but the anatomy puts the miss in the grade's vocabulary,
+  not the hearing: roots are 149/153, and on the chart's 62
+  off-vocabulary bars the model is half right everywhere — it answers
+  X7 on 24 of the 32 X5(7) bars (it hears your optional seventh) and
+  X7 or Xsus4 on the 7sus4 bars (roots 29/30). Nothing to change in
+  the app; the Study 17 hedge already covers the colors. What this buys
+  you: the reader's roots now stand on four songs at 82–97 % per song,
+  and its color misses are half-heard rather than unheard — exactly the
+  raw material a draft layer could spell. That is the measured baseline
+  for the end-to-end question (recording to chart), which the bench
+  suggests as the next registered study if you want it.
+
 - **Study 20b verdict on the power hint: do NOT ship it — held-out
   precision is not a number, it is a function of arrangement density**
   (stem-bench, 2026-11-07; $0; registered 7c40f9a before the held-out
