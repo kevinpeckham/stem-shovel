@@ -441,6 +441,32 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **CORRECTION to the two entries below (Studies 23b/24), same day,
+  prompted by Kevin: your recordings are metronome-exact at their
+  declared bpm — the bench's DTW ruler and one chart's arrangement
+  were the broken legs, and the tempo verdicts are withdrawn**
+  (stem-bench 2fa623d, diagnostics committed). Verified off the raw
+  stems/mix with a DTW-free comb sweep: razor-sharp peaks at
+  131.97/120.00/144.97/223.9 bpm vs declared 132/120/145/224. What was
+  actually wrong: (1) the bench's alignment truth has unusable bar
+  GEOMETRY (its per-bar chord bins stay valid, so prior chord grades
+  stand); (2) the "7.15 s / 6.5 s intros" on letter-lands and
+  peaceful-dreams never existed — both recordings open ON chart bar
+  one (t ≈ 0); the bench's "perfect tap" arm was anchored four bars
+  late by its own ruler, which is why it "collapsed"; (3)
+  eat-all-the-clocks' chart is ~13 bars longer than the recording
+  plays (172 s of chart, 147.5 s of audio) — no grid can chart unplayed
+  bars. Corrected guidance for auto-chart's grid leg, replacing the
+  withdrawn "true-tempo estimation" verdict: USE THE DECLARED BPM (it
+  is exact), anchor bar one at or near t = 0 (true on 3 of 4 songs
+  here; the onset joint comb recovers period to ≤ 0.02% on all four if
+  you want a check), and treat chart-vs-recording arrangement mismatch
+  as the real open problem. With the true grid, the shipped reader's
+  hints alone reach 70/76, 134/153 and 111/140 roots on the
+  arrangement-matched songs — the chartless pipeline's inputs are near
+  chart-grade already. A corrected end-to-end draft run (Study 25,
+  ~$0.3) is proposed to Kevin and not yet registered.
+
 - **Study 24 verdict on true-tempo estimation: the reader-derived grid
   is SHIP-SHAPED for steady songs and impossible for wandering ones —
   and the boundary may be detectable for free** (stem-bench,

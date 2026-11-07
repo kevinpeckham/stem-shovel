@@ -136,3 +136,20 @@ The "cheap measurement offered before any commitment" has now run
 Everything else in this brief stands: the JSON draft channel, the
 serialization fix (render the chart from JSON), the hint design, and
 the do-not-build list.
+
+---
+
+## Correction (2026-11-07, same day, supersedes both addenda above on the grid leg)
+
+Kevin's correction, verified off the raw audio (stem-bench 2fa623d):
+the recordings are metronome-exact at their declared tempos, so "the
+declared bpm cannot be trusted" and "true-tempo estimation needed" are
+WITHDRAWN. The bench's alignment ruler had broken bar geometry (its
+"7.15 s intro" on letter-lands was four bars of start error — the
+recording opens on bar one), and the "perfect tap" arm inherited that
+error, which is what the earlier addendum misread as tap failure.
+Grid-leg guidance now: declared bpm as the period, bar one at or near
+t = 0, the onset joint comb as a ≤ 0.02% mechanical check, and
+chart-vs-recording arrangement mismatch (eat-all-the-clocks: the chart
+is ~13 bars longer than the recording) as the genuine open problem. See
+the FINDINGS correction entry for numbers.
