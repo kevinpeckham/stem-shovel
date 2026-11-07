@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.241.0] - 2026-11-07
+
 ### Added
 
 - **The books** (docs/band-plan.md phase 4). A show's page gains "The books": ticket price and link, tickets sold, attendance, the deal, the promoter and contact, and the take (what the band took home, typed as money and stored in cents: `MoneySchema` / `parseMoney`, shown by `centsText`, formatted by `formatCents` in the account's currency), and a Payouts section: a member or a name, the amount and a note each, with the sum and what is left of the take (`EventPayouts`, `EventPayoutRow`, `EventPayoutFields`; `addEventPayout` / `updateEventPayout` / `removeEventPayout`, at most 40 a show). On the Shows page a show's tile carries its tickets and take, and a By year table sums the played shows (`showYearSummaries`).
