@@ -1018,7 +1018,7 @@ to color the model's roots from the bar's transcribed notes (power, sus,
 slash, a major/minor flip) and every gate failed: on real recordings the
 note profiles carry a third or a fourth the guitars never played, so the
 colors are unreachable from the notes, and the recoloring cost credited
-roots. The model's reading ships uncolored; the hedge on the card stays.
+roots. The model's reading ships uncolored; the hedge on the card stays. Study 20b (the bench, same day) took Study 20's one asset, the power-chord rule alone, to two held-out songs: perfect on dense in-vocabulary power bars, 0 % on a sparse 3/4 arrangement where a played third never reaches the transcription, so it is not shipped either (FINDINGS.md).
 
 **The admin batch's progress** (/admin/playback, 2026-11-07): the posted
 batch's ids come back from `readMissingChords`, and `ChordReadProgress`
