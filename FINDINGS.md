@@ -486,6 +486,26 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 25 (stem-bench a8ab101, follows the correction): on the true
+  grid, the chartless draft reaches the chart-given baseline on two of
+  three matched songs — letter-lands 72/76 (exact parity) and
+  peaceful-dreams 152/153 (above the 151 baseline) — and the two gate
+  failures name the real remaining problems.** mop-heart missed
+  (103/140 vs 131) purely on sub-bar anchor PHASE: the study's anchor
+  carried a 115 ms residue, ~43% of a beat at 224 bpm, while Study
+  24's onset-comb phase on the same song drafted 136/140, above
+  baseline — so use the comb phase, and treat fast tempos as needing
+  beat-level anchor precision. eat-all-the-clocks failed its prefix
+  gate (49/71 vs 55/71), proving the chart/recording arrangement
+  mismatch extends INTO the played span, not just the unplayed ~13-bar
+  tail. Net recipe for auto-chart's grid leg, measured end to end:
+  declared bpm as the period, onset-comb phase with bar one near
+  t = 0; per song the better arm reaches 72/76, 152/153, 136/140
+  against baselines 72, 151, 131. Arrangement mismatch is the one
+  open problem no grid can close. (A registered amendment excluded a
+  non-physical anchor candidate on eat; void run disclosed in the
+  bench brief.)
+
 - **CORRECTION to the two entries below (Studies 23b/24), same day,
   prompted by Kevin: your recordings are metronome-exact at their
   declared bpm — the bench's DTW ruler and one chart's arrangement
