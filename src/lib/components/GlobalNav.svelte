@@ -88,6 +88,8 @@
 		["/venues", "Where you play and rehearse", "i-ph-map-pin", "Venues"],
 		["/practice-locations", "Where you rehearse", "i-ph-house-line", "Practice locations"],
 		["/set-lists", "What to play, in order", "i-ph-list-numbers", "Set lists"],
+		["/members", "Who is in the band and how to reach them", "i-ph-users-three", "Members"],
+		["/contacts", "Promoters, agents and engineers", "i-ph-address-book", "Contacts"],
 	] as const;
 	let onManagePage = $derived(
 		!!member &&

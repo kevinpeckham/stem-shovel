@@ -33,6 +33,14 @@ The settings page shows how many projects, songs and stems the account holds and
 
 In **Account settings**, owners can change anyone's role, including making someone else an owner to hand the account over, and remove members. Admins can set members and remove them. The last owner cannot leave or be demoted.
 
+## The members page
+
+**Members** under Manage lists everyone in the account with their role and email, and what each has added: a phone, what they play, and notes. Edit your own entry; owners and admins can edit anyone's. Nothing on the page is public.
+
+## Contacts
+
+**Contacts** under Manage is the band's address book for people who are not members: promoters, booking agents, sound engineers, with a role, phone, email, address and notes. A show's books pick its promoter from here, and a contact's page lists the shows that name them. Deleting a contact keeps those shows; only the link goes.
+
 ## Belonging to several accounts
 
 You can be an owner of one account and a member of others. The account menu at the top right shows your role in each and switches between them; **Your accounts** lists them all, and you can leave any account there. Pages outside an account, such as the docs, treat the account you last opened as yours.

@@ -162,6 +162,7 @@ const {
 	eventFile,
 	eventPayout,
 	practiceLocation,
+	contact,
 	eventSet,
 } = schema;
 
@@ -327,6 +328,15 @@ export async function accountOfEvent(eventId: string) {
 export async function accountOfPracticeLocation(locationId: string) {
 	const row = await db.query.practiceLocation.findFirst({
 		where: eq(practiceLocation.id, locationId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+/** A contact's account (docs/band-plan.md, "The band directory"). */
+export async function accountOfContact(contactId: string) {
+	const row = await db.query.contact.findFirst({
+		where: eq(contact.id, contactId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

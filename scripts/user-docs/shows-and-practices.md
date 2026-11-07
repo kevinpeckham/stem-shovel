@@ -15,7 +15,7 @@ A show's page has four sections:
 - **Photos.** After the night, add the pictures. They sit in a gallery on the show's page; tap one to see it large, step through them, give each a caption, and download the ones you want.
 - **Set lists.** The set lists you will play, in order, each with a label ("Set 1", "Encore"). Choose a set list from the account's and it is attached at once; drag the sets into order, and open any set's editor or its show view from here. One set list can serve two shows, or two sets of one show.
 - **Recordings.** The session recordings of the night. Choose a session from the account's and it is linked at once, its recordings a click away; a session belongs to one show or practice at a time.
-- **The books.** The ticket price and where to buy, how many sold and how many came, the deal ("80/20 after the first $300"), the promoter and how to reach them, and the take: what the band took home, typed as an amount like 450 or 450.50.
+- **The books.** The ticket price and where to buy, how many sold and how many came, the deal ("80/20 after the first $300"), the promoter (pick one from your **Contacts**, or type a one-off name and how to reach them), and the take: what the band took home, typed as an amount like 450 or 450.50.
 - **Payouts.** Who got what out of the take: pick a member or type a name (the sound engineer, "Gas"), the amount and a note. The page adds them up and shows what is left of the take.
 - **Notes.** The plan for the night, then how it went, for posterity.
 

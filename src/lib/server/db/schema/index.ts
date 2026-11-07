@@ -16,6 +16,7 @@ export * from "./chatReaction";
 export * from "./chatRead";
 export * from "./dashboardPin";
 export * from "./comment";
+export * from "./contact";
 export * from "./commentVersion";
 export * from "./demo";
 export * from "./sessionRecording";

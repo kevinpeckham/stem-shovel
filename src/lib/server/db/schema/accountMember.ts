@@ -18,6 +18,11 @@ export const accountMember = table(
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),
 		role: t.text("role").$type<MemberRole>().notNull().default("member"),
+		/** The member's profile in this account (docs/band-plan.md, "The band directory"): how to reach them. */
+		phone: t.text("phone").notNull().default(""),
+		/** What they play, as free text ("guitar, vocals"). */
+		instruments: t.text("instruments").notNull().default(""),
+		notes: t.text("notes").notNull().default(""),
 		...timestamps,
 	},
 	(table) => [

@@ -143,7 +143,15 @@
 				/>
 
 				{#if show}
-					<EventBooks {form} {e} {issues} currency={data.currency} />
+					<EventBooks
+						{form}
+						{e}
+						{issues}
+						currency={data.currency}
+						contacts={data.contacts}
+						accountSlug={data.account.slug}
+						canEdit={data.canEdit}
+					/>
 				{/if}
 
 				<section class="grid gap-3" aria-labelledby="event-notes">

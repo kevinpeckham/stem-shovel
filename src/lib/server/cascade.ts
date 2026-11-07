@@ -37,6 +37,7 @@ const {
 	accountVenue,
 	venue,
 	practiceLocation,
+	contact,
 	sessionRecording,
 	recordingSession,
 	sessionComment,
@@ -320,6 +321,8 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(accountVenue).where(eq(accountVenue.accountId, accountId));
 	// Its practice locations, after the events that point at them.
 	await db.delete(practiceLocation).where(eq(practiceLocation.accountId, accountId));
+	// Its contacts (docs/band-plan.md, "The band directory"), after the events that name them.
+	await db.delete(contact).where(eq(contact.accountId, accountId));
 	await deleteSetListRows(
 		(await db.select({ id: setList.id }).from(setList).where(eq(setList.accountId, accountId))).map(
 			(r) => r.id,
@@ -424,6 +427,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 		.update(practiceLocation)
 		.set({ createdBy: null })
 		.where(eq(practiceLocation.createdBy, userId));
+	await db.update(contact).set({ createdBy: null }).where(eq(contact.createdBy, userId));
 	await db.update(shortLink).set({ createdBy: null }).where(eq(shortLink.createdBy, userId));
 	await db.update(song).set({ createdBy: null }).where(eq(song.createdBy, userId));
 	await db
