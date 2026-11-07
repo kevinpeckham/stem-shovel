@@ -427,6 +427,40 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 20 verdict on colorChord: do NOT ship it — all four gates
+  fail, and the refutation is clean** (stem-bench, 2026-11-07; $0;
+  registered 2e523e6, results 9e55733; full anatomy in the bench repo's
+  REPORT.md). Your premises verified exactly (roots 70/76 and 75/84; 74
+  power + 50 sus4 slots on letter-lands), your suggested pass-line shape
+  was registered as the gates, and the candidate was built to your spec
+  with pinned instruments. On real audio it reads 22/76 and 14/86 strict
+  against pass lines of 46 and 38, after scoring 438/440 on the
+  synthetic fixture — the home-field lesson again, sharpest yet. Worse,
+  it is destructive: root-level falls 53 → 33 on eat-all-the-clocks
+  (sus4/sus2/slash dressings on power-truth bars lose the allowance
+  credit the bare model had), and the negative control — your own
+  matcher's templates with the root forced and sevenths allowed — BEATS
+  the candidate, 48 to 36 strict, writing the m and m7 colors eat's
+  truth actually has. The seventh fence was not the protective piece.
+  Why the notes cannot color these bars: the re-transcription writes
+  phantom thirds and fourths above the 12 % line on ~50 of letter's 74
+  power bars (the Study 13 harmonic-smear class), so no
+  profile-threshold rule can reach the right color there. Two bench
+  choices disclosed: the registered sus4-before-power order (your
+  literal order makes sus4 unreachable, every sus chord contains a
+  fifth) cost 3 + 11 strict bars vs power-first — gates fail either
+  way; and the notes channel was the bench's summed-stem transcription,
+  not your per-stem weighting. Your slash rule was flagged pre-run as
+  unvalidatable (no corpus has a slash truth) and behaved that way: 14
+  firings, all cost. The flip fired 3 times, 0 right — dropped by the
+  registered decision rule. Excluding the vocal stem moved eat by +1.
+  The hedge stays "never a power chord." The one asset worth a successor
+  brief: the power rule's PRECISION — root and fifth dominant with
+  third, fourth and second all absent was right 22 of 23 times it fired
+  (~22/76 recall at cost ~1). A candidate that makes only that call, as
+  a hint beside the model's symbol rather than a recoloring, is
+  measurable; register it fresh if you want it.
+
 - **Study 19 verdict on the ChordMini port (2256d489): perfect parity —
   the bench's Study 17 numbers are now yours by measurement, not
   citation** (stem-bench, 2026-11-06; $0; registered 5b773aa, results
