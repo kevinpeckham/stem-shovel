@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
 	import type { updateEvent } from "#lib/remote/events.remote.js";
+	import type { ContactChoice } from "#lib/server/data.js";
 	import { centsText } from "#lib/utils/centsText.js";
 
 	/** The event's book fields this section reads, as the row stores them. */
@@ -12,28 +13,50 @@
 		deal: string;
 		promoter: string;
 		promoterContact: string;
+		promoterContactId: string | null;
 		takeCents: number | null;
 	};
 
 	/**
 	 * "The books" of a show's form (the event page; docs/band-plan.md phase
 	 * 4): the ticket price as free text and where to buy, tickets sold and
-	 * the head count ("" for not known), the deal, the promoter and how to
-	 * reach them, and the take, what the band took home, in the account's
-	 * currency. A practice has no books, so the page renders this for shows
-	 * only; a viewer sees it disabled with the rest of the form.
+	 * the head count ("" for not known), the deal, the promoter, and the
+	 * take, what the band took home, in the account's currency. The
+	 * promoter is one of the account's `contacts` (docs/band-plan.md, "The
+	 * band directory"; the picked one's role, phone and email under the
+	 * select, and a link to Contacts for an editor), or, for a one-off, the
+	 * two text fields: a name and how to reach them. A practice has no
+	 * books, so the page renders this for shows only; a viewer sees it
+	 * disabled with the rest of the form.
 	 */
 	let {
 		form,
 		e,
 		issues,
 		currency,
+		contacts,
+		accountSlug,
+		canEdit,
 	}: {
 		form: ReturnType<typeof updateEvent.for>;
 		e: BookFields;
 		issues: Snippet<[{ message: string }[] | undefined]>;
 		currency: string;
+		contacts: ContactChoice[];
+		accountSlug: string;
+		canEdit: boolean;
 	} = $props();
+
+	const promoterField = $derived(
+		form.fields.promoterContactId.as("select", e.promoterContactId ?? ""),
+	);
+	/** The picked contact's role, phone and email, for the line under the select. */
+	const picked = $derived.by(() => {
+		const c = contacts.find(
+			(c) => c.id === (form.fields.promoterContactId.value() ?? e.promoterContactId),
+		);
+		return c ? [c.role, c.phone, c.email].filter(Boolean).join(" · ") : "";
+	});
 
 	/** The currency's symbol before the take ("$"), else its code. */
 	const symbol = $derived.by(() => {
@@ -111,15 +134,18 @@
 			{@render issues(form.fields.deal.issues())}
 		</div>
 		<div class="grid gap-1">
-			<label class="grid gap-1 text-13px text-dim">
-				Promoter
-				<input
-					class="field text-14px"
-					{...form.fields.promoter.as("text", e.promoter)}
-					maxlength="160"
-				/>
-			</label>
-			{@render issues(form.fields.promoter.issues())}
+			<span class="flex items-baseline justify-between gap-2 text-13px text-dim">
+				<label for="event-promoter-contact">Promoter</label>
+				{#if canEdit}<a class="link" href="/{accountSlug}/contacts">Contacts</a>{/if}
+			</span>
+			<select class="field text-14px" id="event-promoter-contact" {...promoterField}>
+				<option value="">No contact (type one below)</option>
+				{#each contacts as c (c.id)}
+					<option value={c.id}>{c.name}</option>
+				{/each}
+			</select>
+			{#if picked}<p class="text-13px text-dim">{picked}</p>{/if}
+			{@render issues(form.fields.promoterContactId.issues())}
 		</div>
 		<div class="grid gap-1">
 			<label class="grid gap-1 text-13px text-dim">
@@ -138,7 +164,18 @@
 			</label>
 			{@render issues(form.fields.take.issues())}
 		</div>
-		<div class="grid gap-1 sm:col-span-2">
+		<div class="grid gap-1">
+			<label class="grid gap-1 text-13px text-dim">
+				One-off promoter
+				<input
+					class="field text-14px"
+					{...form.fields.promoter.as("text", e.promoter)}
+					maxlength="160"
+				/>
+			</label>
+			{@render issues(form.fields.promoter.issues())}
+		</div>
+		<div class="grid gap-1">
 			<label class="grid gap-1 text-13px text-dim">
 				Promoter contact
 				<input

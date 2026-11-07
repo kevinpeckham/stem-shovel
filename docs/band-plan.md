@@ -249,7 +249,15 @@ its people, with emails). The plan adds:
    Shows page over played shows (`showYearSummaries`). The currency is
    one per account, USD, with no control yet.
 5. **The directory** (v0.200). Member profiles, contacts, events pointing
-   at contacts, the members page.
+   at contacts, the members page. **Built 2026-11-07** (migration 0114:
+   `phone`, `instruments`, `notes` on `account_member`; the `contact`
+   table; `event.promoter_contact_id`): a Members page under Manage
+   (`/[account]/members`: name, role, email, phone, instruments, notes;
+   the member or an admin edits), a Contacts page and a contact page
+   (`/[account]/contacts`, `[id]`: name, role, phone, email, address,
+   notes, the shows that name it; a delete clears those shows' link and
+   keeps their one-off fields), and a Promoter pick from the contacts in
+   a show's books, with the one-off text fields kept beside it.
 
 ## Decisions for Kevin
 

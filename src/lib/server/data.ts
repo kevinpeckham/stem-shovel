@@ -199,6 +199,9 @@ import { MAX_ACCOUNT_VENUES, VENUE_SEARCH_LIMIT } from "#lib/constants/venues.js
 import type { VenueFields } from "#lib/val/VenueSchema.js";
 import { MAX_PRACTICE_LOCATIONS_PER_ACCOUNT } from "#lib/constants/practiceLocations.js";
 import type { PracticeLocationFields } from "#lib/val/PracticeLocationSchema.js";
+import { MAX_CONTACTS_PER_ACCOUNT } from "#lib/constants/contacts.js";
+import type { ContactFields } from "#lib/val/ContactSchema.js";
+import type { MemberProfileFields } from "#lib/val/MemberProfileSchema.js";
 import type { StemStatus } from "#lib/val/StemStatusSchema.js";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -273,6 +276,7 @@ const {
 	venue,
 	accountVenue,
 	practiceLocation,
+	contact,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -11157,11 +11161,11 @@ export type EventSetRow = {
 	itemCount: number;
 };
 
-/** The account's shows or practices, by day then creation (the page splits upcoming from past itself); `filter.venueId` keeps those at one venue, `filter.locationId` those at one practice location. */
+/** The account's shows or practices, by day then creation (the page splits upcoming from past itself); `filter.venueId` keeps those at one venue, `filter.locationId` those at one practice location, `filter.contactId` those whose promoter is one contact. */
 export async function listEvents(
 	accountId: string,
 	kind: EventKind,
-	filter: { venueId?: string; locationId?: string } = {},
+	filter: { venueId?: string; locationId?: string; contactId?: string } = {},
 ): Promise<EventListRow[]> {
 	return eventListRows(
 		and(
@@ -11169,6 +11173,7 @@ export async function listEvents(
 			eq(event.kind, kind),
 			filter.venueId ? eq(event.venueId, filter.venueId) : undefined,
 			filter.locationId ? eq(event.locationId, filter.locationId) : undefined,
+			filter.contactId ? eq(event.promoterContactId, filter.contactId) : undefined,
 		),
 		[asc(event.startsOn), asc(event.createdAt)],
 	);
@@ -11281,8 +11286,9 @@ async function ownEventSet(accountId: string, id: string) {
  * order, its venue (with this account's notes and contact) and the
  * account's venues to pick from, its practice location and the
  * account's locations to pick from, and the books: its payouts in order,
- * the account's members to pay and its currency. Null when it is not the
- * account's.
+ * the account's members to pay, its currency and its contacts to pick the
+ * promoter from (docs/band-plan.md, "The band directory"). Null when it is
+ * not the account's.
  */
 export async function eventPage(accountId: string, id: string) {
 	const e = await db.query.event.findFirst({
@@ -11302,6 +11308,7 @@ export async function eventPage(accountId: string, id: string) {
 		payouts,
 		members,
 		currency,
+		contacts,
 	] = await Promise.all([
 		db.query.eventSet.findMany({
 			where: eq(eventSet.eventId, id),
@@ -11344,6 +11351,7 @@ export async function eventPage(accountId: string, id: string) {
 		eventPayoutsOf(accountId, id),
 		accountMembersForPayouts(accountId),
 		accountCurrency(accountId),
+		contactChoices(accountId),
 	]);
 	const posters = files.filter((f) => f.kind === "poster");
 	return {
@@ -11368,6 +11376,7 @@ export async function eventPage(accountId: string, id: string) {
 		payouts,
 		members,
 		currency,
+		contacts,
 	};
 }
 
@@ -11417,35 +11426,49 @@ export async function createEvent(
 }
 
 /**
- * What an event update writes: `venueId` and `locationId` "" or null for
- * none, left out (or unknown) to keep the one it has.
+ * What an event update writes: `venueId`, `locationId` and
+ * `promoterContactId` "" or null for none, left out (or unknown) to keep
+ * the one it has.
  */
-export type EventUpdateFields = Omit<EventFields, "venueId" | "locationId"> & {
+export type EventUpdateFields = Omit<
+	EventFields,
+	"venueId" | "locationId" | "promoterContactId"
+> & {
 	venueId?: string | null;
 	locationId?: string | null;
+	promoterContactId?: string | null;
 };
 
 /**
  * The event's own words (when, where, the notes, the books); null when it
  * is not the account's. A practice's venue and a show's location are
  * cleared, whatever was sent. A field left undefined is not written; `take`
- * writes `takeCents`.
+ * writes `takeCents`; a promoter contact that is not the account's is
+ * ignored (the one there stays).
  */
 export async function updateEvent(
 	accountId: string,
 	id: string,
-	{ venueId: wantedVenue, locationId: wantedLocation, take, ...fields }: EventUpdateFields,
+	{
+		venueId: wantedVenue,
+		locationId: wantedLocation,
+		promoterContactId: wantedContact,
+		take,
+		...fields
+	}: EventUpdateFields,
 ) {
 	if (!(await ownEvent(accountId, id))) return null;
 	const venueId = fields.kind === "practice" ? null : await eventVenueId(accountId, wantedVenue);
 	const locationId =
 		fields.kind === "show" ? null : await eventLocationId(accountId, wantedLocation);
+	const promoterContactId = await eventContactId(accountId, wantedContact);
 	const [row] = await db
 		.update(event)
 		.set({
 			...fields,
 			...(venueId === undefined ? {} : { venueId }),
 			...(locationId === undefined ? {} : { locationId }),
+			...(promoterContactId === undefined ? {} : { promoterContactId }),
 			...(take === undefined ? {} : { takeCents: take }),
 			updatedAt: new Date(),
 		})
@@ -12073,6 +12096,232 @@ export async function deletePracticeLocation(
 		.delete(practiceLocation)
 		.where(and(eq(practiceLocation.accountId, accountId), eq(practiceLocation.id, id)));
 	return true;
+}
+
+// ---- the band directory: contacts and member profiles (docs/band-plan.md, "The band directory") ----
+
+/** A contact with how many of the account's events name them as promoter. */
+export interface ContactRow {
+	id: string;
+	name: string;
+	role: string;
+	phone: string;
+	email: string;
+	address: string;
+	notes: string;
+	eventCount: number;
+}
+
+/** A contact in a picker (a show's promoter), with enough to reach them. */
+export interface ContactChoice {
+	id: string;
+	name: string;
+	role: string;
+	phone: string;
+	email: string;
+}
+
+/** The columns a `ContactRow` reads, with the account's events naming the contact counted. */
+const contactRead = (accountId: string) =>
+	({
+		columns: {
+			id: true,
+			name: true,
+			role: true,
+			phone: true,
+			email: true,
+			address: true,
+			notes: true,
+		},
+		with: { events: { where: eq(event.accountId, accountId), columns: { id: true } } },
+	}) as const;
+
+function contactRow({
+	events,
+	...r
+}: Omit<ContactRow, "eventCount"> & { events: { id: string }[] }): ContactRow {
+	return { ...r, eventCount: events.length };
+}
+
+/** Name order for contacts: case-insensitive. */
+function byContactName(a: { name: string }, b: { name: string }) {
+	return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+}
+
+/** The account's contact, or null. */
+async function ownContact(accountId: string, id: string) {
+	return (
+		(await db.query.contact.findFirst({
+			where: and(eq(contact.accountId, accountId), eq(contact.id, id)),
+			columns: { id: true },
+		})) ?? null
+	);
+}
+
+/** The columns a contact write stores, trimmed by the schema already but for the name. */
+function contactValues(fields: ContactFields) {
+	return {
+		name: fields.name.trim(),
+		role: fields.role,
+		phone: fields.phone,
+		email: fields.email,
+		address: fields.address,
+		notes: fields.notes,
+	};
+}
+
+/** The account's contacts by name (case-insensitive), each with how many of its events name them. */
+export async function listContacts(accountId: string): Promise<ContactRow[]> {
+	const rows = await db.query.contact.findMany({
+		where: eq(contact.accountId, accountId),
+		...contactRead(accountId),
+	});
+	return rows.map(contactRow).sort(byContactName);
+}
+
+/** The account's contacts for a picker, by name. */
+export async function contactChoices(accountId: string): Promise<ContactChoice[]> {
+	const rows = await db.query.contact.findMany({
+		where: eq(contact.accountId, accountId),
+		columns: { id: true, name: true, role: true, phone: true, email: true },
+	});
+	return rows.sort(byContactName);
+}
+
+/** One of the account's contacts, or null when it is not the account's. */
+export async function findContact(accountId: string, id: string): Promise<ContactRow | null> {
+	const r = await db.query.contact.findFirst({
+		where: and(eq(contact.accountId, accountId), eq(contact.id, id)),
+		...contactRead(accountId),
+	});
+	return r ? contactRow(r) : null;
+}
+
+/** A new contact in the account; "full" at `MAX_CONTACTS_PER_ACCOUNT`. Two of the same name are fine. */
+export async function createContact(
+	accountId: string,
+	userId: string,
+	fields: ContactFields,
+): Promise<ContactRow | "full"> {
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(contact)
+		.where(eq(contact.accountId, accountId));
+	if (n >= MAX_CONTACTS_PER_ACCOUNT) return "full";
+	const [row] = await db
+		.insert(contact)
+		.values({ accountId, ...contactValues(fields), createdBy: userId })
+		.returning({ id: contact.id });
+	return (await findContact(accountId, row!.id))!;
+}
+
+/** A contact's fields; null when it is not the account's. */
+export async function updateContact(
+	accountId: string,
+	id: string,
+	fields: ContactFields,
+): Promise<ContactRow | null> {
+	if (!(await ownContact(accountId, id))) return null;
+	await db
+		.update(contact)
+		.set({ ...contactValues(fields), updatedAt: new Date() })
+		.where(and(eq(contact.accountId, accountId), eq(contact.id, id)));
+	return findContact(accountId, id);
+}
+
+/**
+ * The contact gone, false when it is not the account's. Never refused for
+ * use: the account's events that name it as promoter lose the link
+ * themselves (Turso enforces no foreign keys) and keep their one-off text.
+ */
+export async function deleteContact(accountId: string, id: string): Promise<boolean> {
+	if (!(await ownContact(accountId, id))) return false;
+	await db
+		.update(event)
+		.set({ promoterContactId: null })
+		.where(and(eq(event.accountId, accountId), eq(event.promoterContactId, id)));
+	await db.delete(contact).where(and(eq(contact.accountId, accountId), eq(contact.id, id)));
+	return true;
+}
+
+/**
+ * The promoter contact an event write stores: null for "" or null,
+ * undefined (keep what is there) when left out or when it is not one of the
+ * account's contacts.
+ */
+async function eventContactId(
+	accountId: string,
+	contactId: string | null | undefined,
+): Promise<string | null | undefined> {
+	if (contactId === undefined) return undefined;
+	if (!contactId) return null;
+	return (await ownContact(accountId, contactId)) ? contactId : undefined;
+}
+
+/** A member of the account with their profile there: how to reach them and what they play. */
+export interface MemberProfileRow {
+	userId: string;
+	name: string;
+	email: string;
+	role: MemberRole;
+	phone: string;
+	instruments: string;
+	notes: string;
+}
+
+/** The memberships `where` finds, each with its user's name and email. */
+async function memberProfileOf(where: SQL | undefined) {
+	return db.query.accountMember.findMany({
+		where,
+		with: { user: { columns: { name: true, email: true } } },
+	});
+}
+
+function memberProfileRow(r: {
+	userId: string;
+	role: MemberRole;
+	phone: string;
+	instruments: string;
+	notes: string;
+	user: { name: string; email: string };
+}): MemberProfileRow {
+	return {
+		userId: r.userId,
+		name: r.user.name,
+		email: r.user.email,
+		role: r.role,
+		phone: r.phone,
+		instruments: r.instruments,
+		notes: r.notes,
+	};
+}
+
+/** Every member of the account with their profile, by name (case-insensitive). */
+export async function listMemberProfiles(accountId: string): Promise<MemberProfileRow[]> {
+	const rows = await memberProfileOf(eq(accountMember.accountId, accountId));
+	return rows.map(memberProfileRow).sort(byContactName);
+}
+
+/** A member's phone, instruments and notes in the account; null when the user is not its member. */
+export async function updateMemberProfile(
+	accountId: string,
+	userId: string,
+	fields: MemberProfileFields,
+): Promise<MemberProfileRow | null> {
+	const where = and(eq(accountMember.accountId, accountId), eq(accountMember.userId, userId));
+	const [row] = await db
+		.update(accountMember)
+		.set({
+			phone: fields.phone,
+			instruments: fields.instruments,
+			notes: fields.notes,
+			updatedAt: new Date(),
+		})
+		.where(where)
+		.returning({ id: accountMember.id });
+	if (!row) return null;
+	const [r] = await memberProfileOf(where);
+	return r ? memberProfileRow(r) : null;
 }
 
 /**

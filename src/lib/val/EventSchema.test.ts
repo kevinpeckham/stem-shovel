@@ -90,6 +90,17 @@ describe("EventUpdateSchema", () => {
 		expect("locationId" in v.parse(EventUpdateSchema, base)).toBe(false);
 		expect(ok(EventUpdateSchema, { ...base, locationId: "not an id!" })).toBe(false);
 	});
+	test("promoterContactId: an id, empty for none, or left out to keep it", () => {
+		const base = { id: ID, kind: "show", status: "planned", startsOn: "2026-11-14" };
+		expect(v.parse(EventUpdateSchema, { ...base, promoterContactId: "" }).promoterContactId).toBe(
+			"",
+		);
+		expect(v.parse(EventUpdateSchema, { ...base, promoterContactId: ID }).promoterContactId).toBe(
+			ID,
+		);
+		expect("promoterContactId" in v.parse(EventUpdateSchema, base)).toBe(false);
+		expect(ok(EventUpdateSchema, { ...base, promoterContactId: "Dana!" })).toBe(false);
+	});
 	test("the legacy place fields keep their bounds when sent", () => {
 		const base = { id: ID, kind: "show", status: "planned", startsOn: "2026-11-14" };
 		expect(v.parse(EventUpdateSchema, { ...base, venue: " The Hall " }).venue).toBe("The Hall");

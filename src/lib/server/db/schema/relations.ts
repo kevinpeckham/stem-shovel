@@ -25,6 +25,7 @@ import { recordingSession } from "./recordingSession";
 import { setList } from "./setList";
 import { setListItem } from "./setListItem";
 import { event } from "./event";
+import { contact } from "./contact";
 import { venue } from "./venue";
 import { accountVenue } from "./accountVenue";
 import { practiceLocation } from "./practiceLocation";
@@ -88,6 +89,8 @@ export const accountRelations = relations(account, ({ many }) => ({
 	venues: many(accountVenue),
 	/** Where it practices (docs/band-plan.md, "Event"). */
 	practiceLocations: many(practiceLocation),
+	/** Its promoters, agents and engineers (docs/band-plan.md, "The band directory"). */
+	contacts: many(contact),
 }));
 
 export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
@@ -378,6 +381,11 @@ export const eventRelations = relations(event, ({ one, many }) => ({
 		fields: [event.locationId],
 		references: [practiceLocation.id],
 	}),
+	/** A show's promoter from the contacts (`promoterContactId`); named `promoterRow` because the text column holds the `promoterContact` key. */
+	promoterRow: one(contact, {
+		fields: [event.promoterContactId],
+		references: [contact.id],
+	}),
 	sets: many(eventSet),
 	sessions: many(recordingSession),
 	/** Its poster and photos (docs/band-plan.md, "Posters, pictures and video"). */
@@ -396,6 +404,12 @@ export const venueRelations = relations(venue, ({ one, many }) => ({
 export const practiceLocationRelations = relations(practiceLocation, ({ one, many }) => ({
 	account: one(account, { fields: [practiceLocation.accountId], references: [account.id] }),
 	creator: one(user, { fields: [practiceLocation.createdBy], references: [user.id] }),
+	events: many(event),
+}));
+
+export const contactRelations = relations(contact, ({ one, many }) => ({
+	account: one(account, { fields: [contact.accountId], references: [account.id] }),
+	creator: one(user, { fields: [contact.createdBy], references: [user.id] }),
 	events: many(event),
 }));
 

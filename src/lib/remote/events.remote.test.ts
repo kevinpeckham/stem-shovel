@@ -524,3 +524,40 @@ describe("event payouts", () => {
 		});
 	});
 });
+
+describe("a show's promoter from the contacts", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	const CONTACT = fakeId("contact-one");
+	const rest = {
+		kind: "show",
+		title: "",
+		status: "planned",
+		startsOn: "2026-11-20",
+		startsAt: "21:00",
+		endsAt: "",
+		loadInAt: "",
+		soundCheckAt: "",
+		notes: "",
+	};
+	it('updateEvent passes the contact, "" to clear it, or leaves it out when not sent', async () => {
+		data.updateEvent.mockResolvedValue({ id: EVENT });
+		await call(events.updateEvent, { id: EVENT, ...rest, promoterContactId: CONTACT });
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, {
+			...rest,
+			promoterContactId: CONTACT,
+		});
+		await call(events.updateEvent, { id: EVENT, ...rest, promoterContactId: "" });
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, {
+			...rest,
+			promoterContactId: "",
+		});
+		await call(events.updateEvent, { id: EVENT, ...rest });
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, rest);
+	});
+	it("refuses a promoterContactId that is not an id", async () => {
+		await expect(
+			call(events.updateEvent, { id: EVENT, ...rest, promoterContactId: "Dana!" }),
+		).rejects.toBeTruthy();
+		expect(data.updateEvent).not.toHaveBeenCalled();
+	});
+});

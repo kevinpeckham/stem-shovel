@@ -3,6 +3,7 @@ import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type { EventKind, EventStatus } from "../../../val/EventSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
+import { contact } from "./contact";
 import { practiceLocation } from "./practiceLocation";
 import { user } from "./user";
 import { venue as venueTable } from "./venue";
@@ -64,6 +65,10 @@ export const event = table(
 		deal: t.text("deal").notNull().default(""),
 		promoter: t.text("promoter").notNull().default(""),
 		promoterContact: t.text("promoter_contact").notNull().default(""),
+		/** The promoter from the account's contacts (docs/band-plan.md, "The band directory"); null for none, when `promoter` and `promoterContact` are the one-off fallback. */
+		promoterContactId: t
+			.text("promoter_contact_id")
+			.references(() => contact.id, { onDelete: "set null" }),
 		/** What the band took home from the show, in cents (may be negative); null when not known. Its payouts are `event_payout` rows. */
 		takeCents: t.integer("take_cents"),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
@@ -75,5 +80,6 @@ export const event = table(
 		t.index("event_created_by_idx").on(table.createdBy),
 		t.index("event_venue_idx").on(table.venueId),
 		t.index("event_location_idx").on(table.locationId),
+		t.index("event_promoter_contact_idx").on(table.promoterContactId),
 	],
 );

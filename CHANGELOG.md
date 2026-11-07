@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The band directory** (docs/band-plan.md phase 5, the last). A Members page under Manage (`/[account]/members`): everyone in the account with their role and email, and a profile each, a phone, what they play and notes, edited by the member or an owner or admin (`MemberCard`, `MemberProfileForm`; `updateMemberProfile`, memberProfiles.remote.ts). A Contacts page and a contact page (`/[account]/contacts`, `[id]`) for the people who are not members, promoters, booking agents, sound engineers: name, role, phone, email, address and notes, with the shows that name them (`ContactNew`, `ContactForm`; `createContact` / `updateContact` / `deleteContact`, contacts.remote.ts; at most 500 an account). A show's books pick the promoter from the contacts (`event.promoterContactId`), the one-off text fields kept beside the pick.
+
+### Technical
+
+- **Migration 0114**: `contact` (account, name, role, phone, email, address, notes, created_by), `phone` / `instruments` / `notes` on `account_member`, and `event.promoter_contact_id` (set null). Contacts go with their account (cascade.ts); deleting a contact clears the link on the account's events first, since Turso enforces no foreign keys. `listEvents` takes a `contactId` filter.
+
 ## [0.241.0] - 2026-11-07
 
 ### Added

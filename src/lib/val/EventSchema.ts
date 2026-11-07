@@ -10,6 +10,7 @@ import {
 	VenueRefSchema,
 } from "./VenueSchema";
 import { PracticeLocationRefSchema } from "./PracticeLocationSchema";
+import { ContactRefSchema } from "./ContactSchema";
 import { CountSchema, MoneySchema } from "./MoneySchema";
 
 /** What an event is (docs/band-plan.md, "Event"): a show or a practice. */
@@ -131,6 +132,8 @@ export const EventUpdateSchema = v.object({
 	deal: keptText(400, "deal"),
 	promoter: keptText(160, "promoter"),
 	promoterContact: keptText(400, "promoter's contact"),
+	/** The promoter from the account's contacts (docs/band-plan.md, "The band directory"): "" for none, left out to keep it. */
+	promoterContactId: v.optional(ContactRefSchema),
 	take: v.optional(MoneySchema),
 });
 export type EventUpdate = v.InferOutput<typeof EventUpdateSchema>;

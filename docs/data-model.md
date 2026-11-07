@@ -296,16 +296,23 @@ per song), stem versions (replicator's `audio_version` pattern), comments.
 
 ### account_member
 
-| column     | type                        | notes                                                     |
-| ---------- | --------------------------- | --------------------------------------------------------- |
-| id         | text PK                     |                                                           |
-| account_id | text FK → account (cascade) |                                                           |
-| user_id    | text FK → user (cascade)    |                                                           |
-| role       | text, default member        | `owner` \| `admin` \| `member` (viewers live on projects) |
-| created_at | timestamp_ms                |                                                           |
-| updated_at | timestamp_ms                |                                                           |
+| column      | type                        | notes                                                                  |
+| ----------- | --------------------------- | ---------------------------------------------------------------------- |
+| id          | text PK                     |                                                                        |
+| account_id  | text FK → account (cascade) |                                                                        |
+| user_id     | text FK → user (cascade)    |                                                                        |
+| role        | text, default member        | `owner` \| `admin` \| `member` (viewers live on projects)              |
+| phone       | text not null default ''    | the member's profile in this account (docs/band-plan.md phase 5); 0114 |
+| instruments | text not null default ''    | free text, "guitar, vocals"; 0114                                      |
+| notes       | text not null default ''    | 0114                                                                   |
+| created_at  | timestamp_ms                |                                                                        |
+| updated_at  | timestamp_ms                |                                                                        |
 
 Indexes: `(user_id)`, `(account_id)`, unique `(user_id, account_id)`.
+The profile columns are the account's view of the member (the Members
+page, `/[account]/members`), set by the member or an admin
+(`updateMemberProfile`, memberProfiles.remote.ts); they go with the
+membership.
 
 ### project
 
@@ -632,29 +639,30 @@ attendance, the deal, the promoter, the take) are columns since 0113
 (2026-11-07, phase 4), the payouts `event_payout` rows; the public blurb,
 `is_public` and `slug` come with a later phase.
 
-| column                     | type                            | notes                                                         |
-| -------------------------- | ------------------------------- | ------------------------------------------------------------- |
-| id                         | text PK                         |                                                               |
-| account_id                 | text FK → account (cascade)     | indexed, and with starts_on                                   |
-| kind                       | text not null                   | show / practice (`EVENT_KINDS`)                               |
-| title                      | text not null default ''        | the billing; '' means the venue and day                       |
-| status                     | text not null default 'planned' | planned / confirmed / played / canceled (`EVENT_STATUSES`)    |
-| starts_on                  | text not null                   | `YYYY-MM-DD`                                                  |
-| starts_at, ends_at         | text not null default ''        | `HH:MM` or ''                                                 |
-| load_in_at, sound_check_at | text not null default ''        | `HH:MM` or ''                                                 |
-| venue_id                   | text FK → venue (set null)      | indexed; since 0109 (2026-10-28), see `venue`                 |
-| venue, address, city       | text not null default ''        | legacy since 0109: backfilled into `venue`, no longer written |
-| map_url                    | text not null default ''        | legacy since 0109                                             |
-| venue_notes                | text not null default ''        | legacy since 0109: now `account_venue.notes`                  |
-| notes                      | text not null default ''        | markdown, members only: the plan, then how it went            |
-| ticket_price               | text not null default ''        | free text ("$10 adv / $12 door"); 0113                        |
-| ticket_url                 | text not null default ''        | where to buy; 0113                                            |
-| tickets_sold, attendance   | integer                         | null when not known; 0113                                     |
-| deal, promoter             | text not null default ''        | "80/20 after the first $300"; 0113                            |
-| promoter_contact           | text not null default ''        | 0113                                                          |
-| take_cents                 | integer                         | what the band took home, in the account's currency; 0113      |
-| created_by                 | text FK → user (set null)       | indexed                                                       |
-| created_at, updated_at     | timestamp_ms                    |                                                               |
+| column                     | type                            | notes                                                                                 |
+| -------------------------- | ------------------------------- | ------------------------------------------------------------------------------------- |
+| id                         | text PK                         |                                                                                       |
+| account_id                 | text FK → account (cascade)     | indexed, and with starts_on                                                           |
+| kind                       | text not null                   | show / practice (`EVENT_KINDS`)                                                       |
+| title                      | text not null default ''        | the billing; '' means the venue and day                                               |
+| status                     | text not null default 'planned' | planned / confirmed / played / canceled (`EVENT_STATUSES`)                            |
+| starts_on                  | text not null                   | `YYYY-MM-DD`                                                                          |
+| starts_at, ends_at         | text not null default ''        | `HH:MM` or ''                                                                         |
+| load_in_at, sound_check_at | text not null default ''        | `HH:MM` or ''                                                                         |
+| venue_id                   | text FK → venue (set null)      | indexed; since 0109 (2026-10-28), see `venue`                                         |
+| venue, address, city       | text not null default ''        | legacy since 0109: backfilled into `venue`, no longer written                         |
+| map_url                    | text not null default ''        | legacy since 0109                                                                     |
+| venue_notes                | text not null default ''        | legacy since 0109: now `account_venue.notes`                                          |
+| notes                      | text not null default ''        | markdown, members only: the plan, then how it went                                    |
+| ticket_price               | text not null default ''        | free text ("$10 adv / $12 door"); 0113                                                |
+| ticket_url                 | text not null default ''        | where to buy; 0113                                                                    |
+| tickets_sold, attendance   | integer                         | null when not known; 0113                                                             |
+| deal, promoter             | text not null default ''        | "80/20 after the first $300"; 0113                                                    |
+| promoter_contact           | text not null default ''        | 0113                                                                                  |
+| promoter_contact_id        | text FK → contact (set null)    | indexed; the promoter from the directory, the text columns the one-off fallback; 0114 |
+| take_cents                 | integer                         | what the band took home, in the account's currency; 0113                              |
+| created_by                 | text FK → user (set null)       | indexed                                                                               |
+| created_at, updated_at     | timestamp_ms                    |                                                                                       |
 
 Deleting an event removes its `event_set` and `event_payout` rows and
 clears `recording_session.event_id` on its tapes (`cascade.ts`); the
@@ -682,6 +690,27 @@ the page.
 | note                   | text not null default ''    |                                   |
 | sort_order             | integer not null default 0  |                                   |
 | created_at, updated_at | timestamp_ms                |                                   |
+
+### contact (`contact`, `account.contacts`)
+
+The band's directory of people who are not members (docs/band-plan.md,
+phase 5): promoters, booking agents, sound engineers. The account's own;
+a show's `promoter_contact_id` points at one. At most
+`MAX_CONTACTS_PER_ACCOUNT` (500) an account; names may repeat. Deleting
+one clears `event.promoter_contact_id` on the account's events first
+(`deleteContact`; Turso enforces no foreign keys), the shows keep their
+one-off text.
+
+| column                 | type                        | notes                                  |
+| ---------------------- | --------------------------- | -------------------------------------- |
+| id                     | text PK                     |                                        |
+| account_id             | text FK → account (cascade) | indexed                                |
+| name                   | text not null               |                                        |
+| role                   | text not null default ''    | free text: "Promoter", "Booking agent" |
+| phone, email, address  | text not null default ''    |                                        |
+| notes                  | text not null default ''    |                                        |
+| created_by             | text FK → user (set null)   | indexed                                |
+| created_at, updated_at | timestamp_ms                |                                        |
 
 ### event_set (`eventSet`, `event.sets`)
 

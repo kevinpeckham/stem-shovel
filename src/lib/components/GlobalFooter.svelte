@@ -56,6 +56,14 @@
 			<a class="footer-link" href="/{member.slug}/set-lists" title="What to play, in order"
 				>Set lists</a
 			>
+			<a
+				class="footer-link"
+				href="/{member.slug}/members"
+				title="Who is in the band and how to reach them">Members</a
+			>
+			<a class="footer-link" href="/{member.slug}/contacts" title="Promoters, agents and engineers"
+				>Contacts</a
+			>
 		</nav>
 	{/if}
 	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Instruments">
