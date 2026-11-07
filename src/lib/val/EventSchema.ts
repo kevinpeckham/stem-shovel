@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { boundedText } from "./BoundedTextSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { IsoDaySchema } from "./SessionRecordingSchema";
 import {
@@ -9,6 +10,7 @@ import {
 	VenueRefSchema,
 } from "./VenueSchema";
 import { PracticeLocationRefSchema } from "./PracticeLocationSchema";
+import { CountSchema, MoneySchema } from "./MoneySchema";
 
 /** What an event is (docs/band-plan.md, "Event"): a show or a practice. */
 export const EVENT_KINDS = ["show", "practice"] as const;
@@ -49,19 +51,29 @@ export const TimeSchema = v.optional(
 );
 
 /** Trimmed text of at most `max` characters, "" when left out. */
-const text = (max: number, what: string) =>
-	v.optional(
-		v.pipe(
-			v.string(),
-			v.trim(),
-			v.maxLength(max, `Keep the ${what} under ${max.toLocaleString("en-US")} characters.`),
-		),
-		"",
-	);
+const text = (max: number, what: string) => v.optional(boundedText(max, what), "");
 
 const TitleSchema = text(160, "title");
 const NotesSchema = text(20000, "notes");
 const LabelSchema = text(60, "label");
+
+/** Trimmed text of at most `max` characters, left out (undefined) when not sent: `updateEvent` leaves the column alone. */
+const keptText = (max: number, what: string) => v.optional(boundedText(max, what));
+
+/** Where to buy tickets: an http(s) address of at most 500 characters, or "" for none. */
+const TicketUrlSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.union([
+		v.literal(""),
+		v.pipe(
+			v.string(),
+			v.url("Enter a full web address"),
+			v.regex(/^https?:\/\//i, "Enter a full web address"),
+		),
+	]),
+	v.maxLength(500, "Keep the ticket link under 500 characters."),
+);
 
 /** The free-text venue name from before venues were their own rows (legacy, still accepted). */
 const VenueTextSchema = v.pipe(
@@ -107,6 +119,19 @@ export const EventUpdateSchema = v.object({
 	mapUrl: v.optional(VenueMapUrlSchema),
 	venueNotes: v.optional(VenueOwnNotesSchema),
 	notes: NotesSchema,
+	/**
+	 * The books (docs/band-plan.md, phase 4), each left out to keep it: the
+	 * ticket price as free text, where to buy, the counts ("" for not
+	 * known), the deal and the promoter, and the take (`takeCents`).
+	 */
+	ticketPrice: keptText(80, "ticket price"),
+	ticketUrl: v.optional(TicketUrlSchema),
+	ticketsSold: v.optional(CountSchema),
+	attendance: v.optional(CountSchema),
+	deal: keptText(400, "deal"),
+	promoter: keptText(160, "promoter"),
+	promoterContact: keptText(400, "promoter's contact"),
+	take: v.optional(MoneySchema),
 });
 export type EventUpdate = v.InferOutput<typeof EventUpdateSchema>;
 /** The fields `updateEvent` writes: everything but the id. */

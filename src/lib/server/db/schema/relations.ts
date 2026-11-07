@@ -29,6 +29,7 @@ import { venue } from "./venue";
 import { accountVenue } from "./accountVenue";
 import { practiceLocation } from "./practiceLocation";
 import { eventFile } from "./eventFile";
+import { eventPayout } from "./eventPayout";
 import { eventSet } from "./eventSet";
 import { beat } from "./beat";
 import { chordStyle } from "./chordStyle";
@@ -381,6 +382,8 @@ export const eventRelations = relations(event, ({ one, many }) => ({
 	sessions: many(recordingSession),
 	/** Its poster and photos (docs/band-plan.md, "Posters, pictures and video"). */
 	files: many(eventFile),
+	/** The books: who was paid out of the take (docs/band-plan.md, phase 4). */
+	payouts: many(eventPayout),
 }));
 
 export const venueRelations = relations(venue, ({ one, many }) => ({
@@ -405,6 +408,11 @@ export const eventFileRelations = relations(eventFile, ({ one }) => ({
 	account: one(account, { fields: [eventFile.accountId], references: [account.id] }),
 	event: one(event, { fields: [eventFile.eventId], references: [event.id] }),
 	uploader: one(user, { fields: [eventFile.uploadedBy], references: [user.id] }),
+}));
+
+export const eventPayoutRelations = relations(eventPayout, ({ one }) => ({
+	event: one(event, { fields: [eventPayout.eventId], references: [event.id] }),
+	user: one(user, { fields: [eventPayout.userId], references: [user.id] }),
 }));
 
 export const eventSetRelations = relations(eventSet, ({ one }) => ({

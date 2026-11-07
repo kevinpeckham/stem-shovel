@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { EventListRow } from "#lib/server/data.js";
+	import { formatCents } from "#lib/utils/formatCents.js";
 	import { plural } from "#lib/utils/plural.js";
 	import { dayText } from "#lib/utils/sessionName.js";
 	import { EVENT_STATUS_LABELS } from "#lib/val/EventSchema.js";
@@ -8,10 +9,15 @@
 	 * A show or practice as a list tile (the Shows and Practices pages, a
 	 * venue's or location's page): the poster's thumbnail, the title (else
 	 * the venue or location), and a line with the day, the time, the place,
-	 * the sets and sessions and a status other than planned. A canceled one
-	 * is dimmed. Render it in an `<li>`.
+	 * the sets and sessions, a show's tickets sold and take (in `currency`)
+	 * when known, and a status other than planned. A canceled one is
+	 * dimmed. Render it in an `<li>`.
 	 */
-	let { e, accountSlug }: { e: EventListRow; accountSlug: string } = $props();
+	let {
+		e,
+		accountSlug,
+		currency = "USD",
+	}: { e: EventListRow; accountSlug: string; currency?: string } = $props();
 
 	/** The poster on the tile: its thumbnail, else the poster itself when it is an image (a PDF without a thumbnail shows none). */
 	const thumb = $derived(
@@ -36,6 +42,8 @@
 				: venueName,
 			e.setCount ? plural(e.setCount, "set") : "",
 			e.sessionCount ? plural(e.sessionCount, "session") : "",
+			show && e.ticketsSold !== null ? `${e.ticketsSold} tickets` : "",
+			show && e.takeCents !== null ? formatCents(e.takeCents, currency) : "",
 			e.status === "planned" ? "" : EVENT_STATUS_LABELS[e.status],
 		]
 			.filter(Boolean)

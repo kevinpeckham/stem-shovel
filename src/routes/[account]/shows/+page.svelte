@@ -12,4 +12,5 @@
 	canEdit={data.canEdit}
 	venueChoices={data.venueChoices}
 	venueId={data.venueId}
+	currency={data.currency}
 />

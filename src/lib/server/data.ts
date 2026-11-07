@@ -193,6 +193,8 @@ import type { StemStreaming } from "#lib/val/StemStreamingSchema.js";
 import { accountLimits, storageFits } from "#lib/utils/accountLimits.js";
 import type { BlobAccess } from "#lib/utils/blobAccess.js";
 import { MAX_EVENT_PHOTOS, type EventFileKind } from "#lib/constants/eventFiles.js";
+import { MAX_EVENT_PAYOUTS } from "#lib/constants/eventPayouts.js";
+import type { EventPayoutFields } from "#lib/val/EventPayoutSchema.js";
 import { MAX_ACCOUNT_VENUES, VENUE_SEARCH_LIMIT } from "#lib/constants/venues.js";
 import type { VenueFields } from "#lib/val/VenueSchema.js";
 import { MAX_PRACTICE_LOCATIONS_PER_ACCOUNT } from "#lib/constants/practiceLocations.js";
@@ -266,6 +268,7 @@ const {
 	setListItem,
 	event,
 	eventFile,
+	eventPayout,
 	eventSet,
 	venue,
 	accountVenue,
@@ -11099,6 +11102,11 @@ export type EventListRow = {
 	posterThumbnailUrl: string | null;
 	/** The ready poster itself, null without one. */
 	posterUrl: string | null;
+	/** The books (docs/band-plan.md, phase 4): tickets sold and the head count, null when not known. */
+	ticketsSold: number | null;
+	attendance: number | null;
+	/** What the band took home, in cents (may be negative); null when not known. */
+	takeCents: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 };
@@ -11180,6 +11188,9 @@ async function eventListRows(where: SQL | undefined, orderBy: SQL[]): Promise<Ev
 			startsAt: true,
 			venue: true,
 			city: true,
+			ticketsSold: true,
+			attendance: true,
+			takeCents: true,
 			createdAt: true,
 			updatedAt: true,
 		},
@@ -11268,55 +11279,72 @@ async function ownEventSet(accountId: string, id: string) {
  * sessions newest first, at most 200, with the event each already points
  * at), its ready poster (the newest) and its ready photos in gallery
  * order, its venue (with this account's notes and contact) and the
- * account's venues to pick from, and its practice location and the
- * account's locations to pick from. Null when it is not the account's.
+ * account's venues to pick from, its practice location and the
+ * account's locations to pick from, and the books: its payouts in order,
+ * the account's members to pay and its currency. Null when it is not the
+ * account's.
  */
 export async function eventPage(accountId: string, id: string) {
 	const e = await db.query.event.findFirst({
 		where: and(eq(event.accountId, accountId), eq(event.id, id)),
 	});
 	if (!e) return null;
-	const [sets, sessions, lists, choices, files, place, places, location, locations] =
-		await Promise.all([
-			db.query.eventSet.findMany({
-				where: eq(eventSet.eventId, id),
-				orderBy: [asc(eventSet.sortOrder), asc(eventSet.createdAt)],
-				with: eventSetWith,
-			}),
-			db.query.recordingSession.findMany({
-				where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.eventId, id)),
-				orderBy: [asc(recordingSession.startsOn), asc(recordingSession.createdAt)],
-				columns: { id: true, name: true, kind: true, place: true, startsOn: true },
-				with: {
-					recordings: { columns: { id: true }, where: eq(sessionRecording.status, "ready") },
-				},
-			}),
-			db.query.setList.findMany({
-				where: eq(setList.accountId, accountId),
-				orderBy: [asc(setList.title), asc(setList.createdAt)],
-				columns: { id: true, title: true },
-				with: { items: { columns: { id: true } } },
-			}),
-			db.query.recordingSession.findMany({
-				where: eq(recordingSession.accountId, accountId),
-				orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
-				columns: { id: true, name: true, kind: true, place: true, startsOn: true, eventId: true },
-				limit: 200,
-			}),
-			db.query.eventFile.findMany({
-				where: and(
-					eq(eventFile.accountId, accountId),
-					eq(eventFile.eventId, id),
-					eq(eventFile.status, "ready"),
-				),
-				orderBy: [asc(eventFile.sortOrder), asc(eventFile.createdAt)],
-				columns: eventFileColumns,
-			}),
-			e.venueId ? venueRowFor(accountId, e.venueId) : Promise.resolve(null),
-			venueChoices(accountId),
-			e.locationId ? findPracticeLocation(accountId, e.locationId) : Promise.resolve(null),
-			practiceLocationChoices(accountId),
-		]);
+	const [
+		sets,
+		sessions,
+		lists,
+		choices,
+		files,
+		place,
+		places,
+		location,
+		locations,
+		payouts,
+		members,
+		currency,
+	] = await Promise.all([
+		db.query.eventSet.findMany({
+			where: eq(eventSet.eventId, id),
+			orderBy: [asc(eventSet.sortOrder), asc(eventSet.createdAt)],
+			with: eventSetWith,
+		}),
+		db.query.recordingSession.findMany({
+			where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.eventId, id)),
+			orderBy: [asc(recordingSession.startsOn), asc(recordingSession.createdAt)],
+			columns: { id: true, name: true, kind: true, place: true, startsOn: true },
+			with: {
+				recordings: { columns: { id: true }, where: eq(sessionRecording.status, "ready") },
+			},
+		}),
+		db.query.setList.findMany({
+			where: eq(setList.accountId, accountId),
+			orderBy: [asc(setList.title), asc(setList.createdAt)],
+			columns: { id: true, title: true },
+			with: { items: { columns: { id: true } } },
+		}),
+		db.query.recordingSession.findMany({
+			where: eq(recordingSession.accountId, accountId),
+			orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
+			columns: { id: true, name: true, kind: true, place: true, startsOn: true, eventId: true },
+			limit: 200,
+		}),
+		db.query.eventFile.findMany({
+			where: and(
+				eq(eventFile.accountId, accountId),
+				eq(eventFile.eventId, id),
+				eq(eventFile.status, "ready"),
+			),
+			orderBy: [asc(eventFile.sortOrder), asc(eventFile.createdAt)],
+			columns: eventFileColumns,
+		}),
+		e.venueId ? venueRowFor(accountId, e.venueId) : Promise.resolve(null),
+		venueChoices(accountId),
+		e.locationId ? findPracticeLocation(accountId, e.locationId) : Promise.resolve(null),
+		practiceLocationChoices(accountId),
+		eventPayoutsOf(accountId, id),
+		accountMembersForPayouts(accountId),
+		accountCurrency(accountId),
+	]);
 	const posters = files.filter((f) => f.kind === "poster");
 	return {
 		event: e,
@@ -11337,6 +11365,9 @@ export async function eventPage(accountId: string, id: string) {
 		venueChoices: places,
 		location,
 		locationChoices: locations,
+		payouts,
+		members,
+		currency,
 	};
 }
 
@@ -11395,14 +11426,15 @@ export type EventUpdateFields = Omit<EventFields, "venueId" | "locationId"> & {
 };
 
 /**
- * The event's own words (when, where, the notes); null when it is not the
- * account's. A practice's venue and a show's location are cleared, whatever
- * was sent.
+ * The event's own words (when, where, the notes, the books); null when it
+ * is not the account's. A practice's venue and a show's location are
+ * cleared, whatever was sent. A field left undefined is not written; `take`
+ * writes `takeCents`.
  */
 export async function updateEvent(
 	accountId: string,
 	id: string,
-	{ venueId: wantedVenue, locationId: wantedLocation, ...fields }: EventUpdateFields,
+	{ venueId: wantedVenue, locationId: wantedLocation, take, ...fields }: EventUpdateFields,
 ) {
 	if (!(await ownEvent(accountId, id))) return null;
 	const venueId = fields.kind === "practice" ? null : await eventVenueId(accountId, wantedVenue);
@@ -11414,6 +11446,7 @@ export async function updateEvent(
 			...fields,
 			...(venueId === undefined ? {} : { venueId }),
 			...(locationId === undefined ? {} : { locationId }),
+			...(take === undefined ? {} : { takeCents: take }),
 			updatedAt: new Date(),
 		})
 		.where(and(eq(event.accountId, accountId), eq(event.id, id)))
@@ -11449,6 +11482,157 @@ async function eventLocationId(
 	if (locationId === undefined) return undefined;
 	if (!locationId) return null;
 	return (await ownPracticeLocation(accountId, locationId)) ? locationId : undefined;
+}
+
+// ---- the books: an event's payouts (docs/band-plan.md, phase 4) ------------
+
+/** One payout of a show: `name` is the member's when `userId` is set, else the row's own. */
+export type EventPayoutRow = {
+	id: string;
+	userId: string | null;
+	name: string;
+	amountCents: number;
+	note: string;
+	sortOrder: number;
+};
+
+const eventPayoutQuery = {
+	columns: { id: true, userId: true, name: true, amountCents: true, note: true, sortOrder: true },
+	with: { user: { columns: { name: true } } },
+} as const;
+
+function eventPayoutRow({
+	user: member,
+	...r
+}: EventPayoutRow & { user: { name: string } | null }): EventPayoutRow {
+	return { ...r, name: r.userId && member ? member.name : r.name };
+}
+
+/** The event's payouts by `sortOrder`, then creation. */
+async function eventPayoutsOf(accountId: string, eventId: string): Promise<EventPayoutRow[]> {
+	const rows = await db.query.eventPayout.findMany({
+		where: and(eq(eventPayout.accountId, accountId), eq(eventPayout.eventId, eventId)),
+		orderBy: [asc(eventPayout.sortOrder), asc(eventPayout.createdAt)],
+		...eventPayoutQuery,
+	});
+	return rows.map(eventPayoutRow);
+}
+
+/** One payout as an `EventPayoutRow`, or null when it is not the account's. */
+async function eventPayoutRowOf(accountId: string, id: string): Promise<EventPayoutRow | null> {
+	const row = await db.query.eventPayout.findFirst({
+		where: and(eq(eventPayout.accountId, accountId), eq(eventPayout.id, id)),
+		...eventPayoutQuery,
+	});
+	return row ? eventPayoutRow(row) : null;
+}
+
+/** The account's members to pay, by name. */
+async function accountMembersForPayouts(
+	accountId: string,
+): Promise<{ userId: string; name: string }[]> {
+	const rows = await db.query.accountMember.findMany({
+		where: eq(accountMember.accountId, accountId),
+		columns: { userId: true },
+		with: { user: { columns: { name: true } } },
+	});
+	return rows
+		.map((r) => ({ userId: r.userId, name: r.user.name }))
+		.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** The currency of the account's books (ISO 4217); "USD" when the account is missing. */
+export async function accountCurrency(accountId: string): Promise<string> {
+	const row = await db.query.account.findFirst({
+		where: eq(account.id, accountId),
+		columns: { currency: true },
+	});
+	return row?.currency ?? "USD";
+}
+
+/**
+ * The payee a payout write stores: `userId` null and the typed name when
+ * it is not a member; the member's id, and the typed name or else the
+ * member's own (kept for the books should the user be deleted), when it
+ * is. "not-member" when `userId` is not a member of the account.
+ */
+async function payoutPayee(
+	accountId: string,
+	{ userId, name }: Pick<EventPayoutFields, "userId" | "name">,
+): Promise<{ userId: string | null; name: string } | "not-member"> {
+	if (!userId) return { userId: null, name };
+	const member = await db.query.accountMember.findFirst({
+		where: and(eq(accountMember.accountId, accountId), eq(accountMember.userId, userId)),
+		columns: { id: true },
+		with: { user: { columns: { name: true } } },
+	});
+	if (!member) return "not-member";
+	return { userId, name: name || member.user.name };
+}
+
+/**
+ * A new payout of the event, after its others; null when the event is not
+ * the account's, "full" at `MAX_EVENT_PAYOUTS`, "not-member" when `userId`
+ * is not a member of the account.
+ */
+export async function addEventPayout(
+	accountId: string,
+	eventId: string,
+	fields: EventPayoutFields,
+): Promise<EventPayoutRow | "full" | "not-member" | null> {
+	if (!(await ownEvent(accountId, eventId))) return null;
+	const [stats] = await db
+		.select({ n: count(), top: sql<number | null>`max(${eventPayout.sortOrder})` })
+		.from(eventPayout)
+		.where(and(eq(eventPayout.accountId, accountId), eq(eventPayout.eventId, eventId)));
+	if (Number(stats?.n ?? 0) >= MAX_EVENT_PAYOUTS) return "full";
+	const payee = await payoutPayee(accountId, fields);
+	if (payee === "not-member") return payee;
+	const [row] = await db
+		.insert(eventPayout)
+		.values({
+			accountId,
+			eventId,
+			...payee,
+			amountCents: fields.amount,
+			note: fields.note,
+			sortOrder: stats?.top == null ? 0 : Number(stats.top) + 1,
+		})
+		.returning({ id: eventPayout.id });
+	await touchEvent(accountId, eventId);
+	return eventPayoutRowOf(accountId, row!.id);
+}
+
+/** A payout's new words; null when it is not the account's, "not-member" when `userId` is not a member of the account. */
+export async function updateEventPayout(
+	accountId: string,
+	id: string,
+	fields: EventPayoutFields,
+): Promise<EventPayoutRow | "not-member" | null> {
+	const own = await db.query.eventPayout.findFirst({
+		where: and(eq(eventPayout.accountId, accountId), eq(eventPayout.id, id)),
+		columns: { eventId: true },
+	});
+	if (!own) return null;
+	const payee = await payoutPayee(accountId, fields);
+	if (payee === "not-member") return payee;
+	await db
+		.update(eventPayout)
+		.set({ ...payee, amountCents: fields.amount, note: fields.note, updatedAt: new Date() })
+		.where(and(eq(eventPayout.accountId, accountId), eq(eventPayout.id, id)));
+	await touchEvent(accountId, own.eventId);
+	return eventPayoutRowOf(accountId, id);
+}
+
+/** The payout off the event; false when it is not the account's. */
+export async function removeEventPayout(accountId: string, id: string): Promise<boolean> {
+	const [row] = await db
+		.delete(eventPayout)
+		.where(and(eq(eventPayout.accountId, accountId), eq(eventPayout.id, id)))
+		.returning({ eventId: eventPayout.eventId });
+	if (!row) return false;
+	await touchEvent(accountId, row.eventId);
+	return true;
 }
 
 /** The event, its sets, its poster and photos (rows and blobs), and its sessions untied (cascade.ts); false when it is not the account's. */

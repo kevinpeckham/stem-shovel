@@ -15,6 +15,8 @@ A show's page has four sections:
 - **Photos.** After the night, add the pictures. They sit in a gallery on the show's page; tap one to see it large, step through them, give each a caption, and download the ones you want.
 - **Set lists.** The set lists you will play, in order, each with a label ("Set 1", "Encore"). Choose a set list from the account's and it is attached at once; drag the sets into order, and open any set's editor or its show view from here. One set list can serve two shows, or two sets of one show.
 - **Recordings.** The session recordings of the night. Choose a session from the account's and it is linked at once, its recordings a click away; a session belongs to one show or practice at a time.
+- **The books.** The ticket price and where to buy, how many sold and how many came, the deal ("80/20 after the first $300"), the promoter and how to reach them, and the take: what the band took home, typed as an amount like 450 or 450.50.
+- **Payouts.** Who got what out of the take: pick a member or type a name (the sound engineer, "Gas"), the amount and a note. The page adds them up and shows what is left of the take.
 - **Notes.** The plan for the night, then how it went, for posterity.
 
 Practices have the same page without the show-only fields.
@@ -23,4 +25,4 @@ Practices have the same page without the show-only fields.
 
 The dashboard's **Upcoming** block shows the next few shows and practices across your bands with how soon they are. Its **Calendar feed** button copies a private link your calendar app can subscribe to, so shows and practices land on your phone's calendar as they are added or moved; keep the link to your band. The day before a show or practice, every member gets a reminder in the inbox (and by email, per the Show reminders setting).
 
-The Shows page lists what is **Upcoming**, soonest first, and what is **Past**, newest first, each under its venue, day and time. The Practices page does the same for rehearsals. Deleting a show or practice removes it from the calendar and unlinks its sessions and sets; the sessions and set lists themselves stay.
+The Shows page lists what is **Upcoming**, soonest first, and what is **Past**, newest first, each under its venue, day and time, with the tickets sold and the take once they are in. Between them, **By year** adds up the shows marked played: how many, tickets sold and the take. The Practices page does the same for rehearsals. Deleting a show or practice removes it from the calendar and unlinks its sessions and sets; the sessions and set lists themselves stay.

@@ -23,6 +23,16 @@ const OTHER_SET = fakeId("set-two");
 const LIST = fakeId("list-one");
 const SESSION = fakeId("session-one");
 const FILE = fakeId("evfile-one");
+const PAYOUT = fakeId("payout-one");
+const MEMBER = fakeId("member-one");
+const PAYOUT_ROW = {
+	id: PAYOUT,
+	userId: MEMBER,
+	name: "Dana",
+	amountCents: 12050,
+	note: "",
+	sortOrder: 0,
+};
 const SET_ROW = { id: SET, setListId: LIST, label: "", sortOrder: 0, title: "Main", itemCount: 3 };
 const FIELDS = {
 	kind: "show",
@@ -46,6 +56,7 @@ beforeEach(() => {
 	givenRow("event", { accountId: ACCOUNT });
 	givenRow("eventSet", { id: SET, event: { accountId: ACCOUNT } });
 	givenRow("eventFile", { accountId: ACCOUNT });
+	givenRow("eventPayout", { accountId: ACCOUNT });
 });
 
 const cases = [
@@ -165,6 +176,43 @@ const cases = [
 		args: [ACCOUNT, FILE],
 		outcome: { ok: true },
 		missing: "eventFile",
+	},
+	{
+		name: "addEventPayout",
+		fn: events.addEventPayout,
+		input: { eventId: EVENT, userId: MEMBER, amount: "120.50" },
+		arrange: () => data.addEventPayout.mockResolvedValue(PAYOUT_ROW),
+		dataFn: "addEventPayout",
+		args: [ACCOUNT, EVENT, { userId: MEMBER, name: "", amount: 12050, note: "" }],
+		outcome: PAYOUT_ROW,
+		missing: "event",
+	},
+	{
+		name: "updateEventPayout",
+		fn: events.updateEventPayout,
+		input: { id: PAYOUT, name: " Sound guy ", amount: "50", note: "cash" },
+		arrange: () =>
+			data.updateEventPayout.mockResolvedValue({
+				...PAYOUT_ROW,
+				userId: null,
+				name: "Sound guy",
+				amountCents: 5000,
+				note: "cash",
+			}),
+		dataFn: "updateEventPayout",
+		args: [ACCOUNT, PAYOUT, { userId: "", name: "Sound guy", amount: 5000, note: "cash" }],
+		outcome: { ...PAYOUT_ROW, userId: null, name: "Sound guy", amountCents: 5000, note: "cash" },
+		missing: "eventPayout",
+	},
+	{
+		name: "removeEventPayout",
+		fn: events.removeEventPayout,
+		input: { id: PAYOUT },
+		arrange: () => data.removeEventPayout.mockResolvedValue(true),
+		dataFn: "removeEventPayout",
+		args: [ACCOUNT, PAYOUT],
+		outcome: { ok: true },
+		missing: "eventPayout",
 	},
 ];
 
@@ -406,5 +454,73 @@ describe("event files", () => {
 			call(events.updateEventFileCaption, { id: FILE, caption: "x".repeat(301) }),
 		).rejects.toBeTruthy();
 		expect(data.updateEventFileCaption).not.toHaveBeenCalled();
+	});
+});
+
+describe("event payouts", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("addEventPayout answers 400 for a userId that is not a member of the account", async () => {
+		data.addEventPayout.mockResolvedValue("not-member");
+		await expect(
+			call(events.addEventPayout, { eventId: EVENT, userId: MEMBER, amount: "10" }),
+		).rejects.toMatchObject({ status: 400, body: { message: "Not a member" } });
+	});
+	it("updateEventPayout answers 400 for a userId that is not a member of the account", async () => {
+		data.updateEventPayout.mockResolvedValue("not-member");
+		await expect(
+			call(events.updateEventPayout, { id: PAYOUT, userId: MEMBER, amount: "10" }),
+		).rejects.toMatchObject({ status: 400, body: { message: "Not a member" } });
+	});
+	it("addEventPayout answers 409 at the cap", async () => {
+		data.addEventPayout.mockResolvedValue("full");
+		await expect(
+			call(events.addEventPayout, { eventId: EVENT, name: "Gas", amount: "10" }),
+		).rejects.toMatchObject({
+			status: 409,
+			body: { message: "This show has as many payouts as it may." },
+		});
+	});
+	it("the data layer finding nothing answers 404", async () => {
+		data.addEventPayout.mockResolvedValue(null);
+		await expect(
+			call(events.addEventPayout, { eventId: EVENT, name: "Gas", amount: "10" }),
+		).rejects.toMatchObject(httpError(404));
+		data.updateEventPayout.mockResolvedValue(null);
+		await expect(
+			call(events.updateEventPayout, { id: PAYOUT, name: "Gas", amount: "10" }),
+		).rejects.toMatchObject(httpError(404));
+		data.removeEventPayout.mockResolvedValue(false);
+		await expect(call(events.removeEventPayout, { id: PAYOUT })).rejects.toMatchObject(
+			httpError(404),
+		);
+	});
+	it("a payout needs a member or a name, and an amount, before the data layer", async () => {
+		await expect(
+			call(events.addEventPayout, { eventId: EVENT, userId: "", name: " ", amount: "10" }),
+		).rejects.toBeTruthy();
+		await expect(call(events.updateEventPayout, { id: PAYOUT, amount: "10" })).rejects.toBeTruthy();
+		await expect(
+			call(events.addEventPayout, { eventId: EVENT, name: "Gas", amount: "" }),
+		).rejects.toBeTruthy();
+		expect(data.addEventPayout).not.toHaveBeenCalled();
+		expect(data.updateEventPayout).not.toHaveBeenCalled();
+	});
+	it("updateEvent passes the books, with the take in cents", async () => {
+		data.updateEvent.mockResolvedValue({ id: EVENT });
+		await call(events.updateEvent, {
+			id: EVENT,
+			...FIELDS,
+			ticketPrice: "$10",
+			ticketsSold: "",
+			attendance: "120",
+			take: "450.50",
+		});
+		expect(data.updateEvent).toHaveBeenLastCalledWith(ACCOUNT, EVENT, {
+			...FIELDS,
+			ticketPrice: "$10",
+			ticketsSold: null,
+			attendance: 120,
+			take: 45050,
+		});
 	});
 });

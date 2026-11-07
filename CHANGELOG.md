@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The books** (docs/band-plan.md phase 4). A show's page gains "The books": ticket price and link, tickets sold, attendance, the deal, the promoter and contact, and the take (what the band took home, typed as money and stored in cents: `MoneySchema` / `parseMoney`, shown by `centsText`, formatted by `formatCents` in the account's currency), and a Payouts section: a member or a name, the amount and a note each, with the sum and what is left of the take (`EventPayouts`, `EventPayoutRow`, `EventPayoutFields`; `addEventPayout` / `updateEventPayout` / `removeEventPayout`, at most 40 a show). On the Shows page a show's tile carries its tickets and take, and a By year table sums the played shows (`showYearSummaries`).
+
+### Technical
+
+- **Migration 0113**: `event_payout` (account, event, a nullable user, name, amount in cents, note, order), `account.currency` (ISO 4217, "USD"), and on `event`: `ticket_price`, `ticket_url`, `tickets_sold`, `attendance`, `deal`, `promoter`, `promoter_contact`, `take_cents`. Payouts go with their event and account (cascade.ts); a deleted user's payouts keep the name. `BoundedTextSchema` (`boundedText(max, what)`) is the shared trimmed-text schema of the event and payout schemas.
+
 ## [0.240.0] - 2026-11-07
 
 ### Added

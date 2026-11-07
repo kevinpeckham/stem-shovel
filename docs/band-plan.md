@@ -238,7 +238,16 @@ its people, with emails). The plan adds:
 4. **The books** (v0.199). Tickets, attendance, the deal, payouts per
    member, and a per-show and per-year summary on the calendar page
    (shows played, tickets sold, take). Mostly the event page's fields
-   from phase 2 getting their own section and totals.
+   from phase 2 getting their own section and totals. **Built
+   2026-11-07** (migration 0113: the columns on `event`, `event_payout`,
+   `account.currency`): "The books" section of a show's form
+   (`EventBooks`: ticket price and link, tickets sold, attendance, the
+   deal, the promoter and contact, the take as money text parsed to
+   cents by `MoneySchema`), a Payouts section (`EventPayouts`: a member
+   or a name, the amount, a note; the sum and what is left of the take),
+   tickets and the take on a show's tile, and a By year table on the
+   Shows page over played shows (`showYearSummaries`). The currency is
+   one per account, USD, with no control yet.
 5. **The directory** (v0.200). Member profiles, contacts, events pointing
    at contacts, the members page.
 

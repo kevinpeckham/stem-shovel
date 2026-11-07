@@ -2,21 +2,25 @@ import { command, form, getRequestEvent } from "$app/server";
 import {
 	accountOfEvent,
 	accountOfEventFile,
+	accountOfEventPayout,
 	accountOfEventSet,
 	memberOf,
 	requireEditor,
 	requireUser,
 } from "#lib/server/access.js";
 import {
+	addEventPayout as addPayout,
 	addEventSet as addSet,
 	createEvent as create,
 	deleteEvent as remove,
 	deleteEventFile as removeFile,
 	updateEventFileCaption as updateFileCaption,
 	linkEventSession as linkSession,
+	removeEventPayout as removePayout,
 	removeEventSet as removeSet,
 	reorderEventSets as reorderSets,
 	updateEvent as update,
+	updateEventPayout as updatePayout,
 	updateEventSetLabel as updateSetLabel,
 } from "#lib/server/data.js";
 import {
@@ -30,6 +34,11 @@ import {
 	EventUpdateSchema,
 } from "#lib/val/EventSchema.js";
 import { EventFileCaptionSchema, EventFileIdSchema } from "#lib/val/EventFileSchema.js";
+import {
+	EventPayoutAddSchema,
+	EventPayoutIdSchema,
+	EventPayoutUpdateSchema,
+} from "#lib/val/EventPayoutSchema.js";
 import { deleteBlobs } from "#lib/server/blob.js";
 import { error, redirect } from "@sveltejs/kit";
 
@@ -141,4 +150,36 @@ export const deleteEventFile = command(EventFileIdSchema, async ({ id }) => {
 	if (!removed) error(404, "Not found");
 	await deleteBlobs([removed.url, removed.thumbnailUrl ?? ""]);
 	return { ok: true };
+});
+
+/** A payout of the show (docs/band-plan.md, "The books"): a member of the account or a name, and the amount; an editor of its account. At most `MAX_EVENT_PAYOUTS` per event. */
+export const addEventPayout = command(EventPayoutAddSchema, async ({ eventId, ...fields }) => {
+	const { locals } = getRequestEvent();
+	requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfEvent, eventId);
+	const row = await addPayout(accountId, eventId, fields);
+	if (row === "full") error(409, "This show has as many payouts as it may.");
+	if (row === "not-member") error(400, "Not a member");
+	if (!row) error(404, "Not found");
+	return row;
+});
+
+/** A payout's new words: the member or the name, the amount and the note. */
+export const updateEventPayout = command(EventPayoutUpdateSchema, async ({ id, ...fields }) => {
+	const { locals } = getRequestEvent();
+	requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfEventPayout, id);
+	const row = await updatePayout(accountId, id, fields);
+	if (row === "not-member") error(400, "Not a member");
+	if (!row) error(404, "Not found");
+	return row;
+});
+
+/** The payout off the show. */
+export const removeEventPayout = command(EventPayoutIdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfEventPayout, id);
+	if (!(await removePayout(accountId, id))) error(404, "Not found");
+	return { ok: true as const };
 });

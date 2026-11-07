@@ -13,8 +13,9 @@ import { venue as venueTable } from "./venue";
  * strings (no time zone: a time on a poster is the venue's time), where it
  * is, and the members' notes. Its sets are `event_set` rows (set lists
  * attached in order); its tapes are the `recording_session` rows that
- * point at it. The money, the house and the public page come in later
- * phases. Deleted with the account (src/lib/server/cascade.ts).
+ * point at it. The money (the books) is on the row,
+ * its payouts `event_payout` rows; the house and the public page come in
+ * later phases. Deleted with the account (src/lib/server/cascade.ts).
  */
 export const event = table(
 	"event",
@@ -51,6 +52,20 @@ export const event = table(
 		venueNotes: t.text("venue_notes").notNull().default(""),
 		/** Markdown, members only: the plan for the night, then how it went. */
 		notes: t.text("notes").notNull().default(""),
+		/** The books (docs/band-plan.md, phase 4): the ticket price as free text ("$10 adv / $12 door"). */
+		ticketPrice: t.text("ticket_price").notNull().default(""),
+		/** Where to buy tickets, or "". */
+		ticketUrl: t.text("ticket_url").notNull().default(""),
+		/** Tickets sold, or null when not known. */
+		ticketsSold: t.integer("tickets_sold"),
+		/** Head count, or null when not known. */
+		attendance: t.integer("attendance"),
+		/** The deal as free text ("80/20 after the first $300"). */
+		deal: t.text("deal").notNull().default(""),
+		promoter: t.text("promoter").notNull().default(""),
+		promoterContact: t.text("promoter_contact").notNull().default(""),
+		/** What the band took home from the show, in cents (may be negative); null when not known. Its payouts are `event_payout` rows. */
+		takeCents: t.integer("take_cents"),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},

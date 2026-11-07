@@ -103,6 +103,72 @@ describe("EventUpdateSchema", () => {
 	});
 });
 
+describe("EventUpdateSchema, the books", () => {
+	const base = { id: ID, kind: "show", status: "played", startsOn: "2026-11-14" };
+	test("the new fields parse: counts and the take as numbers, text trimmed", () => {
+		const out = v.parse(EventUpdateSchema, {
+			...base,
+			ticketPrice: " $10 adv / $12 door ",
+			ticketUrl: "https://tickets.example.com/show",
+			ticketsSold: "212",
+			attendance: "250",
+			deal: "80/20 after the first $300",
+			promoter: "Night Owl Presents",
+			promoterContact: "Dana, 555-0100",
+			take: "450.50",
+		});
+		expect(out).toMatchObject({
+			ticketPrice: "$10 adv / $12 door",
+			ticketUrl: "https://tickets.example.com/show",
+			ticketsSold: 212,
+			attendance: 250,
+			deal: "80/20 after the first $300",
+			promoter: "Night Owl Presents",
+			promoterContact: "Dana, 555-0100",
+			take: 45050,
+		});
+	});
+	test("empty counts and take are null (not known); an empty ticket link is allowed", () => {
+		const out = v.parse(EventUpdateSchema, {
+			...base,
+			ticketsSold: "",
+			attendance: " ",
+			take: "",
+			ticketUrl: "",
+		});
+		expect(out.ticketsSold).toBeNull();
+		expect(out.attendance).toBeNull();
+		expect(out.take).toBeNull();
+		expect(out.ticketUrl).toBe("");
+	});
+	test("left out, they stay out (updateEvent leaves the columns alone)", () => {
+		const out = v.parse(EventUpdateSchema, base);
+		for (const key of [
+			"ticketPrice",
+			"ticketUrl",
+			"ticketsSold",
+			"attendance",
+			"deal",
+			"promoter",
+			"promoterContact",
+			"take",
+		])
+			expect(key in out).toBe(false);
+	});
+	test("refuses a bad ticket link, a bad count and a bad take", () => {
+		const r = v.safeParse(EventUpdateSchema, { ...base, ticketUrl: "tickets dot com" });
+		expect(r.issues?.some((i) => i.message === "Enter a full web address")).toBe(true);
+		expect(ok(EventUpdateSchema, { ...base, ticketUrl: "ftp://tickets.example.com" })).toBe(false);
+		expect(ok(EventUpdateSchema, { ...base, ticketUrl: "http://tickets.example.com" })).toBe(true);
+		expect(ok(EventUpdateSchema, { ...base, ticketUrl: `https://x.com/${"a".repeat(500)}` })).toBe(
+			false,
+		);
+		expect(ok(EventUpdateSchema, { ...base, ticketsSold: "2.5" })).toBe(false);
+		expect(ok(EventUpdateSchema, { ...base, take: "a lot" })).toBe(false);
+		expect(ok(EventUpdateSchema, { ...base, deal: "x".repeat(401) })).toBe(false);
+	});
+});
+
 describe("EventSetReorderSchema", () => {
 	test("at least one id, at most 50", () => {
 		expect(ok(EventSetReorderSchema, { eventId: ID, ids: [] })).toBe(false);

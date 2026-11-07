@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **The books.** A show's page now keeps its money: the ticket price and link, tickets sold, attendance, the deal, the promoter and the take, plus who got paid what out of it, with what is left. The Shows page shows each show's tickets and take and adds up every year's played shows.
+
 ## [0.240.0] - 2026-11-07
 
 ### Added

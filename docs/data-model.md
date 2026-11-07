@@ -627,10 +627,10 @@ separate from `recording_session`, which is the tape of an evening and
 points at its event through `recording_session.event_id`. Times are local
 wall-clock strings with no time zone: a band plays where it is, and a time
 on a poster is the venue's. Members only, at `/[account]/shows`,
-`/[account]/practices` and `/[account]/events/[id]`. The money, house,
-promotion and public columns (tickets, attendance, the deal, the promoter,
-the public blurb, `is_public`, `slug`) and `event_payout` come with later
-phases.
+`/[account]/practices` and `/[account]/events/[id]`. The books (tickets,
+attendance, the deal, the promoter, the take) are columns since 0113
+(2026-11-07, phase 4), the payouts `event_payout` rows; the public blurb,
+`is_public` and `slug` come with a later phase.
 
 | column                     | type                            | notes                                                         |
 | -------------------------- | ------------------------------- | ------------------------------------------------------------- |
@@ -647,12 +647,41 @@ phases.
 | map_url                    | text not null default ''        | legacy since 0109                                             |
 | venue_notes                | text not null default ''        | legacy since 0109: now `account_venue.notes`                  |
 | notes                      | text not null default ''        | markdown, members only: the plan, then how it went            |
+| ticket_price               | text not null default ''        | free text ("$10 adv / $12 door"); 0113                        |
+| ticket_url                 | text not null default ''        | where to buy; 0113                                            |
+| tickets_sold, attendance   | integer                         | null when not known; 0113                                     |
+| deal, promoter             | text not null default ''        | "80/20 after the first $300"; 0113                            |
+| promoter_contact           | text not null default ''        | 0113                                                          |
+| take_cents                 | integer                         | what the band took home, in the account's currency; 0113      |
 | created_by                 | text FK → user (set null)       | indexed                                                       |
 | created_at, updated_at     | timestamp_ms                    |                                                               |
 
-Deleting an event removes its `event_set` rows and clears
-`recording_session.event_id` on its tapes (`cascade.ts`); the sessions
-stay. At most `MAX_EVENTS_PER_ACCOUNT` (2000) an account.
+Deleting an event removes its `event_set` and `event_payout` rows and
+clears `recording_session.event_id` on its tapes (`cascade.ts`); the
+sessions stay. At most `MAX_EVENTS_PER_ACCOUNT` (2000) an account.
+
+### event_payout (`eventPayout`, `event.payouts`)
+
+One payout of a show's take (docs/band-plan.md, phase 4): a member
+(`user_id`, set null when the user goes, the name kept in `name`) or a
+name ("Gas", a hired player), an amount in cents in the account's
+currency (`account.currency`, ISO 4217, "USD" by default), a note, in
+`sort_order`. At most `MAX_EVENT_PAYOUTS` (40) a show. Written by
+`addEventPayout` / `updateEventPayout` / `removeEventPayout`
+(events.remote.ts); the sum and what is left of the take are computed on
+the page.
+
+| column                 | type                        | notes                             |
+| ---------------------- | --------------------------- | --------------------------------- |
+| id                     | text PK                     |                                   |
+| account_id             | text FK → account (cascade) | indexed                           |
+| event_id               | text FK → event (cascade)   | indexed                           |
+| user_id                | text FK → user (set null)   | indexed; the member paid, or null |
+| name                   | text not null default ''    | who, when not a member            |
+| amount_cents           | integer not null            |                                   |
+| note                   | text not null default ''    |                                   |
+| sort_order             | integer not null default 0  |                                   |
+| created_at, updated_at | timestamp_ms                |                                   |
 
 ### event_set (`eventSet`, `event.sets`)
 

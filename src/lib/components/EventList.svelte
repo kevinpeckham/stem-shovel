@@ -7,8 +7,10 @@
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import type { EventListRow, PracticeLocationChoice, VenueChoice } from "#lib/server/data.js";
 	import { filterByTitle } from "#lib/utils/filterByTitle.js";
+	import { formatCents } from "#lib/utils/formatCents.js";
 	import { localDay } from "#lib/utils/isoDay.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { showYearSummaries } from "#lib/utils/showYearSummaries.js";
 	import type { EventKind } from "#lib/val/EventSchema.js";
 
 	/**
@@ -16,6 +18,8 @@
 	 * by title and place, a filter by place (a show's venue, `?venue=<id>`; a
 	 * practice's location, `?location=<id>`; applied by the loader), the upcoming ones soonest first and the past ones newest
 	 * first, a tile each (EventTile) linking to the event's page, and New.
+	 * Shows also get the books by year between the two (shows played,
+	 * tickets sold, the take, in the account's `currency`).
 	 * "Today" is the browser's own day (read again once mounted, since the
 	 * server's may differ).
 	 */
@@ -32,6 +36,8 @@
 		locationChoices?: PracticeLocationChoice[];
 		/** The location the list is filtered to, '' for all. */
 		locationId?: string;
+		/** The account's currency (ISO 4217) for a show's take; "USD" when left out. */
+		currency?: string;
 	}
 	let {
 		kind,
@@ -42,6 +48,7 @@
 		venueId = "",
 		locationChoices = [],
 		locationId = "",
+		currency = "USD",
 	}: Props = $props();
 
 	const show = $derived(kind === "show");
@@ -92,6 +99,8 @@
 	);
 	const upcoming = $derived(shown.filter((e) => e.startsOn >= today));
 	const past = $derived(shown.filter((e) => e.startsOn < today).reverse());
+	/** The books by year, over every show of the list (not the search), when any was played. */
+	const years = $derived(show ? showYearSummaries(events).filter((y) => y.played > 0) : []);
 
 	function filterBy(id: string) {
 		const params = new URLSearchParams(page.url.search);
@@ -110,11 +119,47 @@
 		{:else}
 			<ul class="grid gap-3" aria-label="{label} {heading.toLowerCase()}">
 				{#each rows as e (e.id)}
-					<li><EventTile {e} accountSlug={account.slug} /></li>
+					<li><EventTile {e} accountSlug={account.slug} {currency} /></li>
 				{/each}
 			</ul>
 		{/if}
 	</section>
+{/snippet}
+
+{#snippet byYear()}
+	<section class="grid gap-3" aria-labelledby="shows-by-year">
+		<h2 class="heading-2 mb-0" id="shows-by-year">By year</h2>
+		<table class="w-full border-collapse text-13px">
+			<thead class="text-dim">
+				<tr>
+					<th class="py-1 pr-3 text-left font-400" scope="col">Year</th>
+					<th class="py-1 pr-3 text-right font-400" scope="col">Shows played</th>
+					<th class="py-1 pr-3 text-right font-400" scope="col">Tickets sold</th>
+					<th class="py-1 text-right font-400" scope="col">Take</th>
+				</tr>
+			</thead>
+			<tbody class="tabular-nums">
+				{#each years as y (y.year)}
+					<tr class="border-t border-current/10">
+						<th class="py-1 pr-3 text-left font-400" scope="row">{y.year}</th>
+						<td class="py-1 pr-3 text-right">{y.played}</td>
+						<td class="py-1 pr-3 text-right">{y.hasTickets ? y.ticketsSold : "—"}</td>
+						<td class="py-1 text-right">{y.hasTake ? formatCents(y.takeCents, currency) : "—"}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</section>
+{/snippet}
+
+{#snippet results()}
+	{#if shown.length === 0}
+		<p class="text-14px text-dim">No {noun} matches "{query.trim()}".</p>
+	{:else}
+		{@render section("Upcoming", upcoming)}
+		{#if years.length}{@render byYear()}{/if}
+		{#if past.length}{@render section("Past", past)}{/if}
+	{/if}
 {/snippet}
 
 {#snippet header()}
@@ -205,12 +250,7 @@
 				</label>
 				{@render placeFilter()}
 			</div>
-			{#if shown.length === 0}
-				<p class="text-14px text-dim">No {noun} matches "{query.trim()}".</p>
-			{:else}
-				{@render section("Upcoming", upcoming)}
-				{#if past.length}{@render section("Past", past)}{/if}
-			{/if}
+			{@render results()}
 		</div>
 	{/if}
 </main>

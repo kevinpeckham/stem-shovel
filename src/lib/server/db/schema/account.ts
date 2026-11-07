@@ -28,5 +28,7 @@ export const account = table("account", {
 	imageUrl: t.text("image_url"),
 	/** The secret in the account's calendar feed address (`/cal/<token>.ics`, docs/band-plan.md), made the first time a member asks for it; null until then. */
 	calendarToken: t.text("calendar_token").unique(),
+	/** The currency of the books (event takes and payouts), ISO 4217 upper case. */
+	currency: t.text("currency").notNull().default("USD"),
 	...timestamps,
 });

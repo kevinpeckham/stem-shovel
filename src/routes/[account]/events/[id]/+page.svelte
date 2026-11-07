@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import EventBooks from "#lib/components/EventBooks.svelte";
+	import EventPayouts from "#lib/components/EventPayouts.svelte";
 	import EventPhotos from "#lib/components/EventPhotos.svelte";
 	import EventPoster from "#lib/components/EventPoster.svelte";
 	import EventSessions from "#lib/components/EventSessions.svelte";
@@ -16,9 +18,10 @@
 	/**
 	 * A show or practice (docs/band-plan.md, "Event"): when and where and the
 	 * notes in one form (a viewer of the account sees it disabled, the notes
-	 * rendered), the poster (EventPoster), the sets (EventSets), the tapes
-	 * (EventSessions) and the photos (EventPhotos), and Delete. The poster,
-	 * photos, sets and sessions are local state, kept from what each
+	 * rendered), a show's books in the form (EventBooks) and its payouts
+	 * (EventPayouts), the poster (EventPoster), the sets (EventSets), the
+	 * tapes (EventSessions) and the photos (EventPhotos), and Delete. The poster,
+	 * photos, sets, payouts and sessions are local state, kept from what each
 	 * command returns; a save of the form reloads the page data and starts
 	 * them over from the server.
 	 */
@@ -40,6 +43,7 @@
 	const name = $derived(e.title.trim() || place || `Untitled ${noun}`);
 
 	let sets = $derived(data.sets);
+	let payouts = $derived(data.payouts);
 	let sessions = $derived(data.sessions);
 	let sessionChoices = $derived(data.sessionChoices);
 	let poster = $derived(data.poster);
@@ -138,6 +142,10 @@
 					canEdit={data.canEdit}
 				/>
 
+				{#if show}
+					<EventBooks {form} {e} {issues} currency={data.currency} />
+				{/if}
+
 				<section class="grid gap-3" aria-labelledby="event-notes">
 					<h2 class="heading-2 mb-0" id="event-notes">Notes</h2>
 					{#if data.canEdit}
@@ -178,6 +186,20 @@
 				canEdit={data.canEdit}
 			/>
 		</section>
+
+		{#if data.event.kind === "show"}
+			<section class="grid gap-3" aria-labelledby="event-payouts">
+				<h2 class="heading-2 mb-0" id="event-payouts">Payouts</h2>
+				<EventPayouts
+					bind:payouts
+					eventId={e.id}
+					members={data.members}
+					currency={data.currency}
+					takeCents={e.takeCents}
+					canEdit={data.canEdit}
+				/>
+			</section>
+		{/if}
 
 		<section class="grid gap-3" aria-labelledby="event-tapes">
 			<h2 class="heading-2 mb-0" id="event-tapes">Recordings</h2>
