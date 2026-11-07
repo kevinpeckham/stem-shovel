@@ -10,7 +10,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **The chart draft is built from the detections, then refined.** `draftChart` calls `@barmark/sync`'s `chartFromDetections` (`src/lib/server/chartBuild.ts`) with the page's bar grid, the chord model's stored runs (or the notes matcher's chords), the key, meter, sections and changes, and the AI refines that chart instead of writing one from per-bar votes: mid-bar changes survive, chords are spelled in the key, sections snap to bars, tempo changes are converted to barmark's beat. Without the AI the built chart is the draft (a 503 before). The builder's timing map (when each played bar starts in the mix) and confidence record are saved with the chart in `song.chart_timing` / `chart_confidence` (migration 0116), re-hashed to the refined chart or dropped when the AI changed the bar count, cleared by an edit that changes the chart; "Place from chart" saves the alignment's bar starts as an `aligned` map. Nothing reads the map yet (docs/audio-engine.md "The chart built from the detections").
 - **A social card.** Every page carries one Open Graph image (`static/og.png`, 1200×630, drawn by `bun run og` from `scripts/og.ts` in the site's look: the wordmark, the headline and tagline in `src/lib/constants/socialCard.ts`, a player panel in CSS) with its size, alt text and `twitter:card`, set once in the root layout; a link to the site posted to social carries a picture. `audit:seo` checks the tags on every public page and that the image answers.
+
+### Changed
+
+- **Chord labels and keys are spelled by barmark.** The chord model's labels go through `harteToBarmark` (`C:min6` → `Cm6`, `C:hdim7` → `Cm7(b5)`, `X` → `?`; the lossy `chart-symbols.json` table is gone, and stored runs are re-spelled from their label on read), and a detector's key reaches a change or a prompt as `printKey(conventionalKey(keyFromText(v)))` (`utils/barmarkKey.ts`: "E♭ major" → `Eb`, "G# major" → `Ab`). A saved AI draft is stored as barmark prints it when it parses without errors. The documentation PDF sets chords with `@barmark/render`'s `typesetChord` and `glyphs`; the app's copies are deleted.
+
+### Technical
+
+- **barmark 0.19.0, @barmark/render 0.16.2, @barmark/musicxml 0.6.2, @barmark/sync 0.1.0.** Migration 0116 adds `song.chart_timing` and `song.chart_confidence`.
 
 ## [0.243.0] - 2026-11-07
 

@@ -13,8 +13,11 @@ const remote = vi.hoisted(() => ({
 	askAiAboutSong: vi.fn(),
 	chartBarsOf: vi.fn(),
 	saveChanges: vi.fn(),
+	saveChartTiming: vi.fn(),
 }));
 vi.mock("#lib/remote/songs.remote.js", () => remote);
+const align = vi.hoisted(() => ({ alignChartInBrowser: vi.fn() }));
+vi.mock("#lib/audio/alignChartInBrowser.js", () => align);
 const notify = vi.hoisted(() => vi.fn());
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify }));
 
@@ -41,7 +44,8 @@ function make(changes: SongChange[] = [], hasScore = true) {
 	});
 	const check = new SongCheck({
 		song: () => song,
-		engine: () => ({ status: "ready", duration: 60 }) as unknown as StemEngine,
+		engine: () =>
+			({ status: "ready", duration: 60, decodedBuffers: async () => [] }) as unknown as StemEngine,
 		aiAvailable: () => true,
 		hasScore: () => hasScore,
 		changes: rows,
@@ -56,6 +60,7 @@ beforeEach(() => {
 	remote.askAiAboutSong.mockResolvedValue(ANSWER);
 	remote.chartBarsOf.mockResolvedValue({ bars: null, reason: "none" });
 	remote.saveChanges.mockResolvedValue(undefined);
+	remote.saveChartTiming.mockResolvedValue({ saved: true });
 });
 afterEach(() => {
 	vi.useRealTimers();
@@ -232,5 +237,72 @@ describe("SongCheck", () => {
 		expect(remote.askAiAboutSong).toHaveBeenCalledTimes(1);
 		expect(check.aiError).toBe("gateway down");
 		expect(check.aiBusy).toBe(false);
+	});
+});
+
+describe("alignChart keeps the song's own chart's timing map", () => {
+	const TEXT = "| C | G |\n";
+	const bar = (chords: string[]) => ({
+		measure: 1,
+		chords,
+		bpm: 120,
+		meter: "4/4",
+		key: null,
+		section: null,
+	});
+	const chart = (over: Record<string, unknown> = {}) => ({
+		bars: [bar(["C"]), bar(["G"])],
+		warnings: [],
+		source: "chart",
+		text: TEXT,
+		...over,
+	});
+	const alignment = (barStarts: number[]) => ({
+		barStarts,
+		cost: 0.1,
+		controlCost: 0.5,
+		localCost: [0.1, 0.1],
+		hopSec: 0.1,
+		firstSound: 0,
+		lastSound: 4,
+	});
+	const aligned = () => make();
+
+	test("a clean map of the aligned bars is posted with source aligned", async () => {
+		remote.chartBarsOf.mockResolvedValue(chart());
+		align.alignChartInBrowser.mockResolvedValue(alignment([0.5, 2.5, 4.5]));
+		const { check } = aligned();
+		await check.alignChart();
+		expect(remote.saveChartTiming).toHaveBeenCalledWith({
+			id: "song1",
+			timing: expect.objectContaining({
+				format: "barmark-timing",
+				source: "aligned",
+				chart: { bars: 2, hash: expect.stringMatching(/^[0-9a-f]{16}$/) },
+				bars: [
+					{ bar: 1, start: 0.5 },
+					{ bar: 2, start: 2.5 },
+				],
+				end: 4.5,
+			}),
+		});
+	});
+
+	test("a score's read, or bar starts that do not check, post nothing", async () => {
+		remote.chartBarsOf.mockResolvedValue(chart({ source: "summary", text: undefined }));
+		align.alignChartInBrowser.mockResolvedValue(alignment([0.5, 2.5, 4.5]));
+		await aligned().check.alignChart();
+		remote.chartBarsOf.mockResolvedValue(chart());
+		align.alignChartInBrowser.mockResolvedValue(alignment([3, 2, 4.5]));
+		await aligned().check.alignChart();
+		expect(remote.saveChartTiming).not.toHaveBeenCalled();
+	});
+
+	test("a failed post is silent", async () => {
+		remote.chartBarsOf.mockResolvedValue(chart());
+		align.alignChartInBrowser.mockResolvedValue(alignment([0, 2, 4]));
+		remote.saveChartTiming.mockRejectedValue(new Error("nope"));
+		await expect(aligned().check.alignChart()).resolves.toBeDefined();
+		expect(notify).not.toHaveBeenCalled();
 	});
 });

@@ -16,11 +16,17 @@ import {
 	SONG_CHANGE_LABELS,
 	type SongChangeKind,
 } from "#lib/constants/songChanges.js";
-import { askAiAboutSong, chartBarsOf, saveChanges } from "#lib/remote/songs.remote.js";
+import {
+	askAiAboutSong,
+	chartBarsOf,
+	saveChanges,
+	saveChartTiming,
+} from "#lib/remote/songs.remote.js";
 import type { AiAnswer } from "#lib/server/aiDetect.js";
 import { notify } from "#lib/state/notifications.svelte.js";
 import type { SongChanges } from "#lib/state/songChanges.svelte.js";
 import { alignedPlacements } from "#lib/utils/alignedPlacements.js";
+import { alignedTimingMap } from "#lib/utils/alignedTimingMap.js";
 import { barmarkKey } from "#lib/utils/barmarkKey.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { formatSongChange } from "#lib/utils/formatSongChange.js";
@@ -209,15 +215,33 @@ export class SongCheck {
 	 * The chart aligned to the decoded stems in a worker (stem-bench Study 12;
 	 * no AI): its placements and the chart parser's warnings, or why it could
 	 * not be aligned. A failure in the worker rejects; the callers handle it.
+	 * The song's own chart, aligned, is kept as its timing map in passing.
 	 */
 	alignChart = async (): Promise<AlignedChart> => {
-		const chart = await chartBarsOf({ id: this.#opts.song().id });
+		const id = this.#opts.song().id;
+		const chart = await chartBarsOf({ id });
 		if (chart.bars === null) return { reason: chart.reason };
 		const engine = this.#opts.engine();
 		if (engine?.status !== "ready") return { reason: "audio" };
 		const alignment = await alignChartInBrowser(chart.bars, await engine.decodedBuffers());
+		if (chart.source === "chart")
+			this.#keepTiming(id, chart.text, chart.bars.length, alignment.barStarts, engine.duration);
 		return { placements: alignedPlacements(chart.bars, alignment), warnings: chart.warnings };
 	};
+
+	/**
+	 * The aligned chart's bar starts posted as its timing map (`saveChartTiming`),
+	 * only when the map checks clean against the chart here; any failure is
+	 * silent: the alignment's purpose is placing the settings, the map is a by-product.
+	 */
+	#keepTiming(id: string, text: string, bars: number, barStarts: number[], duration: number) {
+		try {
+			const timing = alignedTimingMap(text, bars, barStarts, duration);
+			if (timing) saveChartTiming({ id, timing }).catch(() => {});
+		} catch {
+			// Nothing to keep: the alignment's answer stands on its own.
+		}
+	}
 
 	/**
 	 * Where the keys are read: at the song's sections when it has two or more

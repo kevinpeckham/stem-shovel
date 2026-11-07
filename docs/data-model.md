@@ -334,29 +334,31 @@ Indexes: `(account_id)`, unique `(account_id, slug)`.
 
 ### song
 
-| column           | type                        | notes                                             |
-| ---------------- | --------------------------- | ------------------------------------------------- |
-| id               | text PK                     |                                                   |
-| account_id       | text FK → account (cascade) | denormalized from project for scoping             |
-| project_id       | text FK → project (cascade) |                                                   |
-| title            | text not null               | what the user typed; today we derive it from slug |
-| slug             | text not null               | unique with `project_id`                          |
-| bpm              | real null                   |                                                   |
-| musical_key      | text null                   | "D", "F#m"; free text for now                     |
-| duration_seconds | real null                   | longest stem; updated when stems change           |
-| description      | text, default ""            | optional free text shown under the title          |
-| chart_markdown   | text, default ""            | current chart; history in song_doc_version        |
-| chart_hash       | text null                   | SHA-256 of chart_markdown                         |
-| chart_version    | integer, default 0          | number of the current version; 0 = never saved    |
-| lyrics_markdown  | text, default ""            | lyrics document; history in song_doc_version      |
-| lyrics_hash      | text null                   |                                                   |
-| lyrics_version   | integer, default 0          |                                                   |
-| status           | text, default active        | `active` \| `archived`                            |
-| is_finished      | integer bool, default 0     | done: filed under "Finished Songs" (any member)   |
-| sort_order       | integer, default 0          | inside the project                                |
-| created_by       | text FK → user (set null)   |                                                   |
-| created_at       | timestamp_ms                |                                                   |
-| updated_at       | timestamp_ms                |                                                   |
+| column           | type                        | notes                                                                                                                                                                                                                                       |
+| ---------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id               | text PK                     |                                                                                                                                                                                                                                             |
+| account_id       | text FK → account (cascade) | denormalized from project for scoping                                                                                                                                                                                                       |
+| project_id       | text FK → project (cascade) |                                                                                                                                                                                                                                             |
+| title            | text not null               | what the user typed; today we derive it from slug                                                                                                                                                                                           |
+| slug             | text not null               | unique with `project_id`                                                                                                                                                                                                                    |
+| bpm              | real null                   |                                                                                                                                                                                                                                             |
+| musical_key      | text null                   | "D", "F#m"; free text for now                                                                                                                                                                                                               |
+| duration_seconds | real null                   | longest stem; updated when stems change                                                                                                                                                                                                     |
+| description      | text, default ""            | optional free text shown under the title                                                                                                                                                                                                    |
+| chart_markdown   | text, default ""            | current chart; history in song_doc_version                                                                                                                                                                                                  |
+| chart_hash       | text null                   | SHA-256 of chart_markdown                                                                                                                                                                                                                   |
+| chart_timing     | text (JSON) null            | @barmark/sync timing map for chart_markdown (when each played bar starts in the mix; `source` detected or aligned), hashed to the chart; cleared when an edit changes the hash (docs/audio-engine.md "The chart built from the detections") |
+| chart_confidence | text (JSON) null            | the builder's confidence per bar and slot (experimental shape); with chart_timing                                                                                                                                                           |
+| chart_version    | integer, default 0          | number of the current version; 0 = never saved                                                                                                                                                                                              |
+| lyrics_markdown  | text, default ""            | lyrics document; history in song_doc_version                                                                                                                                                                                                |
+| lyrics_hash      | text null                   |                                                                                                                                                                                                                                             |
+| lyrics_version   | integer, default 0          |                                                                                                                                                                                                                                             |
+| status           | text, default active        | `active` \| `archived`                                                                                                                                                                                                                      |
+| is_finished      | integer bool, default 0     | done: filed under "Finished Songs" (any member)                                                                                                                                                                                             |
+| sort_order       | integer, default 0          | inside the project                                                                                                                                                                                                                          |
+| created_by       | text FK → user (set null)   |                                                                                                                                                                                                                                             |
+| created_at       | timestamp_ms                |                                                                                                                                                                                                                                             |
+| updated_at       | timestamp_ms                |                                                                                                                                                                                                                                             |
 
 Indexes: `(account_id)`, `(project_id)`, unique `(project_id, slug)`.
 

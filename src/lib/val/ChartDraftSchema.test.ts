@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as v from "valibot";
-import { ChartDraftAnswerSchema, ChartDraftSchema, ChartSaveSchema } from "./ChartDraftSchema";
+import {
+	ChartDraftAnswerSchema,
+	ChartDraftSchema,
+	ChartSaveSchema,
+	ChordsCheckSchema,
+} from "./ChartDraftSchema";
 
 const id = "V1StGXR8_Z5jdHi6B-myT";
 const ok = (schema: v.GenericSchema, input: unknown) => v.safeParse(schema, input).success;
@@ -10,6 +15,7 @@ describe("ChartDraftSchema", () => {
 		id,
 		chords: [{ bar: 1, bars: 4, chord: " D5 " }],
 		bars: [{ bar: 1, notes: "D3 x 2.0 @ 0.8" }],
+		grid: [0, 2, 4, 6, 8],
 	};
 	const okWith = (patch: object) => ok(ChartDraftSchema, { ...draft, ...patch });
 	it("trims a chord and needs at least one segment; the bars' notes may be empty", () => {
@@ -22,6 +28,18 @@ describe("ChartDraftSchema", () => {
 		expect(okWith({ chords: [{ bar: 1, bars: 1.5, chord: "A" }] })).toBe(false);
 		expect(okWith({ chords: [{ bar: 1, bars: 1, chord: "x".repeat(13) }] })).toBe(false);
 		expect(okWith({ bars: [{ bar: 1, notes: "x".repeat(2001) }] })).toBe(false);
+	});
+	it("needs a grid of 2 to 2001 finite, non-negative bar starts", () => {
+		expect(okWith({ grid: undefined })).toBe(false);
+		expect(okWith({ grid: [0] })).toBe(false);
+		expect(okWith({ grid: [0, Number.POSITIVE_INFINITY] })).toBe(false);
+		expect(okWith({ grid: [-1, 2] })).toBe(false);
+		expect(okWith({ grid: Array.from({ length: 2001 }, (_, i) => i * 2) })).toBe(true);
+		expect(okWith({ grid: Array.from({ length: 2002 }, (_, i) => i * 2) })).toBe(false);
+	});
+	it("the chord check takes the same input without a grid", () => {
+		const { grid: _grid, ...check } = draft;
+		expect(ok(ChordsCheckSchema, check)).toBe(true);
 	});
 });
 

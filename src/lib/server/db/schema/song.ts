@@ -100,6 +100,21 @@ export const song = table(
 			.$type<import("../../../utils/chordminiRuns").ChordminiRuns>(),
 		chordsKey: t.text("chords_key"),
 		chordsStartedAt: t.integer("chords_started_at", { mode: "timestamp_ms" }),
+		/**
+		 * The chart's timing map (@barmark/sync's "barmark-timing" v1;
+		 * docs/audio-engine.md, "The timing map"): when each played bar of
+		 * `chartMarkdown` starts in the mix, from the detections' bar grid the
+		 * draft was built on (`source: "detected"`) or the chart aligned to the
+		 * stems (`"aligned"`). Its `chart.hash` names the chart text it fits;
+		 * a chart edit that changes the hash drops it.
+		 */
+		chartTiming: t
+			.text("chart_timing", { mode: "json" })
+			.$type<import("@barmark/sync").TimingMap>(),
+		/** The builder's confidence per bar and slot for `chartMarkdown` (an experimental shape); kept and dropped with `chartTiming`. */
+		chartConfidence: t
+			.text("chart_confidence", { mode: "json" })
+			.$type<import("@barmark/sync").ConfidenceRecord>(),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

@@ -11,6 +11,7 @@ import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
 import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
+import type { ConfidenceRecord, TimingMap } from "@barmark/sync";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 
@@ -36,12 +37,20 @@ export interface ScoreChart {
 	partName?: string;
 }
 
-/** The draft card's draft: the AI's (no `source`, or "ai") or a score's import ("score", with its name and diagnostics). */
+/**
+ * The draft card's draft: the AI's (no `source`, or "ai"), the chart built
+ * from the detected chords when the AI is not at hand ("built"), or a
+ * score's import ("score", with its name). The diagnostics are the builder's
+ * or the import's; a drafted chart carries its timing map and confidence
+ * (@barmark/sync), saved beside it.
+ */
 export type ChartDraft = ChartDraftAnswer & {
 	chartHtml: string;
-	source?: "ai" | "score";
+	source?: "ai" | "built" | "score";
 	scoreName?: string;
 	diagnostics?: ScoreDiagnostic[];
+	timing?: TimingMap | null;
+	confidence?: ConfidenceRecord | null;
 	/** A score's: the notation file, the parts the card offers when the chart is empty, the part charted. */
 	notationId?: string;
 	parts?: string[];
@@ -110,6 +119,8 @@ export class SongChordDraft {
 	draftBusy = $state(false);
 	/** A score's part is being charted (`chartPart`); the card's part buttons are disabled meanwhile. */
 	partBusy = $state(false);
+	/** Where each bar the chords were read on starts, and where the last ends: the draft's grid. */
+	#barStarts: number[] = [];
 	/** The latest run; a new run interrupts it before starting, Cancel interrupts it. */
 	#fiber: Fiber.Fiber<void> | null = null;
 	#opts: SongChordDraftOptions;
@@ -196,6 +207,7 @@ export class SongChordDraft {
 			this.chordsChecked = null;
 			this.draft = null;
 			const barStarts = barStartsOf(grid, engine.duration);
+			this.#barStarts = barStarts;
 			const fromModel = Effect.gen({ self: this }, function* () {
 				const chords = yield* this.#modelChords();
 				if (!chords) return false;
@@ -372,6 +384,7 @@ export class SongChordDraft {
 					chords: segments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
 					bars: this.chordBars,
 					source: this.chordSource === "model" ? "model" : "matcher",
+					grid: this.#barStarts,
 				}),
 			).pipe(
 				Effect.map((answer) => (this.draft = answer)),

@@ -40,33 +40,24 @@ beforeEach(() => {
 });
 
 describe("draftBarLines", () => {
-	const chords = [
-		{ bar: 1, bars: 2, chord: "D" },
-		{ bar: 3, bars: 1, chord: "A" },
-	];
-	it("the matcher's chords ride each bar's notes as a hint", () => {
+	it("one line per bar with its notes, through the starting chart's last bar", () => {
 		const bars = [
 			{ bar: 1, notes: "D2×1.6@0.8" },
-			{ bar: 2, notes: "" },
 			{ bar: 3, notes: "A2×1@0.5" },
 		];
-		expect(draftBarLines({ chords, bars, source: "matcher" })).toBe(
-			"bar 1 [matcher: D]: D2×1.6@0.8\nbar 2 [matcher: %]: \nbar 3 [matcher: A]: A2×1@0.5",
+		expect(draftBarLines({ bars, barCount: 4 })).toBe(
+			"bar 1: D2×1.6@0.8\nbar 2: \nbar 3: A2×1@0.5\nbar 4: ",
 		);
 	});
-	it("the model's chords stand alone when the notes are not transcribed, one line per bar", () => {
-		expect(draftBarLines({ chords, bars: [], source: "model" })).toBe(
-			"bar 1 [model: D]: (not transcribed)\nbar 2 [model: %]: (not transcribed)\nbar 3 [model: A]: (not transcribed)",
+	it("every bar says so when the notes are not transcribed yet", () => {
+		expect(draftBarLines({ bars: [], barCount: 2 })).toBe(
+			"bar 1: (not transcribed)\nbar 2: (not transcribed)",
 		);
 	});
-	it("a bar with notes but no chord, and the bars run to the last of either list", () => {
-		expect(
-			draftBarLines({
-				chords: [{ bar: 2, bars: 1, chord: "G" }],
-				bars: [{ bar: 1, notes: "x" }],
-				source: "matcher",
-			}),
-		).toBe("bar 1: x\nbar 2 [matcher: G]: ");
+	it("notes past the chart's last bar still get their lines", () => {
+		expect(draftBarLines({ bars: [{ bar: 2, notes: "x" }], barCount: 1 })).toBe(
+			"bar 1: \nbar 2: x",
+		);
 	});
 });
 

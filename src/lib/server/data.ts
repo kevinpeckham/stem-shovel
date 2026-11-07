@@ -4,6 +4,7 @@ import {
 	type IdeaKind,
 } from "#lib/val/IdeaSchema.js";
 import type { ReportKind, ReportVote } from "#lib/val/BugReportSchema.js";
+import { chartHash, type ConfidenceRecord, type TimingMap } from "@barmark/sync";
 import { byStatus } from "#lib/utils/byStatus.js";
 import type { Membership } from "#lib/utils/actingMemberships.js";
 import { reorderById } from "#lib/utils/reorderById.js";
@@ -4017,6 +4018,38 @@ export async function songChordsFor(accountId: string, songId: string) {
 		inFlight: !!row.chordsStartedAt && Date.now() - row.chordsStartedAt.getTime() < CHORDS_STALE_MS,
 		hasMix: !!row.mixUrl,
 	};
+}
+
+/**
+ * What the chart builder reads beside the song (src/lib/server/chartBuild.ts):
+ * the chord model's runs when they were read from the current mix (else
+ * null), and the mix's key, which the timing map names the recording by.
+ */
+export async function songDetectionsFor(accountId: string, songId: string) {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { chordsJson: true, chordsKey: true, mixKey: true, mixUrl: true },
+	});
+	if (!row) return null;
+	const current = !!row.mixUrl && row.chordsKey !== null && row.chordsKey === row.mixKey;
+	return { chordsJson: current ? row.chordsJson : null, mixKey: row.mixKey };
+}
+
+/**
+ * Stores the chart's timing map and confidence (docs/audio-engine.md, "The
+ * timing map"), or clears them with nulls. The caller has checked the map
+ * against the stored chart (`checkTimingMap`).
+ */
+export async function setChartTiming(
+	accountId: string,
+	songId: string,
+	timing: TimingMap | null,
+	confidence: ConfidenceRecord | null,
+) {
+	await db
+		.update(song)
+		.set({ chartTiming: timing, chartConfidence: confidence })
+		.where(and(eq(song.accountId, accountId), eq(song.id, songId)));
 }
 
 /** The stored notes for a member's page, with whether they are complete for the current stems. */
@@ -8781,9 +8814,19 @@ export async function saveSongDoc(
 		contentHash,
 		createdBy: userId,
 	});
+	// A chart edit the timing map no longer fits drops it and its confidence (the hash is over the canonical print).
+	const staleTiming =
+		kind === "chart" &&
+		!!existing.chartTiming &&
+		existing.chartTiming.chart?.hash !== chartHash(next);
 	await db
 		.update(song)
-		.set({ [cols.markdown]: next, [cols.hash]: contentHash, [cols.version]: versionNumber })
+		.set({
+			[cols.markdown]: next,
+			[cols.hash]: contentHash,
+			[cols.version]: versionNumber,
+			...(staleTiming ? { chartTiming: null, chartConfidence: null } : {}),
+		})
 		.where(eq(song.id, songId));
 	return { ok: true, version: versionNumber, changed: true };
 }

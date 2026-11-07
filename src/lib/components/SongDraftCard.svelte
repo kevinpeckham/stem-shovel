@@ -25,8 +25,9 @@
 	let { chordDraft, songId, grid, hasSections, hasChart, onsectionssaved, onchartsaved }: Props =
 		$props();
 
-	/** The card's title: the AI's draft, or the score a chart was read from (and the part, when one was charted). */
+	/** The card's title: the AI's draft, the chart built from the detected chords, or the score a chart was read from (and the part, when one was charted). */
 	const headingOf = (draft: ChartDraft) => {
+		if (draft.source === "built") return "Draft from the detected chords";
 		if (draft.source !== "score") return "AI draft";
 		const score = `Chart from ${draft.scoreName ?? "the score"}`;
 		return draft.partName ? `${score}, the ${draft.partName} part` : score;
@@ -57,7 +58,15 @@
 		const replace = hasChart;
 		if (replace && !confirm("Replace the song's chart with the drafted one?")) return;
 		try {
-			await saveChartDraft({ id: songId, markdown: draft.chart, replace });
+			// A drafted chart's timing map and confidence are kept beside it (checked on the server).
+			await saveChartDraft({
+				id: songId,
+				markdown: draft.chart,
+				replace,
+				...(draft.timing
+					? { timing: draft.timing, confidence: draft.confidence ?? undefined }
+					: {}),
+			});
 			await onchartsaved();
 			notify("Chart saved from the draft");
 		} catch (e) {
@@ -100,7 +109,7 @@
 			</span>
 		</div>
 		{#if draft.diagnostics?.length}
-			<!-- What the score's import could not carry over: the package's own sentences. Unkeyed: a draft is replaced whole. -->
+			<!-- What the score's import could not carry over, or what the chart builder noticed: the packages' own sentences. Unkeyed: a draft is replaced whole. -->
 			<ul class="mt-1 text-12px">
 				{#each draft.diagnostics as d}
 					<li class={levelClass(d.level)}>{d.message}</li>

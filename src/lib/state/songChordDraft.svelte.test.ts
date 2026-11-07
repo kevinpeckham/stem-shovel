@@ -178,6 +178,8 @@ describe("SongChordDraft", () => {
 		expect(remote.draftChart).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "song1", chords: expect.any(Array) }),
 		);
+		// The bar starts the chords were read on, and where the last bar ends (the engine's 7.9 s).
+		expect(remote.draftChart.mock.calls[0][0].grid).toEqual([0, 2, 4, 6, 7.9]);
 		expect(cd.draft).toEqual(DRAFT);
 		expect(cd.draftBusy).toBe(false);
 		cd.dismiss();

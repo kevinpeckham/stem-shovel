@@ -1,4 +1,10 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
+import {
+	chartHash,
+	chartFromDetections,
+	type ConfidenceRecord,
+	type TimingMap,
+} from "@barmark/sync";
 import "../../../tests/helpers/fakeServerModules";
 import {
 	ACCOUNT,
@@ -37,6 +43,15 @@ const STEM = fakeId("stem-one");
 const DEMO = fakeId("demo-one");
 const CREDIT = fakeId("credit-one");
 const SLUGS = { account: "band", project: "album", song: "track" };
+/** A timing map for the one-bar chart "| C |". */
+const TIMING_ONE_BAR = {
+	format: "barmark-timing",
+	version: 1,
+	chart: { bars: 1, hash: chartHash("| C |\n") },
+	source: "aligned",
+	bars: [{ bar: 1, start: 0 }],
+	end: 2,
+};
 
 /** The rows access.ts finds, each pointing back to ACCOUNT and the song's project. */
 function givenRows() {
@@ -256,6 +271,7 @@ describe("editor-gated functions", () => {
 				id: SONG,
 				chords: [{ bar: 1, bars: 1, chord: "C" }],
 				bars: [{ bar: 1, notes: "C4" }],
+				grid: [0, 2],
 			},
 			anon: 401,
 			arrange: () => {
@@ -272,7 +288,7 @@ describe("editor-gated functions", () => {
 					chords: "C",
 					sections: [],
 					progressions: [],
-					chart: "C",
+					chart: "| C |",
 					notes: "",
 				});
 			},
@@ -282,9 +298,13 @@ describe("editor-gated functions", () => {
 				chords: "C",
 				sections: [],
 				progressions: [],
-				chart: "C",
+				chart: "| C |",
 				notes: "",
 				chartHtml: expect.stringMatching(/^<barmark-chart /),
+				timing: expect.objectContaining({ format: "barmark-timing" }),
+				confidence: expect.objectContaining({ format: "barmark-confidence" }),
+				diagnostics: expect.any(Array),
+				source: "ai",
 			},
 		},
 		{
@@ -320,6 +340,16 @@ describe("editor-gated functions", () => {
 			dataFn: "saveSongDoc",
 			args: [ACCOUNT, USER, SONG, "chart", "| C |\n"],
 			outcome: { version: 1 },
+		},
+		{
+			name: "saveChartTiming",
+			fn: songs.saveChartTiming,
+			input: { id: SONG, timing: TIMING_ONE_BAR },
+			anon: 401,
+			arrange: () => data.getSongById.mockResolvedValue({ chartMarkdown: "| C |\n" }),
+			dataFn: "setChartTiming",
+			args: [ACCOUNT, SONG, TIMING_ONE_BAR, null],
+			outcome: { saved: true },
 		},
 		{
 			name: "songNotes",
@@ -722,5 +752,215 @@ describe("reconcileChords", () => {
 	it("503 when the gateway is not configured", async () => {
 		aiDetect.aiAvailable.mockReturnValue(false);
 		await expect(call(songs.reconcileChords, input)).rejects.toMatchObject(httpError(503));
+	});
+});
+
+describe("draftChart builds the chart on the browser's grid", () => {
+	const GRID = [0, 2, 4, 6, 8];
+	const input = {
+		id: SONG,
+		chords: [
+			{ bar: 1, bars: 2, chord: "D" },
+			{ bar: 3, bars: 1, chord: "G" },
+			{ bar: 4, bars: 1, chord: "A" },
+		],
+		bars: [{ bar: 1, notes: "D2" }],
+		grid: GRID,
+	};
+	const song = (over: Record<string, unknown> = {}) => ({
+		title: "Track",
+		noAi: false,
+		project: { noAi: false },
+		changes: [
+			{ kind: "tempo", start: 0, value: "120" },
+			{ kind: "meter", start: 0, value: "4/4" },
+			{ kind: "key", start: 0, value: "D major" },
+		],
+		startAt: 0,
+		sections: [
+			{ name: "Verse", start: 0 },
+			{ name: "Chorus", start: 4 },
+		],
+		...over,
+	});
+	const answer = (chart: string) => ({
+		chords: "D % G A",
+		sections: [{ name: "Verse", bar: 1 }],
+		progressions: [],
+		chart,
+		notes: "",
+	});
+	/** The draft as the card reads it. */
+	const drafted = (i: unknown) =>
+		call(songs.draftChart, i) as Promise<{
+			chart: string;
+			source: string;
+			timing: TimingMap | null;
+			confidence: ConfidenceRecord | null;
+			diagnostics: unknown[];
+		}>;
+	beforeEach(() => {
+		asEditorOf(ACCOUNT);
+		data.chartExamples.mockResolvedValue([]);
+		data.songDetectionsFor.mockResolvedValue({ chordsJson: null, mixKey: "mix-1" });
+	});
+
+	it("without the AI the built chart is the draft, with its map, sections by bar and no rate limit", async () => {
+		aiDetect.aiAvailable.mockReturnValue(false);
+		data.getSongById.mockResolvedValue(song());
+		const draft = await drafted(input);
+		expect(draft).toMatchObject({
+			chords: "",
+			sections: [
+				{ name: "Verse", bar: 1 },
+				{ name: "Chorus", bar: 3 },
+			],
+			progressions: [],
+			notes: "",
+			source: "built",
+			chartHtml: expect.stringMatching(/^<barmark-chart /),
+			timing: {
+				chart: { bars: 4 },
+				recording: { id: "mix-1", duration: 8 },
+				end: 8,
+			},
+		});
+		expect(draft.chart).toContain("key: D, time: 4/4, tempo: 120");
+		expect(draft.confidence?.bars).toHaveLength(4);
+		expect(aiDetect.draftChartWithAi).not.toHaveBeenCalled();
+		expect(rateLimited).not.toHaveBeenCalled();
+	});
+
+	it("a song with AI switched off gets the built chart too", async () => {
+		data.getSongById.mockResolvedValue(song({ project: { noAi: true } }));
+		await expect(call(songs.draftChart, input)).resolves.toMatchObject({ source: "built" });
+		expect(aiDetect.draftChartWithAi).not.toHaveBeenCalled();
+	});
+
+	it("422 when the grid gives no bars", async () => {
+		data.getSongById.mockResolvedValue(song());
+		await expect(call(songs.draftChart, { ...input, grid: [0, 0] })).rejects.toMatchObject(
+			httpError(422),
+		);
+	});
+
+	it("the AI refines the starting chart; the same bar count keeps the map, re-hashed to the refined chart", async () => {
+		data.getSongById.mockResolvedValue(song());
+		const refined =
+			"key: D, time: 4/4, tempo: 120\n\n## Verse\n| D | % |\n\n## Chorus\n| G | A |\n";
+		aiDetect.draftChartWithAi.mockResolvedValue(answer(refined));
+		const draft = await drafted(input);
+		const sent = aiDetect.draftChartWithAi.mock.calls[0][0];
+		expect(sent).toMatchObject({
+			title: "Track",
+			tempo: "120",
+			key: "D major",
+			meter: "4/4",
+			bars: input.bars,
+			source: "matcher",
+			barCount: 4,
+			existingSections: [
+				{ name: "Verse", bar: 1 },
+				{ name: "Chorus", bar: 3 },
+			],
+		});
+		expect(sent.startingChart).toContain("| D |");
+		expect(draft.source).toBe("ai");
+		expect(draft.timing?.chart).toEqual({ bars: 4, hash: chartHash(refined) });
+		expect(draft.confidence?.bars).toHaveLength(4);
+		expect(rateLimited).toHaveBeenCalledWith(`chart:${USER}`, 5, expect.any(Number));
+	});
+
+	it("an AI chart with another bar count drops the map and says so", async () => {
+		data.getSongById.mockResolvedValue(song());
+		aiDetect.draftChartWithAi.mockResolvedValue(answer("| D | G | A |\n"));
+		const draft = await drafted(input);
+		expect(draft.timing).toBeNull();
+		expect(draft.confidence).toBeNull();
+		expect(draft.diagnostics).toContainEqual({
+			level: "warning",
+			message: "The AI changed the bar count (3 for 4); the timing map was dropped.",
+		});
+	});
+
+	it("the chord model's stored runs build the chart when it named the chords", async () => {
+		aiDetect.aiAvailable.mockReturnValue(false);
+		data.getSongById.mockResolvedValue(song());
+		data.songDetectionsFor.mockResolvedValue({
+			mixKey: "mix-1",
+			chordsJson: {
+				version: "v1",
+				frameSec: 1,
+				frames: 8,
+				runs: [{ start: 0, end: 8, chord: "Bm", label: "B:min" }],
+			},
+		});
+		const draft = await drafted({ ...input, source: "model" });
+		expect(draft.chart).toContain("Bm");
+		expect(draft.chart).not.toContain("| G |");
+	});
+});
+
+describe("saveChartDraft keeps the draft's timing map beside the chart", () => {
+	const built = chartFromDetections({
+		grid: { bars: [0, 2, 4] },
+		chords: { runs: [{ start: 0, end: 4, symbol: "C" }] },
+		meter: "4/4",
+	});
+	beforeEach(() => {
+		asEditorOf(ACCOUNT);
+		data.getSongById.mockResolvedValue({ chartMarkdown: "" });
+		data.saveSongDoc.mockResolvedValue({ ok: true, version: 2, changed: true });
+	});
+
+	it("a map that checks against the stored chart is kept, with its confidence", async () => {
+		await call(songs.saveChartDraft, {
+			id: SONG,
+			markdown: built.chart,
+			timing: built.timing,
+			confidence: built.confidence,
+		});
+		expect(data.setChartTiming).toHaveBeenCalledWith(ACCOUNT, SONG, built.timing, built.confidence);
+	});
+
+	it("a map made for another chart is not kept", async () => {
+		await call(songs.saveChartDraft, {
+			id: SONG,
+			markdown: "| D | E |\n",
+			timing: built.timing,
+			confidence: built.confidence,
+		});
+		expect(data.saveSongDoc).toHaveBeenCalled();
+		expect(data.setChartTiming).not.toHaveBeenCalled();
+	});
+
+	it("a confidence of the wrong shape or bar count is left out; the map stays", async () => {
+		const confidence = { ...built.confidence, bars: [] };
+		await call(songs.saveChartDraft, {
+			id: SONG,
+			markdown: built.chart,
+			timing: built.timing,
+			confidence,
+		});
+		expect(data.setChartTiming).toHaveBeenCalledWith(ACCOUNT, SONG, built.timing, null);
+	});
+
+	it("no map, nothing stored beside the chart", async () => {
+		await call(songs.saveChartDraft, { id: SONG, markdown: built.chart });
+		expect(data.setChartTiming).not.toHaveBeenCalled();
+	});
+});
+
+describe("saveChartTiming", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("400 for a map that does not fit the stored chart", async () => {
+		data.getSongById.mockResolvedValue({ chartMarkdown: "| C | G |\n" });
+		await expect(
+			call(songs.saveChartTiming, { id: SONG, timing: TIMING_ONE_BAR }),
+		).rejects.toMatchObject(httpError(400));
+		await expect(
+			call(songs.saveChartTiming, { id: SONG, timing: { format: "nope" } }),
+		).rejects.toMatchObject(httpError(400));
+		expect(data.setChartTiming).not.toHaveBeenCalled();
 	});
 });

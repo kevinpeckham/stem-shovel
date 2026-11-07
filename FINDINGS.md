@@ -7,6 +7,51 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## barmark counts the dotted quarter in 6/8, so a stored "120" is `tempo: 40`; `@barmark/sync` never throws; `harteToBarmark` turns `X` into `?` (2026-11-07)
+
+Found adopting `@barmark/sync` 0.1.0 for the chart draft
+(`src/lib/server/chartBuild.ts`; docs/audio-engine.md "The chart built
+from the detections").
+
+- **Tempo units differ.** barmark's `tempo:` counts grammar 2.1's beat,
+  which is the dotted quarter in a compound meter (6/8, 9/8, 12/8); the
+  app stores the meter's bottom-number unit (`audio/measures.ts`, a
+  meter with no `beatUnit`). A 6/8 song stored at 120 is barmark
+  `tempo: 40`; pass `value × beatsOf(meter) / meter.n` for a tempo and
+  for every tempo change, or pass no tempo and let the builder derive
+  one from the grid (it folds half- and double-length bars before taking
+  the median, so a grid that marks half bars still gives the song's
+  tempo). Checked in node: a 6/8 grid of 2-second bars with no tempo
+  writes `tempo: 60`.
+- **The builder never throws**, including on garbage: an unusable grid
+  (fewer than two usable starts) comes back as `chart: ""` and
+  `timing: null` with a `grid-unusable` error diagnostic, so a caller
+  has to check for the empty chart, not catch. Twenty diagnostic codes,
+  three severities; `info` ones (`meter-assumed`, `key-respelled`,
+  `pickup-ignored`) are noise for a user.
+- **Spellings changed under the table's feet.** `harteToBarmark` keeps
+  what the bench's `chart-symbols.json` collapsed: `C:min6` → `Cm6`
+  (was `Cm`), `C:hdim7` → `Cm7(b5)` (was `Cdim`), `C:minmaj7` →
+  `Cmmaj7` (was `Cm`), `A:min7/b7` → `Am7/G`; `N` → `N.C.` as before,
+  but `X` (the model's "no chord I know") → `?`, where the table said
+  `N.C.`. Anything that matched on `"N.C."` for silence now sees `?` on
+  a bar the model could not read; a `?` slot is not a hold and is never
+  written as `%`. Stored runs carry the model's `label`, so the new
+  spelling is a re-spelling on read with no job re-run.
+- **`keyFromText` reads detectors' prose.** "E♭ major", "C♯ minor",
+  "Bb Maj", "G# major" and "A mixolydian" all parse;
+  `conventionalKey` picks the fewest accidentals (G♯ major → A♭) and
+  `printKey` writes the `key:` form (`Eb`, `C#m`, `A mixolydian`). The
+  app's `SongChangeSchema` already named "F#m" as the stored form, while
+  the detectors wrote "E♭ major": one util at the boundary
+  (`utils/barmarkKey.ts`) settles it.
+- **The grid must cover the music.** Chords outside the grid are dropped
+  with `outside-bars`, never guessed: on Letter Lands the chord model
+  hears chords from 0 s while an aligned grid starts at 7.15 s and ends
+  17 s before the outro, so an intro and an outro vanish from a chart
+  built on that grid. The declared tempo's grid from `startAt` to the
+  duration covers everything; an aligned grid wants extending first.
+
 ## @barmark/musicxml 0.6.0: the title round-trips as a text line, and the importer's messages name its CLI (2026-11-07)
 
 Importing the package's own export of a chart with a `title:` directive

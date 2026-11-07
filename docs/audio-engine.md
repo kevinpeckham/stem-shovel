@@ -997,9 +997,10 @@ which carries the bytes as base64 so Vercel's tracer packs it) under
 onnxruntime-web's wasm backend, one thread, 16 windows of 108 frames per
 run, about two seconds for a four-minute song. The logits are smoothed over
 nine frames within each window and argmax'd (`chordminiSmooth.ts`, the
-reference's rule), run-length encoded (`chordminiRunsOf.ts`) and mapped to
-chart symbols with the bench's table (`chart-symbols.json`: `C:min7` → `Cm7`,
-`C:hdim7` → `Cdim`, `N` → `N.C.`).
+reference's rule), run-length encoded (`chordminiRunsOf.ts`) and spelled as
+barmark slots by `harteToBarmark` (`C:min7` → `Cm7`, `C:hdim7` → `Cm7(b5)`,
+`N` → `N.C.`, `X` → `?`; until 2026-11-07 the bench's lossy table,
+`chart-symbols.json`, see "The chart built from the detections").
 
 **On the page**, `SongChordDraft` asks `songChords` first: stored chords
 become one chord per bar by majority vote over each bar's frames
@@ -1028,3 +1029,67 @@ claim), reading (`chordsStartedAt` within `CHORDS_STALE_MS`) or done
 song seen reading and then waiting again is shown as "did not read" (the
 job released its claim). The job reports nothing finer than claim and
 done, so a song's bar is empty, pulsing or full.
+
+## The chart built from the detections (2026-11-07)
+
+`@barmark/sync` (barmark's companion package, 0.1.0; its design is
+`docs/superpowers/specs/2026-11-07-detections-to-chart-design.md` in
+kevinpeckham/barmark, its API the package README) replaces the lossy path
+from detections to a chart. Until today the page voted one chord per bar,
+mapped the model's labels through a table (`chart-symbols.json`, where
+`min6` became `m` and `X` became `N.C.`), handed the votes to the AI, and
+stored its draft without parsing it; every time was thrown away once the
+chart existed.
+
+- **Labels** are spelled by barmark's `harteToBarmark` (`C:min6` → `Cm6`,
+  `C:hdim7` → `Cm7(b5)`, `N` → `N.C.`, `X` → `?`): the job writes the
+  spelling into `chords_json` (`chord`), and `chordminiBarChords` re-spells
+  from the stored `label` on read, so rows stored before today read the new
+  way without a re-run. The table is gone.
+- **Keys** a detector names reach a change or a prompt through
+  `utils/barmarkKey.ts`: `printKey(conventionalKey(keyFromText(v)))`
+  ("E♭ major" → `Eb`, "G# major" → `Ab`, "C♯ minor" → `C#m`), the form the
+  `key:` line and the SongChangeSchema already use; text barmark cannot
+  read passes as written.
+- **The draft is built, then refined.** `draftChart` calls
+  `chartFromDetections` (`src/lib/server/chartBuild.ts`) with the bar grid
+  the page computed (the declared tempo's bar starts; alignment's when a
+  later step hands them over), the stored model runs (frames and `frameSec`,
+  as they are) or the notes matcher's chords as symbol runs, the key and
+  meter at 0:00, the sections and the changes. The builder picks each slot's
+  chord by coverage, writes `/` holds and `%`, snaps sections to bars,
+  writes key, meter and tempo changes as directive lines, spells chords in
+  the key in force, and never throws: problems come back as diagnostics (an
+  unusable grid gives an empty chart and a 422). **Tempo units:** barmark
+  counts grammar 2.1's beat, the dotted quarter in compound meters, while
+  SS stores the bottom-number unit, so a 6/8 song at "120" is barmark
+  `tempo: 40`. The draft passes no tempo (the builder derives one from the
+  grid, which SS made from the declared tempo, so they agree) and converts
+  each tempo change by `value × beatsOf(meter) / meter.n`. The AI then
+  refines the built chart instead of writing one from votes: it keeps the
+  bar count, corrects spellings against the transcribed notes and names the
+  sections. Without the AI (not configured, or switched off for the song)
+  the built chart is the draft, where before there was a 503.
+- **The timing map** is the builder's second output: a `barmark-timing`
+  v1 record of when each played bar starts in the recording, hashed to the
+  chart it fits (`chart.hash`, FNV-1a 64 over the canonical print), with
+  `source` "detected". When the AI's refinement keeps the bar count the map
+  is re-hashed to the refined chart; when it changes it the map is dropped
+  with a warning on the card. Saving the draft stores the map and the
+  builder's confidence record (experimental: a number per bar and slot) in
+  `song.chart_timing` and `song.chart_confidence` after `checkTimingMap`
+  against the stored text; a chart edit whose hash no longer matches clears
+  both. "Place from chart" (the chart aligned to the stems, above) saves the
+  alignment's bar starts as a map with `source` "aligned" when the aligned
+  score is the band's own chart. Nothing reads the map yet: the player's
+  grid is still `audio/measures.ts`'s from the song's changes; replacing its
+  `secondsAtBar` / `barAt` with the package's over a stored map is the next
+  step, Kevin's call.
+- **The saved draft is canonical**: `saveChartDraft` parses the text and
+  stores `printChart`'s output when it parses without errors, as the editor
+  normalizes; a draft with errors is stored as written and its diagnostics
+  shown.
+- **Chord typesetting** in the documentation PDF comes from
+  `@barmark/render`'s `typesetChord` and `glyphs` (exported since 0.16.0);
+  the app's copies (`utils/typesetChord.ts`, `utils/accidentalGlyphs.ts`)
+  are gone.

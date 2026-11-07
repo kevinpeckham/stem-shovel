@@ -3,6 +3,7 @@ import { RELEASES_DOC_SLUG } from "#lib/constants/releasesDoc.js";
 import type { Note } from "#lib/audio/chords.js";
 import { hashMarkdown, renderMarkdown } from "#lib/server/markdown.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { chartHash } from "@barmark/sync";
 import { callsTo, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
 // The cascade runs for real here: a page's delete should take its versions.
@@ -27,6 +28,7 @@ const {
 	saveSongDoc,
 	saveUserDoc,
 	saveUserNote,
+	setChartTiming,
 	setProjectNoAi,
 	setSongStage,
 	setSongNoAi,
@@ -177,6 +179,65 @@ describe("saveSongDoc", () => {
 		expect(
 			fake.rows("songDocVersion").filter((r) => r.kind === "notes" && r.userId === null),
 		).toHaveLength(10);
+	});
+});
+
+describe("the chart's timing map follows the chart text", () => {
+	const CHART = "| C | G |\n";
+	const timing = (text: string) => ({
+		format: "barmark-timing",
+		version: 1,
+		chart: { bars: 2, hash: chartHash(text) },
+		bars: [
+			{ bar: 1, start: 0 },
+			{ bar: 2, start: 2 },
+		],
+		end: 4,
+	});
+	const confidence = { format: "barmark-confidence", version: 1, bars: [] };
+	const withTiming = () =>
+		song("sg1", {
+			chartMarkdown: CHART,
+			chartHash: "h-old",
+			chartVersion: 1,
+			chartTiming: timing(CHART),
+			chartConfidence: confidence,
+		});
+
+	test("an edit that changes the chart's hash drops the map and its confidence in the same update", async () => {
+		reset({ song: [withTiming()] });
+		await saveSongDoc("a1", "u1", "sg1", "chart", "| C | Am |\n");
+		expect(callsTo("update", "song")).toHaveLength(1);
+		expect(row("song", "sg1")).toMatchObject({
+			chartMarkdown: "| C | Am |\n",
+			chartTiming: null,
+			chartConfidence: null,
+		});
+	});
+
+	test("an edit the printer normalizes keeps the map; so does another document's edit", async () => {
+		reset({ song: [withTiming()] });
+		await saveSongDoc("a1", "u1", "sg1", "chart", "|  C |G|\n");
+		expect(row("song", "sg1")).toMatchObject({
+			chartMarkdown: "|  C |G|\n",
+			chartTiming: timing(CHART),
+			chartConfidence: confidence,
+		});
+		await saveSongDoc("a1", "u1", "sg1", "lyrics", "La la");
+		expect(row("song", "sg1")?.chartTiming).toEqual(timing(CHART));
+	});
+
+	test("setChartTiming stores or clears both, scoped by the account", async () => {
+		reset({ song: [song("sg1"), song("sg2", { accountId: "a2" })] });
+		await setChartTiming("a1", "sg1", timing(CHART) as never, confidence as never);
+		expect(row("song", "sg1")).toMatchObject({
+			chartTiming: timing(CHART),
+			chartConfidence: confidence,
+		});
+		await setChartTiming("a1", "sg2", timing(CHART) as never, null);
+		expect(row("song", "sg2")?.chartTiming).toBeUndefined();
+		await setChartTiming("a1", "sg1", null, null);
+		expect(row("song", "sg1")).toMatchObject({ chartTiming: null, chartConfidence: null });
 	});
 });
 

@@ -211,6 +211,53 @@ describe("SongDraftCard with a score's chart", () => {
 	});
 });
 
+describe("SongDraftCard with a chart built from the detected chords", () => {
+	const timing = {
+		format: "barmark-timing",
+		version: 1,
+		chart: { bars: 2, hash: "0123456789abcdef" },
+		bars: [
+			{ bar: 1, start: 0 },
+			{ bar: 2, start: 2 },
+		],
+		end: 4,
+	};
+	const confidence = {
+		format: "barmark-confidence",
+		version: 1,
+		bars: [
+			{ bar: 1, confidence: 1, slots: [1] },
+			{ bar: 2, confidence: 0.5, slots: [0.5] },
+		],
+	};
+	const built = () => ({
+		...draft(),
+		source: "built" as const,
+		diagnostics: [{ level: "warning" as const, message: "The meter was assumed 4/4." }],
+		timing,
+		confidence,
+	});
+
+	test("the heading says so and the builder's warnings are listed", () => {
+		setup({ value: built() as never });
+		expect(screen.getByText("Draft from the detected chords")).toBeInTheDocument();
+		expect(screen.getByText("The meter was assumed 4/4.")).toHaveClass("text-amber-300");
+	});
+
+	test("Save as chart sends the timing map and the confidence beside the chart", async () => {
+		const { onchartsaved } = setup({ value: built() as never });
+		await fireEvent.click(screen.getByRole("button", { name: "Save as chart" }));
+		await vi.waitFor(() => expect(onchartsaved).toHaveBeenCalled());
+		expect(h.saveChartDraft).toHaveBeenCalledWith({
+			id: "song1",
+			markdown: "## Verse\n| D5 | A5 |",
+			replace: false,
+			timing,
+			confidence,
+		});
+	});
+});
+
 describe("SongDraftCard with a score without chord symbols", () => {
 	const SENTENCE = "No chord symbols in this score. Chart a part's notes instead:";
 

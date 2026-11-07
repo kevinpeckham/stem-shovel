@@ -2,7 +2,7 @@ import { command, form, getRequestEvent, query } from "$app/server";
 import { parseChart, printParsed } from "barmark";
 import { background } from "#lib/server/background.js";
 import { notifySong } from "#lib/server/notifications.js";
-import { barAt, barGrid } from "#lib/audio/measures.js";
+import { chartHash, checkTimingMap } from "@barmark/sync";
 import { SongChangesSaveSchema } from "#lib/val/SongChangeSchema.js";
 import { SongSectionsSaveSchema } from "#lib/val/SongSectionSchema.js";
 import { ShareSongSchema } from "#lib/val/ShareSongSchema.js";
@@ -42,6 +42,8 @@ import {
 	getSongById,
 	setDefaultMix,
 	songChordsFor,
+	songDetectionsFor,
+	setChartTiming,
 	songNotesFor,
 	songSlugs,
 	updateSong as update,
@@ -74,7 +76,15 @@ import { chartDefaults } from "#lib/utils/chartDefaults.js";
 import { barmarkChartBars } from "#lib/utils/barmarkChartBars.js";
 import { unescapeChartMarkdown } from "#lib/utils/unescapeChartMarkdown.js";
 import { withSongMentions } from "#lib/server/songMentions.js";
-import { ChartDraftSchema, ChartSaveSchema } from "#lib/val/ChartDraftSchema.js";
+import {
+	ChartDraftSchema,
+	ChartSaveSchema,
+	ChartTimingSaveSchema,
+	ChordsCheckSchema,
+} from "#lib/val/ChartDraftSchema.js";
+import { buildChartFromDetections } from "#lib/server/chartBuild.js";
+import { checkedConfidence } from "#lib/utils/checkedConfidence.js";
+import { sectionBarsOnMap } from "#lib/utils/sectionBarsOnMap.js";
 import { MY_NOTES_KIND, type SongDocKind } from "#lib/val/SongDocKindSchema.js";
 import { SongStageSetSchema } from "#lib/val/SongStageSchema.js";
 import { SongCreditAddSchema } from "#lib/val/ArtistSchema.js";
@@ -395,7 +405,10 @@ export const chartBarsOf = query(IdSchema, async ({ id }) => {
 	const read = barsOfScore(score, chartDefaults(song.changes));
 	if (read === undefined) return { bars: null, reason: "unread" as const };
 	if (read === null) return { bars: null, reason: "no-bars" as const };
-	return { ...read, source: score.kind === "chart" ? ("chart" as const) : ("summary" as const) };
+	// The song's own chart carries its text: an alignment of it is kept as its timing map (`saveChartTiming`).
+	return score.kind === "chart"
+		? { ...read, source: "chart" as const, text: score.markdown }
+		: { ...read, source: "summary" as const };
 });
 
 /** Asks the listening model where the song's sections begin, with its score when it has one (members; a few per hour). */
@@ -443,22 +456,52 @@ async function aiOrError<T>(work: Promise<T>): Promise<T> {
 	}
 }
 
-/** Names sections, progressions and a chart from the browser's chord detection (members; a few per hour). */
-export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, source }) => {
+/**
+ * A chart drafted from the browser's chord detection (members): built on its
+ * bar grid by `chartFromDetections` (src/lib/server/chartBuild.ts), with the
+ * timing map that places each bar in the mix; then, with the AI at hand,
+ * refined by the model (sections, spellings), the map kept when the refined
+ * chart plays the same bars. Without the AI (not configured, or off for the
+ * song) the built chart is the draft. A few AI drafts per hour.
+ */
+export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, source, grid }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, id);
-	if (!aiAvailable()) error(503, "The AI draft is not configured");
-	const song = await getSongById(accountId, id);
+	const [song, detections] = await Promise.all([
+		getSongById(accountId, id),
+		songDetectionsFor(accountId, id),
+	]);
 	if (!song) error(404, "Song not found");
-	if (song.noAi || song.project.noAi) error(403, "AI is switched off for this song");
+	const built = buildChartFromDetections(
+		{
+			title: song.title,
+			changes: song.changes,
+			sections: song.sections,
+			mixKey: detections?.mixKey ?? null,
+			chordsJson: detections?.chordsJson ?? null,
+		},
+		{ grid, chords, source },
+	);
+	if (!built.chart || !built.timing) error(422, "No bars to chart");
+	const timing = built.timing;
+	const sections = sectionBarsOnMap(timing, song.sections);
+	if (!aiAvailable() || song.noAi || song.project.noAi)
+		return {
+			chords: "",
+			sections,
+			progressions: [],
+			chart: built.chart,
+			notes: "",
+			chartHtml: renderChartHtml(built.chart),
+			timing,
+			confidence: built.confidence,
+			diagnostics: built.diagnostics,
+			source: "built" as const,
+		};
 	if (await rateLimited(`chart:${user.id}`, 5, HOUR)) error(429, "Too many drafts in one hour.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
-	const grid = barGrid(song.changes, song.startAt);
-	const existingSections = grid
-		? song.sections.map((s) => ({ name: s.name, bar: barAt(grid, s.start).bar }))
-		: [];
 	const answer = await aiOrError(
 		draftChartWithAi(
 			{
@@ -466,10 +509,11 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, s
 				tempo: at0("tempo"),
 				key: at0("key"),
 				meter: at0("meter"),
-				existingSections,
-				chords,
+				existingSections: sections,
 				bars,
 				source,
+				startingChart: built.chart,
+				barCount: timing.chart.bars,
 				examples: (await chartExamples(accountId, id)).map((e) => ({
 					title: e.title,
 					sections: e.sections.map((s) => ({ name: s.name })),
@@ -479,8 +523,30 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, s
 			{ userId: user.id, songId: id },
 		),
 	);
+	// The map fits the refined chart only if it plays the same bars; it is re-hashed to it.
+	const parse = parseChart(answer.chart);
+	const kept =
+		parse.bars.length === timing.chart.bars &&
+		!parse.diagnostics.some((d) => d.severity === "error");
 	// The chart is previewed with the panel's styling before it is saved.
-	return { ...answer, chartHtml: renderChartHtml(answer.chart) };
+	return {
+		...answer,
+		chartHtml: renderChartHtml(answer.chart),
+		timing: kept
+			? { ...timing, chart: { ...timing.chart, hash: chartHash(answer.chart, parse) } }
+			: null,
+		confidence: kept ? built.confidence : null,
+		diagnostics: kept
+			? built.diagnostics
+			: [
+					...built.diagnostics,
+					{
+						level: "warning" as const,
+						message: `The AI changed the bar count (${parse.bars.length} for ${timing.chart.bars}); the timing map was dropped.`,
+					},
+				],
+		source: "ai" as const,
+	};
 });
 
 /**
@@ -489,7 +555,7 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, s
  * reason when the answer did not parse (the page keeps the detector's
  * chords). Members; a few per hour; a 502 only when the gateway fails.
  */
-export const reconcileChords = command(ChartDraftSchema, async ({ id, chords, bars }) => {
+export const reconcileChords = command(ChordsCheckSchema, async ({ id, chords, bars }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, id);
@@ -527,17 +593,47 @@ function canonicalDraft(markdown: string): string {
 		: printParsed(markdown, parse);
 }
 
-/** Saves a drafted chart as the song's chart, canonical where it parses; refuses to overwrite content unless `replace`. */
-export const saveChartDraft = command(ChartSaveSchema, async ({ id, markdown, replace }) => {
+/**
+ * Saves a drafted chart as the song's chart, canonical where it parses;
+ * refuses to overwrite content unless `replace`. The draft's timing map is
+ * kept beside it when it checks clean against the stored text, and its
+ * confidence when that fits the map.
+ */
+export const saveChartDraft = command(
+	ChartSaveSchema,
+	async ({ id, markdown, replace, timing, confidence }) => {
+		const { locals } = getRequestEvent();
+		const user = requireUser(locals);
+		const { accountId } = await memberOf(locals, accountOfSong, id);
+		const song = await getSongById(accountId, id);
+		if (!song) error(404, "Song not found");
+		if (song.chartMarkdown.trim() && !replace) error(409, "The song already has a chart");
+		const stored = canonicalDraft(markdown);
+		const result = await saveSongDoc(accountId, user.id, id, "chart", stored);
+		if (!result.ok) error(400, result.error);
+		if (timing !== undefined) {
+			const { map } = checkTimingMap(timing, { text: stored.replace(/\r\n/g, "\n") });
+			if (map) await setChartTiming(accountId, id, map, checkedConfidence(confidence, map));
+		}
+		return { version: result.version };
+	},
+);
+
+/**
+ * Keeps a timing map for the song's own chart, from the chart aligned to the
+ * stems in the browser (`source: "aligned"`), when it checks clean against
+ * the stored chart; its confidence is cleared (members).
+ */
+export const saveChartTiming = command(ChartTimingSaveSchema, async ({ id, timing }) => {
 	const { locals } = getRequestEvent();
-	const user = requireUser(locals);
+	requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, id);
 	const song = await getSongById(accountId, id);
 	if (!song) error(404, "Song not found");
-	if (song.chartMarkdown.trim() && !replace) error(409, "The song already has a chart");
-	const result = await saveSongDoc(accountId, user.id, id, "chart", canonicalDraft(markdown));
-	if (!result.ok) error(400, result.error);
-	return { version: result.version };
+	const { map } = checkTimingMap(timing, { text: song.chartMarkdown });
+	if (!map) error(400, "The timing map does not fit the chart");
+	await setChartTiming(accountId, id, map, null);
+	return { saved: true };
 });
 
 /** The notes the server transcribed for the chart draft (members), and whether they are complete. */

@@ -14,7 +14,8 @@ export const BarNotesSchema = v.object({
 	notes: v.pipe(v.string(), v.maxLength(2000)),
 });
 
-export const ChartDraftSchema = v.object({
+/** The chords the browser detected and the notes per bar, for the AI's chord check (`reconcileChords`). */
+export const ChordsCheckSchema = v.object({
 	id: NanoIdSchema,
 	/** The template matcher's chords, as a hint. */
 	chords: v.pipe(v.array(ChordSegmentSchema), v.minLength(1), v.maxLength(1000)),
@@ -27,11 +28,35 @@ export const ChartDraftSchema = v.object({
 	source: v.optional(v.picklist(["matcher", "model"]), "matcher"),
 });
 
+/**
+ * Drafting a chart: the chord check's input plus `grid`, the bar starts in
+ * seconds the browser voted the chords on and where the last bar ends
+ * (`@barmark/sync`'s bar grid; up to 2000 bars), which the server builds the
+ * starting chart and its timing map on (src/lib/server/chartBuild.ts).
+ */
+export const ChartDraftSchema = v.object({
+	...ChordsCheckSchema.entries,
+	grid: v.pipe(
+		v.array(v.pipe(v.number(), v.finite(), v.minValue(0))),
+		v.minLength(2),
+		v.maxLength(2001),
+	),
+});
+
 /** Saving a drafted chart; `replace` confirms overwriting one that has content. */
 export const ChartSaveSchema = v.object({
 	id: NanoIdSchema,
 	markdown: v.pipe(v.string(), v.maxLength(200_000)),
 	replace: v.optional(v.boolean(), false),
+	/** The draft's timing map and confidence (@barmark/sync), checked against the saved chart on the server, not here. */
+	timing: v.optional(v.unknown()),
+	confidence: v.optional(v.unknown()),
+});
+
+/** A timing map for the song's own chart, from the chart aligned to the stems; checked on the server. */
+export const ChartTimingSaveSchema = v.object({
+	id: NanoIdSchema,
+	timing: v.unknown(),
 });
 
 /** What the model must return. */

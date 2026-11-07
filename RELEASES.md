@@ -6,6 +6,11 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ### Added
 
+- **Better chart drafts.** The AI draft now starts from a chart built straight from the detected chords on the song's bars, so chords that change mid-bar are kept, chords are spelled for the key, and sections land on bar lines. The AI refines that chart rather than writing one from scratch. A draft is available even where the AI is switched off.
+
+### Changed
+
+- **Chord names read the way barmark writes them.** Minor sixths, half-diminished and minor-major sevenths keep their quality instead of collapsing to plain minor or dim; a bar the model could not read shows `?`. Detected keys are spelled with the fewest accidentals (A♭ rather than G♯).
 - **A picture when you share a link.** Posting a Stem Shovel page on social media now shows a card with the site's look, on every page.
 
 ## [0.243.0] - 2026-11-07
