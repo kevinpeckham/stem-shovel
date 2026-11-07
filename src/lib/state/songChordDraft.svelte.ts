@@ -2,6 +2,7 @@ import { extractFeatures } from "#lib/audio/analysis.js";
 import { chordsPerBar, describeBars, type ChordSegment, type Note } from "#lib/audio/chords.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
+import { chartFromScore } from "#lib/remote/files.remote.js";
 import { draftChart, reconcileChords, songChords, songNotes } from "#lib/remote/songs.remote.js";
 import { notify } from "#lib/state/notifications.svelte.js";
 import { chartDraftOfScore } from "#lib/utils/chartDraftOfScore.js";
@@ -19,12 +20,20 @@ export interface ScoreDiagnostic {
 	message: string;
 }
 
-/** "Chart from score" (`chartFromScore`, the notation tile's ⋯ menu): the imported chart and the tile's name as `source`. */
+/**
+ * "Chart from score" (`chartFromScore`, the notation tile's ⋯ menu): the
+ * imported chart and the tile's name as `source`; for a score without chord
+ * symbols an empty chart and the parts it could be charted from, and once
+ * one is, its name.
+ */
 export interface ScoreChart {
 	chart: string;
 	chartHtml: string;
 	diagnostics: ScoreDiagnostic[];
 	source: string;
+	notationId: string;
+	parts: string[];
+	partName?: string;
 }
 
 /** The draft card's draft: the AI's (no `source`, or "ai") or a score's import ("score", with its name and diagnostics). */
@@ -33,6 +42,10 @@ export type ChartDraft = ChartDraftAnswer & {
 	source?: "ai" | "score";
 	scoreName?: string;
 	diagnostics?: ScoreDiagnostic[];
+	/** A score's: the notation file, the parts the card offers when the chart is empty, the part charted. */
+	notationId?: string;
+	parts?: string[];
+	partName?: string;
 };
 
 /** What the page supplies: functions, since each follows the page's data and the player. */
@@ -95,6 +108,8 @@ export class SongChordDraft {
 	chordError = $state<string | null>(null);
 	draft = $state<ChartDraft | null>(null);
 	draftBusy = $state(false);
+	/** A score's part is being charted (`chartPart`); the card's part buttons are disabled meanwhile. */
+	partBusy = $state(false);
 	/** The latest run; a new run interrupts it before starting, Cancel interrupts it. */
 	#fiber: Fiber.Fiber<void> | null = null;
 	#opts: SongChordDraftOptions;
@@ -134,6 +149,21 @@ export class SongChordDraft {
 	fromScore = (score: ScoreChart) => {
 		this.chordError = null;
 		this.draft = chartDraftOfScore(score, score.source);
+	};
+
+	/** The card's part button for a score without chord symbols: that part's notes charted, in place of the draft. */
+	chartPart = async (part: string) => {
+		const { notationId, scoreName = "" } = this.draft ?? {};
+		if (!notationId || this.partBusy) return;
+		this.partBusy = true;
+		try {
+			const r = await chartFromScore({ id: notationId, part });
+			this.draft = chartDraftOfScore({ ...r, notationId }, scoreName);
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			this.partBusy = false;
+		}
 	};
 
 	detectChords = () => this.#run(this.#detect());

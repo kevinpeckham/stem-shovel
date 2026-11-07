@@ -108,12 +108,13 @@
 		charting = t.row.id;
 		try {
 			const r = await chartFromScore({ id: t.row.id });
-			if (!r.chart.trim()) {
+			// No chord symbols but parts of notes: the draft card offers the parts instead of a notice.
+			if (!r.chart.trim() && r.parts.length === 0) {
 				const why = r.diagnostics.find((d) => d.level === "error")?.message;
 				notify(`Nothing to chart in ${name}${why ? `: ${why}` : ""}`, { kind: "error" });
 				return;
 			}
-			onchart?.({ ...r, source: name });
+			onchart?.({ ...r, source: name, notationId: t.row.id });
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {

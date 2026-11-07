@@ -19,6 +19,28 @@ describe("chartDraftOfScore", () => {
 			source: "score",
 			scoreName: "Lead sheet",
 			diagnostics,
+			parts: [],
 		});
+	});
+
+	it("the notation file, its parts and the part charted ride along", () => {
+		const draft = chartDraftOfScore(
+			{ chart: "", chartHtml: "", diagnostics: [], notationId: "score-1", parts: ["Piano"] },
+			"Lead sheet",
+		);
+		expect(draft).toMatchObject({ notationId: "score-1", parts: ["Piano"] });
+		expect(draft).not.toHaveProperty("partName");
+		expect(
+			chartDraftOfScore(
+				{
+					chart: "| {C E G} |",
+					chartHtml: "<p>n</p>",
+					diagnostics: [],
+					parts: [],
+					partName: "Piano",
+				},
+				"Lead sheet",
+			),
+		).toMatchObject({ partName: "Piano" });
 	});
 });

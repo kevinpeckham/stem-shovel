@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Chart from score charts a part.** A score with no chord symbols now offers the parts that have notes, and the one you pick is charted from its notes.
+
 ## [0.239.0] - 2026-11-07
 
 ### Added

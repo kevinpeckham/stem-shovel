@@ -5,6 +5,7 @@ import type { StemEngine } from "#lib/audio/engine.svelte.js";
 
 /** The settings' Tempo & key tab over real state instances; the remote functions are never reached. */
 vi.mock("#lib/remote/songs.remote.js", () => ({}));
+vi.mock("#lib/remote/files.remote.js", () => ({}));
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify: vi.fn() }));
 
 const { default: SongTempoKeyTab } = await import("./SongTempoKeyTab.svelte");

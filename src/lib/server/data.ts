@@ -134,6 +134,7 @@ import { SlugSchema } from "#lib/val/SlugSchema.js";
 import type { PlaybackStatus } from "#lib/val/PlaybackStatusSchema.js";
 import { NOTES_STALE_MS } from "#lib/constants/notesStale.js";
 import { CHORDS_STALE_MS } from "#lib/constants/chordsStale.js";
+import { chordReadState } from "#lib/utils/chordReadState.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import {
 	MY_NOTES_KIND,
@@ -3914,6 +3915,44 @@ export async function songsWantingChordsAdmin(limit: number) {
 			.limit(limit),
 	]);
 	return { count: Number(count), ids: rows.map((r) => r.id) };
+}
+
+/**
+ * Where each song of an admin chord batch stands (/admin/playback's progress):
+ * waiting, reading (a fresh claim) or done (chords from the current mix), with
+ * the slugs for a link to the song page. At most 100 ids, in one query.
+ */
+export async function chordReadStatesAdmin(ids: string[]) {
+	const wanted = ids.slice(0, 100);
+	if (wanted.length === 0) return [];
+	const rows = await db
+		.select({
+			id: song.id,
+			title: song.title,
+			slug: song.slug,
+			projectSlug: project.slug,
+			accountSlug: account.slug,
+			chordsKey: song.chordsKey,
+			mixKey: song.mixKey,
+			chordsStartedAt: song.chordsStartedAt,
+		})
+		.from(song)
+		.innerJoin(project, eq(project.id, song.projectId))
+		.innerJoin(account, eq(account.id, song.accountId))
+		.where(inArray(song.id, wanted));
+	const now = Date.now();
+	return rows.map((r) => {
+		const state = chordReadState(r, now, CHORDS_STALE_MS);
+		return {
+			id: r.id,
+			title: r.title,
+			slug: r.slug,
+			projectSlug: r.projectSlug,
+			accountSlug: r.accountSlug,
+			state,
+			startedAt: state === "reading" ? (r.chordsStartedAt?.getTime() ?? null) : null,
+		};
+	});
 }
 
 /**

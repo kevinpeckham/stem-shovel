@@ -9,8 +9,10 @@ import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 const h = vi.hoisted(() => ({
 	saveSections: vi.fn(async () => {}),
 	saveChartDraft: vi.fn(async () => {}),
+	chartFromScore: vi.fn(),
 	notify: vi.fn(),
 }));
+vi.mock("#lib/remote/files.remote.js", () => ({ chartFromScore: h.chartFromScore }));
 vi.mock("#lib/remote/songs.remote.js", () => ({
 	saveSections: h.saveSections,
 	saveChartDraft: h.saveChartDraft,
@@ -59,11 +61,26 @@ const scoreDraft = () => ({
 	],
 });
 
+/** A score without chord symbols: an empty chart, the importer's error and the parts it names. */
+const partsDraft = () => ({
+	...scoreDraft(),
+	chart: "",
+	chartHtml: "",
+	diagnostics: [
+		{ level: "error" as const, message: "no chord symbols; these parts have notes: Piano, Bass." },
+	],
+	notationId: "score-1",
+	parts: ["Piano", "Bass"],
+});
+
 function setup({
 	hasSections = false,
 	hasChart = false,
 	confirmed = true,
-	value = draft() as ReturnType<typeof draft> | ReturnType<typeof scoreDraft>,
+	value = draft() as
+		| ReturnType<typeof draft>
+		| ReturnType<typeof scoreDraft>
+		| ReturnType<typeof partsDraft>,
 } = {}) {
 	vi.stubGlobal(
 		"confirm",
@@ -191,6 +208,57 @@ describe("SongDraftCard with a score's chart", () => {
 		expect(screen.getByText("AI draft")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Save sections" })).toBeInTheDocument();
 		expect(document.querySelector(".text-amber-300, .text-red-400")).toBeNull();
+	});
+});
+
+describe("SongDraftCard with a score without chord symbols", () => {
+	const SENTENCE = "No chord symbols in this score. Chart a part's notes instead:";
+
+	test("offers a button per part, and no Save as chart", () => {
+		setup({ value: partsDraft() });
+		expect(screen.getByText("Chart from Lead sheet")).toBeInTheDocument();
+		expect(screen.getByText(SENTENCE)).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Piano" })).toHaveClass("button", "button-xs");
+		expect(screen.getByRole("button", { name: "Bass" })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Save as chart" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Discard" })).toBeInTheDocument();
+	});
+
+	test("a part's button charts its notes: the card shows the chart with the part in the heading", async () => {
+		let answer: (value: unknown) => void = () => {};
+		h.chartFromScore.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+		const { chordDraft } = setup({ value: partsDraft() });
+		await fireEvent.click(screen.getByRole("button", { name: "Piano" }));
+		expect(h.chartFromScore).toHaveBeenCalledWith({ id: "score-1", part: "Piano" });
+		await vi.waitFor(() => expect(screen.getByRole("button", { name: "Bass" })).toBeDisabled());
+		answer({
+			chart: "| {C4 E4 G4} | {G3 B3 D4} |",
+			chartHtml: "<p>notes</p>",
+			diagnostics: [],
+			parts: [],
+			partName: "Piano",
+		});
+		await vi.waitFor(() =>
+			expect(screen.getByText("Chart from Lead sheet, the Piano part")).toBeInTheDocument(),
+		);
+		expect(screen.queryByText(SENTENCE)).toBeNull();
+		expect(screen.getByRole("button", { name: "Save as chart" })).toBeInTheDocument();
+		expect(chordDraft.draft).toMatchObject({
+			chart: "| {C4 E4 G4} | {G3 B3 D4} |",
+			notationId: "score-1",
+			partName: "Piano",
+		});
+	});
+
+	test("a failed call is an error notification and the parts stay", async () => {
+		h.chartFromScore.mockRejectedValue(new Error("The score could not be read"));
+		setup({ value: partsDraft() });
+		await fireEvent.click(screen.getByRole("button", { name: "Bass" }));
+		await vi.waitFor(() =>
+			expect(h.notify).toHaveBeenCalledWith("The score could not be read", { kind: "error" }),
+		);
+		expect(screen.getByRole("button", { name: "Bass" })).toBeEnabled();
+		expect(screen.getByText(SENTENCE)).toBeInTheDocument();
 	});
 });
 

@@ -6,15 +6,19 @@
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { refreshAll } from "$app/navigation";
+	import ChordReadProgress from "#lib/components/ChordReadProgress.svelte";
 
 	let { data } = $props();
 	let chosen = $derived(data.mode);
 	let reading = $state(false);
+	/** The ids of the batch last posted, followed by the progress list. */
+	let batch = $state<string[]>([]);
 	/** One batch of the songs the chord model has not read, posted to the jobs function. */
 	async function readChords() {
 		reading = true;
 		try {
 			const r = await readMissingChords({});
+			batch = r.ids;
 			await refreshAll();
 			notify(chordsReadNotice(r.scheduled, r.remaining));
 		} catch (e) {
@@ -84,26 +88,35 @@
 	</form>
 </section>
 
-<section class="mt-10">
-	<h2 class="heading-2">Chord model</h2>
-	<p class="mt-1 text-sm opacity-90">
-		The chord model reads a song's mix after its stems upload, and a project or song page posts the
-		read for an older song when a member opens it. This reads the ones nobody has opened yet, a
-		batch of {CHORDS_BATCH} at a time (a few minutes of the jobs function each).
-	</p>
-	<p class="mt-3 text-15px">
-		{data.wantingChords === 0
-			? "Every song with a mix has its chords."
-			: `${data.wantingChords} ${data.wantingChords === 1 ? "song" : "songs"} with a mix ${data.wantingChords === 1 ? "has" : "have"} no chords yet.`}
-	</p>
-	<div class="mt-3">
-		<button
-			class="button-accent"
-			type="button"
-			disabled={reading || data.wantingChords === 0}
-			onclick={readChords}
-		>
-			{reading ? "Posting…" : `Read the next ${Math.min(CHORDS_BATCH, data.wantingChords)}`}
-		</button>
-	</div>
-</section>
+{#snippet chordModel()}
+	<section class="mt-10">
+		<h2 class="heading-2">Chord model</h2>
+		<p class="mt-1 text-sm opacity-90">
+			The chord model reads a song's mix after its stems upload, and a project or song page posts
+			the read for an older song when a member opens it. This reads the ones nobody has opened yet,
+			a batch of {CHORDS_BATCH} at a time (a few minutes of the jobs function each).
+		</p>
+		<p class="mt-3 text-15px">
+			{data.wantingChords === 0
+				? "Every song with a mix has its chords."
+				: `${data.wantingChords} ${data.wantingChords === 1 ? "song" : "songs"} with a mix ${data.wantingChords === 1 ? "has" : "have"} no chords yet.`}
+		</p>
+		<div class="mt-3">
+			<button
+				class="button-accent"
+				type="button"
+				disabled={reading || data.wantingChords === 0}
+				onclick={readChords}
+			>
+				{reading ? "Posting…" : `Read the next ${Math.min(CHORDS_BATCH, data.wantingChords)}`}
+			</button>
+		</div>
+		{#if batch.length > 0}
+			{#key batch}
+				<ChordReadProgress ids={batch} ondone={() => void refreshAll()} />
+			{/key}
+		{/if}
+	</section>
+{/snippet}
+
+{@render chordModel()}

@@ -126,7 +126,37 @@ const cases: Case[] = [
 			data.songsWantingChordsAdmin.mockResolvedValue({ count: 3, ids: ["song-a", "song-b"] }),
 		dataFn: "songsWantingChordsAdmin",
 		args: [40],
-		outcome: { scheduled: 2, remaining: 1 },
+		outcome: { scheduled: 2, remaining: 1, ids: ["song-a", "song-b"] },
+	},
+	{
+		name: "chordReadStates",
+		fn: admin.chordReadStates,
+		input: { ids: [SONG] },
+		arrange: () =>
+			data.chordReadStatesAdmin.mockResolvedValue([
+				{
+					id: SONG,
+					title: "One",
+					slug: "one",
+					projectSlug: "p",
+					accountSlug: "a",
+					state: "reading",
+					startedAt: 1,
+				},
+			]),
+		dataFn: "chordReadStatesAdmin",
+		args: [[SONG]],
+		outcome: [
+			{
+				id: SONG,
+				title: "One",
+				slug: "one",
+				projectSlug: "p",
+				accountSlug: "a",
+				state: "reading",
+				startedAt: 1,
+			},
+		],
 	},
 	{
 		name: "setFeaturedSong",
@@ -254,6 +284,14 @@ describe("manageUser guards", () => {
 			httpError(400),
 		);
 		expect(data.deleteUser).not.toHaveBeenCalled();
+	});
+});
+
+describe("chordReadStates input", () => {
+	it("rejects an id that is not a nanoid", async () => {
+		asSystemAdmin();
+		await expect(call(admin.chordReadStates, { ids: ["not an id!"] })).rejects.toThrow();
+		expect(data.chordReadStatesAdmin).not.toHaveBeenCalled();
 	});
 });
 
