@@ -1,6 +1,7 @@
 import type { Detection } from "#lib/audio/analysis.js";
 import type { SongChangeKind } from "#lib/constants/songChanges.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import { barmarkKey } from "./barmarkKey.js";
 import { isCompoundMeter } from "./isCompoundMeter.js";
 import { isTripleMeter } from "./isTripleMeter.js";
 import { tempoLadderMatch } from "./tempoLadderMatch.js";
@@ -23,11 +24,12 @@ export interface ScanOffer {
 const at0 = (changes: SongChange[], kind: SongChangeKind) =>
 	changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
 
+/** The keys in order, spelled as barmark writes them, so a song saved as "E♭ major" agrees with a scan's "Eb". */
 const keyValues = (rows: SongChange[]) =>
 	rows
 		.filter((r) => r.kind === "key")
 		.toSorted((a, b) => a.start - b.start)
-		.map((r) => r.value);
+		.map((r) => barmarkKey(r.value));
 
 /** The rungs only the song's meter opens: a match there is a count difference, and so is the meter's. */
 const METER_RUNGS = [1.5, 2 / 3, 3];

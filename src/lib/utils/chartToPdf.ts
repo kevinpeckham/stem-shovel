@@ -1,6 +1,8 @@
 import {
 	creditsText,
+	glyphs,
 	layoutChart,
+	typesetChord,
 	type BlockItem,
 	type CellModel,
 	type ChartModel,
@@ -16,8 +18,6 @@ import {
 	type Slot,
 	type Words,
 } from "barmark";
-import { accidentalGlyphs } from "#lib/utils/accidentalGlyphs.js";
-import { typesetChord } from "#lib/utils/typesetChord.js";
 
 /** The faces the chart draws with: `chord` must hold ♯ ♭ ° ø (Edwin); the text faces may be pdfkit's built-ins. */
 type Fonts = { chord: string; text: string; textBold: string; textItalic: string };
@@ -180,7 +180,7 @@ function textLine(ctx: Ctx, text: string, font: string, size: number, color = BL
 /** A directive's settings as [name, value], in the page's order: key, time, tempo, feel. */
 function directiveParts(d: Directives): [string, string][] {
 	const parts: [string, string][] = [];
-	if (d.key) parts.push(["key", `${accidentalGlyphs(d.key.tonic)} ${d.key.mode}`]);
+	if (d.key) parts.push(["key", `${glyphs(d.key.tonic)} ${d.key.mode}`]);
 	if (d.time) parts.push(["time", `${d.time.n}/${d.time.d}`]);
 	// Edwin has no ♩, so a tempo reads in bpm.
 	if (d.tempo) parts.push(["tempo", `${d.tempo} bpm`]);
@@ -623,7 +623,7 @@ function chordRuns(
 	size: number,
 	run: (text: string, font?: string, at?: number, color?: string, rise?: number) => Run,
 ): Run[] {
-	if (chord.kind === "notes" || !chord.parts) return [run(accidentalGlyphs(chord.canonical))];
+	if (chord.kind === "notes" || !chord.parts) return [run(glyphs(chord.canonical))];
 	const p = typesetChord(chord.parts);
 	const runs = [run(`${p.root}${p.quality}`)];
 	if (p.superscript)

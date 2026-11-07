@@ -80,7 +80,7 @@ describe("SongCheck", () => {
 		);
 	});
 
-	test("Ask AI to check holds the answer; Use these writes the rows and saves them", async () => {
+	test("Ask AI to check holds the answer; Use these writes the rows, keys spelled as barmark writes them, and saves them", async () => {
 		const { check, rows } = make([{ kind: "tempo", start: 0, value: "90" }], false);
 		await check.askAi();
 		expect(remote.askAiAboutSong).toHaveBeenCalledWith({ id: "song1" });
@@ -93,9 +93,9 @@ describe("SongCheck", () => {
 			id: "song1",
 			changes: [
 				{ kind: "tempo", start: 0, value: "96" },
-				{ kind: "key", start: 0, value: "C major" },
+				{ kind: "key", start: 0, value: "C" },
 				{ kind: "meter", start: 0, value: "4/4" },
-				{ kind: "key", start: 30, value: "A♭ major" },
+				{ kind: "key", start: 30, value: "Ab" },
 			],
 		});
 		expect(check.aiAnswer).toBeNull();
@@ -153,6 +153,26 @@ describe("SongCheck", () => {
 		expect(onsaved).toHaveBeenCalled();
 		expect(notify).toHaveBeenCalledWith("Tempo and key replaced from the stems");
 		expect(check.scanResult?.applied).toBe(true);
+	});
+
+	test("an upload's detection on a song without settings is saved, the detector's key as barmark spells it", async () => {
+		const { check } = make();
+		const d = {
+			tempo: { bpm: 120, confidence: 1, subdivision: "quarter", alternates: [] },
+			meter: { value: "4/4", confidence: 1 },
+			key: { value: "E♭ major", confidence: 1 },
+		} as unknown as Detection;
+		await check.applyDetection(d, [
+			{ start: 0, value: "E♭ major", confidence: 1 },
+			{ start: 30, value: "C♯ minor", confidence: 1 },
+		]);
+		expect(remote.saveChanges).toHaveBeenCalledWith({
+			id: "song1",
+			changes: expect.arrayContaining([
+				{ kind: "key", start: 0, value: "Eb" },
+				{ kind: "key", start: 30, value: "C#m" },
+			]),
+		});
 	});
 
 	test("an upload's detection on a song with settings is only reported", async () => {

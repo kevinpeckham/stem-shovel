@@ -311,14 +311,14 @@ describe("editor-gated functions", () => {
 		{
 			name: "saveChartDraft",
 			fn: songs.saveChartDraft,
-			input: { id: SONG, markdown: "C" },
+			input: { id: SONG, markdown: "| C |\n" },
 			anon: 401,
 			arrange: () => {
 				data.getSongById.mockResolvedValue({ chartMarkdown: "" });
 				data.saveSongDoc.mockResolvedValue({ ok: true, version: 1 });
 			},
 			dataFn: "saveSongDoc",
-			args: [ACCOUNT, USER, SONG, "chart", "C"],
+			args: [ACCOUNT, USER, SONG, "chart", "| C |\n"],
 			outcome: { version: 1 },
 		},
 		{
@@ -617,6 +617,29 @@ describe("side effects of the editor-gated functions", () => {
 		});
 		await expect(call(songs.detectSections, { id: SONG })).rejects.toMatchObject(httpError(409));
 		expect(aiDetect.detectSectionsWithAi).not.toHaveBeenCalled();
+	});
+	it("saveChartDraft stores a draft that parses in barmark's canonical form", async () => {
+		asEditorOf(ACCOUNT);
+		data.getSongById.mockResolvedValue({ chartMarkdown: "" });
+		data.saveSongDoc.mockResolvedValue({ ok: true, version: 2 });
+		await expect(
+			call(songs.saveChartDraft, { id: SONG, markdown: "## Verse\n|  D |A|   Bm | G  |\n" }),
+		).resolves.toEqual({ version: 2 });
+		expect(data.saveSongDoc).toHaveBeenCalledWith(
+			ACCOUNT,
+			USER,
+			SONG,
+			"chart",
+			"## Verse\n| D | A | Bm | G |\n",
+		);
+	});
+	it("saveChartDraft stores a draft with an error as written", async () => {
+		asEditorOf(ACCOUNT);
+		data.getSongById.mockResolvedValue({ chartMarkdown: "" });
+		data.saveSongDoc.mockResolvedValue({ ok: true, version: 3 });
+		const markdown = "## Verse\n|  D | Hzz7 |\n";
+		await call(songs.saveChartDraft, { id: SONG, markdown });
+		expect(data.saveSongDoc).toHaveBeenCalledWith(ACCOUNT, USER, SONG, "chart", markdown);
 	});
 	it("saveChartDraft refuses to overwrite a chart unless told to", async () => {
 		asEditorOf(ACCOUNT);

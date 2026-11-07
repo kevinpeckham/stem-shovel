@@ -21,6 +21,7 @@ import type { AiAnswer } from "#lib/server/aiDetect.js";
 import { notify } from "#lib/state/notifications.svelte.js";
 import type { SongChanges } from "#lib/state/songChanges.svelte.js";
 import { alignedPlacements } from "#lib/utils/alignedPlacements.js";
+import { barmarkKey } from "#lib/utils/barmarkKey.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { formatSongChange } from "#lib/utils/formatSongChange.js";
 import { keyLine } from "#lib/utils/keyLine.js";
@@ -85,13 +86,13 @@ const attempt = <A>(thunk: () => PromiseLike<A>) =>
 /** 409: the mix is not rendered yet (renditions still transcoding after an upload). */
 const mixPending = (e: unknown) => (e as { status?: unknown } | null)?.status === 409;
 
-/** What a scan would write: tempo and time signature at 0:00, and the keys where each begins. */
+/** What a scan would write: tempo and time signature at 0:00, and the keys where each begins (spelled as barmark writes a key: the detector's "E♭ major" is "Eb"). */
 function scanChanges(d: Detection, keys: KeyChange[]): SongChange[] {
 	return [
 		...(d.tempo.bpm
 			? [{ kind: "tempo" as const, start: 0, value: String(Math.round(d.tempo.bpm)) }]
 			: []),
-		...keys.map((k) => ({ kind: "key" as const, start: k.start, value: k.value })),
+		...keys.map((k) => ({ kind: "key" as const, start: k.start, value: barmarkKey(k.value) })),
 		...(d.tempo.bpm ? [{ kind: "meter" as const, start: 0, value: d.meter.value }] : []),
 	];
 }
@@ -147,13 +148,13 @@ function scanResultOf(
 	};
 }
 
-/** An answer's rows at 0:00: what the chart states (no row where it has no tempo mark or time signature, or marks no meter). */
+/** An answer's rows at 0:00: what the chart states (no row where it has no tempo mark or time signature, or marks no meter); the key as barmark spells it. */
 function answerAt0(answer: AiAnswer): { kind: SongChangeKind; value: string }[] {
 	return [
 		...(answer.tempo === null
 			? []
 			: [{ kind: "tempo" as const, value: String(Math.round(answer.tempo)) }]),
-		...(answer.key ? [{ kind: "key" as const, value: answer.key }] : []),
+		...(answer.key ? [{ kind: "key" as const, value: barmarkKey(answer.key) }] : []),
 		...(answer.meter === null || answer.meter === "free"
 			? []
 			: [{ kind: "meter" as const, value: answer.meter }]),
@@ -536,7 +537,7 @@ export class SongCheck {
 				shown: editPos(at),
 				seconds: at,
 				kind: "key",
-				value: c.key,
+				value: barmarkKey(c.key),
 			});
 		}
 		const line = this.aiLine(answer);

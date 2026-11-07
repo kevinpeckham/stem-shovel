@@ -1,3 +1,4 @@
+import { harteToBarmark } from "barmark";
 import type { ChordminiRuns } from "./chordminiRuns";
 
 /** A run of bars with one chord, in the shape the chord detector (`chordsPerBar`) returns. */
@@ -29,18 +30,22 @@ function vote(labelAt: string[], lo: number, hi: number): { chord: string; confi
 
 /**
  * A chord per bar from the chord model's frames (stem-bench Study 17's
- * registered read): each bar takes the label most of its frames carry, the
+ * registered read): each bar takes the chord most of its frames carry, the
  * frames being those from `round(barStart / frameSec)` up to the next bar's,
  * at least one, cut at the last frame. A bar past the last frame has no
- * chord ("N.C."). Consecutive bars with one chord merge into a segment, as
+ * chord ("N.C."). A label is spelled by barmark's `harteToBarmark` (N is
+ * "N.C.", X and anything it cannot read "?"). Consecutive bars with one chord merge into a segment, as
  * `chordsPerBar` does, so the card, the AI draft and the reconciler read
  * either source alike.
  */
 export function chordminiBarChords(stored: ChordminiRuns, barStarts: number[]): BarChordSegment[] {
 	const { frameSec, frames, runs } = stored;
 	const labelAt = Array.from({ length: frames }, () => "N.C.");
-	for (const r of runs)
-		for (let f = r.start; f < Math.min(r.end, frames); f++) labelAt[f] = r.chord;
+	for (const r of runs) {
+		// Spelled from the model's label on read, not the stored `chord`, so rows stored under the bench's older map (min6 as m, hdim7 as dim, X as N.C.) read as barmark spells them now.
+		const chord = harteToBarmark(r.label) ?? "?";
+		for (let f = r.start; f < Math.min(r.end, frames); f++) labelAt[f] = chord;
+	}
 	const out: BarChordSegment[] = [];
 	for (let b = 0; b < barStarts.length - 1; b++) {
 		const lo = Math.round(barStarts[b] / frameSec);

@@ -1,4 +1,5 @@
 import { command, form, getRequestEvent, query } from "$app/server";
+import { parseChart, printParsed } from "barmark";
 import { background } from "#lib/server/background.js";
 import { notifySong } from "#lib/server/notifications.js";
 import { barAt, barGrid } from "#lib/audio/measures.js";
@@ -514,7 +515,19 @@ export const reconcileChords = command(ChartDraftSchema, async ({ id, chords, ba
 	);
 });
 
-/** Saves a drafted chart as the song's chart; refuses to overwrite content unless `replace`. */
+/**
+ * A drafted chart in barmark's canonical form (spelling and layout only,
+ * spec section 8) when it parses without errors; with an error it is kept as
+ * written, and the editor shows the diagnostics.
+ */
+function canonicalDraft(markdown: string): string {
+	const parse = parseChart(markdown);
+	return parse.diagnostics.some((d) => d.severity === "error")
+		? markdown
+		: printParsed(markdown, parse);
+}
+
+/** Saves a drafted chart as the song's chart, canonical where it parses; refuses to overwrite content unless `replace`. */
 export const saveChartDraft = command(ChartSaveSchema, async ({ id, markdown, replace }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
@@ -522,7 +535,7 @@ export const saveChartDraft = command(ChartSaveSchema, async ({ id, markdown, re
 	const song = await getSongById(accountId, id);
 	if (!song) error(404, "Song not found");
 	if (song.chartMarkdown.trim() && !replace) error(409, "The song already has a chart");
-	const result = await saveSongDoc(accountId, user.id, id, "chart", markdown);
+	const result = await saveSongDoc(accountId, user.id, id, "chart", canonicalDraft(markdown));
 	if (!result.ok) error(400, result.error);
 	return { version: result.version };
 });

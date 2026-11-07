@@ -9,9 +9,12 @@ export interface ChordminiRun {
 	start: number;
 	/** The frame after the run's last, exclusive. */
 	end: number;
-	/** The chart symbol the bench's map gives the model's label ("Am7", "F#", "N.C."). */
+	/**
+	 * barmark's spelling of the label: `harteToBarmark` ("Am7", "F#", "N.C." for N, "?" for X).
+	 * Rows stored before 2026-11-07 carry the bench's older map here, so readers re-spell from `label`.
+	 */
 	chord: string;
-	/** The model's own label ("A:min7", "F#", "N"), kept for a later re-spelling. */
+	/** The model's own label ("A:min7", "F#", "N"), what readers spell from. */
 	label: string;
 }
 

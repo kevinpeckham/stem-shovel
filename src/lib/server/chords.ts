@@ -1,4 +1,3 @@
-import chartSymbols from "./chordmini/chart-symbols.json";
 import config from "./chordmini/config.json";
 import plan from "./chordmini/cqt-plan.json";
 import {
@@ -19,6 +18,7 @@ import { chordminiFeatures } from "#lib/utils/chordminiCqt.js";
 import { chordminiIndices } from "#lib/utils/chordminiSmooth.js";
 import { chordminiRunsOf } from "#lib/utils/chordminiRunsOf.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
+import { harteToBarmark } from "barmark";
 import type * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -35,8 +35,8 @@ import { join } from "node:path";
  * (utils/chordminiCqt.ts, from the baked plan), the ONNX model in a child
  * process (chordmini/infer.ts: onnxruntime-web's wasm backend, so the
  * function's event loop is never held), the reference smoothing and argmax,
- * and the frames run-length encoded onto the song row with the chart symbol
- * the bench's map gives each label. Runs after the mix renders and from the
+ * and the frames run-length encoded onto the song row with barmark's spelling
+ * of each label (`harteToBarmark`). Runs after the mix renders and from the
  * song page as a backstop; a song (or project) marked "no AI" is skipped.
  */
 const MODEL_RATE = 22050;
@@ -86,9 +86,7 @@ function inferLogits(features: Float32Array, frames: number, dir: string) {
 	}).pipe(Effect.withSpan("chords.infer"));
 }
 
-const symbols = chartSymbols as Record<string, string>;
-
-/** The stored shape: runs of frames with the chart symbol and the model's own label. */
+/** The stored shape: runs of frames with barmark's spelling and the model's own label. */
 function runsOf(indices: Int32Array, labels: string[], frames: number): ChordminiRuns {
 	return {
 		version: CHORDMINI_VERSION,
@@ -96,8 +94,8 @@ function runsOf(indices: Int32Array, labels: string[], frames: number): Chordmin
 		frames,
 		runs: chordminiRunsOf(indices, labels).map((r) => ({
 			...r,
-			// The bench's table maps N and X to "": the card and the draft say "N.C." for a bar with no chord, as `chordsPerBar` does.
-			chord: symbols[r.label] || "N.C.",
+			// barmark spells the label: N (no chord) is "N.C.", X (unknown) is "?", and a label it cannot read is "?" too.
+			chord: harteToBarmark(r.label) ?? "?",
 		})),
 	};
 }

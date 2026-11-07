@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import plan from "#lib/server/chordmini/cqt-plan.json";
-import symbols from "#lib/server/chordmini/chart-symbols.json";
+import config from "#lib/server/chordmini/config.json";
 import fixture from "./chordminiCqt.fixture.json";
 import { chordminiFeatures } from "./chordminiCqt";
 import { chordminiRunsOf } from "./chordminiRunsOf";
@@ -48,7 +48,7 @@ describe("chordminiFeatures", () => {
 		expect(sumDiff / (frames * 144)).toBeLessThan(0.002);
 	});
 	test("the fixture's indices encode to its runs with the model's labels", () => {
-		expect(chordminiRunsOf(Int32Array.from(fixture.indices), Object.keys(symbols))).toEqual(
+		expect(chordminiRunsOf(Int32Array.from(fixture.indices), config.chordVocab)).toEqual(
 			fixture.runs,
 		);
 	});

@@ -61,6 +61,12 @@ describe("scanOffer", () => {
 		expect(offer.values).toEqual([meter("3/4")]);
 	});
 
+	it("compares keys as barmark spells them: a song saved as E♭ major agrees with a scan's Eb", () => {
+		const rows = [tempo("120"), key(0, "Eb")];
+		expect(scanOffer(detection(120), rows, [tempo("120"), key(0, "E♭ major")]).agrees).toContain(
+			"key",
+		);
+	});
 	it("compares keys in order of their start", () => {
 		const rows = [tempo("120"), key(0, "C major"), key(60, "D major")];
 		const own = [tempo("120"), key(60, "D major"), key(0, "C major")];
