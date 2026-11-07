@@ -6,7 +6,7 @@
 	type CardProps = ComponentProps<typeof SongDraftCard>;
 	interface Props extends Omit<CardProps, "chordDraft"> {
 		/** The draft and the detection's error. */
-		chordDraft: Pick<SongChordDraft, "draft" | "chordError">;
+		chordDraft: Pick<SongChordDraft, "draft" | "chordError" | "chartPart" | "partBusy">;
 	}
 	let { chordDraft, ...card }: Props = $props();
 </script>

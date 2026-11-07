@@ -18,6 +18,8 @@ import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
 import { redisConfigured, redisPipeline } from "#lib/server/redis.js";
 import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
 import { tidyScoreDiagnostic } from "#lib/utils/tidyScoreDiagnostic.js";
+import { scorePartsOf } from "#lib/utils/scorePartsOf.js";
+import { ChartFromScoreSchema } from "#lib/val/ChartFromScoreSchema.js";
 import { ChartReadSaveSchema } from "#lib/val/ChartReadSchema.js";
 import { barmarkChartPlays } from "#lib/utils/barmarkChartPlays.js";
 import { IdSchema } from "#lib/val/SongSchema.js";
@@ -141,22 +143,11 @@ export const readChartOfFile = command(IdSchema, async ({ id }) => {
 /** The largest notation file "Chart from score" reads (a score's MusicXML is rarely a tenth of it). */
 const SCORE_IMPORT_MAX_BYTES = 20 * 1024 * 1024;
 
-/**
- * "Chart from score": a song's MusicXML file read by @barmark/musicxml into a
- * barmark chart (chord symbols, keys, meters, sections, repeats), with what
- * it could not carry over, for the draft card to show and save as the song's
- * chart (an editor). No AI and no rate limit: the import takes milliseconds
- * (about 25 ms for 64 bars, warm). A damaged `.mxl` or a file that gives
- * nothing comes back as an empty chart with an error, not as an HTTP error.
- */
-export const chartFromScore = command(IdSchema, async ({ id }) => {
-	const { locals } = getRequestEvent();
-	const { accountId } = await memberOf(locals, accountOfNotation, id);
-	const row = await notationForImport(accountId, id);
-	if (!row || row.status !== "ready") error(404, "Score not found");
+/** A notation file's bytes from Blob for "Chart from score": 502 when Blob fails, 413 over the limit. */
+async function scoreBytesOf(url: string): Promise<Uint8Array> {
 	let res: Response;
 	try {
-		res = await readBlob(row.url);
+		res = await readBlob(url);
 	} catch {
 		error(502, "The score could not be read");
 	}
@@ -165,21 +156,51 @@ export const chartFromScore = command(IdSchema, async ({ id }) => {
 		error(413, "The score is too large to chart");
 	const bytes = new Uint8Array(await res.arrayBuffer());
 	if (bytes.byteLength > SCORE_IMPORT_MAX_BYTES) error(413, "The score is too large to chart");
+	return bytes;
+}
+
+/** A score's diagnostic as the draft card lists it: two levels, the package's sentence tidied. */
+const scoreDiagnosticOf = (d: { severity: string; message: string }) => ({
+	level: d.severity === "error" ? ("error" as const) : ("warning" as const),
+	message: tidyScoreDiagnostic(d.message),
+});
+
+/**
+ * "Chart from score": a song's MusicXML file read by @barmark/musicxml into a
+ * barmark chart (chord symbols, keys, meters, sections, repeats), with what
+ * it could not carry over, for the draft card to show and save as the song's
+ * chart (an editor). No AI and no rate limit: the import takes milliseconds
+ * (about 25 ms for 64 bars, warm). A damaged `.mxl` or a file that gives
+ * nothing comes back as an empty chart with an error, not as an HTTP error.
+ * A score without chord symbols names its parts of notes in `parts`; with
+ * `part`, that part's notes are charted as note sets and its name comes back
+ * as `partName` (and `parts` is empty).
+ */
+export const chartFromScore = command(ChartFromScoreSchema, async ({ id, part: asked }) => {
+	const part = asked || undefined;
+	/** A part asked for is echoed for the draft card's heading. */
+	const partOf = part ? { partName: part } : {};
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfNotation, id);
+	const row = await notationForImport(accountId, id);
+	if (!row || row.status !== "ready") error(404, "Score not found");
+	const bytes = await scoreBytesOf(row.url);
 	let xml: string;
 	try {
 		xml = row.format === "mxl" ? await readMxl(bytes) : decodeXmlBytes(bytes);
 	} catch (e) {
 		const message = e instanceof Error ? e.message : "The score could not be unpacked";
-		return { chart: "", chartHtml: "", diagnostics: [{ level: "error" as const, message }] };
+		const diagnostics = [{ level: "error" as const, message }];
+		return { chart: "", chartHtml: "", diagnostics, parts: [] as string[], ...partOf };
 	}
-	const { text, diagnostics } = importMusicXml(xml);
+	const { text, diagnostics } = importMusicXml(xml, part ? { part } : {});
+	const tidied = diagnostics.map(scoreDiagnosticOf);
 	return {
 		chart: text,
 		chartHtml: text ? renderChartHtml(text) : "",
-		diagnostics: diagnostics.map((d) => ({
-			level: d.severity === "error" ? ("error" as const) : ("warning" as const),
-			message: tidyScoreDiagnostic(d.message),
-		})),
+		diagnostics: tidied,
+		parts: part ? [] : scorePartsOf(tidied),
+		...partOf,
 	};
 });
 

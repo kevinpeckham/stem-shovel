@@ -1019,3 +1019,12 @@ slash, a major/minor flip) and every gate failed: on real recordings the
 note profiles carry a third or a fourth the guitars never played, so the
 colors are unreachable from the notes, and the recoloring cost credited
 roots. The model's reading ships uncolored; the hedge on the card stays.
+
+**The admin batch's progress** (/admin/playback, 2026-11-07): the posted
+batch's ids come back from `readMissingChords`, and `ChordReadProgress`
+polls `chordReadStates` every three seconds, each song waiting (no fresh
+claim), reading (`chordsStartedAt` within `CHORDS_STALE_MS`) or done
+(`chordsKey` is the mix's key), as `chordReadState` reads the columns; a
+song seen reading and then waiting again is shown as "did not read" (the
+job released its claim). The job reports nothing finer than claim and
+done, so a song's bar is empty, pulsing or full.

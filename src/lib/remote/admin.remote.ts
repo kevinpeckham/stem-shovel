@@ -1,9 +1,10 @@
-import { command, form, getRequestEvent } from "$app/server";
+import { command, form, getRequestEvent, query } from "$app/server";
 import * as v from "valibot";
 import { scheduleChords } from "#lib/server/jobs.js";
 import { CHORDS_BATCH } from "#lib/constants/chordsBatch.js";
 import { requireStudioAccess, requireSuperAdmin, requireSystemAdmin } from "#lib/server/access.js";
 import {
+	chordReadStatesAdmin,
 	songsWantingChordsAdmin,
 	createInviteCode,
 	deleteAccount,
@@ -176,8 +177,18 @@ export const readMissingChords = command(v.object({}), async () => {
 	requireSystemAdmin(locals);
 	const { count, ids } = await songsWantingChordsAdmin(CHORDS_BATCH);
 	scheduleChords(ids);
-	return { scheduled: ids.length, remaining: count - ids.length };
+	return { scheduled: ids.length, remaining: count - ids.length, ids };
 });
+
+/** Where each song of a posted chord batch stands, for the admin's progress list. */
+export const chordReadStates = query(
+	v.object({ ids: v.pipe(v.array(NanoIdSchema), v.maxLength(100)) }),
+	async ({ ids }) => {
+		const { locals } = getRequestEvent();
+		requireSystemAdmin(locals);
+		return chordReadStatesAdmin(ids);
+	},
+);
 
 export const makeHomeStudioSong = command(v.object({}), async () => {
 	const { locals } = getRequestEvent();

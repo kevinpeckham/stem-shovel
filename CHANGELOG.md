@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Chart from score charts a part.** A score with no chord symbols now comes back with the parts that have notes (`parts`, parsed from the importer's error by `scorePartsOf`), and the draft card offers one button per part: the chosen part's notes are charted as note sets (`chartFromScore({ id, part })`, `ChartFromScoreSchema`; `SongChordDraft.chartPart`), the heading naming the part. The empty-score card hides Save as chart and the preview.
+- **Per-song progress for the admin chord read** (/admin/playback). After a batch posts, `ChordReadProgress.svelte` polls `chordReadStates` (admin.remote.ts, `chordReadStatesAdmin` + `chordReadState` util: waiting, reading or done from the song's chord columns) every 3 s until every song is read or released: a bar of done over the batch, a row per song linking to its page with waiting, reading (pulsing, with the claim's age), done, or "did not read" for a claim the job released; the count refreshes when the batch is over. `readMissingChords` returns the batch's ids.
+
 ## [0.239.0] - 2026-11-07
 
 ### Added

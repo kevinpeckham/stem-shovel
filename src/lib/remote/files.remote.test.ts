@@ -300,12 +300,23 @@ describe('"Chart from score": a MusicXML file read into a chart (chartFromScore)
 		});
 	};
 	/** The remote's answer, typed (`call` answers unknown). */
-	const chartOf = (id: string) =>
-		call(files.chartFromScore, { id }) as Promise<{
+	const chartOf = (id: string, part?: string) =>
+		call(files.chartFromScore, part === undefined ? { id } : { id, part }) as Promise<{
 			chart: string;
 			chartHtml: string;
 			diagnostics: { level: "error" | "warning"; message: string }[];
+			parts: string[];
+			partName?: string;
 		}>;
+	/**
+	 * A piano part of notes and no chord symbols, as another program writes it:
+	 * barmark's own export reads back as note sets, so the encoder is renamed.
+	 */
+	const notesOnly = (() => {
+		const notes = exportMusicXml("part: Piano\n| {C4 E4 G4} | {G3 B3 D4} |");
+		if (!notes.ok) throw new Error("the export failed");
+		return notes.xml.replace(/<software>[^<]*<\/software>/, "<software>MuseScore 4.4.0</software>");
+	})();
 	const served = (body: BodyInit) => blob.readBlob.mockResolvedValue(new Response(body));
 
 	beforeEach(() => asEditorOf(ACCOUNT));
@@ -317,6 +328,8 @@ describe('"Chart from score": a MusicXML file read into a chart (chartFromScore)
 		expect(r.chart).toMatch(/\|\s*C\s*\|\s*G\s*\|/);
 		expect(r.chartHtml).not.toBe("");
 		expect(r.diagnostics).toEqual([]);
+		expect(r.parts).toEqual([]);
+		expect(r).not.toHaveProperty("partName");
 		expect(data.notationForImport).toHaveBeenCalledWith(ACCOUNT, SCORE);
 		expect(blob.readBlob).toHaveBeenCalledWith("https://blob/score.musicxml");
 	});
@@ -346,6 +359,41 @@ describe('"Chart from score": a MusicXML file read into a chart (chartFromScore)
 		const empty = await chartOf(SCORE);
 		expect(empty.chart).toBe("");
 		expect(empty.diagnostics.some((d) => d.level === "error")).toBe(true);
+	});
+
+	it("a score of notes without chord symbols is an empty chart that names its parts", async () => {
+		givenNotation();
+		served(notesOnly);
+		const r = await chartOf(SCORE);
+		expect(r).toMatchObject({ chart: "", chartHtml: "", parts: ["Piano"] });
+		expect(r.diagnostics).toEqual([
+			{ level: "error", message: "no chord symbols; these parts have notes: Piano." },
+		]);
+		expect(r).not.toHaveProperty("partName");
+	});
+
+	it("a part asked for is charted as note sets and echoed back", async () => {
+		givenNotation();
+		served(notesOnly);
+		const r = await chartOf(SCORE, "Piano");
+		expect(r.chart).toMatch(/\|\s*\{C4 E4 G4\}\s*\|\s*\{G3 B3 D4\}\s*\|/);
+		expect(r.chartHtml).not.toBe("");
+		expect(r).toMatchObject({ diagnostics: [], parts: [], partName: "Piano" });
+	});
+
+	it("an unknown part is an empty chart with the importer's error and no parts", async () => {
+		givenNotation();
+		served(notesOnly);
+		const r = await chartOf(SCORE, "Tuba");
+		expect(r).toMatchObject({ chart: "", parts: [], partName: "Tuba" });
+		expect(r.diagnostics.some((d) => d.level === "error")).toBe(true);
+	});
+
+	it("a part name over 80 characters is refused", async () => {
+		givenNotation();
+		served(notesOnly);
+		await expect(chartOf(SCORE, "x".repeat(81))).rejects.toMatchObject({ name: "ValiError" });
+		expect(data.notationForImport).not.toHaveBeenCalled();
 	});
 
 	it("404 for a viewer, an unknown id or a file not ready; 502 when Blob fails; 413 over 20 MB", async () => {

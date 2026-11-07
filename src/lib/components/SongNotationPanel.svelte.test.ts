@@ -110,7 +110,12 @@ describe("Chart from score", () => {
 
 	test("hands the page the chart, named after the tile", async () => {
 		const diagnostics = [{ level: "warning", message: "Lyrics were left out." }];
-		h.chartFromScore.mockResolvedValue({ chart: "| C | G |", chartHtml: "<p>c</p>", diagnostics });
+		h.chartFromScore.mockResolvedValue({
+			chart: "| C | G |",
+			chartHtml: "<p>c</p>",
+			diagnostics,
+			parts: [],
+		});
 		const onchart = vi.fn();
 		const user = userEvent.setup();
 		render(SongNotationPanel, base({ onchart }));
@@ -122,7 +127,36 @@ describe("Chart from score", () => {
 			chart: "| C | G |",
 			chartHtml: "<p>c</p>",
 			diagnostics,
+			parts: [],
 			source: "Lead sheet",
+			notationId: "score-1",
+		});
+		expect(h.notify).not.toHaveBeenCalled();
+	});
+
+	test("no chord symbols but parts of notes: the page gets the empty chart and the parts, no notice", async () => {
+		const diagnostics = [
+			{ level: "error", message: "no chord symbols; these parts have notes: Piano, Bass." },
+		];
+		h.chartFromScore.mockResolvedValue({
+			chart: "",
+			chartHtml: "",
+			diagnostics,
+			parts: ["Piano", "Bass"],
+		});
+		const onchart = vi.fn();
+		const user = userEvent.setup();
+		render(SongNotationPanel, base({ onchart }));
+		await user.click(screen.getByRole("button", { name: "Actions for Lead sheet" }));
+		await user.click(screen.getByRole("button", { name: "Chart from score" }));
+		await vi.waitFor(() => expect(onchart).toHaveBeenCalled());
+		expect(onchart).toHaveBeenCalledWith({
+			chart: "",
+			chartHtml: "",
+			diagnostics,
+			parts: ["Piano", "Bass"],
+			source: "Lead sheet",
+			notationId: "score-1",
 		});
 		expect(h.notify).not.toHaveBeenCalled();
 	});
@@ -135,6 +169,7 @@ describe("Chart from score", () => {
 				{ level: "warning", message: "A rhythm snapped." },
 				{ level: "error", message: "The file has no measures." },
 			],
+			parts: [],
 		});
 		const onchart = vi.fn();
 		const user = userEvent.setup();

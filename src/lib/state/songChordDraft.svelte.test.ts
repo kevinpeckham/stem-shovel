@@ -16,6 +16,8 @@ const remote = vi.hoisted(() => ({
 	draftChart: vi.fn(),
 }));
 vi.mock("#lib/remote/songs.remote.js", () => remote);
+const files = vi.hoisted(() => ({ chartFromScore: vi.fn() }));
+vi.mock("#lib/remote/files.remote.js", () => files);
 const notify = vi.hoisted(() => vi.fn());
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify }));
 
@@ -198,7 +200,14 @@ describe("SongChordDraft", () => {
 		cd.draft = DRAFT;
 		cd.chordError = "No bars to read";
 		const diagnostics = [{ level: "warning" as const, message: "Lyrics were left out." }];
-		cd.fromScore({ chart: "| C | G |", chartHtml: "<p>c</p>", diagnostics, source: "Lead sheet" });
+		cd.fromScore({
+			chart: "| C | G |",
+			chartHtml: "<p>c</p>",
+			diagnostics,
+			source: "Lead sheet",
+			notationId: "score-1",
+			parts: [],
+		});
 		expect(cd.chordError).toBeNull();
 		expect(cd.draft).toMatchObject({
 			chart: "| C | G |",
@@ -207,6 +216,62 @@ describe("SongChordDraft", () => {
 			source: "score",
 			scoreName: "Lead sheet",
 			diagnostics,
+		});
+	});
+
+	describe("a score without chord symbols: a part charted as note sets (chartPart)", () => {
+		const noChords = {
+			chart: "",
+			chartHtml: "",
+			diagnostics: [
+				{
+					level: "error" as const,
+					message: "no chord symbols; these parts have notes: Piano, Bass.",
+				},
+			],
+			source: "Lead sheet",
+			notationId: "score-1",
+			parts: ["Piano", "Bass"],
+		};
+
+		test("the part's chart replaces the empty draft, named after the part", async () => {
+			files.chartFromScore.mockResolvedValue({
+				chart: "| {C4 E4 G4} |",
+				chartHtml: "<p>n</p>",
+				diagnostics: [],
+				parts: [],
+				partName: "Piano",
+			});
+			const cd = make();
+			cd.fromScore(noChords);
+			expect(cd.draft).toMatchObject({
+				chart: "",
+				parts: ["Piano", "Bass"],
+				notationId: "score-1",
+			});
+			const done = cd.chartPart("Piano");
+			expect(cd.partBusy).toBe(true);
+			await done;
+			expect(files.chartFromScore).toHaveBeenCalledWith({ id: "score-1", part: "Piano" });
+			expect(cd.partBusy).toBe(false);
+			expect(cd.draft).toMatchObject({
+				chart: "| {C4 E4 G4} |",
+				source: "score",
+				scoreName: "Lead sheet",
+				notationId: "score-1",
+				parts: [],
+				partName: "Piano",
+			});
+		});
+
+		test("a failed call is an error notification; the draft stays", async () => {
+			files.chartFromScore.mockRejectedValue(new Error("The score could not be read"));
+			const cd = make();
+			cd.fromScore(noChords);
+			await cd.chartPart("Bass");
+			expect(notify).toHaveBeenCalledWith("The score could not be read", { kind: "error" });
+			expect(cd.draft).toMatchObject({ parts: ["Piano", "Bass"] });
+			expect(cd.partBusy).toBe(false);
 		});
 	});
 
