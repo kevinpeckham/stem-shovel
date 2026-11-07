@@ -6330,6 +6330,15 @@ export function notationByShareCode(code: string) {
 	});
 }
 
+/** A notation file of the account, for "Chart from score" (files.remote.ts `chartFromScore`); null when another tenant's or missing. */
+export async function notationForImport(accountId: string, id: string) {
+	const row = await db.query.songNotation.findFirst({
+		where: and(eq(songNotation.accountId, accountId), eq(songNotation.id, id)),
+		columns: { id: true, songId: true, url: true, format: true, filename: true, status: true },
+	});
+	return row ?? null;
+}
+
 /** What the jobs function needs to engrave a notation file's PDF (src/lib/server/notationPdf.ts); by id alone, as a job has no account. */
 export function notationForPdf(notationId: string) {
 	return db.query.songNotation.findFirst({

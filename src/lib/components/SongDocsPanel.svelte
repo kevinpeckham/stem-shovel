@@ -7,6 +7,7 @@
 	import type { PanelFile } from "#lib/components/SongFilesPanel.svelte";
 	import SongNotationPanel, { type PanelNotation } from "#lib/components/SongNotationPanel.svelte";
 	import { DOC_HINTS, DOC_LABELS, type SongDocs } from "#lib/state/songDocs.svelte.js";
+	import type { ScoreChart } from "#lib/state/songChordDraft.svelte.js";
 	import { chartDefaults } from "#lib/utils/chartDefaults.js";
 	import type { SongDocKind } from "#lib/val/SongDocKindSchema.js";
 
@@ -37,6 +38,8 @@
 		oncheck: () => void;
 		/** Rendered above the chart: the detection's error and the AI's draft card. */
 		above: Snippet | undefined;
+		/** "Chart from score" on a MusicXML tile: the imported chart for the draft card (the page's `chordDraft.fromScore`). */
+		onchart?: (draft: ScoreChart) => void;
 	}
 	let {
 		docs,
@@ -49,6 +52,7 @@
 		busy,
 		oncheck,
 		above,
+		onchart = () => {},
 	}: Props = $props();
 </script>
 
@@ -77,6 +81,7 @@
 			{canEdit}
 			aiAvailable={aiAvailable && !song.noAi && !song.project.noAi}
 			{oncheck}
+			{onchart}
 			chartDefaults={chartDefaults(song.changes)}
 		/>
 	{:else if docs.notesMine}

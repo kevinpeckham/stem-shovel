@@ -11,8 +11,11 @@ import {
 	fakeId,
 	httpError,
 } from "../../../tests/helpers/fakeRequestEvent";
+import { exportMusicXml } from "@barmark/musicxml";
+import { zipSync, strToU8 } from "fflate";
 import {
 	aiDetect,
+	blob,
 	data,
 	givenRow,
 	jobs,
@@ -275,5 +278,104 @@ describe('the chart read (docs/audio-engine.md, "The chart read is stored")', ()
 		expect(data.saveChartRead).toHaveBeenCalledWith(ACCOUNT, FILE, null, false);
 		expect(aiDetect.chartCacheKey).toHaveBeenCalledWith("https://blob/score.pdf");
 		expect(redis.redisPipeline).toHaveBeenCalledWith([["DEL", "chart:abc"]]);
+	});
+});
+
+describe('"Chart from score": a MusicXML file read into a chart (chartFromScore)', () => {
+	const SCORE = fakeId("score-one");
+	const exported = exportMusicXml("key: C, time: 4/4\n| C | G |");
+	if (!exported.ok) throw new Error("the export failed");
+	const XML = exported.xml;
+	/** The notation row `notationForImport` finds. */
+	const givenNotation = (over: Record<string, unknown> = {}) => {
+		givenRow("songNotation", { accountId: ACCOUNT, song: { projectId: fakeId("proj-one") } });
+		data.notationForImport.mockResolvedValue({
+			id: SCORE,
+			songId: SONG,
+			url: "https://blob/score.musicxml",
+			format: "musicxml",
+			filename: "score.musicxml",
+			status: "ready",
+			...over,
+		});
+	};
+	/** The remote's answer, typed (`call` answers unknown). */
+	const chartOf = (id: string) =>
+		call(files.chartFromScore, { id }) as Promise<{
+			chart: string;
+			chartHtml: string;
+			diagnostics: { level: "error" | "warning"; message: string }[];
+		}>;
+	const served = (body: BodyInit) => blob.readBlob.mockResolvedValue(new Response(body));
+
+	beforeEach(() => asEditorOf(ACCOUNT));
+
+	it("an editor gets the chart, its HTML and no diagnostics for a clean file", async () => {
+		givenNotation();
+		served(XML);
+		const r = await chartOf(SCORE);
+		expect(r.chart).toMatch(/\|\s*C\s*\|\s*G\s*\|/);
+		expect(r.chartHtml).not.toBe("");
+		expect(r.diagnostics).toEqual([]);
+		expect(data.notationForImport).toHaveBeenCalledWith(ACCOUNT, SCORE);
+		expect(blob.readBlob).toHaveBeenCalledWith("https://blob/score.musicxml");
+	});
+
+	it("a compressed .mxl is unpacked first", async () => {
+		givenNotation({ format: "mxl", url: "https://blob/score.mxl" });
+		const container =
+			'<?xml version="1.0" encoding="UTF-8"?><container><rootfiles><rootfile full-path="score.musicxml" media-type="application/vnd.recordare.musicxml+xml"/></rootfiles></container>';
+		const mxl = zipSync({
+			mimetype: [strToU8("application/vnd.recordare.musicxml"), { level: 0 }],
+			"META-INF/container.xml": strToU8(container),
+			"score.musicxml": strToU8(XML),
+		});
+		served(new Blob([mxl]));
+		const r = await chartOf(SCORE);
+		expect(r.chart).toMatch(/\|\s*C\s*\|\s*G\s*\|/);
+	});
+
+	it("a damaged .mxl, or a file with nothing to chart, is an empty chart with an error", async () => {
+		givenNotation({ format: "mxl" });
+		served("not a zip");
+		const damaged = await chartOf(SCORE);
+		expect(damaged).toMatchObject({ chart: "", chartHtml: "" });
+		expect(damaged.diagnostics[0]).toMatchObject({ level: "error", message: expect.any(String) });
+		givenNotation();
+		served('<?xml version="1.0"?><score-partwise version="4.0"><part-list/></score-partwise>');
+		const empty = await chartOf(SCORE);
+		expect(empty.chart).toBe("");
+		expect(empty.diagnostics.some((d) => d.level === "error")).toBe(true);
+	});
+
+	it("404 for a viewer, an unknown id or a file not ready; 502 when Blob fails; 413 over 20 MB", async () => {
+		givenNotation();
+		asViewerOf(ACCOUNT);
+		await expect(call(files.chartFromScore, { id: SCORE })).rejects.toMatchObject(httpError(404));
+		expect(data.notationForImport).not.toHaveBeenCalled();
+		asEditorOf(ACCOUNT);
+		givenRow("songNotation", null);
+		await expect(call(files.chartFromScore, { id: SCORE })).rejects.toMatchObject(httpError(404));
+		givenNotation({ status: "uploading" });
+		await expect(call(files.chartFromScore, { id: SCORE })).rejects.toMatchObject(httpError(404));
+		givenNotation();
+		data.notationForImport.mockResolvedValue(null);
+		await expect(call(files.chartFromScore, { id: SCORE })).rejects.toMatchObject(httpError(404));
+		givenNotation();
+		blob.readBlob.mockResolvedValue(new Response(null, { status: 404 }));
+		await expect(call(files.chartFromScore, { id: SCORE })).rejects.toMatchObject({
+			status: 502,
+			body: { message: "The score could not be read" },
+		});
+		blob.readBlob.mockResolvedValue(
+			new Response("x", { headers: { "content-length": String(21 * 1024 * 1024) } }),
+		);
+		await expect(call(files.chartFromScore, { id: SCORE })).rejects.toMatchObject(httpError(413));
+	});
+
+	it("401 signed out", async () => {
+		asSignedOut();
+		givenNotation();
+		await expect(call(files.chartFromScore, { id: SCORE })).rejects.toMatchObject(httpError(401));
 	});
 });

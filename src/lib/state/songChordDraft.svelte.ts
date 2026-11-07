@@ -4,6 +4,7 @@ import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
 import { draftChart, reconcileChords, songChords, songNotes } from "#lib/remote/songs.remote.js";
 import { notify } from "#lib/state/notifications.svelte.js";
+import { chartDraftOfScore } from "#lib/utils/chartDraftOfScore.js";
 import { chordminiBarChords } from "#lib/utils/chordminiBarChords.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
@@ -11,6 +12,28 @@ import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
 import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
+
+/** What a score's import could not carry over, as the package words it (@barmark/musicxml's diagnostics). */
+export interface ScoreDiagnostic {
+	level: "error" | "warning";
+	message: string;
+}
+
+/** "Chart from score" (`chartFromScore`, the notation tile's ⋯ menu): the imported chart and the tile's name as `source`. */
+export interface ScoreChart {
+	chart: string;
+	chartHtml: string;
+	diagnostics: ScoreDiagnostic[];
+	source: string;
+}
+
+/** The draft card's draft: the AI's (no `source`, or "ai") or a score's import ("score", with its name and diagnostics). */
+export type ChartDraft = ChartDraftAnswer & {
+	chartHtml: string;
+	source?: "ai" | "score";
+	scoreName?: string;
+	diagnostics?: ScoreDiagnostic[];
+};
 
 /** What the page supplies: functions, since each follows the page's data and the player. */
 export interface SongChordDraftOptions {
@@ -70,7 +93,7 @@ export class SongChordDraft {
 	/** How many bars the AI corrected from the notes; null when it did not check them. */
 	chordsChecked = $state<{ changed: number } | null>(null);
 	chordError = $state<string | null>(null);
-	draft = $state<(ChartDraftAnswer & { chartHtml: string }) | null>(null);
+	draft = $state<ChartDraft | null>(null);
 	draftBusy = $state(false);
 	/** The latest run; a new run interrupts it before starting, Cancel interrupts it. */
 	#fiber: Fiber.Fiber<void> | null = null;
@@ -105,6 +128,12 @@ export class SongChordDraft {
 		this.chordSegments = null;
 		this.chordSource = null;
 		this.draft = null;
+	};
+
+	/** A score's chart (the Docs panel's `onchart`) shown in the draft card, in place of any draft. */
+	fromScore = (score: ScoreChart) => {
+		this.chordError = null;
+		this.draft = chartDraftOfScore(score, score.source);
 	};
 
 	detectChords = () => this.#run(this.#detect());

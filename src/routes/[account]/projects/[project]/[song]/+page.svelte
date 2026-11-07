@@ -746,6 +746,11 @@
 			{notationCount}
 			busy={chordDraft.draftBusy || !!chordDraft.chordBusy}
 			oncheck={() => void check.askAiWithScore()}
+			onchart={(score) => {
+				chordDraft.fromScore(score);
+				// The draft card sits above the chart's text: show that view, where the Engraving view was.
+				void docs.setChartMode("text");
+			}}
 			above={draftInPanel}
 		/>
 		<DocHistoryPanel

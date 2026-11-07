@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Chart from score.** On the Chart tab's Notation view, a MusicXML score's ⋯ menu now has Chart from score: its chord symbols, keys, meters, tempo, sections, repeats and endings become a chart draft you can save as the song's chart, with a note of anything the file carried that a chart cannot.
+
 ## [0.238.0] - 2026-11-07
 
 ### Changed

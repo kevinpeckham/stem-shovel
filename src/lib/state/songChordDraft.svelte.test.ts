@@ -193,6 +193,23 @@ describe("SongChordDraft", () => {
 		expect(cd.draftBusy).toBe(false);
 	});
 
+	test("a score's chart replaces the draft, marked as the score's", () => {
+		const cd = make();
+		cd.draft = DRAFT;
+		cd.chordError = "No bars to read";
+		const diagnostics = [{ level: "warning" as const, message: "Lyrics were left out." }];
+		cd.fromScore({ chart: "| C | G |", chartHtml: "<p>c</p>", diagnostics, source: "Lead sheet" });
+		expect(cd.chordError).toBeNull();
+		expect(cd.draft).toMatchObject({
+			chart: "| C | G |",
+			chartHtml: "<p>c</p>",
+			sections: [],
+			source: "score",
+			scoreName: "Lead sheet",
+			diagnostics,
+		});
+	});
+
 	describe("the chord model's read of the mix", () => {
 		test("stored chords make the bars, unchecked by the AI, with the server's notes", async () => {
 			remote.songChords.mockImplementation(() => asQuery(STORED));

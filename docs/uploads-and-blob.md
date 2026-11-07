@@ -323,6 +323,12 @@ in three steps driven by `src/lib/upload.ts`:
   resolve to ::1, which the server does not listen on). SvelteKit 3 names
   a remote form's inputs `field/<form id>`, and the script posts them so.
   Delete the `smoke-*` project afterwards, through the app.
+  "Chart from score" (2026-11-07, the tile's ⋯ menu, editors): the file
+  read by `@barmark/musicxml`'s importer on the server (`chartFromScore`
+  in files.remote.ts, the row by `notationForImport`, the bytes through
+  `readBlob`, an `.mxl` unpacked by `readMxl`, 20 MB cap) into a barmark
+  chart the draft card shows with the import's diagnostics and saves as
+  the song's chart (docs/barmark-integration-audit.md).
 
 ## Retries (2026-10-12)
 

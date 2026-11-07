@@ -186,7 +186,7 @@ reads a `score-partwise` file (a `.mxl` through `readMxl`, bytes through
 sheets with melodies and verses included, checked against MuseScore 4 and
 Dorico files. "Chart from score" (a song's MusicXML attachment → its chord
 chart) is now buildable: parse on the server beside `chartHtml.ts`, show
-the diagnostics, save as the chart on request. Not started.
+the diagnostics, save as the chart on request. Built the same day: `chartFromScore` (files.remote.ts) on the notation tile's ⋯ menu, the result shown by the draft card (`ChartDraft` with `source: "score"`), saved through `saveChartDraft`. A score without chord symbols imports nothing (the package names the parts that have notes; choosing one as note sets, its `part` option, is not exposed).
 
 ### 7. Studio markers from the chart (S) — done 2026-11-02; chart from the Studio (L, later)
 

@@ -43,7 +43,28 @@ const grid = {
 	startAt: 0,
 };
 
-function setup({ hasSections = false, hasChart = false, confirmed = true } = {}) {
+/** A score's chart, as `chartDraftOfScore` builds it. */
+const scoreDraft = () => ({
+	chords: "",
+	sections: [],
+	progressions: [],
+	notes: "",
+	chart: "key: C\n| C | G |",
+	chartHtml: "<p>chart</p>",
+	source: "score" as const,
+	scoreName: "Lead sheet",
+	diagnostics: [
+		{ level: "error" as const, message: "The piano part's notes were left out." },
+		{ level: "warning" as const, message: "A rhythm snapped in measure 2." },
+	],
+});
+
+function setup({
+	hasSections = false,
+	hasChart = false,
+	confirmed = true,
+	value = draft() as ReturnType<typeof draft> | ReturnType<typeof scoreDraft>,
+} = {}) {
 	vi.stubGlobal(
 		"confirm",
 		vi.fn(() => confirmed),
@@ -54,7 +75,7 @@ function setup({ hasSections = false, hasChart = false, confirmed = true } = {})
 		grid: () => grid,
 		aiAvailable: () => true,
 	});
-	chordDraft.draft = draft();
+	chordDraft.draft = value;
 	const onsectionssaved = vi.fn();
 	const onchartsaved = vi.fn();
 	const props = {
@@ -132,6 +153,44 @@ describe("SongDraftCard", () => {
 		await fireEvent.click(screen.getByRole("button", { name: "Discard" }));
 		expect(chordDraft.draft).toBeNull();
 		expect(screen.queryByText("AI draft")).toBeNull();
+	});
+});
+
+describe("SongDraftCard with a score's chart", () => {
+	test("the heading names the score; its diagnostics are listed, errors and warnings apart", () => {
+		setup({ value: scoreDraft() });
+		expect(screen.getByText("Chart from Lead sheet")).toBeInTheDocument();
+		expect(screen.queryByText("AI draft")).toBeNull();
+		const error = screen.getByText("The piano part's notes were left out.");
+		const warning = screen.getByText("A rhythm snapped in measure 2.");
+		expect(error.tagName).toBe("LI");
+		expect(error).toHaveClass("text-red-400");
+		expect(warning).toHaveClass("text-amber-300");
+	});
+
+	test("no Save sections, and no empty sections, progressions or chords by bar", () => {
+		setup({ value: scoreDraft() });
+		expect(screen.queryByRole("button", { name: "Save sections" })).toBeNull();
+		expect(screen.queryByText("Chords by bar")).toBeNull();
+		expect(screen.queryByText("@ bar", { exact: false })).toBeNull();
+	});
+
+	test("Save as chart saves the score's chart", async () => {
+		const { onchartsaved } = setup({ value: scoreDraft() });
+		await fireEvent.click(screen.getByRole("button", { name: "Save as chart" }));
+		await vi.waitFor(() => expect(onchartsaved).toHaveBeenCalled());
+		expect(h.saveChartDraft).toHaveBeenCalledWith({
+			id: "song1",
+			markdown: "key: C\n| C | G |",
+			replace: false,
+		});
+	});
+
+	test("an AI draft has no diagnostics list", () => {
+		setup();
+		expect(screen.getByText("AI draft")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Save sections" })).toBeInTheDocument();
+		expect(document.querySelector(".text-amber-300, .text-red-400")).toBeNull();
 	});
 });
 

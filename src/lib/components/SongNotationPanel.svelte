@@ -15,6 +15,7 @@
 	import { FILE_MAX_BYTES, MAX_FILES_PER_SONG } from "#lib/constants/fileFormats.js";
 	import { deleteNotation, updateNotation } from "#lib/remote/notation.remote.js";
 	import {
+		chartFromScore,
 		clearChartReadOfFile,
 		deleteFile,
 		readChartOfFile,
@@ -24,6 +25,7 @@
 	import { chartReadIssues } from "#lib/utils/chartReadIssues.js";
 	import type { PanelFile } from "#lib/components/SongFilesPanel.svelte";
 	import { notify } from "#lib/state/notifications.svelte.js";
+	import type { ScoreChart } from "#lib/state/songChordDraft.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { notationThumbnail } from "#lib/utils/notationThumbnail.js";
@@ -82,6 +84,8 @@
 		oncheck?: () => void;
 		/** The song's tempo and meter at 0:00 (`chartDefaults`), for the readout under the read: how many bars it plays and how long. */
 		chartDefaults?: { tempo: number | null; meter: string | null };
+		/** "Chart from score": a MusicXML file's chord symbols, keys and sections as a chart, for the page's draft card. */
+		onchart?: (draft: ScoreChart) => void;
 	}
 	let {
 		songId,
@@ -92,7 +96,41 @@
 		aiAvailable = false,
 		oncheck,
 		chartDefaults,
+		onchart,
 	}: Props = $props();
+
+	// ── Chart from score: a MusicXML file read into a barmark chart on the server (files.remote.ts `chartFromScore`), shown in the draft card ──
+	/** The notation row being charted; its menu item is disabled meanwhile. */
+	let charting = $state<string | null>(null);
+	async function chartOf(t: Tile) {
+		if (t.kind !== "xml" || charting) return;
+		const name = nameOf(t);
+		charting = t.row.id;
+		try {
+			const r = await chartFromScore({ id: t.row.id });
+			if (!r.chart.trim()) {
+				const why = r.diagnostics.find((d) => d.level === "error")?.message;
+				notify(`Nothing to chart in ${name}${why ? `: ${why}` : ""}`, { kind: "error" });
+				return;
+			}
+			onchart?.({ ...r, source: name });
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			charting = null;
+		}
+	}
+	/** The ⋯ menu's "Chart from score": an editor's, on a MusicXML tile. */
+	const chartItem = (t: Tile) => ({
+		id: "chart",
+		label: "Chart from score",
+		iconClass: "i-ph-text-columns",
+		title:
+			"Read this score's chord symbols, keys and sections into a chart you can save as the song's",
+		condition: canEdit && t.kind === "xml",
+		disabled: charting !== null,
+		action: () => chartOf(t),
+	});
 
 	// ── What the AI read (docs/audio-engine.md, "The chart read is stored"): a PDF or image score as a barmark chart, shown for correction (with barmark's errors as the member types) before it anchors the song-check ──
 	interface Reading {
@@ -551,6 +589,7 @@
 										condition: canEdit && aiAvailable && t.kind === "pdf",
 										action: () => (t.kind === "pdf" ? void showRead(t.row.id) : undefined),
 									},
+									chartItem(t),
 									{
 										id: "unmark",
 										label: "Not notation",

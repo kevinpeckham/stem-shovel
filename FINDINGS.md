@@ -7,6 +7,20 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## @barmark/musicxml 0.6.0: the title round-trips as a text line, and the importer's messages name its CLI (2026-11-07)
+
+Importing the package's own export of a chart with a `title:` directive
+(`exportMusicXml` → `importMusicXml`) gives `title: Lead Sheet Test` as a
+line after the first `## Section` heading, where barmark reads it as text,
+not as the title: the export writes the directive as a `<words>` direction
+on measure 1 rather than a `<work-title>` or credit, and the import
+carries words back as words. The chart still plays; the title shows as a
+text line in the first section. Reported to Kevin (his package); the app's
+"Chart from score" leaves it to the member to edit. Separately, the
+importer's "no chord symbols" error ends "Import one as note sets with
+--part", a hint for its command line: `tidyScoreDiagnostic` strips it
+before the message reaches a notice. Seen building "Chart from score".
+
 ## librosa's CQT bakes into a sparse plan; ffmpeg `-ac 1` is the arithmetic mean; onnxruntime-web runs in Node (2026-11-06)
 
 From porting ChordMini's front end for the chord model (docs/audio-engine.md "The chord model"; src/lib/server/chords.ts, src/lib/utils/chordminiCqt.ts).
