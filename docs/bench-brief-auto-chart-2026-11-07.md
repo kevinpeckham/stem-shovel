@@ -23,8 +23,7 @@ manual, score import (v0.239), and recording-derived.
 
 1. **The draft model's JSON is the asset.** On the pilot, the `chords`
    field was bar-exact on all four songs and carried the program's best
-   chord numbers: peaceful-dreams 151/153 roots (above the reader's own
-   149) with 11 of 62 dialect bars EXACTLY right, mop-heart 131/140
+   chord numbers: peaceful-dreams 151/153 roots (above the reader's own 149) with 11 of 62 dialect bars EXACTLY right, mop-heart 131/140
    roots and 129 strict, letter-lands 72/76 (above its hint). The draft
    layer preserves or improves the reader's roots and recovers colors
    no code could write (Study 20's refutation): D7sus4 spelled strictly

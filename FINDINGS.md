@@ -482,8 +482,7 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
   eleven times where the reader scores zero by vocabulary, G7 on the
   G5(7) bars (seventh heard, spelling absent from every example) —
   mop-heart 131/140 roots and 129/140 strict, letter-lands 72/76 roots.
-  The one true regression: eat-all-the-clocks roots drop 74 to 68 of
-  84. The failure mode is specific: the model writes cell-level repeats
+  The one true regression: eat-all-the-clocks roots drop 74 to 68 of 84. The failure mode is specific: the model writes cell-level repeats
   ("| D5 x8 |") your notation does not define — invited by the draft
   prompt's own compact example ("D(7)sus4 · D5 x2") — and under-writes
   section repeats. Two app-side options, stronger first: (1) build the
