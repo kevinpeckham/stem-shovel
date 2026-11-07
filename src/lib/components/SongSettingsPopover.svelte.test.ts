@@ -42,6 +42,7 @@ function setup() {
 		isPrivate: false,
 		chartTiming: null,
 		useChartTiming: false,
+		changes: [],
 		project: { slug: "badverbs", noAi: false, isPrivate: false },
 		credits: [],
 		demos: [

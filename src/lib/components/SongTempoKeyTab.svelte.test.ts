@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import type { TimingMap } from "@barmark/sync";
 import { createRawSnippet } from "svelte";
 import { describe, expect, test, vi } from "vite-plus/test";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 
 /** The settings' Tempo & key tab over real state instances; the remote functions are never reached. */
@@ -68,6 +69,8 @@ function setup() {
 		songId: song.id,
 		timing: null as TimingMap | null,
 		useTiming: false,
+		savedChanges: [] as SongChange[],
+		startAt: null as number | null,
 	};
 	return { changes, chordDraft, check, props };
 }
@@ -156,6 +159,20 @@ describe("SongTempoKeyTab", () => {
 		await vi.waitFor(() => expect(h.notify).toHaveBeenCalledWith("Following the chart's timing"));
 		expect(h.refreshAll).toHaveBeenCalled();
 		view.unmount();
+
+		const declared: SongChange[] = [
+			{ kind: "tempo", start: 0, value: "132" },
+			{ kind: "meter", start: 0, value: "4/4" },
+		];
+		const withTempo = render(SongTempoKeyTab, {
+			props: { ...props, timing, savedChanges: declared, startAt: 0 },
+		});
+		expect(
+			screen.getByText(
+				"2 bars from the aligned chart: bar 1 at 0:00, bars 2.0 s (the tempo says 1.82 s).",
+			),
+		).toBeTruthy();
+		withTempo.unmount();
 
 		render(SongTempoKeyTab, { props: { ...props, timing, useTiming: true } });
 		await fireEvent.click(screen.getByRole("button", { name: "Following · Stop" }));

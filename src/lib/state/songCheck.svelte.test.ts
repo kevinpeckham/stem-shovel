@@ -266,7 +266,12 @@ describe("alignChart keeps the song's own chart's timing map", () => {
 		firstSound: 0,
 		lastSound: 4,
 	});
-	const aligned = () => make();
+	/** 120 bpm in 4/4: a declared bar of 2 s. */
+	const aligned = () =>
+		make([
+			{ kind: "tempo", start: 0, value: "120" },
+			{ kind: "meter", start: 0, value: "4/4" },
+		]);
 
 	test("a clean map of the aligned bars is posted with source aligned", async () => {
 		remote.chartBarsOf.mockResolvedValue(chart());
@@ -296,6 +301,25 @@ describe("alignChart keeps the song's own chart's timing map", () => {
 		align.alignChartInBrowser.mockResolvedValue(alignment([3, 2, 4.5]));
 		await aligned().check.alignChart();
 		expect(remote.saveChartTiming).not.toHaveBeenCalled();
+	});
+
+	test("an alignment that does not fit the recording posts nothing and says why", async () => {
+		remote.chartBarsOf.mockResolvedValue(chart());
+		align.alignChartInBrowser.mockResolvedValue(alignment([8, 9, 10]));
+		await aligned().check.alignChart();
+		expect(remote.saveChartTiming).not.toHaveBeenCalled();
+		expect(notify).toHaveBeenCalledWith(
+			"The chart's alignment did not fit the recording well enough to keep as bar timing: bar 1 at 0:08 where the sound starts at 0:00; bars 1.0 s where the tempo says 2.00 s.",
+			{ kind: "info", timeout: 10000 },
+		);
+	});
+
+	test("a song without a tempo and a time signature keeps nothing, silently", async () => {
+		remote.chartBarsOf.mockResolvedValue(chart());
+		align.alignChartInBrowser.mockResolvedValue(alignment([0.5, 2.5, 4.5]));
+		await make().check.alignChart();
+		expect(remote.saveChartTiming).not.toHaveBeenCalled();
+		expect(notify).not.toHaveBeenCalled();
 	});
 
 	test("a failed post is silent", async () => {

@@ -17,6 +17,7 @@
 	import type { SongDetails } from "#lib/state/songDetails.svelte.js";
 	import type { SongSections } from "#lib/state/songSections.svelte.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import type { SongChange } from "#lib/val/SongChangeSchema.js";
 	import type { SongStage } from "#lib/val/SongStageSchema.js";
 	import type { TimingMap } from "@barmark/sync";
 
@@ -50,6 +51,8 @@
 			/** The chart's timing map, and whether the player follows it (the Tempo & key tab's Bar timing). */
 			chartTiming: TimingMap | null;
 			useChartTiming: boolean;
+			/** The saved tempo, key and time signature changes (the Tempo & key tab's declared bar). */
+			changes: SongChange[];
 			isPrivate: boolean;
 			project: { noAi: boolean; isPrivate: boolean };
 			demos: {
@@ -356,6 +359,8 @@
 					songId={song.id}
 					timing={song.chartTiming}
 					useTiming={song.useChartTiming}
+					savedChanges={song.changes}
+					startAt={song.startAt}
 				/>
 			{/if}
 			{#if settingsTab === "demos"}

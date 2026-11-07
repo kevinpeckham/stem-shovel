@@ -4,6 +4,7 @@ import {
 } from "#lib/constants/chartAlignment.js";
 import type { Alignment } from "#lib/audio/chartAlignment.js";
 import { chartBarSeconds } from "./chartBarSeconds.js";
+import { median } from "./median.js";
 import type { ChartBar } from "./barmarkChartBars.js";
 
 /**
@@ -45,12 +46,6 @@ export interface AlignedPlacements {
 const START_SNAP = 0.25;
 /** A perfect fit costs nothing; the ratio stays finite. */
 const COST_FLOOR = 1e-6;
-
-function median(values: number[]): number {
-	const sorted = values.toSorted((a, b) => a - b);
-	const mid = Math.floor(sorted.length / 2);
-	return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
-}
 
 /** The chart's own seconds for bars `from` to the end, each at its own tempo and meter. */
 const secondsFrom = (bars: ChartBar[], from: number) =>

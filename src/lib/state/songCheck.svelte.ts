@@ -10,7 +10,8 @@ import {
 	type KeyChange,
 } from "#lib/audio/analysis.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
-import { barSecondsAt, snapToAnchor, snapToDownbeat } from "#lib/audio/measures.js";
+import type { Alignment } from "#lib/audio/chartAlignment.js";
+import { barGrid, barSecondsAt, snapToAnchor, snapToDownbeat } from "#lib/audio/measures.js";
 import { songGrid } from "#lib/utils/barGridOfTiming.js";
 import type { TimingMap } from "@barmark/sync";
 import {
@@ -29,6 +30,7 @@ import { notify } from "#lib/state/notifications.svelte.js";
 import type { SongChanges } from "#lib/state/songChanges.svelte.js";
 import { alignedPlacements } from "#lib/utils/alignedPlacements.js";
 import { alignedTimingMap } from "#lib/utils/alignedTimingMap.js";
+import { alignmentFit } from "#lib/utils/alignmentFit.js";
 import { barmarkKey } from "#lib/utils/barmarkKey.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { formatSongChange } from "#lib/utils/formatSongChange.js";
@@ -230,22 +232,39 @@ export class SongCheck {
 		if (engine?.status !== "ready") return { reason: "audio" };
 		const alignment = await alignChartInBrowser(chart.bars, await engine.decodedBuffers());
 		if (chart.source === "chart")
-			this.#keepTiming(id, chart.text, chart.bars.length, alignment.barStarts, engine.duration);
+			this.#keepTiming(id, chart.text, chart.bars.length, alignment, engine.duration);
 		return { placements: alignedPlacements(chart.bars, alignment), warnings: chart.warnings };
 	};
 
 	/**
 	 * The aligned chart's bar starts posted as its timing map (`saveChartTiming`),
-	 * only when the map checks clean against the chart here; any failure is
-	 * silent: the alignment's purpose is placing the settings, the map is a by-product.
+	 * only when the map checks clean against the chart here and the alignment
+	 * fits the recording and the declared tempo (`alignmentFit`). A song
+	 * without a tempo and a time signature keeps nothing; an alignment that
+	 * does not fit says why in a notice; any other failure is silent: the
+	 * alignment's purpose is placing the settings, the map is a by-product.
 	 */
-	#keepTiming(id: string, text: string, bars: number, barStarts: number[], duration: number) {
+	#keepTiming(id: string, text: string, bars: number, alignment: Alignment, duration: number) {
+		const song = this.#opts.song();
+		const grid = barGrid(song.changes, song.startAt);
+		if (!grid) return;
+		let timing: TimingMap | null;
 		try {
-			const timing = alignedTimingMap(text, bars, barStarts, duration);
-			if (timing) saveChartTiming({ id, timing }).catch(() => {});
+			timing = alignedTimingMap(text, bars, alignment.barStarts, duration);
 		} catch {
-			// Nothing to keep: the alignment's answer stands on its own.
+			return; // Nothing to keep: the alignment's answer stands on its own.
 		}
+		if (!timing) return;
+		const startAt = song.startAt ?? 0;
+		const fit = alignmentFit(alignment, { startAt, barSeconds: barSecondsAt(grid, startAt) });
+		if (!fit.ok) {
+			notify(
+				`The chart's alignment did not fit the recording well enough to keep as bar timing: ${fit.reasons.join("; ")}.`,
+				{ kind: "info", timeout: 10000 },
+			);
+			return;
+		}
+		saveChartTiming({ id, timing }).catch(() => {});
 	}
 
 	/**

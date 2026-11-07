@@ -1097,6 +1097,17 @@ chart existed.
   "Bar timing" block, which says where the map came from and how many bars
   it has, with Follow / Stop and Forget; a chart edit that drops the map
   turns the switch off with it.
+- **An aligned map is gated on its fit** (`utils/alignmentFit.ts`). On
+  Letter Lands (music from 0:00, 132 bpm, a 1.82 s bar) the alignment put
+  bar 1 at 8.06 s with half-length bars at the head and ended 15 s early,
+  Study 12's weak first and last boundaries, and following that map read
+  "-8 | 3" at 0:00. So the alignment's bar starts are kept as the map only
+  when bar 1 is within one declared bar of where the sound starts, the
+  median bar is within 15 % of the declared bar, and the chart's path cost
+  beats the tritone control's by 1.5× or more; otherwise the sections are
+  still placed and an info notification says which rule failed. The Bar
+  timing block shows an aligned map's agreement ("bar 1 at 0:00, bars
+  1.8 s (the tempo says 1.82 s)") so a member sees it before following.
 - **The saved draft is canonical**: `saveChartDraft` parses the text and
   stores `printChart`'s output when it parses without errors, as the editor
   normalizes; a draft with errors is stored as written and its diagnostics

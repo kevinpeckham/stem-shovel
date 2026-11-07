@@ -8,13 +8,14 @@
 	import { timingMapLine } from "#lib/utils/timingMapLine.js";
 	import { chordChart, type ChordSegment } from "#lib/audio/chords.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
-	import type { BarGrid } from "#lib/audio/measures.js";
+	import { barGrid, barSecondsAt, type BarGrid } from "#lib/audio/measures.js";
 	import { SONG_CHANGE_KINDS, SONG_CHANGE_LABELS } from "#lib/constants/songChanges.js";
 	import type { SongCheck } from "#lib/state/songCheck.svelte.js";
 	import type { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import { POSITION_PLACEHOLDER, type SongChanges } from "#lib/state/songChanges.svelte.js";
 	import { chordsByBarSummary } from "#lib/utils/chordsByBarSummary.js";
 	import type { PlacedAnswer } from "#lib/utils/placeAnswerByAlignment.js";
+	import type { SongChange } from "#lib/val/SongChangeSchema.js";
 
 	type ScanResult = NonNullable<SongCheck["scanResult"]>;
 
@@ -51,6 +52,9 @@
 		songId: string;
 		timing: TimingMap | null;
 		useTiming: boolean;
+		/** The song's saved tempo, key and time signature changes and its start: the declared bar the timing map is set beside. */
+		savedChanges: SongChange[];
+		startAt: number | null;
 	}
 
 	let {
@@ -68,7 +72,15 @@
 		songId,
 		timing,
 		useTiming,
+		savedChanges,
+		startAt,
 	}: Props = $props();
+
+	/** The declared grid's bar at the start (the song's tempo and meter, not the followed map). */
+	let declared = $derived.by(() => {
+		const declaredGrid = barGrid(savedChanges, startAt);
+		return declaredGrid ? { barSeconds: barSecondsAt(declaredGrid, startAt ?? 0) } : null;
+	});
 
 	let timingBusy = $state(false);
 	/** Runs a Bar timing action, then the page's data again so the grid follows. */
@@ -132,7 +144,7 @@
 {#snippet barTiming()}
 	<div class="mt-5 border-t border-current/20 pt-3" data-chart-timing>
 		<h3 class="text-15px font-700">Bar timing</h3>
-		<p class="mt-1 text-sm opacity-90">{timingMapLine(timing)}</p>
+		<p class="mt-1 text-sm opacity-90">{timingMapLine(timing, declared)}</p>
 		{#if timing}
 			<div class="mt-2 flex flex-wrap items-center gap-3">
 				<button

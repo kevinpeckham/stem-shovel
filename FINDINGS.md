@@ -7,6 +7,30 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## The chart alignment's weak ends are real in the app: bar 1 eight seconds late and half-length bars on Letter Lands (2026-11-07)
+
+Found when the player first followed an aligned timing map (`utils/barGridOfTiming.ts`,
+docs/audio-engine.md "The chart built from the detections").
+
+- **Study 12's caveat shows up whole.** The bench found the first and
+  last boundaries of the DTW alignment the weak ones. On Letter Lands
+  (music from 0:00, 132 bpm 4/4, a 1.82 s bar, a 142 s recording, an
+  80-bar chart) the alignment put bar 1 at 8.06 s, made the first seven
+  bars 0.9 s long (half bars), settled on a 1.5 s median, and ended at
+  126.8 s. Placing sections survives this (a section boundary mid-song
+  lands within a tenth of a second, as the bench said), but a bar grid
+  does not: the transport read "-8 | 3" at 0:00, counting back through
+  the squeezed bars.
+- **A by-product needs its own gate.** The map was saved because the
+  alignment ran, not because it was good; `checkTimingMap` only checks the
+  map's shape against the chart. The fit to the recording is a separate
+  question, answered with the song's own numbers (`startAt`, the declared
+  bar, the alignment's `firstSound`) and the alignment's `controlCost /
+  cost` ratio (a wrong chart cost 8.6 to 16.3× the right one in Study 12).
+- **The stored `chord` on a model run can lie.** Unrelated but found the
+  same hour: runs stored under the bench's table carry `min6` as `m`; the
+  `label` is the truth, so readers spell from it.
+
 ## barmark counts the dotted quarter in 6/8, so a stored "120" is `tempo: 40`; `@barmark/sync` never throws; `harteToBarmark` turns `X` into `?` (2026-11-07)
 
 Found adopting `@barmark/sync` 0.1.0 for the chart draft
