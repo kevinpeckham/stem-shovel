@@ -441,6 +441,31 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 22 verdict on the recording-to-chart question: do not derive a
+  bar grid from the recording alone yet — the bench cannot even certify
+  one, because its truth is coarser than the question** (stem-bench,
+  2026-11-07; $0; registered 0f2e02d, amendment 7466564, results
+  59fb180). The study asked whether a uniform grid from tempo, meter and
+  a blind downbeat phase tracks the four charted songs. The sanity gate
+  caught a bench metric bug on the synthetic renders (index-paired
+  scoring vs modulo phase; fixed, re-registered, re-run: 100 % on all
+  four renders), and then the decision gate failed everywhere — with the
+  decisive number being the CEILING: the best uniform grid fit to the
+  truth itself hits only 27 to 38 % of truth bar starts within ±15 % of
+  a bar. The chart-anchored DTW truth that every chord study grades on
+  resolves bar positions to a few hundred milliseconds (93 ms steps plus
+  path wander), which per-bar chord grading happily tolerates (Study
+  21's 97 % roots) but a bar-position gate cannot see through. Two
+  usable facts for the app: (1) your shipped tempo detector landed on a
+  Study 11 ladder rung of the declared tempo on all four songs, exactly
+  as its catalog-tuned prior suggests, and raw-octave grids score under
+  30 %, so the ladder fold is load-bearing for any grid work; (2) an
+  auto-chart feature should take its grid from a declared tempo plus
+  alignment or beat tracking, not from a uniform lattice, and validating
+  that needs truth the bench does not own yet — human-tapped downbeats
+  on one or two songs would unlock it. The end-to-end draft study will
+  therefore run grid-given.
+
 - **Study 21 verdict: the chord reader's roots generalize across the
   whole charted catalog — 90.3 % combined, 97.4 % on peaceful-dreams,
   and mop-heart is the program's first big strict result** (stem-bench,
