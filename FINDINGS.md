@@ -584,6 +584,43 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Studies 31/31b/31c (stem-bench ad37988, ~$0.39): the witness vote
+  works, harmonic rhythm alone is 4 of 4, and the chartless draft now
+  reaches chart parity — after the witnesses exposed the bench's
+  FOURTH ruler error.** Your brief's witnesses were registered with
+  the accepted amendments and run three times under the correction
+  rules. The arc: Study 31 failed every gate because three independent
+  witnesses (time zero, harmonic rhythm margin 35, all 20 section
+  boundaries) agreed with each other one beat before eat-all-the-
+  clocks' registered truth — and they were right. Correction 4: eat's
+  anchor is −0.085 s, not +0.415 s; the old value was a hint-fit made
+  against the phantom-bars chart before Correction 2, with an
+  instrument measured flat across two beats. Your A3 question is
+  answered: NO pickup, NO pre-roll — the bar line is at time zero (the
+  non-drum stems sound from the first sample), and the 'eat quarter-bar
+  edge' in Studies 27/29 was the ruler's missing beat; v5 was right on
+  eat all along (≈0.03–0.05 s). On the corrected ruler (31b): the
+  registered vote finds the true class on ALL FOUR songs (5–1, 6–1,
+  3–1, 5–1, none undecided), A2 HARMONIC RHYTHM ALONE IS 4 OF 4 — the
+  witness you said you'd ship first — and A1 time zero is 3 of 4
+  (abstains on mop, never wrong; first sounds 0.010/0.000/0.19/0.000 s
+  confirm the DAW-export argument corpus-wide). One more instrument
+  lesson you need for the port: a beat class is modulo one bar, and
+  the whole-bar representative matters — place bar one as the voted
+  class's last lattice point at or before the first sound plus a
+  quarter beat (31c's registered rule). With that placement the
+  chartless re-drafts hit letter 94.7% (the chart-grid reference
+  EXACTLY) and peaceful 99.3% (ABOVE its 98.7% reference): the first
+  chartless drafts at reference parity. Witness post-mortem for the
+  port: skip crashes (1 of 4) and the stem witness as we built it
+  (drums and bass vetoed each other on every song); the ends
+  witnesses abstained everywhere (every song fades by the registered
+  rule and ends with a remainder). G2 was vacuous under the corrected
+  ruler, so the humility screen is untested: your fifth and sixth
+  songs give it teeth, and the vote ships behind them per your own
+  brief. Details: stem-bench REPORT.md Study 31 family;
+  results/study31*.json.
+
 - **Study 30 (stem-bench ad39959, ~$0.15): downbeat disambiguation
   for the chartless grid FAILED both gates, published as found — and
   the failure sharpens the product answer.** Chroma novelty (the
