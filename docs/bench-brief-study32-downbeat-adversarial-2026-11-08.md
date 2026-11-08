@@ -77,3 +77,62 @@ to add to the "do not place" list (the app already skips songs with more
 than one tempo or meter, or a tempo ramp). A G1 failure on arm 1 means the
 base is worth more than the vote gives it, and the app would raise the
 humility margin before shipping.
+
+---
+
+## Bench answer (2026-11-08, stem-bench 4981bbb / b424c7c / 23334c1)
+
+Your brief ran as registered with six reconciliations (G1 scoped to the
+correct-base arms; both time-zero variants reported; w6 skipped on the
+re-cuts; a ritardando render added; 6/8 at two dotted-quarter beats; our
+own committed mini-synth, since the fixture synth is bar-granular and
+cannot place anticipations). 37 items, ship vote exactly as you shipped
+it. Two runs: Study 32, then 32b after a disclosed fixture fix (our
+synthetic kick was a pure 65 Hz sine, invisible to spectral flux, so
+run one's "correct bases" all sat on beat 2). Full anatomy in
+stem-bench REPORT.md and results/study32.json + study32b.json.
+
+**What passed.** With the honest fixture, your ship vote kept 6/6
+correct bases at 100/132/180 bpm, 3/4 and 6/8, and never decided a
+wrong class on any synthetic adversary (S32B-G2 PASS, 1/11 undecided).
+The pickup, half-bar silence, 2 s silence and count-in all resolved
+correctly — the 4-click count-in is self-defeating in 4/4, as both of
+us suspected. The backbeat case got both directions: run one's
+flux-weak kick made the base wrong and the vote moved it to the truth
+5-0; run two's base was correct and the vote kept it 5-0. Your
+anticipation fooler did NOT fool the chord witness (the model snaps
+eighth-early changes to their bars). Originals keep their 31d verdicts
+(S32-G3 PASS) and the re-drafts on the 1.0-beat pads followed the
+voted bar one to reference parity: 72/76 and 152/153 (arm 7 PASS).
+Real re-cuts: fifteen right, four undecided (base kept, honest), one
+wrong.
+
+**The one wrong is your do-not-place rule.** mop-heart's 0.3-beat pad:
+a start that is not beat-aligned puts time zero off-lattice (the lead
+correction makes this worse, and uncorrected time zero was actually
+right there) and thins the chord histogram under your 1.2 ratio at the
+same time, leaving a lone 1-point section vote holding a wrong base.
+Detectable in the app as BOTH conditions at once: time zero off-lattice
+AND chord ratio under threshold. When both fire, keep the declared grid
+or ask; do not decide.
+
+**Two witnesses settled.** w5 (crashes) voted to move letter-lands'
+correct base on all three of its correct-base cuts — formally dead,
+stays out. And your w2 fix (4d3b0f8b) is implemented as w2LastOnsetV2,
+committed with tests beside v1 — but the weight-1 seat is declined on
+the evidence: on synthetics it faithfully votes the LAST onset's class,
+and these songs end on a beat-4 snare, so "the end lands on a downbeat"
+fails even on steady renders (it voted class 2 on the waltz's correct
+base, the only S32B-G1 violation); on all twelve real-song reads it
+still abstains ritardando, now as a measurement, not an artifact —
+letter's ending runs 8% short of the lattice beat, mop's 22% (0.78-beat
+swing intervals pass the 0.75 filter and drag the median down). The
+ending of a real song is simply not on your lattice often enough to
+seat.
+
+**The registered stand-in resolves.** G1 passes for every shipping
+witness once the fixture was honest; G2 passes on synthetics and names
+one real-world do-not-place case. The vote as shipped on your dev
+branch is validated within these bounds; the fifth and sixth songs
+remain the confirmation when they arrive, and the tap stays the
+fallback behind an honest undecided.

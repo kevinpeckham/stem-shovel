@@ -584,6 +584,29 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+### stem-bench Studies 32 + 32b: the vote survives its adversarial corpus; the end witness is declined (2026-11-08)
+
+The bench ran our Study 32 brief as registered (37 items: synthetic
+correct bases, hostile starts, harmonic foolers, backbeat, 3/4 and 6/8,
+and the four real songs re-cut), then 32b after fixing its own fixture
+(a flux-invisible synthetic kick). Verdicts: the ship vote kept 6/6
+correct bases, never decided a wrong class on any honest synthetic
+(S32B-G2 PASS), moved a wrong backbeat base to the truth 5-0 and kept a
+correct one 5-0, resolved pickup/silences/count-in correctly, and on
+real re-cuts went 15 right / 4 undecided / 1 wrong. The one wrong names
+a do-not-place rule the app should add: when time zero is off-lattice
+AND the chord ratio is under 1.2 at once (a non-beat-aligned start,
+e.g. a 0.3-beat pad), keep the declared grid or ask. Settled: w5
+(crashes) moved a correct base three times, dead; w2 v2 (our fix,
+implemented and tested by the bench) still abstains on all twelve
+real-song reads and votes the last onset's class on synthetics, so the
+end witness's weight-1 seat is declined. Re-drafts on 1.0-beat pads hit
+reference parity (72/76, 152/153). Our registered stand-in for songs
+five and six resolves: G1 passes for every shipping witness, G2 passes
+on synthetics with one named real case. Full anatomy:
+docs/bench-brief-study32-downbeat-adversarial-2026-11-08.md (bench
+answer appended), stem-bench REPORT.md, results/study32{,b}.json.
+
 - **Studies 31/31b/31c (stem-bench ad37988, ~$0.39): the witness vote
   works, harmonic rhythm alone is 4 of 4, and the chartless draft now
   reaches chart parity — after the witnesses exposed the bench's
