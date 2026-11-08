@@ -8,9 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.250.0] - 2026-11-08
+
 ### Changed
 
 - **Detect chords places the bars on the stems' own beat.** On a song with one tempo and one time signature the draft's bar grid now comes from the recording: the onset comb's exact bar length (lead-corrected), and bar one chosen by a vote of three witnesses the bench measured at four of four each (stem-bench Studies 28–31d): the recording's start (a DAW export begins on a bar line), the chord model's change times by beat class, and section-scale chroma novelty. The vote is the bench's registered one with its humility rule, validated against songs built to fool it (Study 32: six of six correct bases kept at three tempos and three meters, no wrong class decided on any synthetic adversary); an undecided song keeps the declared grid as before, a song whose "Start of bar 1" is set gets bar one there at the comb's period, and bar one is placed so it holds the first sound (Study 31c). The chords are read and the draft and its timing map built on the placed bars, and the detected-chords card says where bar 1 landed and which witnesses agreed. The recording's features share the alignment cache with "Place from chart" (`audio/chartlessGrid.ts`, `audio/chartlessGridInBrowser.ts`, `audio/alignmentWorkers.ts`, `workers/recordingFeatures.worker.ts`). Nothing that plays changes.
+
+### Fixed
+
+- **Three more dev-server noise fixes from the Sentry-triage bot**, merged from main: a route module that fails to import after a hot update or restart is dropped from Sentry in dev, where SvelteKit's version check never fires (PR #12, STEM-SHOVEL-N); a hot update Vite cannot apply, which hands Svelte's accept handler no module, is recognized (`utils/isViteHmrFailure.ts`) and dropped too (PR #13); and the dashboard's ideas section renders its empty card instead of throwing when a hot update swaps the page markup ahead of its loader data (PR #14, STEM-SHOVEL-6R).
 
 ## [0.249.0] - 2026-11-08
 

@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.250.0] - 2026-11-08
+
+### Changed
+
+- **Detect chords places the bars on the recording's own beat.** On a song with one tempo and one time signature, Detect chords now listens for where the bars fall in the recording, choosing bar 1 from the recording's start, the chord changes and the section changes together, and reads the chords on those bars. The detected-chords card says where bar 1 landed and which of the three agreed. When they cannot agree, the song keeps its declared tempo as before, and a song whose "Start of bar 1" is set gets bar 1 there. Nothing that plays changes.
+
 ## [0.249.0] - 2026-11-08
 
 ### Changed
