@@ -7,13 +7,24 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
  */
 
 // vi.mock factories are hoisted above imports, so their inputs must be hoisted too.
-const h = vi.hoisted(() => ({ report: vi.fn(), check: vi.fn() }));
+const h = vi.hoisted(() => ({
+	report: vi.fn(),
+	check: vi.fn(),
+	breadcrumb: vi.fn(),
+	navigating: { to: null as unknown },
+	page: { url: new URL("https://www.stemshovel.com/dashboard") },
+}));
 vi.mock("$app/env", () => ({ dev: true }));
-vi.mock("$app/state", () => ({ updated: { check: h.check } }));
+vi.mock("$app/state", () => ({
+	updated: { check: h.check },
+	navigating: h.navigating,
+	page: h.page,
+}));
 vi.mock("@sentry/sveltekit", () => ({
 	init: () => {},
 	replayIntegration: () => ({}),
 	handleErrorWithSentry: () => h.report,
+	addBreadcrumb: h.breadcrumb,
 }));
 
 const { handleError } = await import("./hooks.client");
@@ -28,7 +39,10 @@ const staleChunk = new TypeError(
 	"Failed to fetch dynamically imported module: https://www.stemshovel.com/_app/immutable/nodes/59.D2zoqTsl.js",
 );
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+	vi.clearAllMocks();
+	h.navigating.to = null;
+});
 
 describe("handleError", () => {
 	it("keeps a chunk retired by a deploy out of Sentry", async () => {
@@ -45,5 +59,21 @@ describe("handleError", () => {
 		await handleError(caught(new Error("boom")));
 		expect(h.check).not.toHaveBeenCalled();
 		expect(h.report).toHaveBeenCalledOnce();
+	});
+	it("keeps a preload that got no response out of Sentry, as a breadcrumb", async () => {
+		await handleError(caught(new TypeError("Failed to fetch")));
+		expect(h.report).not.toHaveBeenCalled();
+		expect(h.breadcrumb).toHaveBeenCalledOnce();
+	});
+	it("reports a navigation that got no response", async () => {
+		h.navigating.to = { url: event.url };
+		await handleError(caught(new TypeError("Failed to fetch")));
+		expect(h.report).toHaveBeenCalledOnce();
+	});
+	it("reports an invalidate of the current page that got no response", async () => {
+		h.page.url = event.url;
+		await handleError(caught(new TypeError("Load failed")));
+		expect(h.report).toHaveBeenCalledOnce();
+		h.page.url = new URL("https://www.stemshovel.com/dashboard");
 	});
 });
