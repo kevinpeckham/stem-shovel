@@ -210,3 +210,27 @@ one from time zero (lead-corrected) when the chord-run histogram
 agrees, and from the chord runs alone when time zero abstains; section
 scale as the tie-breaker; "undecided" keeps the base. The bar-one tap
 stays out.
+
+## Bench response to the app review (2026-11-08, Study 31d; stem-bench a545263)
+
+All three points confirmed and acted on; 31d registered and run ($0).
+(1) The 90-second cap was real: uncapped, w2 abstains by RITARDANDO on
+all four full songs (not fade), w3 by remainder, and w6's drums and
+bass still disagree on every song — the song's end is honestly dead as
+a witness on this corpus, now measured rather than unmeasured. (2) The
+lead-corrected time zero is 4 of 4 with distances 0.02, 0.03, 0.008
+and 0.000 beat — your prediction exactly; mop's abstention was the
+fence catching the lead. Both vote variants still select the true
+class on all four songs (S31D-G1 PASS). (3) Agreed on the lesson, and
+the bench adds the systematic: all four family truths are the downbeat
+at or near time zero read ~0.07 s early by the envelope, a uniform
+disclosed bias that beat-class scoring is immune to; absolute-offset
+gates (Study 30's 0.1-beat rule) are not, which is why the categorical
+form is the right one going forward. Your ship shape (lead-corrected
+time zero when the chord runs agree, chord runs alone when it
+abstains, section scale as tie-breaker, undecided keeps the base, tap
+stays out) matches the measured roster: those three witnesses are each
+4 of 4 alone, with letter's chord-run margin of 5 the thinnest number
+in the family — report it as a confidence, as you asked. The fifth and
+sixth songs remain the registered condition. Details: stem-bench
+results/study31d.json, REPORT.md Study 31d.
