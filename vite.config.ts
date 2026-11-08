@@ -52,7 +52,9 @@ export default defineConfig({
 	// spares the dev server a mid-session re-optimisation (a 504 on first use).
 	// Svelte is never pre-bundled and always resolves to one copy: two copies of its
 	// server runtime in the dev SSR graph each keep their own `ssr_context`, so a
-	// component's onDestroy read a null context the renderer never set (STEM-SHOVEL-7B).
+	// component's onDestroy read a null context the renderer never set (STEM-SHOVEL-7B),
+	// and SvelteKit's `page` getters (getContext) threw state_read_outside_render
+	// while reading `page.url` in +layout.svelte's <svelte:head> (STEM-SHOVEL-49).
 	optimizeDeps: {
 		include: ["@spotify/basic-pitch", "@tensorflow/tfjs"],
 		exclude: ["svelte"],
