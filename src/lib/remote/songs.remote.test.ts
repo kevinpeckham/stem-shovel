@@ -361,6 +361,15 @@ describe("editor-gated functions", () => {
 			outcome: { use: true },
 		},
 		{
+			name: "useChartlessGrid",
+			fn: songs.useChartlessGrid,
+			input: { id: SONG, startAt: 0.5, bpm: 132 },
+			arrange: () => data.setSongStartAndTempo.mockResolvedValue(true),
+			dataFn: "setSongStartAndTempo",
+			args: [ACCOUNT, SONG, 0.5, 132],
+			outcome: { startAt: 0.5, bpm: 132 },
+		},
+		{
 			name: "clearChartTiming",
 			fn: songs.clearChartTiming,
 			input: { id: SONG },
@@ -979,6 +988,24 @@ describe("saveChartTiming", () => {
 			call(songs.saveChartTiming, { id: SONG, timing: { format: "nope" } }),
 		).rejects.toMatchObject(httpError(400));
 		expect(data.setChartTiming).not.toHaveBeenCalled();
+	});
+});
+
+describe("useChartlessGrid", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("404 when the song is gone; a tempo outside 20 to 400 or a negative start is refused", async () => {
+		data.setSongStartAndTempo.mockResolvedValue(false);
+		await expect(
+			call(songs.useChartlessGrid, { id: SONG, startAt: 0, bpm: 120 }),
+		).rejects.toMatchObject(httpError(404));
+		data.setSongStartAndTempo.mockClear();
+		await expect(
+			call(songs.useChartlessGrid, { id: SONG, startAt: 0, bpm: 500 }),
+		).rejects.toThrow();
+		await expect(
+			call(songs.useChartlessGrid, { id: SONG, startAt: -1, bpm: 120 }),
+		).rejects.toThrow();
+		expect(data.setSongStartAndTempo).not.toHaveBeenCalled();
 	});
 });
 

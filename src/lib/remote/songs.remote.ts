@@ -4,6 +4,7 @@ import { background } from "#lib/server/background.js";
 import { notifySong } from "#lib/server/notifications.js";
 import { chartHash, checkTimingMap } from "@barmark/sync";
 import { SongChangesSaveSchema } from "#lib/val/SongChangeSchema.js";
+import { ChartlessGridUseSchema } from "#lib/val/ChartlessGridUseSchema.js";
 import { SongSectionsSaveSchema } from "#lib/val/SongSectionSchema.js";
 import { ShareSongSchema } from "#lib/val/ShareSongSchema.js";
 import { StemOrderSchema } from "#lib/val/StemOrderSchema.js";
@@ -44,6 +45,7 @@ import {
 	songChordsFor,
 	songDetectionsFor,
 	setChartTiming,
+	setSongStartAndTempo,
 	setUseChartTiming,
 	songNotesFor,
 	songSlugs,
@@ -647,6 +649,17 @@ export const setChartTimingUse = command(ChartTimingUseSchema, async ({ id, use 
 	const { accountId } = await memberOf(locals, accountOfSong, id);
 	if (!(await setUseChartTiming(accountId, id, use))) error(404, "Song not found");
 	return { use };
+});
+
+/**
+ * The chartless placement made the song's grid ("Use as start of bar 1" on
+ * the detected chords card): its start of bar 1 and its first tempo (members).
+ */
+export const useChartlessGrid = command(ChartlessGridUseSchema, async ({ id, startAt, bpm }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	if (!(await setSongStartAndTempo(accountId, id, startAt, bpm))) error(404, "Song not found");
+	return { startAt, bpm };
 });
 
 /** Forgets the song's chart timing map and its confidence, and the player stops following it (members). */

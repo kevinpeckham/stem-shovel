@@ -1512,11 +1512,12 @@ export async function updateSongSections(
 
 export type SaveChangesResult = { ok: true; changes: SongChange[] } | { ok: false; error: string };
 
-/** Replaces the song's tempo / key / time signature changes: sorted by start, one per kind per time. */
+/** Replaces the song's tempo / key / time signature changes: sorted by start, one per kind per time; `also` sets the song's start of bar 1 in the same write. */
 export async function updateSongChanges(
 	accountId: string,
 	songId: string,
 	input: SongChange[],
+	also: { startAt?: number } = {},
 ): Promise<SaveChangesResult> {
 	const changes = input
 		.map((c) => ({
@@ -1532,11 +1533,39 @@ export async function updateSongChanges(
 	}
 	const [row] = await db
 		.update(song)
-		.set({ changes })
+		.set({ changes, ...also })
 		.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
 		.returning({ changes: song.changes });
 	if (!row) return { ok: false, error: "Song not found." };
 	return { ok: true, changes: row.changes };
+}
+
+/**
+ * The chartless placement made the song's grid ("Use as start of bar 1"):
+ * its start of bar 1 becomes `startAt` and its first tempo `bpm` (a tempo
+ * at the start when it has none), in one write. False when the song is not
+ * this account's.
+ */
+export async function setSongStartAndTempo(
+	accountId: string,
+	songId: string,
+	startAt: number,
+	bpm: number,
+): Promise<boolean> {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { changes: true },
+	});
+	if (!row) return false;
+	const changes = row.changes;
+	const tempos = changes.filter((c) => c.kind === "tempo");
+	const first = tempos.length ? Math.min(...tempos.map((c) => c.start)) : null;
+	const value = String(bpm);
+	const next =
+		first === null
+			? [...changes, { kind: "tempo" as const, start: 0, value }]
+			: changes.map((c) => (c.kind === "tempo" && c.start === first ? { ...c, value } : c));
+	return (await updateSongChanges(accountId, songId, next, { startAt })).ok;
 }
 
 // ---- comments ---------------------------------------------------------------

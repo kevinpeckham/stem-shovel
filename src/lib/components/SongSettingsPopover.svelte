@@ -361,6 +361,7 @@
 					useTiming={song.useChartTiming}
 					savedChanges={song.changes}
 					startAt={song.startAt}
+					onstartset={details.reset}
 				/>
 			{/if}
 			{#if settingsTab === "demos"}

@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Use what the stems say as the song's grid.** When Detect chords has found where the bars fall, a click under its card sets the song's start of bar 1 and its tempo to match, so the player, the readout and the click count bars from there.
+
 ## [0.250.0] - 2026-11-08
 
 ### Changed

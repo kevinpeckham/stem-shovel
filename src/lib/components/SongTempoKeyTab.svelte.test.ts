@@ -9,12 +9,17 @@ import type { StemEngine } from "#lib/audio/engine.svelte.js";
 const h = vi.hoisted(() => ({
 	setChartTimingUse: vi.fn(async (input: unknown) => ({ input })),
 	clearChartTiming: vi.fn(async (input: unknown) => ({ input })),
+	useChartlessGrid: vi.fn(async (input: { startAt: number; bpm: number }) => ({
+		startAt: input.startAt,
+		bpm: input.bpm,
+	})),
 	refreshAll: vi.fn(async () => {}),
 	notify: vi.fn(),
 }));
 vi.mock("#lib/remote/songs.remote.js", () => ({
 	setChartTimingUse: h.setChartTimingUse,
 	clearChartTiming: h.clearChartTiming,
+	useChartlessGrid: h.useChartlessGrid,
 }));
 vi.mock("#lib/remote/files.remote.js", () => ({}));
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify: h.notify }));
@@ -184,5 +189,28 @@ describe("SongTempoKeyTab", () => {
 		await fireEvent.click(screen.getByRole("button", { name: "Forget" }));
 		expect(h.clearChartTiming).toHaveBeenCalledWith({ id: "song1" });
 		await vi.waitFor(() => expect(h.notify).toHaveBeenCalledWith("Timing map forgotten"));
+	});
+	test("Use as start of bar 1 writes the placement's bar one and tempo, then refreshes", async () => {
+		const { changes, chordDraft, props } = setup();
+		chordDraft.chordSegments = [{ bar: 1, bars: 3, start: 0.5, chord: "C", confidence: 1 }];
+		chordDraft.placement = {
+			barStarts: [0.5, 2.3, 4.1, 5.9],
+			period: 1.8,
+			beatsPerBar: 4,
+			cls: 1,
+			decided: true,
+			byStart: false,
+			witnesses: [],
+		};
+		const onstartset = vi.fn();
+		render(SongTempoKeyTab, { props: { ...props, onstartset } });
+		await fireEvent.click(screen.getByRole("button", { name: "Use as start of bar 1" }));
+		expect(h.useChartlessGrid).toHaveBeenCalledWith({ id: "song1", startAt: 0.5, bpm: 133.33 });
+		await vi.waitFor(() =>
+			expect(h.notify).toHaveBeenCalledWith("Start of bar 1 set to 0:00.5, tempo 133.33 bpm"),
+		);
+		expect(h.refreshAll).toHaveBeenCalled();
+		expect(onstartset).toHaveBeenCalledOnce();
+		expect(changes.rows[0]!.value).toBe("120");
 	});
 });

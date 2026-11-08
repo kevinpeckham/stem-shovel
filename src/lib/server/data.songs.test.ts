@@ -7,6 +7,7 @@ const {
 	createSong,
 	deleteSong,
 	getSong,
+	setSongStartAndTempo,
 	setSongVersion,
 	songGrid,
 	updateSong,
@@ -300,6 +301,45 @@ describe("updateSongChanges", () => {
 			ok: false,
 			error: "Song not found.",
 		});
+	});
+});
+
+describe("setSongStartAndTempo", () => {
+	test("the start of bar 1 and the first tempo in one write; a tempo at 0 when there is none; false for a stranger", async () => {
+		reset({
+			account: [a1],
+			project: [p1],
+			song: [
+				{
+					...s1,
+					changes: [
+						{ kind: "meter", start: 0, value: "4/4" },
+						{ kind: "tempo", start: 0, value: "130" },
+						{ kind: "tempo", start: 60, value: "90" },
+					],
+				},
+			],
+		});
+		expect(await setSongStartAndTempo("a1", "s1", 0.5, 132)).toBe(true);
+		expect(fake.rows("song")[0]).toMatchObject({
+			startAt: 0.5,
+			changes: [
+				{ kind: "meter", start: 0, value: "4/4" },
+				{ kind: "tempo", start: 0, value: "132" },
+				{ kind: "tempo", start: 60, value: "90" },
+			],
+		});
+		expect(callsTo("update", "song")).toHaveLength(1);
+
+		reset({ account: [a1], project: [p1], song: [{ ...s1, changes: [] }] });
+		expect(await setSongStartAndTempo("a1", "s1", 1.25, 87.5)).toBe(true);
+		expect(fake.rows("song")[0]).toMatchObject({
+			startAt: 1.25,
+			changes: [{ kind: "tempo", start: 0, value: "87.5" }],
+		});
+
+		expect(await setSongStartAndTempo("a2", "s1", 0, 120)).toBe(false);
+		expect(callsTo("update", "song")).toHaveLength(1);
 	});
 });
 

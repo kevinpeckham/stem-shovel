@@ -1281,3 +1281,12 @@ what the stems alone can say about that grid and what they cannot:
   sections 22 of 24 peaks), bar 1 at +0.015 s where the v5 chart placement
   had +0.022 s, 78 bars to the end of the audio, 5 s on a cache hit. In
   DEV the result is on `window.__chartlessGrid`.
+- **"Use as start of bar 1"** (2026-11-08). A placed grid can become the
+  song's own: the button under the placement line writes bar one into the
+  song's "Start of bar 1" and the lattice's tempo (60 × beats per bar ÷
+  period, to two decimals) into its tempo change, in one command
+  (`useChartlessGrid` in `remote/songs.remote.ts`, the values from
+  `utils/chartlessGridUse.ts`), then the page's data is read again. Nothing
+  happens unless the member clicks: the vote proposes, the member decides,
+  and the next "Detect chords" skips the vote and places from the member's
+  start (`byStart`).

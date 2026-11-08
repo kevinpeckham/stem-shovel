@@ -2,11 +2,18 @@
 	import type { Snippet } from "svelte";
 	import type { TimingMap } from "@barmark/sync";
 	import { refreshAll } from "$app/navigation";
-	import { clearChartTiming, setChartTimingUse } from "#lib/remote/songs.remote.js";
+	import {
+		clearChartTiming,
+		setChartTimingUse,
+		useChartlessGrid,
+	} from "#lib/remote/songs.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { timingMapLine } from "#lib/utils/timingMapLine.js";
 	import { chartlessPlacementLine } from "#lib/utils/chartlessPlacementLine.js";
+	import { chartlessGridUse } from "#lib/utils/chartlessGridUse.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import type { ChartlessGrid } from "#lib/audio/chartlessGrid.js";
 	import { chordChart, type ChordSegment } from "#lib/audio/chords.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import { barGrid, barSecondsAt, type BarGrid } from "#lib/audio/measures.js";
@@ -56,6 +63,8 @@
 		/** The song's saved tempo, key and time signature changes and its start: the declared bar the timing map is set beside. */
 		savedChanges: SongChange[];
 		startAt: number | null;
+		/** The song's start of bar 1 was just set from the stems: the Details tab's entry should show it. */
+		onstartset?: () => void;
 	}
 
 	let {
@@ -75,6 +84,7 @@
 		useTiming,
 		savedChanges,
 		startAt,
+		onstartset,
 	}: Props = $props();
 
 	/** The declared grid's bar at the start (the song's tempo and meter, not the followed map). */
@@ -84,13 +94,17 @@
 	});
 
 	let timingBusy = $state(false);
-	/** Runs a Bar timing action, then the page's data again so the grid follows. */
-	async function timingAction(run: () => Promise<unknown>, done: string) {
+	/**
+	 * Runs a Bar timing action, then the page's data again so the grid
+	 * follows; `done` is the notification, or makes it from the action's
+	 * result once the data is fresh.
+	 */
+	async function timingAction<T>(run: () => Promise<T>, done: string | ((result: T) => string)) {
 		timingBusy = true;
 		try {
-			await run();
+			const result = await run();
 			await refreshAll();
-			notify(done);
+			notify(typeof done === "string" ? done : done(result));
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {
@@ -101,6 +115,17 @@
 		timingAction(
 			() => setChartTimingUse({ id: songId, use }),
 			use ? "Following the chart's timing" : "Back to the song's own tempo",
+		);
+	/** The placement's bar one and tempo become the song's start of bar 1 and tempo; the rows show the new tempo. */
+	const usePlacement = (placement: ChartlessGrid) =>
+		timingAction(
+			() => useChartlessGrid({ id: songId, ...chartlessGridUse(placement) }),
+			({ startAt: at, bpm }) => {
+				changes.reset();
+				onstartset?.();
+				// Time, not a position: in bars the new start is "1 | 1" by definition.
+				return `Start of bar 1 set to ${formatTime(at)}, tempo ${bpm} bpm`;
+			},
 		);
 	const forget = () => {
 		if (!confirm("Forget the chart's timing map? The player goes back to the song's own tempo."))
@@ -246,7 +271,17 @@
 				segments,
 			)}</pre>
 		{#if chordDraft.placement}
-			<p class="mt-1 text-xs opacity-80">{chartlessPlacementLine(chordDraft.placement)}</p>
+			{@const placement = chordDraft.placement}
+			<p class="mt-1 text-xs opacity-80">
+				{chartlessPlacementLine(placement)}
+				<button
+					class="ml-2 link"
+					type="button"
+					disabled={timingBusy}
+					title="Set the song's start of bar 1 and tempo to what the stems say"
+					onclick={() => usePlacement(placement)}>Use as start of bar 1</button
+				>
+			</p>
 		{/if}
 	</div>
 {/snippet}
