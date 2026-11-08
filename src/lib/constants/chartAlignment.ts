@@ -55,6 +55,33 @@ export const REPAIR_TRUST_FRACTION = 0.25;
  */
 export const REPAIR_SLIDE_FRACTION = 0.25;
 
+/**
+ * How far the whole grid may slide onto the recording's onsets, in beats
+ * (audio/alignmentRepair.ts `rephaseGrid`; stem-bench Study 27, recipe
+ * v5): ±0.5 beat, the bar divided by the meter's beats. At fast tempos the
+ * warping's middle sits a coherent sub-beat off the notes (Mop Heart, 224
+ * bpm in 3/4: 0.42 s); half a beat reaches that and never the neighboring
+ * beat, which could outscore the downbeat. Gates passed on all four bench
+ * songs; the refusal is unchanged.
+ */
+export const REPHASE_FENCE_BEATS = 0.5;
+
+/**
+ * How early the onset envelope (audio/analysis.ts `onsetEnvelope`) reads an
+ * onset, in seconds: each frame is stamped at its window's start, and the
+ * spectral flux peaks as the onset enters the 2048-sample window (93 ms at
+ * 22 050 Hz), so a hard onset peaks about 70 ms before it sounds and an
+ * 80 ms attack about 50 ms before (measured 2026-11-08 on synthetic hits
+ * with 0, 10, 30 and 80 ms attacks: 75, 68, 60 and 54 ms early). The
+ * drums carry the lattice the grid re-phase slides onto, so the lead is the
+ * hard-onset figure; `repairAlignment` adds it to the re-phased starts.
+ * Recipe v3 kept the warping's own starts through the middle and did not
+ * show it; v5 puts every bar on the envelope's lattice and would inherit
+ * it. The bench measured Study 27 through the same envelope: its 50–70 ms
+ * residuals on the real songs are this lead.
+ */
+export const ONSET_ENVELOPE_LEAD_SEC = 0.07;
+
 /** The end slide's step in seconds (Study 26c): 10 ms, finer than the onset envelope's frames matter for. */
 export const REPAIR_SLIDE_STEP_SEC = 0.01;
 

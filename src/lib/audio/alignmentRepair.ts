@@ -7,6 +7,7 @@ import {
 	REPAIR_SLIDE_FRACTION,
 	REPAIR_SLIDE_STEP_SEC,
 	REPAIR_TRUST_FRACTION,
+	REPHASE_FENCE_BEATS,
 } from "#lib/constants/chartAlignment.js";
 import { detrend } from "./analysis.js";
 
@@ -23,6 +24,14 @@ import { detrend } from "./analysis.js";
  * period and slid, each end as one, onto the recording's onsets within a
  * quarter bar. On the bench: Letter Lands' first and last bars to 0.05 and
  * 0.02 s, Peaceful Dreams' to 0.06 and 0.11 s. Pure arithmetic.
+ *
+ * The grid re-phase (stem-bench Study 27, recipe v5, `rephaseGrid`) keeps
+ * v3's phase line and trust machinery and replaces the end repair: at fast
+ * tempos the warping's middle carries a coherent whole-grid phase offset
+ * (Mop Heart, 224 bpm in 3/4: 0.42 s), and the onset lattice, not the
+ * path's phase, is where the notes are, so the whole uniform line slides
+ * once onto the onsets, fenced at half a beat. `repairEnds` stays as the
+ * bench's v3 reference.
  */
 
 /** A lattice found by the comb: its period and phase in seconds and the objective there. */
@@ -44,6 +53,20 @@ export interface EndRepair {
 	iLast: number;
 	/** Seconds each end slid onto the onsets. */
 	slides: { intro: number; outro: number };
+}
+
+export interface GridRephase {
+	/** The re-phased bar starts, as many as went in: the uniform line slid by `delta`. */
+	barStarts: number[];
+	/** Per bar start: the path's own start agrees within a quarter bar ("aligned"), or not ("re-phased"). */
+	confidence: ("aligned" | "re-phased")[];
+	/** The bar in seconds the line runs at (the comb's). */
+	period: number;
+	/** Seconds the whole line slid onto the onsets, within ±`REPHASE_FENCE_BEATS` beat. */
+	delta: number;
+	/** The trusted span's first and last index. */
+	iFirst: number;
+	iLast: number;
 }
 
 /** The best phase and its mean detrended onset energy, for one candidate period. */
@@ -182,6 +205,30 @@ export function combSlide(
 }
 
 /**
+ * The phase line through an alignment's bar starts `ts` at `period`: the
+ * phase the median residual of the middle 60 % of starts, and the trusted
+ * span on that line. Null, the refusal, when the span covers under half
+ * of the starts: the chart's bars do not line up with the recording's
+ * middle (on the bench, a wrong chart).
+ */
+function phaseLine(
+	ts: number[],
+	period: number,
+): { phase: number; iFirst: number; iLast: number } | null {
+	const n = ts.length;
+	const lo = Math.floor(0.2 * n);
+	const hi = Math.max(lo + 2, Math.ceil(0.8 * n));
+	const residuals = ts
+		.slice(lo, hi)
+		.map((t, j) => t - (lo + j) * period)
+		.sort((a, b) => a - b);
+	const phase = residuals[Math.floor(residuals.length / 2)]!;
+	const span = trustedSpan(ts, period, (i) => phase + i * period);
+	if (!span || span.iLast - span.iFirst + 1 < REPAIR_MIN_TRUSTED_SHARE * n) return null;
+	return { phase, ...span };
+}
+
+/**
  * The ends of an alignment's bar starts `ts` rebuilt (Study 26c's recipe
  * v3): the phase is the median residual of the middle 60 % of starts
  * against a lattice at `period` (the comb's), the trusted span the run on
@@ -197,17 +244,10 @@ export function repairEnds(
 	fps: number,
 	period: number,
 ): EndRepair | null {
+	const line = phaseLine(ts, period);
+	if (!line) return null;
 	const n = ts.length;
-	const lo = Math.floor(0.2 * n);
-	const hi = Math.max(lo + 2, Math.ceil(0.8 * n));
-	const residuals = ts
-		.slice(lo, hi)
-		.map((t, j) => t - (lo + j) * period)
-		.sort((a, b) => a - b);
-	const phase = residuals[Math.floor(residuals.length / 2)]!;
-	const span = trustedSpan(ts, period, (i) => phase + i * period);
-	if (!span || span.iLast - span.iFirst + 1 < REPAIR_MIN_TRUSTED_SHARE * n) return null;
-	const { iFirst, iLast } = span;
+	const { iFirst, iLast } = line;
 	const intro = Array.from({ length: iFirst }, (_, k) => ts[iFirst]! - (iFirst - k) * period);
 	const outro = Array.from({ length: n - 1 - iLast }, (_, j) => ts[iLast]! + (j + 1) * period);
 	const reach = REPAIR_SLIDE_FRACTION * period;
@@ -229,4 +269,32 @@ export function repairEnds(
 		iLast,
 		slides: { intro: introSlide, outro: outroSlide },
 	};
+}
+
+/**
+ * An alignment's bar starts `ts` re-phased (stem-bench Study 27's recipe
+ * v5): v3's phase line and trusted span (`phaseLine`), then the whole
+ * uniform line at `period` slid once onto the onsets, fenced at
+ * ±`REPHASE_FENCE_BEATS` of a beat (`period / beatsPerBar`) so it fixes a
+ * sub-beat phase and never hops a beat. Every start ships on the slid
+ * line; one is "aligned" where the path's own start agrees within a
+ * quarter bar, else "re-phased". Null, the same refusal as `repairEnds`.
+ */
+export function rephaseGrid(
+	ts: number[],
+	onset: Float32Array,
+	fps: number,
+	period: number,
+	beatsPerBar: number,
+): GridRephase | null {
+	const fit = phaseLine(ts, period);
+	if (!fit) return null;
+	const line = ts.map((_, i) => fit.phase + i * period);
+	const delta = combSlide(onset, fps, line, REPHASE_FENCE_BEATS * (period / beatsPerBar));
+	const barStarts = line.map((t) => t + delta);
+	const tol = REPAIR_TRUST_FRACTION * period;
+	const confidence = barStarts.map((t, i) =>
+		Math.abs(ts[i]! - t) <= tol ? ("aligned" as const) : ("re-phased" as const),
+	);
+	return { barStarts, confidence, period, delta, iFirst: fit.iFirst, iLast: fit.iLast };
 }

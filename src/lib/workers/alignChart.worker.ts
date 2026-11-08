@@ -15,7 +15,7 @@ import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
  * features at that rate (`features`, cached in the browser by
  * audio/alignmentFeaturesCache.ts), so a second alignment after a chart
  * edit skips the recording's chromagram. The reply carries the path's
- * alignment (before the end repair, which the page applies with the
+ * alignment (before the grid re-phase, which the page applies with the
  * envelope from workers/alignmentEnvelope.worker.ts) and, given a
  * recording, the features it computed (their chroma transferred), so the
  * page can keep them; or the reason there is none.

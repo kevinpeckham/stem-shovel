@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vite-plus/test";
-import { combSlide, jointOnsetComb, repairEnds, trustedSpan } from "./alignmentRepair.js";
+import {
+	combSlide,
+	jointOnsetComb,
+	repairEnds,
+	rephaseGrid,
+	trustedSpan,
+} from "./alignmentRepair.js";
 
 const FPS = 100;
 const P = 2;
@@ -99,5 +105,53 @@ describe("trustedSpan and combSlide", () => {
 	test("slides a set of times onto the onsets", () => {
 		const shifted = truth.slice(0, 5).map((t) => t - 0.2);
 		expect(combSlide(barsAndBeats, FPS, shifted, 0.3)).toBeCloseTo(0.2, 5);
+	});
+});
+
+describe("rephaseGrid (stem-bench Study 27, recipe v5)", () => {
+	const BP = 0.8;
+	const BEATS = 3;
+	const RFPS = 125;
+	const n = 60;
+	const anchor = 0.3;
+	/** A single-frame impulse at each of `times`. */
+	function impulses(times: number[]): Float32Array {
+		const env = new Float32Array(Math.ceil((anchor + n * BP + 2) * RFPS));
+		for (const t of times) {
+			const f = Math.round(t * RFPS);
+			if (f >= 0 && f < env.length) env[f] = 1;
+		}
+		return env;
+	}
+	const bars = Array.from({ length: n }, (_, i) => anchor + i * BP);
+	const beats = Array.from({ length: n * BEATS }, (_, k) => anchor + (k * BP) / BEATS);
+
+	test("moves a coherently offset grid onto the onset lattice", () => {
+		const ts = bars.map((t) => t + 0.11);
+		const out = rephaseGrid(ts, impulses(bars), RFPS, BP, BEATS)!;
+		expect(out).not.toBeNull();
+		for (const i of [0, 1, 30, 58, 59])
+			expect(Math.abs(out.barStarts[i]! - bars[i]!)).toBeLessThanOrEqual(0.02);
+		expect(Math.abs(out.delta + 0.11)).toBeLessThanOrEqual(0.02);
+	});
+
+	test("the half-beat fence cannot hop to the neighboring beat", () => {
+		const beat = BP / BEATS;
+		const ts = bars.map((t) => t + 0.9 * beat);
+		const out = rephaseGrid(ts, impulses(beats), RFPS, BP, BEATS)!;
+		expect(out).not.toBeNull();
+		expect(Math.abs(out.delta)).toBeLessThanOrEqual(0.5 * beat + 1e-9);
+	});
+
+	test("still refuses an untrusted interior", () => {
+		const ts = Array.from({ length: n }, (_, i) => ((i * 7919) % 97) + (i % 2) * 40);
+		expect(rephaseGrid(ts, new Float32Array(1000), RFPS, BP, BEATS)).toBeNull();
+	});
+
+	test("the lattice at every beat with the grid already on a downbeat leaves delta at 0", () => {
+		const out = rephaseGrid(bars, impulses(beats), RFPS, BP, BEATS)!;
+		expect(out).not.toBeNull();
+		expect(Math.abs(out.delta)).toBeLessThanOrEqual(0.01);
+		expect(out.confidence.every((c) => c === "aligned")).toBe(true);
 	});
 });

@@ -1,10 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
 	alignChart,
+	alignChartPath,
+	alignmentEnvelope,
 	audibleSpan,
 	chromagram,
 	dtwAlign,
 	renderChartPads,
+	repairAlignment,
 } from "./chartAlignment.js";
 
 const RATE = 22050;
@@ -91,9 +94,9 @@ describe("alignChart", () => {
 	const truth = renderChartPads(barsAt(120), RATE);
 	const alignment = alignChart(barsAt(108), truth.samples, RATE);
 
-	test("a chart declared 10 % slow still puts every bar start within a hop of its true time", () => {
-		expect(alignment.barStarts).toHaveLength(truth.barStarts.length);
-		const errors = alignment.barStarts
+	test("a chart declared 10 % slow still puts every path bar start within a hop of its true time", () => {
+		expect(alignment.rawBarStarts).toHaveLength(truth.barStarts.length);
+		const errors = alignment.rawBarStarts
 			.slice(0, -1)
 			.map((at, i) => Math.abs(at - truth.barStarts[i]!));
 		// The path moves a frame at a time, so a boundary lands within a hop of where it is; one bar
@@ -113,12 +116,37 @@ describe("alignChart", () => {
 		expect(Math.abs(alignment.lastSound - truth.samples.length / RATE)).toBeLessThanOrEqual(0.05);
 	});
 
-	test("the end repair finds the recording's bar from the 10 % slow declaration and, the path being clean, keeps every start", () => {
+	test("the grid re-phase finds the recording's bar from the 10 % slow declaration and, the path being clean, keeps every start on it", () => {
 		expect(alignment.repair).not.toBeNull();
 		expect(Math.abs(alignment.repair!.period - 2) / 2).toBeLessThan(0.005);
-		expect(alignment.repair!.extrapolated).toBe(0);
+		expect(alignment.repair!.rephased).toBe(0);
 		expect(alignment.repair!.confidence).toHaveLength(alignment.barStarts.length);
-		expect(alignment.rawBarStarts).toEqual(alignment.barStarts);
+		expect(alignment.repair!.confidence.every((c) => c === "aligned")).toBe(true);
+		// The onset envelope reads a hard onset about 70 ms early (constants ONSET_ENVELOPE_LEAD_SEC);
+		// with the lead added back the slid line sits on the pads: every start within 25 ms of the
+		// truth and the mean signed error within 15 ms, where the uncorrected line sat 70 ms early.
+		expect(alignment.barStarts).toHaveLength(truth.barStarts.length);
+		const signed = alignment.barStarts.slice(0, -1).map((t, i) => t - truth.barStarts[i]!);
+		for (const e of signed) expect(Math.abs(e)).toBeLessThanOrEqual(0.025);
+		expect(Math.abs(signed.reduce((a, b) => a + b, 0) / signed.length)).toBeLessThanOrEqual(0.015);
+	});
+
+	test("a path whose bar starts sit 0.1 s off the pads comes back re-phased, delta 0.1 s more negative, on the same line", () => {
+		const path = alignChartPath(barsAt(120), truth.samples, RATE);
+		const envelope = alignmentEnvelope(truth.samples, RATE);
+		const withStarts = (starts: number[]) =>
+			repairAlignment(
+				{ ...path, alignment: { ...path.alignment, barStarts: starts, rawBarStarts: starts } },
+				envelope,
+			);
+		// The reference: the true bar starts re-phased, which lands on the envelope's stamp of the pads.
+		const onPads = withStarts([...truth.barStarts]);
+		const late = withStarts(truth.barStarts.map((t) => t + 0.1));
+		expect(onPads.repair).not.toBeNull();
+		expect(late.repair).not.toBeNull();
+		expect(Math.abs(late.repair!.delta - onPads.repair!.delta + 0.1)).toBeLessThanOrEqual(0.02);
+		for (const [i, t] of late.barStarts.entries())
+			expect(Math.abs(t - onPads.barStarts[i]!)).toBeLessThanOrEqual(0.02);
 	});
 
 	test("nothing to align, or a chart that cannot fit, is an error with a reason", () => {

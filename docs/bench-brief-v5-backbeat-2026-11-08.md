@@ -82,3 +82,20 @@ The app ships v5 as its placement. If arm 3 fails on any song, the app
 adds the remedy that passes; if the catch map shows the downbeat is
 safe for `|x| < 0.5` beat and arm 4 shows real `x` stays under it, the
 app notes the fence as the guarantee and moves on.
+
+## Addendum, the same day: the envelope's lead
+
+Porting v5, the app measured `onsetEnvelope`'s time base on synthetic
+hits: a frame is stamped at its window's start and the flux peaks as the
+onset enters the window, so a hard onset reads about 70 ms early (an
+80 ms attack about 50 ms). Recipe v3 never showed it, since the middle
+kept the warping's own starts; v5 puts every bar on the envelope's
+lattice and inherits it. The app adds 70 ms back after the slide
+(`ONSET_ENVELOPE_LEAD_SEC`), and on its pad fixture the re-phased starts
+then sit within 25 ms of the truth. Please re-read Study 27's residuals
+with this in mind: the 50–70 ms middle means on Letter Lands and
+Peaceful Dreams look like this lead, not the recipe, and the adjudicated
+Mop Heart anchor of −0.066 s was read through the same envelope, so the
+true downbeat may sit near 0.00 s. A fifth arm for this brief: the four
+songs' residuals against truth with the lead added, and whether the
+remaining error is centered on zero.

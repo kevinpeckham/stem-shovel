@@ -17,7 +17,7 @@ import { type Alignment, type RecordingFeatures, repairAlignment } from "./chart
 /**
  * A chart aligned to a song's decoded audio in two workers at once: the
  * warping path (workers/alignChart.worker.ts) and the recording's onset
- * envelope (workers/alignmentEnvelope.worker.ts), the end repair applied
+ * envelope (workers/alignmentEnvelope.worker.ts), the grid re-phase applied
  * here once both answer (`repairAlignment`, milliseconds). The buffers (a
  * mix, or every stem) are summed to one mono track at the first buffer's
  * rate, channels averaged, as long as the longest, a buffer at another rate

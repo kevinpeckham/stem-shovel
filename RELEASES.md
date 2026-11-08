@@ -4,6 +4,13 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.249.0] - 2026-11-08
+
+### Changed
+
+- **Placed charts sit on the beat.** Placing a chart now lines every bar up with the recording's own onsets, which fixes bar lines that sat a fraction of a beat off at fast tempos.
+- **Placing a chart again is faster.** After the first placement, the browser remembers what it heard in the recording, so placing an edited chart skips the listening and only fits the chart.
+
 ## [0.248.0] - 2026-11-08
 
 ### Added

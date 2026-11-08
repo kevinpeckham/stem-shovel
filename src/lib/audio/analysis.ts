@@ -134,7 +134,7 @@ function fluxOver(magnitude: Float32Array, previous: Float32Array): number {
  * the real part and one as the imaginary (`splitMagnitudes`); a last odd
  * frame goes alone, with a zero partner.
  * `extractFeatures` reads the first 90 s through it; the chart alignment's
- * end repair (audio/alignmentRepair.ts) reads a whole recording.
+ * grid re-phase (audio/alignmentRepair.ts) reads a whole recording.
  */
 export function onsetEnvelope(
 	mono: Float32Array,

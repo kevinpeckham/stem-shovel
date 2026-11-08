@@ -22,9 +22,9 @@ const MIN_RATIO = 1.5;
  * bar 1 within one declared bar of where the music starts (`startAt` or the
  * first sound, the later), the median bar within 15 % of the declared bar,
  * the chart fitting the recording at least 1.5 times better than a
- * wrong one would, and, when the alignment carries its end repair, the
- * repair not refused (`repair` null: the chart's bars do not line up with
- * the recording's middle, stem-bench Study 26c's wrong-chart detector).
+ * wrong one would, and, when the alignment carries its grid re-phase, the
+ * re-phase not refused (`repair` null: the chart's bars do not line up with
+ * the recording's middle, stem-bench Study 26c's wrong-chart detector, kept by Study 27).
  * Each failure is a reason, in words for the user.
  */
 export function alignmentFit(

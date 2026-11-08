@@ -1,12 +1,14 @@
 import {
 	ALIGNMENT_SOUND_FLOOR,
 	ALIGNMENT_SOUND_WINDOW_SEC,
+	ONSET_ENVELOPE_LEAD_SEC,
 } from "#lib/constants/chartAlignment.js";
 import { chartBarSeconds } from "#lib/utils/chartBarSeconds.js";
 import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
 import { chordPitchClasses } from "#lib/utils/chordPitchClasses.js";
 import { median } from "#lib/utils/median.js";
-import { jointOnsetComb, repairEnds } from "./alignmentRepair.js";
+import { meterBeats } from "#lib/utils/meterBeats.js";
+import { jointOnsetComb, rephaseGrid } from "./alignmentRepair.js";
 import { fft, onsetEnvelope } from "./analysis.js";
 
 /**
@@ -24,29 +26,33 @@ import { fft, onsetEnvelope } from "./analysis.js";
  * 16.3 times the right one's). The math is the bench's (`study12/`
  * chroma, dtw, reference), ported; it runs in a worker
  * (workers/alignChart.worker.ts) because the warping is a few hundred
- * million steps for a long song. The path's weak ends are then rebuilt
- * from the recording's onsets (audio/alignmentRepair.ts, stem-bench
- * Study 26c); the costs stay the path's.
+ * million steps for a long song. The grid re-phase (stem-bench Study 27,
+ * audio/alignmentRepair.ts) then puts the bar starts on the recording's
+ * onset lattice: the bar from an onset comb, the phase line and its
+ * trusted span from the path's middle (Study 26c), the whole line slid
+ * within half a beat onto the onsets; the costs stay the path's.
  */
 export interface Alignment {
 	/**
 	 * Seconds in the recording where each bar starts, plus where the last one
-	 * ends: bars.length + 1. The repaired starts when `repair` is set, else the path's.
+	 * ends: bars.length + 1. The re-phased starts when `repair` is set, else the path's.
 	 */
 	barStarts: number[];
-	/** The warping path's own bar starts, before the end repair (for diagnostics). */
+	/** The warping path's own bar starts, before the grid re-phase (for diagnostics). */
 	rawBarStarts: number[];
 	/**
-	 * The end repair (stem-bench Study 26c): the bar it extrapolated at, each
-	 * start's confidence, how far each end slid onto the onsets and how many
-	 * starts were extrapolated. Null when it refused: the chart's bars do not
-	 * line up with the recording through its middle (a wrong chart, on the bench).
+	 * The grid re-phase (stem-bench Study 27): the bar the line runs at, each
+	 * start's confidence ("aligned" where the path's own start agrees within
+	 * a quarter bar, else "re-phased"), the seconds the whole line slid onto
+	 * the onsets and how many starts were re-phased. Null when it refused:
+	 * the chart's bars do not line up with the recording through its middle
+	 * (a wrong chart, on the bench).
 	 */
 	repair: {
 		period: number;
-		confidence: ("aligned" | "extrapolated")[];
-		slides: { intro: number; outro: number };
-		extrapolated: number;
+		confidence: ("aligned" | "re-phased")[];
+		delta: number;
+		rephased: number;
 	} | null;
 	/** Mean step cost of the warping path (cosine distance, 0 to 1). */
 	cost: number;
@@ -409,7 +415,7 @@ function onsetRate(recording: Float32Array, sampleRate: number) {
 }
 
 /**
- * The recording's onset envelope as the end repair reads it: decimated to
+ * The recording's onset envelope as the grid re-phase reads it: decimated to
  * about 22 050 Hz (`onsetRate`), then `onsetEnvelope` (2048-sample window,
  * hop 256). Exported apart so a worker can run it beside the warping
  * (workers/alignmentEnvelope.worker.ts). Feature code: a change to what
@@ -423,10 +429,24 @@ export function alignmentEnvelope(
 	return onsetEnvelope(samples, rate);
 }
 
-/** The warping's alignment before the end repair, with what the repair needs: the chart's declared bar (the median over its bars, seconds). */
+/**
+ * The warping's alignment before the grid re-phase, with what the re-phase
+ * needs: the chart's declared bar (the median over its bars, seconds) and
+ * its beats a bar (the most common meter's numerator, `chartBeatsPerBar`).
+ */
 export interface AlignmentPath {
 	alignment: Alignment;
 	declaredBar: number;
+	beatsPerBar: number;
+}
+
+/** The beats in the chart's most common meter (the first on a tie); four with no bars. */
+function chartBeatsPerBar(bars: PadBar[]): number {
+	const counts = new Map<string, number>();
+	for (const b of bars) counts.set(b.meter, (counts.get(b.meter) ?? 0) + 1);
+	let best: string | null = null;
+	for (const [meter, count] of counts) if (best === null || count > counts.get(best)!) best = meter;
+	return best === null ? 4 : meterBeats(best);
 }
 
 /**
@@ -502,33 +522,36 @@ export function alignChartPath(
 			lastSound: features.lastSound,
 		},
 		declaredBar: median(bars.map((b) => chartBarSeconds(b.meter, b.bpm))),
+		beatsPerBar: chartBeatsPerBar(bars),
 	};
 }
 
 /**
- * The ends of the path's bar starts rebuilt (audio/alignmentRepair.ts,
- * stem-bench Study 26c) from the recording's onset envelope
- * (`alignmentEnvelope`): the onset comb near the chart's declared bar gives
- * the period, and `repairEnds` the starts. The path's alignment unchanged
- * when it refuses (`repair` null).
+ * The path's bar starts re-phased (audio/alignmentRepair.ts, stem-bench
+ * Study 27) on the recording's onset envelope (`alignmentEnvelope`): the
+ * onset comb near the chart's declared bar gives the period, and
+ * `rephaseGrid` the starts, the whole line slid within half of one of the
+ * chart's beats. The path's alignment unchanged when it refuses (`repair` null).
  */
 export function repairAlignment(
 	path: AlignmentPath,
 	envelope: { onset: Float32Array; fps: number },
 ): Alignment {
-	const { alignment, declaredBar } = path;
+	const { alignment, declaredBar, beatsPerBar } = path;
 	const { onset, fps } = envelope;
 	if (!(declaredBar > 0) || onset.length === 0) return alignment;
 	const comb = jointOnsetComb(onset, fps, declaredBar);
-	const repaired = repairEnds(alignment.rawBarStarts, onset, fps, comb.period);
-	if (!repaired) return alignment;
-	const { barStarts, period, confidence, slides } = repaired;
-	const extrapolated = confidence.filter((c) => c === "extrapolated").length;
-	return { ...alignment, barStarts, repair: { period, confidence, slides, extrapolated } };
+	const rephased = rephaseGrid(alignment.rawBarStarts, onset, fps, comb.period, beatsPerBar);
+	if (!rephased) return alignment;
+	const { period, confidence, delta } = rephased;
+	// The envelope reads onsets early (constants/chartAlignment.ts ONSET_ENVELOPE_LEAD_SEC); the lattice it names sits that much before the notes.
+	const barStarts = rephased.barStarts.map((t) => t + ONSET_ENVELOPE_LEAD_SEC);
+	const count = confidence.filter((c) => c === "re-phased").length;
+	return { ...alignment, barStarts, repair: { period, confidence, delta, rephased: count } };
 }
 
 /**
- * The chart's bars placed in the recording with the end repair:
+ * The chart's bars placed in the recording with the grid re-phase:
  * `alignChartPath`, then `repairAlignment` on `alignmentEnvelope`. Throws
  * as `alignChartPath` does.
  */

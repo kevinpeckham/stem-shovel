@@ -7,6 +7,23 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A spectral-flux onset envelope reads onsets early by most of its window (2026-11-08)
+
+From porting stem-bench Study 27 (recipe v5) into the app. `onsetEnvelope`
+(audio/analysis.ts) stamps each frame at its window's start, and the flux
+peaks as an onset enters the 2048-sample window (93 ms at 22 050 Hz), so
+the envelope's peak sits before the sound: measured on synthetic hits, a
+hard onset reads 70–75 ms early, a 10 ms attack 68 ms, a 30 ms attack 60 ms,
+an 80 ms attack 54 ms. Recipe v3 (ends only) never showed it: the middle
+kept the warping's own starts, which the chromagram places within a hop.
+Recipe v5 slides the whole grid onto the envelope's lattice and would have
+put every bar 70 ms early; the app adds the lead back
+(`ONSET_ENVELOPE_LEAD_SEC`, 0.07 s). Lesson: any time base read off a
+framed analysis needs the frame's reference point stated (start, center
+or the peak's position within it), and any "lands on the lattice" claim
+measured through the same envelope inherits its bias: Study 27's 50–70 ms
+residuals on the real songs are this lead.
+
 ## Two copies of Svelte's server runtime in dev SSR null the component context (2026-11-08)
 
 From Sentry STEM-SHOVEL-7B: `GET /` on the dev server threw

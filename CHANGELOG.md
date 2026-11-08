@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.249.0] - 2026-11-08
+
+### Changed
+
+- **The chart's bars are re-phased onto the recording's onsets** (stem-bench Study 27, recipe v5; `audio/alignmentRepair.ts` `rephaseGrid`). After the end repair's phase line, the whole bar grid slides once onto the onset lattice, fenced at half a beat, so a sub-beat phase offset in the warping's middle (Mop Heart at 224 bpm: 0.38 s) is corrected and a neighboring beat can never be reached; the wrong-chart refusal is unchanged. The onset envelope's 70 ms lead (a frame stamped at its window's start) is measured and added back (`ONSET_ENVELOPE_LEAD_SEC`), so the re-phased grid sits on the notes rather than 70 ms before them (docs/audio-engine.md).
+- **A second chart placement is faster.** The browser keeps a song's recording features (the mix's chromagram, audible span and onset envelope: `audio/alignmentFeaturesCache.ts`, IndexedDB, keyed by the renditions and the rate) across chart edits, so "Place from chart" after an edit runs only the chart's render and the warping, with no envelope worker and no mix. Letter Lands: 4.8 s → 3.4 s (docs/audio-engine.md).
+
 ## [0.248.0] - 2026-11-08
 
 ### Added

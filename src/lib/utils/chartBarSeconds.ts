@@ -1,3 +1,5 @@
+import { meterBeats } from "./meterBeats.js";
+
 /**
  * Seconds in a chart bar: the numerator's beats at the bpm, where a beat is
  * the meter's bottom note, as the song's changes count it everywhere
@@ -9,6 +11,5 @@
  * numerator counts four.
  */
 export function chartBarSeconds(meter: string, bpm: number): number {
-	const top = Number(/^\s*(\d+)\s*\//.exec(meter)?.[1] ?? 4) || 4;
-	return (top * 60) / bpm;
+	return (meterBeats(meter) * 60) / bpm;
 }

@@ -1165,6 +1165,45 @@ chart existed.
   two chromagrams, two warpings) is now the long pole. Do not shrink the
   envelope's window to go faster: the repair's numbers were measured with
   it.
+- **The grid is re-phased onto the onset lattice** (2026-11-08, stem-bench
+  Study 27, recipe v5; `alignmentRepair.ts` `rephaseGrid`): after the
+  phase line and the trusted span of recipe v3, the ENTIRE uniform line
+  slides once onto the onsets by `combSlide`, fenced at ±0.5 beat
+  (`REPHASE_FENCE_BEATS`, the bar over the meter's beats,
+  `utils/meterBeats.ts`), and every bar ships on the slid line; a bar's
+  confidence is "aligned" where the warping's own start agrees within a
+  quarter bar, else "re-phased". The bench found the warping's middle
+  carries a coherent sub-beat phase offset at fast tempos (Mop Heart, 224
+  bpm in 3/4: 0.38 s against the adjudicated anchor), which v3's ends-only
+  repair copied; the onset lattice, not the warping's phase, is where the
+  notes are. Half a beat reaches that and never the neighboring beat.
+  `Alignment.repair` is `{ period, confidence, delta, rephased }`; the
+  refusal (null, the wrong-chart detector) is unchanged. `repairEnds`
+  stays as the v3 reference. **The envelope's lead**: `onsetEnvelope`
+  stamps a frame at its window's start, so a hard onset reads about 70 ms
+  early (measured, constants `ONSET_ENVELOPE_LEAD_SEC`); v3 never showed
+  it, v5 would have put every bar there, so `repairAlignment` adds the lead
+  back. On the pad fixture the re-phased starts sit within 25 ms of the
+  truth, mean within 15 ms, where the uncorrected line sat 70 ms early.
+  The bench measured Study 27 through the same envelope: its 50–70 ms
+  residuals on the real songs are this lead (docs/bench-brief-v5-backbeat-2026-11-08.md
+  tells it so).
+- **The recording's features are cached per song in the browser**
+  (2026-11-08, `audio/alignmentFeaturesCache.ts`, IndexedDB
+  `stem-shovel-alignment`): the mix's chromagram (flattened, 12 a frame),
+  its audible span and its onset envelope depend on the stems alone, not
+  the chart, so a second "Place from chart" after a chart edit skips them.
+  The key (`utils/alignmentFeaturesKey.ts`) is `af1:<rate>:<the source
+  renditions' mediaCacheKeys, sorted>`: pathnames are never reused, so the
+  set names the audio, and `af1` is the feature code's version, bumped
+  when `chromagram`, `audibleSpan` or `alignmentEnvelope` change what they
+  compute. On a hit the path worker takes `features` and no recording, the
+  envelope worker is not started and the mono mix is not made; a record at
+  another rate is a miss; at most 24 records, the oldest written going
+  first; the house browser-cache contract (never throws, a failure is a
+  miss or a no-op). Letter Lands in the browser: 4.8 s on a miss, 3.4 s
+  on a hit; what remains is the chart's render, its chromagram and the two
+  warpings.
 - **The saved draft is canonical**: `saveChartDraft` parses the text and
   stores `printChart`'s output when it parses without errors, as the editor
   normalizes; a draft with errors is stored as written and its diagnostics

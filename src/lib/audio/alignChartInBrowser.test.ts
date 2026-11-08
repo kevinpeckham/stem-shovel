@@ -34,7 +34,7 @@ const alignment: Alignment = {
 	rawBarStarts: [0, 2],
 	repair: null,
 };
-const path: AlignmentPath = { alignment, declaredBar: 2 };
+const path: AlignmentPath = { alignment, declaredBar: 2, beatsPerBar: 4 };
 const bars = [{ measure: 1, chords: ["D"], bpm: 120, meter: "4/4", key: null, section: null }];
 
 type Request = AlignChartRequest | AlignmentEnvelopeRequest;
