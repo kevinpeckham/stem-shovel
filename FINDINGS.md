@@ -33,6 +33,10 @@ From Sentry STEM-SHOVEL-7B: `GET /` on the dev server threw
   component body runs; `onDestroy` reads it from `svelte`'s server entry. If the
   dev SSR graph holds two copies of the runtime, the component reads the copy the
   renderer never set.
+- **SvelteKit's `page` reads it too.** In dev, `page.url` and the other
+  `$app/state` getters call `getContext`. A throw there is reported as
+  `state_read_outside_render`, even during rendering: Sentry STEM-SHOVEL-49,
+  `page.url` in +layout.svelte's `<svelte:head>` on `GET /` and other routes.
 - **One Svelte.** vite.config.ts dedupes `svelte` and keeps it out of
   `optimizeDeps`, so a re-optimisation or hot reload cannot load a second copy.
 
