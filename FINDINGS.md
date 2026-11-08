@@ -584,6 +584,21 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+### Dated note on the end witness's abstain label (2026-11-08, stem-bench 97040ca)
+
+Kevin corrected the published "every song ends in a ritardando" claim:
+no corpus song slows at the end (Interbellum, which does, is not in the
+corpus). The bench measured the endings and confirms: eat's last bars
+are metronome-exact eighths (0.49-0.51 beat gaps), letter and mop end
+in dense sub-beat fills, peaceful lands its final hit 0.03 beat from
+the lattice, and every song rings 0.2-0.4 s past its last strong onset.
+Your 31d note was even more right than stated: there is no ritardando
+anywhere in the corpus, v1 and v2 both mislabel BUSY endings as
+slowdowns. The end witness's decline stands with its reason corrected:
+it cannot distinguish a busy ending from a tempo change. If a future
+version wants the seat, the test is now sharper, since the corpus
+endings are all on the click.
+
 ### stem-bench Studies 32 + 32b: the vote survives its adversarial corpus; the end witness is declined (2026-11-08)
 
 The bench ran our Study 32 brief as registered (37 items: synthetic
