@@ -104,3 +104,60 @@ export const COMB_RANGE_FRACTION = 0.1;
 export const COMB_COARSE_STEP_FRACTION = 0.002;
 export const COMB_FINE_STEP_FRACTION = 0.0002;
 export const COMB_PHASE_STEP_SEC = 0.01;
+
+/**
+ * How near time zero a lattice beat must sit for the recording's start to
+ * vote it bar one, in beats (audio/chartlessGrid.ts `timeZeroWitness`;
+ * stem-bench Study 31): a quarter beat. A DAW export starts on a bar line,
+ * and on all four bench songs the nearest lead-corrected beat sat 0.058 to
+ * 0.079 s from zero, which was the envelope's lead; a song that starts
+ * mid-bar sits further off and the witness abstains.
+ */
+export const TIME_ZERO_SNAP_BEATS = 0.25;
+
+/**
+ * The chartless downbeat vote's weights (audio/chartlessGrid.ts
+ * `downbeatVote`; stem-bench Study 31, registered before it ran): the
+ * recording's start 2, the chord changes 2, the section changes 1. Each
+ * witness found bar one on the bench songs it voted on (the start on all
+ * four, the chord changes four of four, the sections four of four).
+ */
+export const DOWNBEAT_WEIGHTS = { timeZero: 2, harmonicRhythm: 2, sections: 1 } as const;
+
+/**
+ * The least score a class needs to win the vote (Study 31's rule): 2, one
+ * full witness, so the section witness alone never places the bars.
+ */
+export const DOWNBEAT_MIN_SCORE = 2;
+
+/**
+ * How far a class must outscore the comb's own bar phase (class 0) to move
+ * bar one off it (Study 31's rule): by 2, a full witness's weight. The
+ * comb's phase is a lattice point already, so a move needs a clear case,
+ * not the section witness breaking a tie.
+ */
+export const DOWNBEAT_OFF_COMB_MARGIN = 2;
+
+/**
+ * The app's own gate on the chord changes voting alone (no other witness on
+ * the winner): the top beat class must hold at least 1.2 times the changes
+ * of the runner-up. The thinnest margin the bench saw right was 1.27
+ * (Study 31, 33 changes against 26); a flatter histogram is a song whose
+ * harmony moves on every beat, and the draft keeps the declared grid.
+ */
+export const HARMONIC_ALONE_MIN_RATIO = 1.2;
+
+/**
+ * The checkerboard kernels' half widths in beats (audio/chartlessGrid.ts
+ * `sectionWitness`; stem-bench Study 31): 8 and 16, two and four bars of 4/4, the
+ * scales a phrase and a section change at; peaks from both are pooled.
+ */
+export const SECTION_NOVELTY_SPANS = [8, 16] as const;
+
+/**
+ * How far past the first sound a placed bar one may begin, in beats
+ * (audio/chartlessGrid.ts `placeChartlessGrid`; Study 31c): a quarter
+ * beat, the envelope's slop, so a song that starts on its downbeat keeps
+ * that downbeat as bar one instead of a bar of silence before it.
+ */
+export const PLACEMENT_FIRST_SOUND_SLACK_BEATS = 0.25;

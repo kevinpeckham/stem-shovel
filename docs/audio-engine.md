@@ -1212,3 +1212,71 @@ chart existed.
   `@barmark/render`'s `typesetChord` and `glyphs` (exported since 0.16.0);
   the app's copies (`utils/typesetChord.ts`, `utils/accidentalGlyphs.ts`)
   are gone.
+
+## The chartless grid: bar one from the stems (2026-11-08)
+
+A song with no chart drafts its chords on a bar grid, and until today that
+grid was the declared tempo (often the detector's rounded value) counted from
+`startAt`, or from 0:00 without one. stem-bench Studies 28 to 31c measured
+what the stems alone can say about that grid and what they cannot:
+
+- **The lattice is exact; the downbeat is one bit.** The onset comb's bar
+  period (`jointOnsetComb`, the same comb the alignment's repair uses)
+  measured within 0.02 % of the truth on four real songs, the beat lattice
+  sits on the notes, and the song's length comes out within one bar. The
+  one thing the comb gets wrong is which lattice beat is bar one: its own
+  bar-phase landed on the backbeat on two of four songs (Study 28), and
+  three cheap scorers tried next (chroma novelty, kick-band onsets, raw
+  comb phase) never earned the right to overrule it (Study 30).
+- **Three witnesses do** (Studies 31/31b/31c, `audio/chartlessGrid.ts`).
+  _Time zero_: a DAW bounces from a bar line, so 0:00 snapped to the
+  nearest lattice beat votes for that beat's class when it is within a
+  quarter beat (on the bench the distance was 0.06 to 0.08 s on every song,
+  the onset envelope's lead, so the lattice is lead-corrected first;
+  `ONSET_ENVELOPE_LEAD_SEC`). _Harmonic rhythm_: the chord model's stored
+  runs voted per beat, the changes between consecutive beats counted by
+  beat-in-bar class; the class with the most changes votes (4 of 4 on the
+  bench, margins from 19 vs 14 to 46 vs 11). _Section scale_: beat-
+  synchronous chroma through a checkerboard novelty kernel at 8 and 16
+  beats, the peaks counted by class (4 of 4). Crashes and a drum-stem
+  witness were measured too and dropped (1 of 4; the stem witness vetoed
+  itself).
+- **The vote** is the bench's registered one: weights 2, 2 and 1, decided
+  when the top class scores at least 2, leads the runner-up by 1 and the
+  comb's own class by 2 (or is that class), plus one gate of the app's: the
+  chord changes alone decide only with a 1.2 ratio over their runner-up.
+  Undecided means no placement: the draft keeps the declared grid as before.
+  With the vote the bench's chartless drafts reached the chart-informed
+  reference exactly on Letter Lands (94.7 %) and above it on Peaceful
+  Dreams (99.3 %), where the comb's own class had them at 81 % and 61 %.
+- **Bar one contains the first sound** (Study 31c). A class names a
+  position modulo one bar, and the wrong representative put bar one a whole
+  bar late and collapsed the drafts; the placed bar one is the class's last
+  lattice point at or before the first audible sound plus a quarter beat.
+- **The member's start wins.** A song whose "Start of bar 1" is set skips
+  the vote: the lattice's exact period, bar one at the lattice beat nearest
+  the start. A song with more than one tempo or meter, or a tempo ramp, is
+  not placed (the comb assumes one period).
+- **Where it runs.** "Detect chords" (`state/songChordDraft.svelte.ts`) gets
+  the model's chords first, then places the grid in the browser
+  (`audio/chartlessGridInBrowser.ts`, the worker plumbing both readings
+  share in `audio/alignmentWorkers.ts` and `audio/monoOfBuffers.ts`): the
+  recording's chromagram, audible span and onset envelope come from the
+  alignment features cache when it holds them, else from two workers
+  (`workers/alignmentEnvelope.worker.ts` and the new
+  `workers/recordingFeatures.worker.ts`), and the record is written so a
+  later "Place from chart" is a hit. Cancel aborts the workers. In streamed
+  mode this is the step that fetches and decodes the stems. The chords are voted on
+  the placed bars, the draft and its timing map are built on them
+  (`draftChart`'s `grid`), and the detected-chords card says where bar one
+  landed and which witnesses agreed (`utils/chartlessPlacementLine.ts`).
+  Nothing that plays changes: the map follows the existing switch, off by
+  default. Any failure in the placement falls back to the declared grid.
+  A bar one the vote puts before 0:00 is clamped to it (the draft's grid
+  takes no negative time), a short pickup bar.
+- **Letter Lands on dev** (2026-11-08): period 1.8182 s (132 bpm exactly),
+  the comb's own phase on beat four, all three witnesses for the same
+  class (time zero 0.034 beat off, chord changes 22 against 13, 12 and 7,
+  sections 22 of 24 peaks), bar 1 at +0.015 s where the v5 chart placement
+  had +0.022 s, 78 bars to the end of the audio, 5 s on a cache hit. In
+  DEV the result is on `window.__chartlessGrid`.

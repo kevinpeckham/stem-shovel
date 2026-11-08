@@ -91,6 +91,7 @@ function setup({
 		engine: () => null,
 		grid: () => grid,
 		aiAvailable: () => true,
+		startAt: () => null,
 	});
 	chordDraft.draft = value;
 	const onsectionssaved = vi.fn();

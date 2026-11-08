@@ -1,10 +1,13 @@
 import { extractFeatures } from "#lib/audio/analysis.js";
 import { chordsPerBar, describeBars, type ChordSegment, type Note } from "#lib/audio/chords.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
-import { secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
+import type { ChartlessGrid } from "#lib/audio/chartlessGrid.js";
+import { chartlessGridInBrowser } from "#lib/audio/chartlessGridInBrowser.js";
+import { barSecondsAt, beatsPerBarAt, secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
 import { chartFromScore } from "#lib/remote/files.remote.js";
 import { draftChart, reconcileChords, songChords, songNotes } from "#lib/remote/songs.remote.js";
 import { notify } from "#lib/state/notifications.svelte.js";
+import { alignmentFeaturesKey } from "#lib/utils/alignmentFeaturesKey.js";
 import { chartDraftOfScore } from "#lib/utils/chartDraftOfScore.js";
 import { chordminiBarChords } from "#lib/utils/chordminiBarChords.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
@@ -66,6 +69,8 @@ export interface SongChordDraftOptions {
 	grid: () => BarGrid | null;
 	/** Whether the AI is at hand for this song. */
 	aiAvailable: () => boolean;
+	/** The song's own start of bar 1 (null when it has none): the chartless grid places bar one there. */
+	startAt: () => number | null;
 }
 
 /**
@@ -94,9 +99,15 @@ function barStartsOf(grid: BarGrid, duration: number): number[] {
 	return barStarts;
 }
 
+/** A grid of one tempo, without a ramp, in one meter: the only kind the chartless placement reads (one bar length, one lattice). */
+const steadyGrid = (grid: BarGrid) =>
+	grid.tempos.length === 1 && !grid.tempos[0]!.ramp && grid.meters.length === 1;
+
 /**
  * "Detect chords" and "Draft chart with AI" (SongTempoKeyTab.svelte, the Docs
- * panel's ⋯ menu): one chord per bar on the song's grid, from the chord
+ * panel's ⋯ menu): one chord per bar on the song's grid (on a steady grid,
+ * its bars placed on the stems' own beat when the placement decides,
+ * audio/chartlessGrid.ts), from the chord
  * model's read of the mix on the server when the song has a mix (waited for
  * while it runs), otherwise from Basic Pitch on the tonal stems, checked by
  * the AI (never the model's chords: stem-bench Study 17 G4); then the AI turns them into sections, a
@@ -119,6 +130,12 @@ export class SongChordDraft {
 	draftBusy = $state(false);
 	/** A score's part is being charted (`chartPart`); the card's part buttons are disabled meanwhile. */
 	partBusy = $state(false);
+	/**
+	 * The bars placed on the stems' own beat (audio/chartlessGrid.ts) for this
+	 * run's chords and draft; null when the declared grid stands (a changing
+	 * tempo or meter, an undecided vote, or the placement failed).
+	 */
+	placement = $state<ChartlessGrid | null>(null);
 	/** Where each bar the chords were read on starts, and where the last ends: the draft's grid. */
 	#barStarts: number[] = [];
 	/** The latest run; a new run interrupts it before starting, Cancel interrupts it. */
@@ -154,6 +171,7 @@ export class SongChordDraft {
 		this.chordSegments = null;
 		this.chordSource = null;
 		this.draft = null;
+		this.placement = null;
 	};
 
 	/** A score's chart (the Docs panel's `onchart`) shown in the draft card, in place of any draft. */
@@ -206,24 +224,67 @@ export class SongChordDraft {
 			this.chordSource = null;
 			this.chordsChecked = null;
 			this.draft = null;
-			const barStarts = barStartsOf(grid, engine.duration);
-			this.#barStarts = barStarts;
-			const fromModel = Effect.gen({ self: this }, function* () {
+			this.placement = null;
+			// The model's chords first: they feed the placement's chord-change witness.
+			const read = Effect.gen({ self: this }, function* () {
 				const chords = yield* this.#modelChords();
-				if (!chords) return false;
-				yield* this.#readModelBars(chords, barStarts);
-				return true;
+				const barStarts = yield* this.#placeBars(engine, grid, chords);
+				this.#barStarts = barStarts;
+				if (chords) return yield* this.#readModelBars(chords, barStarts);
+				this.chordBusy = "Listening…";
+				this.#readBars(yield* this.#notes(engine), barStarts);
+				yield* this.#checkChords();
 			});
-			const fromNotes = Effect.sync(() => (this.chordBusy = "Listening…")).pipe(
-				Effect.andThen(this.#notes(engine)),
-				Effect.map((notes) => this.#readBars(notes, barStarts)),
-				Effect.andThen(this.#checkChords()),
-			);
-			yield* fromModel.pipe(
-				Effect.flatMap((done) => (done ? Effect.void : fromNotes)),
+			yield* read.pipe(
 				Effect.catch((e) => Effect.sync(() => this.#fail("Chord detection failed", e))),
 				Effect.ensuring(Effect.sync(() => (this.chordBusy = null))),
 			);
+		});
+	}
+
+	/**
+	 * The bar starts the chords are read on: the stems' own beat when the
+	 * grid is steady and the placement decides (`placement` keeps it), else
+	 * the declared grid's. Never fails: a placement that cannot run is the
+	 * declared grid.
+	 */
+	#placeBars(
+		engine: StemEngine,
+		grid: BarGrid,
+		runs: ChordminiRuns | null,
+	): Effect.Effect<number[]> {
+		return Effect.gen({ self: this }, function* () {
+			const declared = barStartsOf(grid, engine.duration);
+			if (!steadyGrid(grid)) return declared;
+			this.chordBusy = "Placing the bars on the stems…";
+			const placement = yield* attempt((signal) => this.#place(engine, grid, runs, signal)).pipe(
+				Effect.orElseSucceed(() => null),
+			);
+			this.placement = placement;
+			if (import.meta.env.DEV)
+				(window as unknown as { __chartlessGrid?: unknown }).__chartlessGrid = placement;
+			return placement?.barStarts ?? declared;
+		});
+	}
+
+	/** The chartless grid on the decoded stems (audio/chartlessGridInBrowser.ts); null without buffers. */
+	async #place(
+		engine: StemEngine,
+		grid: BarGrid,
+		runs: ChordminiRuns | null,
+		signal: AbortSignal,
+	): Promise<ChartlessGrid | null> {
+		const buffers = await engine.decodedBuffers();
+		if (buffers.length === 0) return null;
+		return chartlessGridInBrowser({
+			buffers,
+			cacheKey: alignmentFeaturesKey(engine.sourceUrls(), buffers[0]!.sampleRate),
+			declaredBarSeconds: barSecondsAt(grid, grid.startAt),
+			beatsPerBar: beatsPerBarAt(grid, grid.startAt),
+			startAt: this.#opts.startAt(),
+			runs,
+			duration: engine.duration,
+			signal,
 		});
 	}
 

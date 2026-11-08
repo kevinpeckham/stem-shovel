@@ -43,6 +43,7 @@ function setup() {
 		engine: () => engine,
 		grid: () => null,
 		aiAvailable: () => true,
+		startAt: () => null,
 	});
 	const check = new SongCheck({
 		song: () => song,

@@ -6,6 +6,7 @@
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { timingMapLine } from "#lib/utils/timingMapLine.js";
+	import { chartlessPlacementLine } from "#lib/utils/chartlessPlacementLine.js";
 	import { chordChart, type ChordSegment } from "#lib/audio/chords.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import { barGrid, barSecondsAt, type BarGrid } from "#lib/audio/measures.js";
@@ -244,6 +245,9 @@
 		<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{chordChart(
 				segments,
 			)}</pre>
+		{#if chordDraft.placement}
+			<p class="mt-1 text-xs opacity-80">{chartlessPlacementLine(chordDraft.placement)}</p>
+		{/if}
 	</div>
 {/snippet}
 

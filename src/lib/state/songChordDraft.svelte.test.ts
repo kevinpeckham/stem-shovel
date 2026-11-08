@@ -20,6 +20,9 @@ const files = vi.hoisted(() => ({ chartFromScore: vi.fn() }));
 vi.mock("#lib/remote/files.remote.js", () => files);
 const notify = vi.hoisted(() => vi.fn());
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify }));
+/** The chartless placement on the stems: null (the declared grid stands) unless a test says otherwise. */
+const placing = vi.hoisted(() => ({ chartlessGridInBrowser: vi.fn() }));
+vi.mock("#lib/audio/chartlessGridInBrowser.js", () => placing);
 
 const { SongChordDraft } = await import("./songChordDraft.svelte");
 
@@ -43,14 +46,21 @@ const GRID = barGrid(
 	null,
 );
 const decodedBuffers = vi.fn();
-const engine = { status: "ready", duration: 7.9, decodedBuffers } as unknown as StemEngine;
+const engine = {
+	status: "ready",
+	duration: 7.9,
+	decodedBuffers,
+	sourceUrls: () => ["https://blob.example/accounts/a/songs/s/st.play-1.m4a"],
+} as unknown as StemEngine;
+const BUFFER = { sampleRate: 44100 } as AudioBuffer;
 
-function make({ ai = true, grid = GRID } = {}) {
+function make({ ai = true, grid = GRID, startAt = null as number | null } = {}) {
 	return new SongChordDraft({
 		songId: () => "song1",
 		engine: () => engine,
 		grid: () => grid,
 		aiAvailable: () => ai,
+		startAt: () => startAt,
 	});
 }
 
@@ -88,6 +98,8 @@ beforeEach(() => {
 	remote.songNotes.mockResolvedValue({ complete: true, notes: NOTES, doneSeconds: 8, duration: 8 });
 	remote.reconcileChords.mockResolvedValue({ chords: ["D", "D", "A", "Em"] });
 	remote.draftChart.mockResolvedValue(DRAFT);
+	decodedBuffers.mockResolvedValue([BUFFER]);
+	placing.chartlessGridInBrowser.mockResolvedValue(null);
 });
 
 describe("SongChordDraft", () => {
@@ -310,7 +322,9 @@ describe("SongChordDraft", () => {
 			await cd.detectChords();
 			expect(cd.chordSource).toBe("model");
 			expect(cd.chordBars).toEqual([]);
-			expect(decodedBuffers).not.toHaveBeenCalled();
+			// The stems are decoded once, for the placement only: nothing is transcribed.
+			expect(decodedBuffers).toHaveBeenCalledOnce();
+			expect(cd.chordsChecked).toBeNull();
 		});
 
 		test("while the model runs, the run waits for it and reads its chords when they land", async () => {
@@ -403,6 +417,83 @@ describe("SongChordDraft", () => {
 			await other.detectChords();
 			expect(other.chordSource).toBe("notes");
 			expect(other.chordSegments?.map((s) => s.chord)).toEqual(["D", "A", "Em"]);
+		});
+	});
+
+	describe("the chartless placement on the stems", () => {
+		const PLACED = {
+			barStarts: [0.3, 2.3, 4.3, 6.3, 7.9],
+			period: 2,
+			beatsPerBar: 4,
+			cls: 1,
+			decided: true,
+			byStart: false,
+			witnesses: [],
+		};
+
+		test("a placed grid is what the chords are read on and what the draft is built on", async () => {
+			remote.songChords.mockImplementation(() => asQuery(STORED));
+			placing.chartlessGridInBrowser.mockResolvedValue(PLACED);
+			const cd = make({ startAt: 0.3 });
+			await cd.draftFromPanel();
+			expect(placing.chartlessGridInBrowser).toHaveBeenCalledWith(
+				expect.objectContaining({
+					buffers: [BUFFER],
+					cacheKey: expect.stringMatching(/^af1:44100:/),
+					declaredBarSeconds: 2,
+					beatsPerBar: 4,
+					startAt: 0.3,
+					runs: MODEL,
+					duration: 7.9,
+				}),
+			);
+			expect(cd.placement).toEqual(PLACED);
+			expect(remote.draftChart.mock.calls[0][0].grid).toEqual(PLACED.barStarts);
+			cd.dismiss();
+			expect(cd.placement).toBeNull();
+		});
+
+		test("the notes path places too, without the model's chords", async () => {
+			placing.chartlessGridInBrowser.mockResolvedValue(PLACED);
+			const cd = make();
+			await cd.detectChords();
+			expect(placing.chartlessGridInBrowser).toHaveBeenCalledWith(
+				expect.objectContaining({ runs: null, startAt: null }),
+			);
+			expect(cd.chordSource).toBe("notes");
+			expect(cd.placement).toEqual(PLACED);
+		});
+
+		test("nothing placed: the declared grid's starts, and no placement", async () => {
+			const cd = make();
+			await cd.draftFromPanel();
+			expect(placing.chartlessGridInBrowser).toHaveBeenCalledOnce();
+			expect(cd.placement).toBeNull();
+			expect(remote.draftChart.mock.calls[0][0].grid).toEqual([0, 2, 4, 6, 7.9]);
+		});
+
+		test("a failed placement is the declared grid, never a failed run", async () => {
+			placing.chartlessGridInBrowser.mockRejectedValue(new Error("no workers"));
+			const cd = make();
+			await cd.draftFromPanel();
+			expect(cd.chordError).toBeNull();
+			expect(remote.draftChart.mock.calls[0][0].grid).toEqual([0, 2, 4, 6, 7.9]);
+		});
+
+		test("a grid with two tempos is not placed", async () => {
+			const twoTempos = barGrid(
+				[
+					{ kind: "tempo", start: 0, value: "120" },
+					{ kind: "tempo", start: 4, value: "90" },
+					{ kind: "meter", start: 0, value: "4/4" },
+				],
+				null,
+			);
+			const cd = make({ grid: twoTempos });
+			await cd.detectChords();
+			expect(placing.chartlessGridInBrowser).not.toHaveBeenCalled();
+			expect(cd.placement).toBeNull();
+			expect(cd.chordSegments).not.toBeNull();
 		});
 	});
 });

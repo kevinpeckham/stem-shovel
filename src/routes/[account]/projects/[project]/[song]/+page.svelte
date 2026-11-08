@@ -297,6 +297,7 @@
 		engine: () => playerEngine,
 		grid: () => posCtx.grid,
 		aiAvailable: () => data.aiAvailable,
+		startAt: () => data.song.startAt,
 	});
 	/** The Docs panel: the document shown, its editor, the Chart's Text / Notation, the Notes' Mine, the panel's mode and ⋯ menu. */
 	const docs = new SongDocs({

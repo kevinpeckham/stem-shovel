@@ -1,18 +1,17 @@
 import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
 import type { AlignChartReply, AlignChartRequest } from "#lib/workers/alignChart.worker.js";
-import type {
-	AlignmentEnvelopeReply,
-	AlignmentEnvelopeRequest,
-} from "#lib/workers/alignmentEnvelope.worker.js";
 import * as Cause from "effect/Cause";
-import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import { type AlignmentFeaturesRecord, readAlignmentFeatures } from "./alignmentFeaturesCache.js";
 import {
-	type AlignmentFeaturesRecord,
-	readAlignmentFeatures,
-	writeAlignmentFeatures,
-} from "./alignmentFeaturesCache.js";
-import { type Alignment, type RecordingFeatures, repairAlignment } from "./chartAlignment.js";
+	envelopeOf,
+	inWorker,
+	keepFeatures,
+	keptFeatures,
+	WORKER_TIMEOUT,
+} from "./alignmentWorkers.js";
+import { type Alignment, repairAlignment } from "./chartAlignment.js";
+import { monoOfBuffers } from "./monoOfBuffers.js";
 
 /**
  * A chart aligned to a song's decoded audio in two workers at once: the
@@ -33,94 +32,8 @@ import { type Alignment, type RecordingFeatures, repairAlignment } from "./chart
  * a second alignment after a chart edit runs only the chart's render and
  * the warping; a miss computes them as before and keeps them.
  */
-const TIMEOUT = Duration.seconds(90);
-
-/** One buffer's channels averaged and added into `out` (at `rate`), resampled by linear interpolation when its own rate differs. */
-function addMono(out: Float32Array, buffer: AudioBuffer, rate: number): void {
-	const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
-		buffer.getChannelData(c),
-	);
-	const step = buffer.sampleRate / rate;
-	const scale = 1 / Math.max(1, channels.length);
-	const frames = Math.min(out.length, Math.floor((buffer.length - 1) / step) + 1);
-	for (let i = 0; i < frames; i++) {
-		const x = i * step;
-		const k = Math.floor(x);
-		const t = x - k;
-		for (const data of channels)
-			out[i]! += (data[k]! + t * ((data[k + 1] ?? data[k]!) - data[k]!)) * scale;
-	}
-}
-
-function mono(buffers: AudioBuffer[]): { samples: Float32Array; sampleRate: number } {
-	const sampleRate = buffers[0]!.sampleRate;
-	const length = Math.max(...buffers.map((b) => Math.ceil((b.length * sampleRate) / b.sampleRate)));
-	const samples = new Float32Array(length);
-	for (const buffer of buffers) addMono(samples, buffer, sampleRate);
-	return { samples, sampleRate };
-}
-
-type Answer<R> = Exclude<R, { error: string }>;
-
-/** The message exchange: posts the request (`transfer` moved, not copied) and settles on the worker's answer or its error event. */
-function exchange<R extends { id: number }>(
-	worker: Worker,
-	request: object,
-	transfer: Transferable[],
-): Effect.Effect<Answer<R>, Error> {
-	return Effect.callback<Answer<R>, Error>((resume) => {
-		worker.onmessage = (e: MessageEvent<R | { id: number; error: string }>) =>
-			resume(
-				"error" in e.data
-					? Effect.fail(new Error(e.data.error))
-					: Effect.succeed(e.data as Answer<R>),
-			);
-		worker.onerror = () =>
-			resume(Effect.fail(new Error("Aligning the chart failed in the browser")));
-		worker.postMessage(request, transfer);
-	});
-}
-
-/** One request in a worker of its own, terminated however the exchange ends. */
-function inWorker<R extends { id: number }>(
-	spawn: () => Worker,
-	request: object,
-	transfer: Transferable[],
-) {
-	return Effect.acquireUseRelease(
-		Effect.sync(spawn),
-		(worker) => exchange<R>(worker, request, transfer),
-		(worker) => Effect.sync(() => worker.terminate()),
-	);
-}
-
 const pathWorker = () =>
 	new Worker(new URL("../workers/alignChart.worker.ts", import.meta.url), { type: "module" });
-const envelopeWorker = () =>
-	new Worker(new URL("../workers/alignmentEnvelope.worker.ts", import.meta.url), {
-		type: "module",
-	});
-
-type Envelope = { onset: Float32Array; fps: number };
-
-/** What a kept record gives at the mix's rate: the recording's features and its envelope, each null when it lacks them (a record at another rate gives neither). */
-function fromCache(cached: AlignmentFeaturesRecord | null, sampleRate: number) {
-	if (cached?.sampleRate !== sampleRate) return { features: null, envelope: null };
-	const { chroma, frames, hopSec, firstSound, lastSound, onset, fps } = cached;
-	const features: RecordingFeatures = { chroma, frames, hopSec, firstSound, lastSound };
-	return { features, envelope: onset && fps !== null ? { onset, fps } : null };
-}
-
-/** The envelope: the kept one, or its worker on the mix. */
-function envelopeOf(
-	kept: Envelope | null,
-	recording: Float32Array | null,
-	sampleRate: number,
-): Effect.Effect<Envelope, Error> {
-	if (kept) return Effect.succeed(kept);
-	const request: AlignmentEnvelopeRequest = { id: 1, recording: recording!, sampleRate };
-	return inWorker<AlignmentEnvelopeReply>(envelopeWorker, request, [recording!.buffer]);
-}
 
 /**
  * The two answers, from the workers or the cache: the path worker given the
@@ -137,9 +50,9 @@ function alignWithCache(
 	cacheKey: string | null,
 ): Effect.Effect<Alignment, Error> {
 	const sampleRate = buffers[0]!.sampleRate;
-	const { features, envelope: keptEnvelope } = fromCache(cached, sampleRate);
+	const { features, envelope: keptEnvelope } = keptFeatures(cached, sampleRate);
 	const full = features !== null && keptEnvelope !== null;
-	const samples = full ? null : mono(buffers).samples;
+	const samples = full ? null : monoOfBuffers(buffers).samples;
 	const shape = bars.map(({ chords, bpm, meter }) => ({ chords, bpm, meter }));
 	const path = features
 		? inWorker<AlignChartReply>(pathWorker, { id: 1, bars: shape, features, sampleRate }, [])
@@ -150,22 +63,14 @@ function alignWithCache(
 			);
 	const envelope = envelopeOf(keptEnvelope, features ? samples : samples!.slice(), sampleRate);
 	return Effect.all([path, envelope], { concurrency: "unbounded" }).pipe(
-		Effect.timeout(TIMEOUT),
+		Effect.timeout(WORKER_TIMEOUT),
 		Effect.catchIf(Cause.isTimeoutError, () =>
 			Effect.fail(new Error("Aligning the chart took too long")),
 		),
-		Effect.map(([answer, { onset, fps }]) => {
+		Effect.map(([answer, envelope]) => {
 			const kept = features ?? answer.features;
-			if (cacheKey && kept && !full)
-				void writeAlignmentFeatures(cacheKey, {
-					key: cacheKey,
-					at: Date.now(),
-					sampleRate,
-					...kept,
-					onset,
-					fps,
-				});
-			return repairAlignment(answer.path, { onset, fps });
+			if (cacheKey && kept && !full) keepFeatures(cacheKey, sampleRate, kept, envelope);
+			return repairAlignment(answer.path, envelope);
 		}),
 	);
 }
