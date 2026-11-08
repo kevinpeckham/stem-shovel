@@ -7,7 +7,12 @@ import type {
 import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
-import { type Alignment, repairAlignment } from "./chartAlignment.js";
+import {
+	type AlignmentFeaturesRecord,
+	readAlignmentFeatures,
+	writeAlignmentFeatures,
+} from "./alignmentFeaturesCache.js";
+import { type Alignment, type RecordingFeatures, repairAlignment } from "./chartAlignment.js";
 
 /**
  * A chart aligned to a song's decoded audio in two workers at once: the
@@ -22,6 +27,11 @@ import { type Alignment, repairAlignment } from "./chartAlignment.js";
  * interrupted (one failing interrupts the other). Never throws: no Worker,
  * a failure in either, or the timeout fails with an `Error` whose message is
  * a sentence the page can show (`alignChartInBrowser` rejects with it).
+ * Given a cache key (utils/alignmentFeaturesKey.ts), the recording's own
+ * features (its chromagram, audible span and onset envelope) come from the
+ * browser's cache when it holds them (audio/alignmentFeaturesCache.ts), so
+ * a second alignment after a chart edit runs only the chart's render and
+ * the warping; a miss computes them as before and keeps them.
  */
 const TIMEOUT = Duration.seconds(90);
 
@@ -52,10 +62,11 @@ function mono(buffers: AudioBuffer[]): { samples: Float32Array; sampleRate: numb
 
 type Answer<R> = Exclude<R, { error: string }>;
 
-/** The message exchange: posts the request (its recording transferred) and settles on the worker's answer or its error event. */
+/** The message exchange: posts the request (`transfer` moved, not copied) and settles on the worker's answer or its error event. */
 function exchange<R extends { id: number }>(
 	worker: Worker,
-	request: { recording: Float32Array },
+	request: object,
+	transfer: Transferable[],
 ): Effect.Effect<Answer<R>, Error> {
 	return Effect.callback<Answer<R>, Error>((resume) => {
 		worker.onmessage = (e: MessageEvent<R | { id: number; error: string }>) =>
@@ -66,19 +77,96 @@ function exchange<R extends { id: number }>(
 			);
 		worker.onerror = () =>
 			resume(Effect.fail(new Error("Aligning the chart failed in the browser")));
-		worker.postMessage(request, [request.recording.buffer]);
+		worker.postMessage(request, transfer);
 	});
 }
 
 /** One request in a worker of its own, terminated however the exchange ends. */
 function inWorker<R extends { id: number }>(
 	spawn: () => Worker,
-	request: { recording: Float32Array },
+	request: object,
+	transfer: Transferable[],
 ) {
 	return Effect.acquireUseRelease(
 		Effect.sync(spawn),
-		(worker) => exchange<R>(worker, request),
+		(worker) => exchange<R>(worker, request, transfer),
 		(worker) => Effect.sync(() => worker.terminate()),
+	);
+}
+
+const pathWorker = () =>
+	new Worker(new URL("../workers/alignChart.worker.ts", import.meta.url), { type: "module" });
+const envelopeWorker = () =>
+	new Worker(new URL("../workers/alignmentEnvelope.worker.ts", import.meta.url), {
+		type: "module",
+	});
+
+type Envelope = { onset: Float32Array; fps: number };
+
+/** What a kept record gives at the mix's rate: the recording's features and its envelope, each null when it lacks them (a record at another rate gives neither). */
+function fromCache(cached: AlignmentFeaturesRecord | null, sampleRate: number) {
+	if (cached?.sampleRate !== sampleRate) return { features: null, envelope: null };
+	const { chroma, frames, hopSec, firstSound, lastSound, onset, fps } = cached;
+	const features: RecordingFeatures = { chroma, frames, hopSec, firstSound, lastSound };
+	return { features, envelope: onset && fps !== null ? { onset, fps } : null };
+}
+
+/** The envelope: the kept one, or its worker on the mix. */
+function envelopeOf(
+	kept: Envelope | null,
+	recording: Float32Array | null,
+	sampleRate: number,
+): Effect.Effect<Envelope, Error> {
+	if (kept) return Effect.succeed(kept);
+	const request: AlignmentEnvelopeRequest = { id: 1, recording: recording!, sampleRate };
+	return inWorker<AlignmentEnvelopeReply>(envelopeWorker, request, [recording!.buffer]);
+}
+
+/**
+ * The two answers, from the workers or the cache: the path worker given the
+ * cached features when there are some (no recording), else the mono mix;
+ * the envelope from the cache when it holds one, else its worker on the mix
+ * (its own copy when the path worker takes the mix too). The mix is only
+ * made when a worker needs it. Writes the record (fire and forget) when the
+ * workers computed something the cache lacked.
+ */
+function alignWithCache(
+	bars: ChartBar[],
+	buffers: AudioBuffer[],
+	cached: AlignmentFeaturesRecord | null,
+	cacheKey: string | null,
+): Effect.Effect<Alignment, Error> {
+	const sampleRate = buffers[0]!.sampleRate;
+	const { features, envelope: keptEnvelope } = fromCache(cached, sampleRate);
+	const full = features !== null && keptEnvelope !== null;
+	const samples = full ? null : mono(buffers).samples;
+	const shape = bars.map(({ chords, bpm, meter }) => ({ chords, bpm, meter }));
+	const path = features
+		? inWorker<AlignChartReply>(pathWorker, { id: 1, bars: shape, features, sampleRate }, [])
+		: inWorker<AlignChartReply>(
+				pathWorker,
+				{ id: 1, bars: shape, recording: samples!, sampleRate } satisfies AlignChartRequest,
+				[samples!.buffer],
+			);
+	const envelope = envelopeOf(keptEnvelope, features ? samples : samples!.slice(), sampleRate);
+	return Effect.all([path, envelope], { concurrency: "unbounded" }).pipe(
+		Effect.timeout(TIMEOUT),
+		Effect.catchIf(Cause.isTimeoutError, () =>
+			Effect.fail(new Error("Aligning the chart took too long")),
+		),
+		Effect.map(([answer, { onset, fps }]) => {
+			const kept = features ?? answer.features;
+			if (cacheKey && kept && !full)
+				void writeAlignmentFeatures(cacheKey, {
+					key: cacheKey,
+					at: Date.now(),
+					sampleRate,
+					...kept,
+					onset,
+					fps,
+				});
+			return repairAlignment(answer.path, { onset, fps });
+		}),
 	);
 }
 
@@ -86,52 +174,23 @@ function inWorker<R extends { id: number }>(
 function alignChartEffect(
 	bars: ChartBar[],
 	buffers: AudioBuffer[],
+	cacheKey: string | null,
 ): Effect.Effect<Alignment, Error> {
 	return Effect.suspend(() => {
 		if (typeof Worker === "undefined")
 			return Effect.fail(new Error("This browser cannot align the chart"));
 		if (buffers.length === 0)
 			return Effect.fail(new Error("There is no audio to align the chart to"));
-		const { samples, sampleRate } = mono(buffers);
-		const pathRequest: AlignChartRequest = {
-			id: 1,
-			bars: bars.map(({ chords, bpm, meter }) => ({ chords, bpm, meter })),
-			recording: samples,
-			sampleRate,
-		};
-		const envelopeRequest: AlignmentEnvelopeRequest = {
-			id: 1,
-			recording: samples.slice(),
-			sampleRate,
-		};
-		return Effect.all(
-			[
-				inWorker<AlignChartReply>(
-					() =>
-						new Worker(new URL("../workers/alignChart.worker.ts", import.meta.url), {
-							type: "module",
-						}),
-					pathRequest,
-				),
-				inWorker<AlignmentEnvelopeReply>(
-					() =>
-						new Worker(new URL("../workers/alignmentEnvelope.worker.ts", import.meta.url), {
-							type: "module",
-						}),
-					envelopeRequest,
-				),
-			],
-			{ concurrency: "unbounded" },
-		).pipe(
-			Effect.timeout(TIMEOUT),
-			Effect.catchIf(Cause.isTimeoutError, () =>
-				Effect.fail(new Error("Aligning the chart took too long")),
-			),
-			Effect.map(([{ path }, envelope]) => repairAlignment(path, envelope)),
-		);
+		return Effect.promise(() =>
+			cacheKey ? readAlignmentFeatures(cacheKey) : Promise.resolve(null),
+		).pipe(Effect.flatMap((cached) => alignWithCache(bars, buffers, cached, cacheKey)));
 	});
 }
 
-export function alignChartInBrowser(bars: ChartBar[], buffers: AudioBuffer[]): Promise<Alignment> {
-	return Effect.runPromise(alignChartEffect(bars, buffers));
+export function alignChartInBrowser(
+	bars: ChartBar[],
+	buffers: AudioBuffer[],
+	cacheKey: string | null = null,
+): Promise<Alignment> {
+	return Effect.runPromise(alignChartEffect(bars, buffers, cacheKey));
 }

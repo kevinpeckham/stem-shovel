@@ -1,3 +1,4 @@
+import { alignmentFeaturesKey } from "#lib/utils/alignmentFeaturesKey.js";
 import { alignChartInBrowser } from "#lib/audio/alignChartInBrowser.js";
 import {
 	analyse,
@@ -230,7 +231,12 @@ export class SongCheck {
 		if (chart.bars === null) return { reason: chart.reason };
 		const engine = this.#opts.engine();
 		if (engine?.status !== "ready") return { reason: "audio" };
-		const alignment = await alignChartInBrowser(chart.bars, await engine.decodedBuffers());
+		const buffers = await engine.decodedBuffers();
+		// The recording's features are cached per set of renditions, at the mix's rate (the first buffer's).
+		const key = buffers[0]
+			? alignmentFeaturesKey(engine.sourceUrls(), buffers[0].sampleRate)
+			: null;
+		const alignment = await alignChartInBrowser(chart.bars, buffers, key);
 		if (chart.source === "chart")
 			this.#keepTiming(id, chart.text, chart.bars.length, alignment, engine.duration);
 		return { placements: alignedPlacements(chart.bars, alignment), warnings: chart.warnings };

@@ -943,6 +943,20 @@ export class StemEngine {
 	}
 
 	/**
+	 * The rendition URLs of the stems `decodedBuffers` answers with: in
+	 * buffered mode the decoded stems' (a stem that failed to decode is in
+	 * neither), in streamed mode the manifest's. The alignment features'
+	 * cache key is built from them (utils/alignmentFeaturesKey.ts).
+	 */
+	sourceUrls(): string[] {
+		const sources =
+			this.mode === "streamed"
+				? this.#manifest
+				: this.#manifest.filter((s) => this.#buffers.has(s.id));
+		return sources.map((s) => s.url);
+	}
+
+	/**
 	 * Every stem decoded, for the analyses that need whole buffers (Scan
 	 * stems, Detect chords): the held buffers when buffered; in streamed mode
 	 * each rendition is fetched and decoded now, at the buffered rate, held

@@ -158,6 +158,7 @@ function chromaWindow(sampleRate: number): number {
  * 2200 Hz folded to the nearest pitch class, each frame L2-normalized (a
  * silent frame stays zero). The window is the bench's in seconds at any
  * rate, so a render and a recording at the same rate share `hopSec`.
+ * Feature code: a change to what this computes bumps `af1` (utils/alignmentFeaturesKey.ts).
  */
 export function chromagram(
 	samples: Float32Array,
@@ -361,7 +362,8 @@ function barCosts(starts: number[], frameCost: Float32Array, hopSec: number): nu
  * `ALIGNMENT_SOUND_WINDOW_SEC` window, and the first window's start and
  * the last window's end whose RMS reaches `ALIGNMENT_SOUND_FLOOR` of the
  * loudest one's. Accurate to a window. A silent recording gives 0 and its
- * length.
+ * length. Feature code: a change to what this computes bumps `af1`
+ * (utils/alignmentFeaturesKey.ts).
  */
 export function audibleSpan(
 	samples: Float32Array,
@@ -410,7 +412,8 @@ function onsetRate(recording: Float32Array, sampleRate: number) {
  * The recording's onset envelope as the end repair reads it: decimated to
  * about 22 050 Hz (`onsetRate`), then `onsetEnvelope` (2048-sample window,
  * hop 256). Exported apart so a worker can run it beside the warping
- * (workers/alignmentEnvelope.worker.ts).
+ * (workers/alignmentEnvelope.worker.ts). Feature code: a change to what
+ * this computes bumps `af1` (utils/alignmentFeaturesKey.ts).
  */
 export function alignmentEnvelope(
 	recording: Float32Array,
@@ -427,31 +430,64 @@ export interface AlignmentPath {
 }
 
 /**
- * The chart's bars placed in the recording (mono, at `sampleRate`) by the
- * warping alone: the path's cost, the tritone control's, each bar's local
- * cost and where the recording's sound starts and ends, with `repair` null
- * and `barStarts` the path's own. Throws with a reason a page can show when
- * there is nothing to align or the chart cannot fit (more than twice the
- * recording's length, or half).
+ * What the alignment reads of the recording alone, apart from the chart
+ * (cached per song in the browser, audio/alignmentFeaturesCache.ts): its
+ * chromagram, the frames flattened 12 a frame, and where its sound starts
+ * and ends (`audibleSpan`).
+ */
+export interface RecordingFeatures {
+	chroma: Float32Array;
+	frames: number;
+	hopSec: number;
+	firstSound: number;
+	lastSound: number;
+}
+
+/** The recording's features (mono, at `sampleRate`): `chromagram` flattened and `audibleSpan`. */
+export function recordingFeatures(recording: Float32Array, sampleRate: number): RecordingFeatures {
+	const { frames, hopSec } = chromagram(recording, sampleRate);
+	const chroma = new Float32Array(frames.length * 12);
+	frames.forEach((f, i) => chroma.set(f, i * 12));
+	const sound = audibleSpan(recording, sampleRate);
+	return { chroma, frames: frames.length, hopSec, firstSound: sound.first, lastSound: sound.last };
+}
+
+/** The flattened chromagram as one 12-value view per frame, no copy. */
+function chromaFrames(features: RecordingFeatures): Float32Array[] {
+	return Array.from({ length: features.frames }, (_, i) =>
+		features.chroma.subarray(i * 12, i * 12 + 12),
+	);
+}
+
+/**
+ * The chart's bars placed in the recording (mono, at `sampleRate`, or its
+ * features from `recordingFeatures` at that rate) by the warping alone: the
+ * path's cost, the tritone control's, each bar's local cost and where the
+ * recording's sound starts and ends, with `repair` null and `barStarts` the
+ * path's own. Throws with a reason a page can show when there is nothing to
+ * align or the chart cannot fit (more than twice the recording's length, or
+ * half), or when features came at another rate than the render's.
  */
 export function alignChartPath(
 	bars: PadBar[],
-	recording: Float32Array,
+	recording: Float32Array | RecordingFeatures,
 	sampleRate: number,
 ): AlignmentPath {
 	if (bars.length === 0) throw new Error("The chart has no bars to place");
+	const features = "chroma" in recording ? recording : recordingFeatures(recording, sampleRate);
 	const { samples, barStarts } = renderChartPads(bars, sampleRate);
 	const ref = chromagram(samples, sampleRate);
-	const rec = chromagram(recording, sampleRate);
-	if (ref.frames.length === 0 || rec.frames.length === 0)
+	const rec = chromaFrames(features);
+	if (ref.frames.length === 0 || rec.length === 0)
 		throw new Error("The recording or the chart is too short to align");
-	if (ref.frames.length * rec.frames.length > MAX_CELLS)
+	if (ref.hopSec !== features.hopSec)
+		throw new Error("The recording's features do not match its sample rate; place the chart again");
+	if (ref.frames.length * rec.length > MAX_CELLS)
 		throw new Error("The recording is too long to align in the browser");
-	const right = dtwAlign(ref.frames, rec.frames, ref.hopSec, { subsequence: true });
+	const right = dtwAlign(ref.frames, rec, ref.hopSec, { subsequence: true });
 	if (!Number.isFinite(right.normalizedCost))
 		throw new Error("The chart runs more than twice as long as the recording; check its tempo");
-	const control = dtwAlign(tritone(ref.frames), rec.frames, ref.hopSec, { subsequence: true });
-	const sound = audibleSpan(recording, sampleRate);
+	const control = dtwAlign(tritone(ref.frames), rec, ref.hopSec, { subsequence: true });
 	const rawBarStarts = barStarts.map(right.mapSeconds);
 	return {
 		alignment: {
@@ -462,8 +498,8 @@ export function alignChartPath(
 			controlCost: control.normalizedCost,
 			localCost: barCosts(barStarts, right.frameCost, ref.hopSec),
 			hopSec: ref.hopSec,
-			firstSound: sound.first,
-			lastSound: sound.last,
+			firstSound: features.firstSound,
+			lastSound: features.lastSound,
 		},
 		declaredBar: median(bars.map((b) => chartBarSeconds(b.meter, b.bpm))),
 	};

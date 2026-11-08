@@ -4,7 +4,15 @@ import type {
 	AlignmentEnvelopeReply,
 	AlignmentEnvelopeRequest,
 } from "#lib/workers/alignmentEnvelope.worker.js";
-import { alignChartInBrowser } from "./alignChartInBrowser.js";
+import type { AlignmentFeaturesRecord } from "./alignmentFeaturesCache.js";
+
+const cache = vi.hoisted(() => ({
+	readAlignmentFeatures: vi.fn(async (_key: string): Promise<unknown> => null),
+	writeAlignmentFeatures: vi.fn(async (_key: string, _record: unknown) => {}),
+}));
+vi.mock("./alignmentFeaturesCache.js", () => cache);
+
+const { alignChartInBrowser } = await import("./alignChartInBrowser.js");
 import type { Alignment, AlignmentPath } from "./chartAlignment.js";
 
 const buffer = (sampleRate: number, channels: number[][]) =>
@@ -67,6 +75,8 @@ function fakeWorkers(replies: Replies) {
 const noOnsets: Replies["envelope"] = (r) => ({ id: r.id, onset: new Float32Array(0), fps: 86 });
 
 afterEach(() => {
+	cache.readAlignmentFeatures.mockReset().mockResolvedValue(null);
+	cache.writeAlignmentFeatures.mockReset();
 	vi.unstubAllGlobals();
 	vi.useRealTimers();
 });
@@ -84,7 +94,7 @@ describe("alignChartInBrowser", () => {
 		// Twice the rate, half as long in time: linear interpolation picks every other sample.
 		const doubleRate = buffer(8, [[0, 1, 2, 3]]);
 		await expect(alignChartInBrowser(bars, [stereo, doubleRate])).resolves.toEqual(alignment);
-		expect(Array.from(sent.path[0]!.recording)).toEqual([0.5, 2.5, 0.5, 0.5]);
+		expect(Array.from(sent.path[0]!.recording!)).toEqual([0.5, 2.5, 0.5, 0.5]);
 		expect(sent.path[0]!.sampleRate).toBe(4);
 		expect(sent.path[0]!.bars).toEqual([{ chords: ["D"], bpm: 120, meter: "4/4" }]);
 		// Its own copy: both are transferred.
@@ -131,5 +141,99 @@ describe("alignChartInBrowser", () => {
 		await expect(alignChartInBrowser(bars, [buffer(4, [[0]])])).rejects.toThrow("cannot align");
 		fakeWorkers({ path: null, envelope: null });
 		await expect(alignChartInBrowser(bars, [])).rejects.toThrow("no audio");
+	});
+
+	describe("with a cache key", () => {
+		const KEY = "af1:4:st.play-1";
+		const computed = {
+			chroma: Float32Array.from({ length: 12 }, () => 0.5),
+			frames: 1,
+			hopSec: 0.1,
+			firstSound: 0,
+			lastSound: 1,
+		};
+		const kept = (over: Partial<AlignmentFeaturesRecord> = {}): AlignmentFeaturesRecord => ({
+			key: KEY,
+			at: 1,
+			sampleRate: 4,
+			...computed,
+			onset: Float32Array.from([0, 1]),
+			fps: 86,
+			...over,
+		});
+
+		test("a full hit posts the features, no recording, to the path worker alone, and writes nothing", async () => {
+			cache.readAlignmentFeatures.mockResolvedValue(kept());
+			const { sent, terminate } = fakeWorkers({
+				path: (r) => ({ id: r.id, path }),
+				envelope: noOnsets,
+			});
+			await expect(alignChartInBrowser(bars, [buffer(4, [[0]])], KEY)).resolves.toBeTruthy();
+			expect(cache.readAlignmentFeatures).toHaveBeenCalledWith(KEY);
+			expect(sent.path).toHaveLength(1);
+			expect(sent.path[0]!.recording).toBeUndefined();
+			expect(sent.path[0]!.features).toEqual(computed);
+			expect(sent.envelope).toHaveLength(0);
+			expect(terminate.path).toHaveBeenCalledOnce();
+			expect(cache.writeAlignmentFeatures).not.toHaveBeenCalled();
+		});
+
+		test("a hit without the envelope runs its worker on the mix and keeps the whole record", async () => {
+			cache.readAlignmentFeatures.mockResolvedValue(kept({ onset: null, fps: null }));
+			const { sent } = fakeWorkers({ path: (r) => ({ id: r.id, path }), envelope: noOnsets });
+			await alignChartInBrowser(bars, [buffer(4, [[1, 1]])], KEY);
+			expect(sent.path[0]!.recording).toBeUndefined();
+			expect(Array.from(sent.envelope[0]!.recording)).toEqual([1, 1]);
+			expect(cache.writeAlignmentFeatures).toHaveBeenCalledOnce();
+			expect(cache.writeAlignmentFeatures.mock.calls[0]![1]).toMatchObject({
+				...computed,
+				fps: 86,
+			});
+		});
+
+		test("a kept record at another rate is a miss", async () => {
+			cache.readAlignmentFeatures.mockResolvedValue(kept({ sampleRate: 48000 }));
+			const { sent } = fakeWorkers({
+				path: (r) => ({ id: r.id, path, features: computed }),
+				envelope: noOnsets,
+			});
+			await alignChartInBrowser(bars, [buffer(4, [[0]])], KEY);
+			expect(sent.path[0]!.features).toBeUndefined();
+			expect(sent.envelope).toHaveLength(1);
+		});
+
+		test("a miss runs both workers on the mix and writes once what they computed", async () => {
+			const onset = Float32Array.from([0, 0.5]);
+			const { sent } = fakeWorkers({
+				path: (r) => ({ id: r.id, path, features: computed }),
+				envelope: (r) => ({ id: r.id, onset, fps: 86 }),
+			});
+			await alignChartInBrowser(bars, [buffer(4, [[0, 1]])], KEY);
+			expect(Array.from(sent.path[0]!.recording!)).toEqual([0, 1]);
+			expect(sent.path[0]!.features).toBeUndefined();
+			expect(sent.envelope).toHaveLength(1);
+			expect(cache.writeAlignmentFeatures).toHaveBeenCalledOnce();
+			const [key, record] = cache.writeAlignmentFeatures.mock.calls[0]!;
+			expect(key).toBe(KEY);
+			expect(record).toMatchObject({ key: KEY, sampleRate: 4, ...computed, onset, fps: 86 });
+		});
+
+		test("a failed envelope worker on a miss still fails the alignment and writes nothing", async () => {
+			fakeWorkers({
+				path: (r) => ({ id: r.id, path, features: computed }),
+				envelope: (r) => ({ id: r.id, error: "out of memory" }),
+			});
+			await expect(alignChartInBrowser(bars, [buffer(4, [[0]])], KEY)).rejects.toThrow(
+				"out of memory",
+			);
+			expect(cache.writeAlignmentFeatures).not.toHaveBeenCalled();
+		});
+
+		test("without a key nothing is read or written", async () => {
+			fakeWorkers({ path: (r) => ({ id: r.id, path, features: computed }), envelope: noOnsets });
+			await alignChartInBrowser(bars, [buffer(4, [[0]])]);
+			expect(cache.readAlignmentFeatures).not.toHaveBeenCalled();
+			expect(cache.writeAlignmentFeatures).not.toHaveBeenCalled();
+		});
 	});
 });
