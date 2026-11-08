@@ -12,6 +12,7 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ### Fixed
 
+- **A drum kit with one sample missing still plays its other voices.**
 - **Charts exported as MusicXML keep their repeats and jumps in order** when a repeat holds a repeat or a jump runs through a replay, and scores from Dorico import with their section names as headings.
 
 ## [0.246.0] - 2026-11-08

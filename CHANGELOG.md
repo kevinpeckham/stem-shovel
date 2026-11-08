@@ -15,6 +15,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Chart as MIDI.** The song actions menu downloads the chord chart as a Standard MIDI File (`/api/songs/<id>/chart.mid`, `@barmark/midi` 0.2.0): the chart's play order as block chords with a bass, a track per part, headings as markers, lyrics as lyric events, the song's tempo when the chart names none; viewable like the song itself.
 - **`bun run db:chart-check`** reads every chart on a stage with the installed barmark, read-only, and lists the ones with an error or a warning, for the release step before a barmark bump (docs/audio-engine.md "Charts and barmark releases").
 
+### Fixed
+
+- **A missing drum sample no longer leaves an unhandled rejection or stops the kit.** `SampledKit.warm()` catches a sample's fetch failure and reports it to Sentry with the kit, voice and URL; `load()` skips that voice so the rest of the kit plays (Sentry triage PR #8, merged to main 2026-11-08).
+- **Network-level preload failures stay out of Sentry.** A hover preload whose fetch gets no response (the network dropped, the device slept) is filtered in `hooks.client.ts` by `utils/isNetworkFetchError.ts`, as stale-chunk errors already were (Sentry triage PR #7).
+
 ### Technical
 
 - **barmark 0.21.0, @barmark/render 0.17.1, @barmark/musicxml 0.7.1, @barmark/sync 0.2.1** (from 0.19.0 / 0.16.2 / 0.6.2 / 0.1.0). barmark: `->` cuts the replay's last bar as written, a `Coda` with no bar after it is an error, `nameNotes` names a chord from pitch classes, `PlayedBar.time` for a one-bar meter, the half-diminished shorthand spelled `m7(b5)` by `harteToBarmark`, many lyric rows print in linear time. musicxml: nested repeats and jumps through replays export in play order, Dorico's section names import as headings, half-diminished imports as `m7(b5)`, a tempo on a one-bar meter counts the `time:` meter's beat. render and sync pin the new barmark. The dev and staging charts read clean under the new grammar (`db:chart-check`).
