@@ -100,9 +100,39 @@ export function extractFeatures(buffer: AudioBuffer, maxSeconds = 90): Features 
 }
 
 /**
+ * The log magnitudes (`log1p(10·|X|)`) of two real frames' spectra from one
+ * complex FFT: frame A went in as `re`, frame B as `im`, so the transform Z
+ * splits as A[k] = (Z[k] + conj(Z[N−k])) / 2 and B[k] = (Z[k] − conj(Z[N−k])) / 2i.
+ * Bins 0 to N/2 − 1 into `a` and `b`.
+ */
+function splitMagnitudes(re: Float32Array, im: Float32Array, a: Float32Array, b: Float32Array) {
+	const n = re.length;
+	for (let k = 0; k < a.length; k++) {
+		const j = (n - k) % n;
+		const [ar, ai] = [re[k] + re[j], im[k] - im[j]];
+		const [br, bi] = [im[k] + im[j], re[k] - re[j]];
+		a[k] = Math.log1p(5 * Math.sqrt(ar * ar + ai * ai));
+		b[k] = Math.log1p(5 * Math.sqrt(br * br + bi * bi));
+	}
+}
+
+/** The summed rise of each bin over the frame before (spectral flux). */
+function fluxOver(magnitude: Float32Array, previous: Float32Array): number {
+	let flux = 0;
+	for (let k = 0; k < magnitude.length; k++) {
+		const rise = magnitude[k] - previous[k];
+		if (rise > 0) flux += rise;
+	}
+	return flux;
+}
+
+/**
  * Onset strength per frame of a mono signal, however long (spectral flux:
  * the summed rise of each bin's log magnitude over the frame before, a
  * 2048-sample Hann window every 256 samples), with its frames per second.
+ * The frames are real, so they go through the FFT two at a time, one as
+ * the real part and one as the imaginary (`splitMagnitudes`); a last odd
+ * frame goes alone, with a zero partner.
  * `extractFeatures` reads the first 90 s through it; the chart alignment's
  * end repair (audio/alignmentRepair.ts) reads a whole recording.
  */
@@ -118,23 +148,20 @@ export function onsetEnvelope(
 	const im = new Float32Array(FRAME);
 	const bins = FRAME / 2;
 	let previous = new Float32Array(bins);
-	let magnitude = new Float32Array(bins);
-	for (let t = 0; t < frames; t++) {
-		const start = t * HOP;
+	let first = new Float32Array(bins);
+	let second = new Float32Array(bins);
+	for (let t = 0; t < frames; t += 2) {
+		const [a, b] = [t * HOP, (t + 1) * HOP];
+		const paired = t + 1 < frames;
 		for (let i = 0; i < FRAME; i++) {
-			re[i] = mono[start + i] * window[i];
-			im[i] = 0;
+			re[i] = mono[a + i] * window[i];
+			im[i] = paired ? mono[b + i] * window[i] : 0;
 		}
 		fft(re, im);
-		let flux = 0;
-		for (let b = 0; b < bins; b++) {
-			const m = Math.log1p(10 * Math.hypot(re[b], im[b]));
-			magnitude[b] = m;
-			const rise = m - previous[b];
-			if (rise > 0) flux += rise;
-		}
-		onset[t] = flux;
-		[previous, magnitude] = [magnitude, previous];
+		splitMagnitudes(re, im, first, second);
+		onset[t] = fluxOver(first, previous);
+		if (paired) onset[t + 1] = fluxOver(second, first);
+		[previous, first, second] = paired ? [second, first, previous] : [first, previous, second];
 	}
 	return { onset, fps: sampleRate / HOP };
 }

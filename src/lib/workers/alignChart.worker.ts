@@ -1,12 +1,15 @@
-import { alignChart, type Alignment } from "#lib/audio/chartAlignment.js";
+import { alignChartPath, type AlignmentPath } from "#lib/audio/chartAlignment.js";
 import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
 
 /**
- * A chart aligned to a recording off the page (audio/chartAlignment.ts):
- * the warping is a few hundred million steps for a long song, seconds of
- * work that would stall the player and the drawing. A request carries the
- * bars and the recording mixed to mono (transferred) at its rate; the
- * reply carries the alignment, or the reason there is none.
+ * A chart's warping path in a recording off the page
+ * (audio/chartAlignment.ts `alignChartPath`): the warping is a few hundred
+ * million steps for a long song, seconds of work that would stall the
+ * player and the drawing. A request carries the bars and the recording
+ * mixed to mono (transferred) at its rate; the reply carries the path's
+ * alignment (before the end repair, which the page applies with the
+ * envelope from workers/alignmentEnvelope.worker.ts), or the reason there
+ * is none.
  */
 export interface AlignChartRequest {
 	id: number;
@@ -14,13 +17,13 @@ export interface AlignChartRequest {
 	recording: Float32Array;
 	sampleRate: number;
 }
-export type AlignChartReply = { id: number; alignment: Alignment } | { id: number; error: string };
+export type AlignChartReply = { id: number; path: AlignmentPath } | { id: number; error: string };
 
 self.onmessage = (e: MessageEvent<AlignChartRequest>) => {
 	const { id, bars, recording, sampleRate } = e.data;
 	let reply: AlignChartReply;
 	try {
-		reply = { id, alignment: alignChart(bars, recording, sampleRate) };
+		reply = { id, path: alignChartPath(bars, recording, sampleRate) };
 	} catch (err) {
 		reply = { id, error: err instanceof Error ? err.message : String(err) };
 	}

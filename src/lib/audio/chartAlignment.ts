@@ -407,37 +407,38 @@ function onsetRate(recording: Float32Array, sampleRate: number) {
 }
 
 /**
- * The ends of the path's bar starts rebuilt (audio/alignmentRepair.ts,
- * stem-bench Study 26c): the onset comb near the chart's declared bar
- * (the median over its bars) gives the period, and `repairEnds` the
- * starts; null when it refuses.
+ * The recording's onset envelope as the end repair reads it: decimated to
+ * about 22 050 Hz (`onsetRate`), then `onsetEnvelope` (2048-sample window,
+ * hop 256). Exported apart so a worker can run it beside the warping
+ * (workers/alignmentEnvelope.worker.ts).
  */
-function repairOf(
-	bars: PadBar[],
-	raw: number[],
+export function alignmentEnvelope(
 	recording: Float32Array,
 	sampleRate: number,
-): { barStarts: number[]; repair: NonNullable<Alignment["repair"]> } | null {
-	const declared = median(bars.map((b) => chartBarSeconds(b.meter, b.bpm)));
+): { onset: Float32Array; fps: number } {
 	const { samples, rate } = onsetRate(recording, sampleRate);
-	const { onset, fps } = onsetEnvelope(samples, rate);
-	if (!(declared > 0) || onset.length === 0) return null;
-	const comb = jointOnsetComb(onset, fps, declared);
-	const repaired = repairEnds(raw, onset, fps, comb.period);
-	if (!repaired) return null;
-	const { barStarts, period, confidence, slides } = repaired;
-	const extrapolated = confidence.filter((c) => c === "extrapolated").length;
-	return { barStarts, repair: { period, confidence, slides, extrapolated } };
+	return onsetEnvelope(samples, rate);
+}
+
+/** The warping's alignment before the end repair, with what the repair needs: the chart's declared bar (the median over its bars, seconds). */
+export interface AlignmentPath {
+	alignment: Alignment;
+	declaredBar: number;
 }
 
 /**
- * The chart's bars placed in the recording (mono, at `sampleRate`), with
- * the path's cost, the tritone control's, each bar's local cost, where
- * the recording's sound starts and ends, and the end repair.
- * Throws with a reason a page can show when there is nothing to align or
- * the chart cannot fit (more than twice the recording's length, or half).
+ * The chart's bars placed in the recording (mono, at `sampleRate`) by the
+ * warping alone: the path's cost, the tritone control's, each bar's local
+ * cost and where the recording's sound starts and ends, with `repair` null
+ * and `barStarts` the path's own. Throws with a reason a page can show when
+ * there is nothing to align or the chart cannot fit (more than twice the
+ * recording's length, or half).
  */
-export function alignChart(bars: PadBar[], recording: Float32Array, sampleRate: number): Alignment {
+export function alignChartPath(
+	bars: PadBar[],
+	recording: Float32Array,
+	sampleRate: number,
+): AlignmentPath {
 	if (bars.length === 0) throw new Error("The chart has no bars to place");
 	const { samples, barStarts } = renderChartPads(bars, sampleRate);
 	const ref = chromagram(samples, sampleRate);
@@ -452,16 +453,52 @@ export function alignChart(bars: PadBar[], recording: Float32Array, sampleRate: 
 	const control = dtwAlign(tritone(ref.frames), rec.frames, ref.hopSec, { subsequence: true });
 	const sound = audibleSpan(recording, sampleRate);
 	const rawBarStarts = barStarts.map(right.mapSeconds);
-	const repaired = repairOf(bars, rawBarStarts, recording, sampleRate);
 	return {
-		barStarts: repaired?.barStarts ?? rawBarStarts,
-		rawBarStarts,
-		repair: repaired?.repair ?? null,
-		cost: right.normalizedCost,
-		controlCost: control.normalizedCost,
-		localCost: barCosts(barStarts, right.frameCost, ref.hopSec),
-		hopSec: ref.hopSec,
-		firstSound: sound.first,
-		lastSound: sound.last,
+		alignment: {
+			barStarts: rawBarStarts,
+			rawBarStarts,
+			repair: null,
+			cost: right.normalizedCost,
+			controlCost: control.normalizedCost,
+			localCost: barCosts(barStarts, right.frameCost, ref.hopSec),
+			hopSec: ref.hopSec,
+			firstSound: sound.first,
+			lastSound: sound.last,
+		},
+		declaredBar: median(bars.map((b) => chartBarSeconds(b.meter, b.bpm))),
 	};
+}
+
+/**
+ * The ends of the path's bar starts rebuilt (audio/alignmentRepair.ts,
+ * stem-bench Study 26c) from the recording's onset envelope
+ * (`alignmentEnvelope`): the onset comb near the chart's declared bar gives
+ * the period, and `repairEnds` the starts. The path's alignment unchanged
+ * when it refuses (`repair` null).
+ */
+export function repairAlignment(
+	path: AlignmentPath,
+	envelope: { onset: Float32Array; fps: number },
+): Alignment {
+	const { alignment, declaredBar } = path;
+	const { onset, fps } = envelope;
+	if (!(declaredBar > 0) || onset.length === 0) return alignment;
+	const comb = jointOnsetComb(onset, fps, declaredBar);
+	const repaired = repairEnds(alignment.rawBarStarts, onset, fps, comb.period);
+	if (!repaired) return alignment;
+	const { barStarts, period, confidence, slides } = repaired;
+	const extrapolated = confidence.filter((c) => c === "extrapolated").length;
+	return { ...alignment, barStarts, repair: { period, confidence, slides, extrapolated } };
+}
+
+/**
+ * The chart's bars placed in the recording with the end repair:
+ * `alignChartPath`, then `repairAlignment` on `alignmentEnvelope`. Throws
+ * as `alignChartPath` does.
+ */
+export function alignChart(bars: PadBar[], recording: Float32Array, sampleRate: number): Alignment {
+	return repairAlignment(
+		alignChartPath(bars, recording, sampleRate),
+		alignmentEnvelope(recording, sampleRate),
+	);
 }

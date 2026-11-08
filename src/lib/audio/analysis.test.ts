@@ -98,6 +98,43 @@ describe("onsetEnvelope", () => {
 		}
 	});
 
+	test("two frames per FFT match a plain FFT per frame, odd frame counts too", () => {
+		/** The envelope one frame at a time, as it was before the packing. */
+		const reference = (mono: Float32Array) => {
+			const [frame, hop] = [2048, 256];
+			const frames = Math.floor((mono.length - frame) / hop) + 1;
+			const out = new Float32Array(frames);
+			let previous = new Float64Array(frame / 2);
+			for (let t = 0; t < frames; t++) {
+				const re = new Float32Array(frame);
+				const im = new Float32Array(frame);
+				for (let i = 0; i < frame; i++)
+					re[i] = mono[t * hop + i]! * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / frame));
+				fft(re, im);
+				const magnitude = Float64Array.from({ length: frame / 2 }, (_, b) =>
+					Math.log1p(10 * Math.hypot(re[b]!, im[b]!)),
+				);
+				for (let b = 0; b < frame / 2; b++) out[t]! += Math.max(0, magnitude[b]! - previous[b]!);
+				previous = magnitude;
+			}
+			return out;
+		};
+		let seed = 3;
+		const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) * 2 - 1;
+		const signal = new Float32Array(10 * SR);
+		for (let i = 0; i < signal.length; i++) signal[i] = 0.05 * rand();
+		for (let at = 0; at < signal.length; at += SR / 4)
+			for (let i = 0; i < 300; i++) signal[at + i]! += rand() * (1 - i / 300);
+		// 1243 frames, then 1242 (an even count).
+		for (const mono of [signal, signal.subarray(0, signal.length - 256)]) {
+			const want = reference(mono);
+			const { onset } = onsetEnvelope(mono, SR);
+			expect(onset.length).toBe(want.length);
+			for (let t = 0; t < want.length; t++)
+				expect(Math.abs(onset[t]! - want[t]!)).toBeLessThanOrEqual(1e-4 * Math.abs(want[t]!));
+		}
+	});
+
 	test("extractFeatures reads its onsets through it, capped at 90 s", () => {
 		const buffer = clickTrack(120, 4, 95);
 		const features = extractFeatures(buffer);

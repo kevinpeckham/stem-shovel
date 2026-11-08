@@ -7,6 +7,25 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## An onset envelope over a whole song costs more than the warping it feeds (2026-11-08)
+
+From timing `alignChart` stage by stage after the Study 26c repair landed.
+
+- **The DTW is not the cost.** Two warpings of 1,500 chroma frames took
+  0.19 s; the repair's onset envelope, 12,000 FFTs of 2048 points at
+  22,050 Hz, took 1.55 s, half of the whole alignment. Measure before
+  optimizing the part with the scary name.
+- **Two real frames per FFT.** Audio frames are real, so frame A goes in
+  the real part and frame B in the imaginary part of one complex FFT, and
+  `A[k] = (Z[k] + conj(Z[N-k])) / 2`, `B[k] = (Z[k] - conj(Z[N-k])) / 2i`
+  separate them: half the FFTs, the same magnitudes to rounding.
+- **`Math.hypot` is slow.** Three times the cost of
+  `Math.sqrt(re*re + im*im)` per bin in both Node and the browser; it
+  guards against overflow that audio magnitudes never approach.
+- **A worker per independent analysis.** The envelope needs only the
+  recording, so it runs beside the chromagram-and-warping worker and the
+  wall time is the longer half, not the sum.
+
 ## The median bar length of a DTW alignment is skew-biased; an onset comb at the declared tempo is not (2026-11-07)
 
 From porting stem-bench Study 26c's ends repair into `src/lib/audio/alignmentRepair.ts`.

@@ -1133,6 +1133,22 @@ chart existed.
   the path's own, `repair` the period, the per-bar aligned/extrapolated
   confidence and the slides, null on a refusal, which the fit gate
   reports as the chart not lining up through the middle.
+- **Where an alignment's time goes** (Node, a 140 s recording, a 76-bar
+  chart): the repair's onset envelope 1.55 s, the recording's chromagram
+  0.48 s, the render's 0.45 s, the render itself about 0.4 s, both
+  warpings together 0.19 s. The warping is nearly free; the spectral
+  analyses are the cost. So the envelope runs in its own worker
+  (`workers/alignmentEnvelope.worker.ts`) at the same time as the path
+  worker, and `repairAlignment` joins the two on the main thread (the
+  comb is milliseconds); the envelope packs two real frames into each
+  FFT and takes the magnitude with a square root instead of `hypot`,
+  which matches the plain computation to rounding and leaves the
+  envelope the bench measured with (22,050 Hz, a 2048 window, hop 256)
+  as it is (every frame within 4e-6 of the old values). Letter Lands in
+  the browser: 7 s before, about 4.3 s after; the path worker (render,
+  two chromagrams, two warpings) is now the long pole. Do not shrink the
+  envelope's window to go faster: the repair's numbers were measured with
+  it.
 - **The saved draft is canonical**: `saveChartDraft` parses the text and
   stores `printChart`'s output when it parses without errors, as the editor
   normalizes; a draft with errors is stored as written and its diagnostics
