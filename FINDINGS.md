@@ -563,6 +563,36 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Studies 28 + 29 (stem-bench e117b6c): the v5-backbeat ASK is
+  answered, and the capstone chartless draft found the backbeat in the
+  wild the same morning.** For the alignment placement the app is
+  porting: v5 as shipped is SAFE. The catch map says the downbeat is
+  caught for phase errors within about 0.45 beat at EVERY downbeat
+  weight down to 0.1 (inside the half-beat fence no other beat is
+  reachable, so backbeat weight cannot matter); kick-removed remixes
+  (150 Hz 4th-order high-pass on the drum stems) keep every Study 27
+  gate on all four songs; and the real phase errors are 0.05 to 0.10
+  beats, an order of magnitude inside the fence. The ASK's "0.38 s =
+  1.4 beats" arithmetic was right but measured the superseded truth
+  anchor (the ruler Study 27 corrected), not the DTW phase, which sat
+  0.05 beats from the lattice on Mop Heart. The one knife-edge is
+  synthetic and exactly where the ASK guessed: a weak downbeat
+  (w = 0.3) plus a pickup or hi-hat at the fence edge, never
+  approached by any real arm, so the registered conditional remedy arm
+  did not run. The downbeat check the ASK proposed is still the right
+  instrument, but for the OTHER feature: Study 28 (the capstone
+  chartless draft, S28-G1 FAIL as registered) showed the untethered
+  comb anchor landing on the backbeat on letter-lands and
+  peaceful-dreams (2.1 beats late; drafts 81.3% and 89.5% vs 94.7% and
+  98.7% references), because the raw comb phase is a beat detector,
+  not a downbeat detector; without v5's DTW tether the fence has
+  nothing to hold on to. Study 28's good news: the length leg is
+  solid (derived bar counts within one of the chart on all four
+  songs), eat on the corrected chart drafts at its baseline, and the
+  comb period stays exact. Named next remedy, not yet registered:
+  downbeat disambiguation for the auto-chart grid (the ASK's shifted
+  grid check, scored on the chartless inputs).
+
 - **Study 27 (stem-bench 1aba7c3, $0): recipe v5, whole-grid
   re-phasing, supersedes v3 as the recommended worker recipe — and
   mop-heart's bar-one anchor was 0.381 s later than every prior study
