@@ -17,7 +17,8 @@
 	interface Props {
 		id: string;
 		heading: string;
-		ideas: DashboardEntry[];
+		/** Optional: a missing list (e.g. page markup hot-updated ahead of its loader data) renders as the empty state. */
+		ideas?: DashboardEntry[];
 		empty: string;
 		/** The empty state's button; none for a section that is only ever a record of what happened (Activity). */
 		action?: { label: string; href: string };
@@ -37,7 +38,7 @@
 	let {
 		id,
 		heading,
-		ideas,
+		ideas: given,
 		empty,
 		action,
 		all,
@@ -48,6 +49,8 @@
 		pins,
 		onpin,
 	}: Props = $props();
+	/** The list to show; none given reads as empty, so the section shows its empty card instead of failing the page. */
+	let ideas = $derived(given ?? []);
 	/** How many entries are newer than the last visit. */
 	let fresh = $derived(
 		since === null ? 0 : ideas.filter((i) => i.when.getTime() > since.getTime()).length,
