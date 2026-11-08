@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.251.0] - 2026-11-08
+
 ### Added
 
 - **"Use as start of bar 1" on the detected-chords card.** When Detect chords has placed the bars on the stems' own beat, one click writes the placed bar one into the song's "Start of bar 1" and the lattice's tempo into its tempo change (`useChartlessGrid` in `remote/songs.remote.ts`, values from `utils/chartlessGridUse.ts`, `val/ChartlessGridUseSchema.ts`), then the page's data is read again; the next Detect chords places from that start. Nothing changes unless the member clicks.
