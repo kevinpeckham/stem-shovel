@@ -50,7 +50,14 @@ export default defineConfig({
 	},
 	// Loaded on demand by the chord detector; pre-bundling them at start-up
 	// spares the dev server a mid-session re-optimisation (a 504 on first use).
-	optimizeDeps: { include: ["@spotify/basic-pitch", "@tensorflow/tfjs"] },
+	// Svelte is never pre-bundled and always resolves to one copy: two copies of its
+	// server runtime in the dev SSR graph each keep their own `ssr_context`, so a
+	// component's onDestroy read a null context the renderer never set (STEM-SHOVEL-7B).
+	optimizeDeps: {
+		include: ["@spotify/basic-pitch", "@tensorflow/tfjs"],
+		exclude: ["svelte"],
+	},
+	resolve: { dedupe: ["svelte"] },
 	// Oxlint. It has no Svelte template linting yet, so .svelte files are only
 	// covered by svelte-check (`npm run check`); Oxlint covers .ts/.js/.svelte.ts.
 	lint: {
