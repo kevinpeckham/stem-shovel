@@ -39,6 +39,8 @@ function setup({
 		chordBusy: null,
 		cancelDraft: vi.fn(),
 		draftFromPanel: vi.fn(async () => {}),
+		progress: null as string | null,
+		generateChart: vi.fn(async () => {}),
 	};
 	const onhistory = vi.fn();
 	const d = new SongDocs({
@@ -113,6 +115,21 @@ describe("SongDocs", () => {
 		]);
 		await d.show("lyrics");
 		expect(ids(d.menuItems)).toEqual(["mono", "history"]);
+	});
+
+	test("Generate chart from the stems is offered only on an empty chart", () => {
+		const empty = setup({ docs: { chart: null, lyrics: null, notes: null } });
+		empty.d.panel = "chart";
+		expect(ids(empty.d.menuItems)).toEqual(["mono", "history", "ai", "draft", "generate"]);
+		run(empty.d.menuItems, "generate");
+		expect(empty.chordDraft.generateChart).toHaveBeenCalled();
+		expect(ids(setup().d.menuItems)).not.toContain("generate");
+		const running = setup({ docs: { chart: null, lyrics: null, notes: null } });
+		running.d.panel = "chart";
+		running.chordDraft.progress = "Saving…";
+		expect(running.d.menuItems).toContainEqual(
+			expect.objectContaining({ id: "busy", notice: "Saving…" }),
+		);
 	});
 
 	test("setChordDialect spells chords as names, Nashville or Roman, and is remembered", () => {

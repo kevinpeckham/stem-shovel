@@ -298,6 +298,18 @@
 		grid: () => posCtx.grid,
 		aiAvailable: () => data.aiAvailable,
 		startAt: () => data.song.startAt,
+		// "Generate chart" on a song without a grid: the stems' tempo and meter first (saved at once on a song with none).
+		ensureGrid: async () => {
+			if (posCtx.grid) return true;
+			await check.scanStems();
+			return !!posCtx.grid;
+		},
+		onsaved: async () => {
+			await refreshAll();
+			changes.reset();
+			sections.reset();
+		},
+		hasSections: () => data.song.sections.length > 0,
 	});
 	/** The Docs panel: the document shown, its editor, the Chart's Text / Notation, the Notes' Mine, the panel's mode and ⋯ menu. */
 	const docs = new SongDocs({
@@ -753,7 +765,11 @@
 			aiAvailable={data.aiAvailable}
 			{notationPdfs}
 			{notationCount}
-			busy={chordDraft.draftBusy || !!chordDraft.chordBusy}
+			busy={chordDraft.draftBusy || !!chordDraft.chordBusy || !!chordDraft.progress}
+			onGenerate={() => void chordDraft.generateChart()}
+			progress={chordDraft.progress}
+			oncancel={chordDraft.cancelDraft}
+			hasDraft={!!chordDraft.draft}
 			oncheck={() => void check.askAiWithScore()}
 			onchart={(score) => {
 				chordDraft.fromScore(score);

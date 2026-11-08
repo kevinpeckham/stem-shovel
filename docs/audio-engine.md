@@ -1290,3 +1290,14 @@ what the stems alone can say about that grid and what they cannot:
   happens unless the member clicks: the vote proposes, the member decides,
   and the next "Detect chords" skips the vote and places from the member's
   start (`byStart`).
+- **"Generate chart from the stems"** (2026-11-08): the empty Chart tab's
+  one-click run (`SongChordDraft.generateChart`, one Effect program in the
+  class's fiber, so Cancel interrupts it at any step): the page's
+  `ensureGrid` (Scan stems, which saves on a song with no rows) when the
+  song has no grid; `#detect` (chords and placement); a decided placement
+  written as the song's start of bar 1 and tempo (`useChartlessGrid`, a
+  failure said and skipped); `#draft`; then the draft's sections at the
+  placed bars' starts (only when the song has none) and the chart with its
+  timing map (`saveChartDraft`, `replace: false`), the draft cleared and
+  the page's data read again. The Docs panel shows the step (`progress`)
+  with Cancel; the final notification is `utils/generatedChartLine.ts`.

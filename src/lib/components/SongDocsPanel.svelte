@@ -40,6 +40,14 @@
 		above: Snippet | undefined;
 		/** "Chart from score" on a MusicXML tile: the imported chart for the draft card (the page's `chordDraft.fromScore`). */
 		onchart?: (draft: ScoreChart) => void;
+		/** "Generate chart from the stems" on an empty chart (the page's `chordDraft.generateChart`); no offer without it. */
+		onGenerate?: () => void;
+		/** The generation's current step (the page's `chordDraft.progress`), null when it is not running. */
+		progress?: string | null;
+		/** Cancel the generation (the page's `chordDraft.cancelDraft`). */
+		oncancel?: () => void;
+		/** A draft card is showing: no offer to generate meanwhile. */
+		hasDraft?: boolean;
 	}
 	let {
 		docs,
@@ -53,8 +61,38 @@
 		oncheck,
 		above,
 		onchart = () => {},
+		onGenerate,
+		progress = null,
+		oncancel = () => {},
+		hasDraft = false,
 	}: Props = $props();
+
+	let aiOn = $derived(aiAvailable && !song.noAi && !song.project.noAi);
+	let offerGenerate = $derived(
+		!!onGenerate && !docsHtml.chart && canEdit && aiOn && !hasDraft && !progress,
+	);
 </script>
+
+<!-- Above the chart: the generation's progress or, on an empty chart, the offer to generate one; then the page's draft card. -->
+{#snippet chartAbove()}
+	{#if progress}
+		<p class="mb-4 text-sm" role="status">
+			{progress}
+			<button class="ml-2 link" type="button" onclick={oncancel}>Cancel</button>
+		</p>
+	{:else if offerGenerate}
+		<div class="mb-4 text-sm">
+			<p>
+				Generate a chart from the stems: the tempo, the chords, the sections and the bar lines,
+				saved to the song.
+			</p>
+			<button class="mt-2 button button-sm" type="button" disabled={busy} onclick={onGenerate}
+				>Generate chart from the stems</button
+			>
+		</div>
+	{/if}
+	{@render above?.()}
+{/snippet}
 
 <FloatingPanel
 	open={docs.mode !== "minimised"}
@@ -79,7 +117,7 @@
 			notation={song.notation}
 			pdfs={notationPdfs}
 			{canEdit}
-			aiAvailable={aiAvailable && !song.noAi && !song.project.noAi}
+			aiAvailable={aiOn}
 			{oncheck}
 			{onchart}
 			chartDefaults={chartDefaults(song.changes)}
@@ -117,7 +155,7 @@
 				bind:editing={docs.editing}
 				view={docs.view}
 				mono={docs.mono[docs.doc]}
-				above={docs.panel === "chart" ? above : undefined}
+				above={docs.panel === "chart" ? chartAbove : undefined}
 				chartDefaults={chartDefaults(song.changes)}
 				numerals={docs.numerals}
 				chartText={docs.chartKey.text(song.chartMarkdown)}

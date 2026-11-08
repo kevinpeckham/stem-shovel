@@ -49,6 +49,9 @@ function setup() {
 		grid: () => null,
 		aiAvailable: () => true,
 		startAt: () => null,
+		ensureGrid: async () => true,
+		onsaved: async () => {},
+		hasSections: () => false,
 	});
 	const check = new SongCheck({
 		song: () => song,

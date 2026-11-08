@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen } from "@testing-library/svelte";
 import { createRawSnippet, flushSync } from "svelte";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
@@ -13,8 +13,10 @@ const h = vi.hoisted(() => ({
 }));
 vi.mock("#lib/remote/songs.remote.js", () => ({ saveDoc: { pending: 0 } }));
 vi.mock("#lib/components/SongDocPanel.svelte", () => ({
-	default: (_anchor: unknown, props: Record<string, unknown>) => {
+	default: (anchor: unknown, props: Record<string, unknown>) => {
 		h.doc = props;
+		// What the panel renders above the document, rendered here too.
+		(props.above as ((anchor: unknown) => void) | undefined)?.(anchor);
 		return { close: async () => {} };
 	},
 }));
@@ -31,7 +33,12 @@ const { SongDocs } = await import("#lib/state/songDocs.svelte.js");
 const html = { chart: "<p>chart</p>", lyrics: "<p>la</p>", notes: "" };
 const above = createRawSnippet(() => ({ render: () => "<p>draft</p>" }));
 
-function setup({ noAi = false } = {}) {
+function setup({
+	noAi = false,
+	docsHtml = html as Record<"chart" | "lyrics" | "notes", string>,
+	canEdit = true,
+	progress = null as string | null,
+} = {}) {
 	h.doc = null;
 	h.notation = null;
 	vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
@@ -53,7 +60,7 @@ function setup({ noAi = false } = {}) {
 			lyricsVersion: 1,
 			notesVersion: 0,
 		}),
-		docs: () => html,
+		docs: () => docsHtml,
 		myNote: () => null,
 		signedIn: () => true,
 		canEdit: () => true,
@@ -66,11 +73,16 @@ function setup({ noAi = false } = {}) {
 	});
 	docs.panel = "chart";
 	const oncheck = vi.fn();
+	const onGenerate = vi.fn();
+	const oncancel = vi.fn();
 	render(SongDocsPanel, {
 		docs,
 		song,
-		docsHtml: html,
-		canEdit: true,
+		docsHtml,
+		canEdit,
+		onGenerate,
+		progress,
+		oncancel,
 		aiAvailable: true,
 		notationPdfs: [],
 		notationCount: 0,
@@ -78,7 +90,7 @@ function setup({ noAi = false } = {}) {
 		oncheck,
 		above,
 	});
-	return { docs, oncheck };
+	return { docs, oncheck, onGenerate, oncancel };
 }
 
 afterEach(() => {
@@ -99,7 +111,28 @@ describe("SongDocsPanel", () => {
 			canEdit: true,
 			chartDefaults: { tempo: 120, meter: null },
 		});
-		expect(h.doc?.above).toBe(above);
+		expect(h.doc?.above).toBeTypeOf("function");
+		expect(screen.getByText("draft")).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Generate chart from the stems" })).toBeNull();
+	});
+
+	test("an empty chart offers Generate chart from the stems to an editor", async () => {
+		const { onGenerate } = setup({ docsHtml: { ...html, chart: "" } });
+		await fireEvent.click(screen.getByRole("button", { name: "Generate chart from the stems" }));
+		expect(onGenerate).toHaveBeenCalledOnce();
+	});
+
+	test("no offer to a viewer", () => {
+		setup({ docsHtml: { ...html, chart: "" }, canEdit: false });
+		expect(screen.queryByRole("button", { name: "Generate chart from the stems" })).toBeNull();
+	});
+
+	test("while it runs: the step and Cancel", async () => {
+		const { oncancel } = setup({ docsHtml: { ...html, chart: "" }, progress: "Saving…" });
+		expect(screen.getByRole("status")).toHaveTextContent("Saving…");
+		expect(screen.queryByRole("button", { name: "Generate chart from the stems" })).toBeNull();
+		await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+		expect(oncancel).toHaveBeenCalledOnce();
 	});
 
 	test("another document: no draft above", async () => {

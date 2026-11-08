@@ -36,20 +36,29 @@
 	const isEmpty = (draft: ChartDraft) => draft.source === "score" && !draft.chart.trim();
 	const levelClass = (level: "error" | "warning") =>
 		level === "error" ? "text-red-400" : "text-amber-300";
+	/** The save running: its button reads "Saving…" and both save buttons wait. */
+	let saving = $state<"sections" | "chart" | null>(null);
+	/** The draft whose sections were saved: its button then reads "Sections saved"; a new draft starts over. */
+	let sectionsSavedFor = $state.raw<ChartDraft | null>(null);
+	let sectionsSaved = $derived(!!chordDraft.draft && sectionsSavedFor === chordDraft.draft);
 	async function saveDraftSections() {
 		const draft = chordDraft.draft;
 		const at = grid;
 		if (!draft || !at) return;
 		if (hasSections && !confirm("Replace the song's sections with the drafted ones?")) return;
+		saving = "sections";
 		try {
 			await saveSections({
 				id: songId,
 				sections: draft.sections.map((s) => ({ name: s.name, start: secondsAtBar(at, s.bar) })),
 			});
 			await onsectionssaved();
+			sectionsSavedFor = draft;
 			notify("Sections saved from the draft");
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			saving = null;
 		}
 	}
 	async function saveDraftChart() {
@@ -57,6 +66,7 @@
 		if (!draft) return;
 		const replace = hasChart;
 		if (replace && !confirm("Replace the song's chart with the drafted one?")) return;
+		saving = "chart";
 		try {
 			// A drafted chart's timing map and confidence are kept beside it (checked on the server).
 			await saveChartDraft({
@@ -68,9 +78,13 @@
 					: {}),
 			});
 			await onchartsaved();
+			// Saved: the card goes, like Discard (its preview would show the chart twice).
+			if (chordDraft.draft === draft) chordDraft.draft = null;
 			notify("Chart saved from the draft");
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			saving = null;
 		}
 	}
 </script>
@@ -92,18 +106,35 @@
 	{/if}
 {/snippet}
 
+<!-- Save sections and Save as chart: the one saving reads "Saving…" and both wait; saved sections say so until a new draft. -->
+{#snippet saveButtons(draft: ChartDraft)}
+	{#if draft.sections.length > 0}
+		<button
+			class="link"
+			type="button"
+			disabled={!!saving || sectionsSaved}
+			onclick={saveDraftSections}
+			>{saving === "sections"
+				? "Saving…"
+				: sectionsSaved
+					? "Sections saved"
+					: "Save sections"}</button
+		>
+	{/if}
+	{#if !isEmpty(draft)}
+		<button class="link" type="button" disabled={!!saving} onclick={saveDraftChart}
+			>{saving === "chart" ? "Saving…" : "Save as chart"}</button
+		>
+	{/if}
+{/snippet}
+
 {#if chordDraft.draft}
 	{@const draft = chordDraft.draft}
 	<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<span class="font-600">{headingOf(draft)}</span>
 			<span class="flex items-center gap-3">
-				{#if draft.sections.length > 0}
-					<button class="link" type="button" onclick={saveDraftSections}>Save sections</button>
-				{/if}
-				{#if !isEmpty(draft)}
-					<button class="link" type="button" onclick={saveDraftChart}>Save as chart</button>
-				{/if}
+				{@render saveButtons(draft)}
 				<button class="link" type="button" onclick={() => (chordDraft.draft = null)}>Discard</button
 				>
 			</span>

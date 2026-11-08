@@ -4,6 +4,15 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Generate a chart in one click.** A song with no chart offers "Generate chart from the stems" on its Chart tab: it sets the tempo and time signature when the song has none, hears the chords and the bars, drafts the chart with the AI and saves it with its sections, showing each step as it goes, with Cancel at hand.
+
+### Fixed
+
+- **Saving a drafted chart or its sections now shows that it worked**, and the draft card goes away once the chart is saved instead of doubling the chart on the page.
+- **Notifications are no longer hidden behind the song settings.**
+
 ## [0.251.0] - 2026-11-08
 
 ### Added

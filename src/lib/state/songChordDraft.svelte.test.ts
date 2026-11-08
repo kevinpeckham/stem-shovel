@@ -14,6 +14,9 @@ const remote = vi.hoisted(() => ({
 	songNotes: vi.fn(),
 	reconcileChords: vi.fn(),
 	draftChart: vi.fn(),
+	useChartlessGrid: vi.fn(),
+	saveSections: vi.fn(),
+	saveChartDraft: vi.fn(),
 }));
 vi.mock("#lib/remote/songs.remote.js", () => remote);
 const files = vi.hoisted(() => ({ chartFromScore: vi.fn() }));
@@ -54,13 +57,24 @@ const engine = {
 } as unknown as StemEngine;
 const BUFFER = { sampleRate: 44100 } as AudioBuffer;
 
-function make({ ai = true, grid = GRID, startAt = null as number | null } = {}) {
+const ensureGrid = vi.fn(async () => true);
+const onsaved = vi.fn(async () => {});
+
+function make({
+	ai = true,
+	grid = GRID as typeof GRID | null,
+	startAt = null as number | null,
+	hasSections = false,
+} = {}) {
 	return new SongChordDraft({
 		songId: () => "song1",
 		engine: () => engine,
 		grid: () => grid,
 		aiAvailable: () => ai,
 		startAt: () => startAt,
+		ensureGrid,
+		onsaved,
+		hasSections: () => hasSections,
 	});
 }
 
@@ -100,6 +114,9 @@ beforeEach(() => {
 	remote.draftChart.mockResolvedValue(DRAFT);
 	decodedBuffers.mockResolvedValue([BUFFER]);
 	placing.chartlessGridInBrowser.mockResolvedValue(null);
+	remote.useChartlessGrid.mockImplementation(async (input: object) => input);
+	remote.saveSections.mockResolvedValue(undefined);
+	remote.saveChartDraft.mockResolvedValue(undefined);
 });
 
 describe("SongChordDraft", () => {
@@ -494,6 +511,86 @@ describe("SongChordDraft", () => {
 			expect(placing.chartlessGridInBrowser).not.toHaveBeenCalled();
 			expect(cd.placement).toBeNull();
 			expect(cd.chordSegments).not.toBeNull();
+		});
+	});
+
+	describe("Generate chart from the stems", () => {
+		const PLACED = {
+			barStarts: [0.3, 2.3, 4.3, 6.3, 7.9],
+			period: 2,
+			beatsPerBar: 4,
+			cls: 1,
+			decided: true,
+			byStart: false,
+			witnesses: [],
+		};
+		const TWO_SECTIONS = {
+			...DRAFT,
+			sections: [
+				{ name: "Verse", bar: 1 },
+				{ name: "Chorus", bar: 3 },
+				{ name: "Off the end", bar: 9 },
+			],
+		};
+
+		test("the chords, bar one, the sections and the chart saved; the draft goes", async () => {
+			remote.songChords.mockImplementation(() => asQuery(STORED));
+			placing.chartlessGridInBrowser.mockResolvedValue(PLACED);
+			remote.draftChart.mockResolvedValue(TWO_SECTIONS);
+			const cd = make();
+			const run = cd.generateChart();
+			expect(cd.progress).not.toBeNull();
+			await run;
+			expect(ensureGrid).not.toHaveBeenCalled();
+			expect(remote.useChartlessGrid).toHaveBeenCalledWith({ id: "song1", startAt: 0.3, bpm: 120 });
+			expect(remote.saveSections).toHaveBeenCalledWith({
+				id: "song1",
+				sections: [
+					{ name: "Verse", start: 0.3 },
+					{ name: "Chorus", start: 4.3 },
+				],
+			});
+			expect(remote.saveChartDraft).toHaveBeenCalledWith({
+				id: "song1",
+				markdown: "## Verse",
+				replace: false,
+			});
+			expect(cd.draft).toBeNull();
+			expect(cd.progress).toBeNull();
+			expect(onsaved).toHaveBeenCalledTimes(2);
+			expect(notify).toHaveBeenCalledWith(
+				"Chart generated from the stems: 4 bars, 3 sections; start of bar 1 set to 0:00.3 and tempo to 120 bpm.",
+			);
+		});
+
+		test("without a grid, and none from the stems: it fails and nothing else runs", async () => {
+			ensureGrid.mockResolvedValueOnce(false);
+			const cd = make({ grid: null });
+			await cd.generateChart();
+			expect(ensureGrid).toHaveBeenCalledOnce();
+			expect(cd.chordError).toBe("Set a tempo and a time signature first");
+			expect(notify).toHaveBeenCalledWith(
+				"Generating the chart failed: Set a tempo and a time signature first",
+				{ kind: "error" },
+			);
+			for (const fn of [
+				remote.songChords,
+				remote.draftChart,
+				remote.useChartlessGrid,
+				remote.saveSections,
+				remote.saveChartDraft,
+			])
+				expect(fn).not.toHaveBeenCalled();
+			expect(cd.progress).toBeNull();
+		});
+
+		test("the song's own sections stay; no placement, no bar one", async () => {
+			const cd = make({ hasSections: true });
+			await cd.generateChart();
+			expect(remote.useChartlessGrid).not.toHaveBeenCalled();
+			expect(remote.saveSections).not.toHaveBeenCalled();
+			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
+			expect(notify).toHaveBeenCalledWith("Chart generated from the stems: 4 bars, 1 section.");
 		});
 	});
 });

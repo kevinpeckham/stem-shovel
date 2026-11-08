@@ -92,6 +92,9 @@ function setup({
 		grid: () => grid,
 		aiAvailable: () => true,
 		startAt: () => null,
+		ensureGrid: async () => true,
+		onsaved: async () => {},
+		hasSections: () => false,
 	});
 	chordDraft.draft = value;
 	const onsectionssaved = vi.fn();
@@ -164,6 +167,39 @@ describe("SongDraftCard", () => {
 		await fireEvent.click(screen.getByRole("button", { name: "Save as chart" }));
 		await vi.waitFor(() => expect(h.notify).toHaveBeenCalledWith("Nope", { kind: "error" }));
 		expect(onchartsaved).not.toHaveBeenCalled();
+	});
+
+	test("a save in flight: its button reads Saving… and both save buttons wait", async () => {
+		let done: () => void = () => {};
+		h.saveChartDraft.mockReturnValueOnce(new Promise<void>((resolve) => (done = resolve)));
+		setup();
+		await fireEvent.click(screen.getByRole("button", { name: "Save as chart" }));
+		expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+		expect(screen.getByRole("button", { name: "Save sections" })).toBeDisabled();
+		done();
+		await vi.waitFor(() => expect(h.notify).toHaveBeenCalledWith("Chart saved from the draft"));
+	});
+
+	test("after Save as chart the card goes, like Discard", async () => {
+		const { chordDraft, onchartsaved } = setup();
+		await fireEvent.click(screen.getByRole("button", { name: "Save as chart" }));
+		await vi.waitFor(() => expect(onchartsaved).toHaveBeenCalled());
+		await vi.waitFor(() => expect(screen.queryByText("AI draft")).toBeNull());
+		expect(chordDraft.draft).toBeNull();
+	});
+
+	test("after Save sections the card stays and its button reads Sections saved, until a new draft", async () => {
+		const { chordDraft } = setup();
+		await fireEvent.click(screen.getByRole("button", { name: "Save sections" }));
+		await vi.waitFor(() =>
+			expect(screen.getByRole("button", { name: "Sections saved" })).toBeDisabled(),
+		);
+		expect(screen.getByText("AI draft")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Save as chart" })).toBeEnabled();
+		chordDraft.draft = draft();
+		await vi.waitFor(() =>
+			expect(screen.getByRole("button", { name: "Save sections" })).toBeEnabled(),
+		);
 	});
 
 	test("Discard clears the draft", async () => {

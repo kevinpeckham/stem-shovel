@@ -5,13 +5,23 @@ import type { ChartlessGrid } from "#lib/audio/chartlessGrid.js";
 import { chartlessGridInBrowser } from "#lib/audio/chartlessGridInBrowser.js";
 import { barSecondsAt, beatsPerBarAt, secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
 import { chartFromScore } from "#lib/remote/files.remote.js";
-import { draftChart, reconcileChords, songChords, songNotes } from "#lib/remote/songs.remote.js";
+import {
+	draftChart,
+	reconcileChords,
+	saveChartDraft,
+	saveSections,
+	songChords,
+	songNotes,
+	useChartlessGrid,
+} from "#lib/remote/songs.remote.js";
 import { notify } from "#lib/state/notifications.svelte.js";
 import { alignmentFeaturesKey } from "#lib/utils/alignmentFeaturesKey.js";
 import { chartDraftOfScore } from "#lib/utils/chartDraftOfScore.js";
+import { chartlessGridUse } from "#lib/utils/chartlessGridUse.js";
 import { chordminiBarChords } from "#lib/utils/chordminiBarChords.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
+import { generatedChartLine } from "#lib/utils/generatedChartLine.js";
 import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
 import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
 import type { ConfidenceRecord, TimingMap } from "@barmark/sync";
@@ -71,6 +81,15 @@ export interface SongChordDraftOptions {
 	aiAvailable: () => boolean;
 	/** The song's own start of bar 1 (null when it has none): the chartless grid places bar one there. */
 	startAt: () => number | null;
+	/**
+	 * "Generate chart": a tempo and a time signature for a song without them
+	 * (the page scans the stems); whether the song has a grid afterwards.
+	 */
+	ensureGrid: () => Promise<boolean>;
+	/** After "Generate chart" saved to the song (the page refreshes and resets the settings' rows). */
+	onsaved: () => Promise<void>;
+	/** The song has sections already: "Generate chart" keeps them. */
+	hasSections: () => boolean;
 }
 
 /**
@@ -136,6 +155,8 @@ export class SongChordDraft {
 	 * tempo or meter, an undecided vote, or the placement failed).
 	 */
 	placement = $state<ChartlessGrid | null>(null);
+	/** "Generate chart"'s step while it runs (`progress` reads it). */
+	#step = $state<string | null>(null);
 	/** Where each bar the chords were read on starts, and where the last ends: the draft's grid. */
 	#barStarts: number[] = [];
 	/** The latest run; a new run interrupts it before starting, Cancel interrupts it. */
@@ -159,10 +180,21 @@ export class SongChordDraft {
 		return Effect.runPromise(Fiber.await(fiber)).then(() => undefined);
 	}
 
+	/**
+	 * What "Generate chart" is doing, null when it is not running: the
+	 * detection's own progress while it detects, then its step.
+	 */
+	get progress(): string | null {
+		if (!this.#step) return null;
+		if (this.chordBusy) return this.chordBusy;
+		return this.draftBusy ? "Drafting the chart with AI…" : this.#step;
+	}
+
 	cancelDraft = () => {
 		if (this.#fiber) Effect.runFork(Fiber.interrupt(this.#fiber));
 		this.chordBusy = null;
 		this.draftBusy = false;
+		this.#step = null;
 		notify("Canceled", { kind: "info" });
 	};
 
@@ -207,6 +239,118 @@ export class SongChordDraft {
 		);
 
 	draftFromChords = () => this.#run(this.#draft());
+
+	/**
+	 * "Generate chart from the stems" (the empty chart panel): a tempo and a
+	 * time signature when the song has none, the chords, the placement's bar
+	 * one as the song's start of bar 1, the AI's draft, then its sections
+	 * (unless the song has some) and its chart saved. One run, so Cancel stops
+	 * it at its current step; each step that fails has reported itself.
+	 */
+	generateChart = () =>
+		this.#run(
+			Effect.gen({ self: this }, function* () {
+				if (!(yield* this.#ensureGrid())) return;
+				if (!this.#ready())
+					return this.#fail("Generating the chart failed", "Every stem has to decode first");
+				this.#step = "Detecting the chords…";
+				yield* this.#detect();
+				if (!this.chordSegments) return;
+				const placed = yield* this.#useBarOne();
+				this.#step = "Drafting the chart with AI…";
+				yield* this.#draft();
+				if (this.draft) yield* this.#saveGenerated(this.draft, placed);
+			}).pipe(Effect.ensuring(Effect.sync(() => (this.#step = null)))),
+		);
+
+	/** The song's grid, set from the stems when it has none; false (reported) when it still has none. */
+	#ensureGrid(): Effect.Effect<boolean> {
+		return Effect.gen({ self: this }, function* () {
+			if (this.#opts.grid()) return true;
+			this.#step = "Setting the tempo and time signature from the stems…";
+			const ok = yield* attempt(() => this.#opts.ensureGrid()).pipe(
+				Effect.orElseSucceed(() => false),
+			);
+			if (!ok) this.#fail("Generating the chart failed", "Set a tempo and a time signature first");
+			return ok;
+		});
+	}
+
+	/**
+	 * A decided placement's bar one and tempo saved as the song's ("Use as
+	 * start of bar 1"); null when there is none or the save failed (said, and
+	 * the run goes on: the chart carries its own timing map).
+	 */
+	#useBarOne(): Effect.Effect<{ startAt: number; bpm: number } | null> {
+		return Effect.gen({ self: this }, function* () {
+			const placement = this.placement;
+			if (!placement?.decided || placement.byStart) return null;
+			this.#step = "Setting the start of bar 1…";
+			const use = chartlessGridUse(placement);
+			return yield* attempt(async () => {
+				await useChartlessGrid({ id: this.#opts.songId(), ...use });
+				await this.#opts.onsaved();
+				return use;
+			}).pipe(
+				Effect.catch((e) =>
+					Effect.sync(() => {
+						notify(errorMessage(e), { kind: "info" });
+						return null;
+					}),
+				),
+			);
+		});
+	}
+
+	/** The generated draft's sections (unless the song has some) and its chart saved; the draft goes and the page refreshes. */
+	#saveGenerated(
+		draft: ChartDraft,
+		placed: { startAt: number; bpm: number } | null,
+	): Effect.Effect<void> {
+		return Effect.gen({ self: this }, function* () {
+			this.#step = "Saving…";
+			const id = this.#opts.songId();
+			const bars = this.#barStarts.length - 1;
+			// Each section at its placed bar's start; a bar off the grid is left out.
+			const sections = draft.sections.flatMap((s) => {
+				const bar = Math.round(s.bar);
+				return bar >= 1 && bar <= bars ? [{ name: s.name, start: this.#barStarts[bar - 1]! }] : [];
+			});
+			if (sections.length > 0 && !this.#opts.hasSections())
+				yield* attempt(() => saveSections({ id, sections })).pipe(
+					Effect.catch((e) => Effect.sync(() => notify(errorMessage(e), { kind: "error" }))),
+				);
+			const saved = yield* attempt(() =>
+				saveChartDraft({
+					id,
+					markdown: draft.chart,
+					// The run starts only on an empty chart.
+					replace: false,
+					...(draft.timing
+						? { timing: draft.timing, confidence: draft.confidence ?? undefined }
+						: {}),
+				}),
+			).pipe(
+				Effect.as(true),
+				Effect.catch((e) =>
+					Effect.sync(() => {
+						this.#fail("Saving the chart failed", e);
+						return false;
+					}),
+				),
+			);
+			if (!saved) return;
+			this.draft = null;
+			yield* attempt(() => this.#opts.onsaved()).pipe(Effect.ignore);
+			notify(
+				generatedChartLine({
+					bars: draft.timing?.chart.bars ?? bars,
+					sections: draft.sections.length,
+					placed,
+				}),
+			);
+		});
+	}
 
 	#fail(what: string, e: unknown) {
 		this.chordError = errorMessage(e);

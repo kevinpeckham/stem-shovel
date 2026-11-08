@@ -72,10 +72,10 @@ export interface SongDocsOptions {
 	aiAvailable: () => boolean;
 	/** The ready notation files (MusicXML and PDFs marked as notation). */
 	notationCount: () => number;
-	/** Detect chords and the AI's chart draft, for the ⋯ menu's draft item. */
+	/** Detect chords and the AI's chart draft, for the ⋯ menu's draft and generate items. */
 	chordDraft: () => Pick<
 		SongChordDraft,
-		"draftBusy" | "chordBusy" | "cancelDraft" | "draftFromPanel"
+		"draftBusy" | "chordBusy" | "progress" | "cancelDraft" | "draftFromPanel" | "generateChart"
 	>;
 	/** The player's engine status, null before it mounts (the draft needs every stem decoded). */
 	engineStatus: () => string | null;
@@ -331,17 +331,17 @@ export class SongDocs {
 		return items;
 	}
 
-	/** The chart's AI draft: Draft, or the run's progress and Cancel. */
+	/** The chart's AI draft: Draft (and Generate on an empty chart), or the run's progress and Cancel. */
 	#draftItems(): MenuItems {
 		const o = this.#opts;
 		const draft = o.chordDraft();
-		if (draft.draftBusy || draft.chordBusy)
+		if (draft.draftBusy || draft.chordBusy || draft.progress)
 			return [
 				{ id: "ai", kind: "divider" },
 				{
 					id: "busy",
 					kind: "notice",
-					notice: draft.draftBusy ? "Drafting…" : String(draft.chordBusy),
+					notice: draft.progress ?? (draft.draftBusy ? "Drafting…" : String(draft.chordBusy)),
 				},
 				{ id: "cancel", label: "Cancel", iconClass: "i-ph-x", action: () => draft.cancelDraft() },
 			];
@@ -359,6 +359,27 @@ export class SongDocs {
 						? "Available once every stem has decoded"
 						: "Transcribe the stems and have the AI draft sections, progressions and a chart",
 				action: () => draft.draftFromPanel(),
+			},
+			...this.#generateItems(status),
+		];
+	}
+
+	/** "Generate chart from the stems": the whole run, saved to the song, so only to an editor and where there is no chart to replace. */
+	#generateItems(status: string | null): MenuItems {
+		const o = this.#opts;
+		if (o.docs().chart || !o.canEdit()) return [];
+		const draft = o.chordDraft();
+		return [
+			{
+				id: "generate",
+				label: "Generate chart from the stems",
+				iconClass: "i-ph-magic-wand",
+				disabled: status !== "ready",
+				title:
+					status !== "ready"
+						? "Available once every stem has decoded"
+						: "Set the tempo when it is missing, detect the chords, place the bar lines, draft the chart and save it with its sections",
+				action: () => void draft.generateChart(),
 			},
 		];
 	}
