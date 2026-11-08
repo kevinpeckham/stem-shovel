@@ -19,6 +19,12 @@ const h = vi.hoisted(() => ({
 	deleteFile: vi.fn(async () => ({})),
 	attachFile: vi.fn(async () => ({})),
 	useAsDemo: vi.fn(async () => ({})),
+	chartFromMidi: vi.fn(async (_input: { id: string }) => ({
+		chart: "",
+		chartHtml: "",
+		diagnostics: [] as { level: "error" | "warning"; message: string }[],
+		parts: [] as string[],
+	})),
 	uploadFile: vi.fn(
 		async (_f: File, reserve: () => Promise<unknown>, _onProgress?: (p: number) => void) => {
 			await reserve();
@@ -37,6 +43,7 @@ vi.mock("#lib/remote/files.remote.js", () => ({
 	deleteFile: h.deleteFile,
 	attachFile: h.attachFile,
 	useAsDemo: h.useAsDemo,
+	chartFromMidi: h.chartFromMidi,
 }));
 vi.mock("#lib/upload.js", () => ({ uploadFile: h.uploadFile, postJson: h.postJson }));
 vi.mock("#lib/utils/shortenShareLink.js", () => ({ shortenShareLink: h.shortenShareLink }));
@@ -308,6 +315,98 @@ describe("SongFilesPanel: the ⋯ menu", () => {
 			"idea.m4a is a demo now: find it on the player's Demos tab",
 		);
 		expect(h.refreshAll).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe("SongFilesPanel: Chart from MIDI", () => {
+	const groove = file({
+		id: "groove",
+		kind: "midi",
+		title: "Groove",
+		filename: "groove.mid",
+		songId: "song-1",
+	});
+	const midiProps = (over: Partial<Props> = {}) => base({ files: [chart, groove], ...over });
+
+	test("offered on a ready MIDI file to an editor on the song view, after Notation's place; not on a PDF or to a viewer", async () => {
+		const user = userEvent.setup();
+		render(SongFilesPanel, { props: midiProps() });
+		await openMenu(user, "Actions for Groove");
+		expect(menuItems()).toEqual([
+			"Open",
+			"Download",
+			"Open in a new tab",
+			"Edit",
+			"Chart from MIDI",
+			"Remove",
+		]);
+		await user.keyboard("{Escape}");
+		await openMenu(user, "Actions for Lead sheet");
+		expect(menuItems()).not.toContain("Chart from MIDI");
+	});
+
+	test("not offered to a viewer", async () => {
+		const user = userEvent.setup();
+		render(SongFilesPanel, { props: midiProps({ canEdit: false }) });
+		await openMenu(user, "Actions for Groove");
+		expect(menuItems()).not.toContain("Chart from MIDI");
+	});
+
+	test("not offered on the project view", async () => {
+		const user = userEvent.setup();
+		render(SongFilesPanel, {
+			props: midiProps({ songId: undefined, projectId: "proj-1", songs: [] }),
+		});
+		await openMenu(user, "Actions for Groove");
+		expect(menuItems()).not.toContain("Chart from MIDI");
+	});
+
+	test("reads the file on the server and hands the chart up, named by the file's title", async () => {
+		const user = userEvent.setup();
+		const onchart = vi.fn();
+		const diagnostics = [{ level: "warning" as const, message: "A tempo ramp was flattened." }];
+		h.chartFromMidi.mockResolvedValueOnce({
+			chart: "| C | G |",
+			chartHtml: "<p>chart</p>",
+			diagnostics,
+			parts: [],
+		});
+		render(SongFilesPanel, { props: midiProps({ onchart }) });
+		await openMenu(user, "Actions for Groove");
+		await user.click(screen.getByRole("button", { name: "Chart from MIDI" }));
+		await tick();
+		expect(h.chartFromMidi).toHaveBeenCalledWith({ id: "groove" });
+		expect(onchart).toHaveBeenCalledWith({
+			chart: "| C | G |",
+			chartHtml: "<p>chart</p>",
+			diagnostics,
+			parts: [],
+			source: "Groove",
+			notationId: "groove",
+		});
+		expect(h.notify).not.toHaveBeenCalled();
+	});
+
+	test("an empty chart is a notice with the first error, and nothing is handed up", async () => {
+		const user = userEvent.setup();
+		const onchart = vi.fn();
+		h.chartFromMidi.mockResolvedValueOnce({
+			chart: "",
+			chartHtml: "",
+			diagnostics: [
+				{ level: "warning", message: "A tempo ramp was flattened." },
+				{ level: "error", message: "The file has no notes." },
+			],
+			parts: [],
+		});
+		render(SongFilesPanel, { props: midiProps({ onchart }) });
+		await openMenu(user, "Actions for Groove");
+		await user.click(screen.getByRole("button", { name: "Chart from MIDI" }));
+		await tick();
+		expect(h.notify).toHaveBeenCalledWith("Nothing to chart in Groove: The file has no notes.", {
+			kind: "error",
+		});
+		expect(onchart).not.toHaveBeenCalled();
 	});
 });
 

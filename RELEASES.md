@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.248.0] - 2026-11-08
+
+### Added
+
+- **Chart from MIDI.** Attach a MIDI file to a song and its ⋯ menu reads the harmony into a chart draft, bar by bar, with the file's markers as sections, ready to save as the song's chart.
+
 ## [0.247.0] - 2026-11-08
 
 ### Added

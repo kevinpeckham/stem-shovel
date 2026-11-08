@@ -10,6 +10,7 @@ import {
 	createDemoFromFile,
 	deleteFile as removeFile,
 	getSongById,
+	midiFileForImport,
 	notationForImport,
 	saveChartRead,
 	updateFile as saveFile,
@@ -33,6 +34,7 @@ import {
 	SongFileUpdateSchema,
 	SongFileUseAsDemoSchema,
 } from "#lib/val/SongFileSchema.js";
+import { importMidi } from "@barmark/midi";
 import { decodeXmlBytes, importMusicXml, readMxl } from "@barmark/musicxml";
 import { error } from "@sveltejs/kit";
 
@@ -140,22 +142,26 @@ export const readChartOfFile = command(IdSchema, async ({ id }) => {
 	};
 });
 
-/** The largest notation file "Chart from score" reads (a score's MusicXML is rarely a tenth of it). */
-const SCORE_IMPORT_MAX_BYTES = 20 * 1024 * 1024;
+/** The largest file "Chart from score" or "Chart from MIDI" reads (a score's MusicXML is rarely a tenth of it). */
+const CHART_IMPORT_MAX_BYTES = 20 * 1024 * 1024;
 
-/** A notation file's bytes from Blob for "Chart from score": 502 when Blob fails, 413 over the limit. */
-async function scoreBytesOf(url: string): Promise<Uint8Array> {
+/**
+ * A file's bytes from Blob for "Chart from score" and "Chart from MIDI":
+ * 502 when Blob fails, 413 over the limit; `what` names the file in the
+ * message ("score", "MIDI file").
+ */
+async function blobBytesOf(url: string, what: string): Promise<Uint8Array> {
 	let res: Response;
 	try {
 		res = await readBlob(url);
 	} catch {
-		error(502, "The score could not be read");
+		error(502, `The ${what} could not be read`);
 	}
-	if (!res.ok) error(502, "The score could not be read");
-	if (Number(res.headers.get("content-length") ?? 0) > SCORE_IMPORT_MAX_BYTES)
-		error(413, "The score is too large to chart");
+	if (!res.ok) error(502, `The ${what} could not be read`);
+	if (Number(res.headers.get("content-length") ?? 0) > CHART_IMPORT_MAX_BYTES)
+		error(413, `The ${what} is too large to chart`);
 	const bytes = new Uint8Array(await res.arrayBuffer());
-	if (bytes.byteLength > SCORE_IMPORT_MAX_BYTES) error(413, "The score is too large to chart");
+	if (bytes.byteLength > CHART_IMPORT_MAX_BYTES) error(413, `The ${what} is too large to chart`);
 	return bytes;
 }
 
@@ -184,7 +190,7 @@ export const chartFromScore = command(ChartFromScoreSchema, async ({ id, part: a
 	const { accountId } = await memberOf(locals, accountOfNotation, id);
 	const row = await notationForImport(accountId, id);
 	if (!row || row.status !== "ready") error(404, "Score not found");
-	const bytes = await scoreBytesOf(row.url);
+	const bytes = await blobBytesOf(row.url, "score");
 	let xml: string;
 	try {
 		xml = row.format === "mxl" ? await readMxl(bytes) : decodeXmlBytes(bytes);
@@ -201,6 +207,38 @@ export const chartFromScore = command(ChartFromScoreSchema, async ({ id, part: a
 		diagnostics: tidied,
 		parts: part ? [] : scorePartsOf(tidied),
 		...partOf,
+	};
+});
+
+/**
+ * "Chart from MIDI": a MIDI attachment of a song read by @barmark/midi into
+ * a barmark chart (its harmony as block chords by bar, its markers as
+ * sections, its tempo and meter), for the same draft card as "Chart from
+ * score" (an editor). The import never throws: a file that gives nothing is
+ * an empty chart with an error. The package's info notes are left out; its
+ * messages carry no values from the file, so they go through as written.
+ */
+export const chartFromMidi = command(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfFile, id);
+	const row = await midiFileForImport(accountId, id);
+	if (!row || row.status !== "ready" || row.kind !== "midi") error(404, "MIDI file not found");
+	const bytes = await blobBytesOf(row.url, "MIDI file");
+	const { text, diagnostics } = importMidi(bytes);
+	return {
+		chart: text,
+		chartHtml: text ? renderChartHtml(text) : "",
+		diagnostics: diagnostics.flatMap((d) =>
+			d.severity === "info"
+				? []
+				: [
+						{
+							level: d.severity === "error" ? ("error" as const) : ("warning" as const),
+							message: d.message,
+						},
+					],
+		),
+		parts: [] as string[],
 	};
 });
 

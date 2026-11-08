@@ -30,6 +30,8 @@ The Chart tab has two modes, **Text** and **Notation**. Text is the chart you wr
 
 **Chart from score** reads a MusicXML file's chord symbols, keys, meters, tempo, sections, repeats and endings into a chart, shown above the Chart tab's text as a draft with anything the file carried that a chart cannot (a chord it could not name comes in as `?` with the original kept as words). **Save as chart** makes it the song's chart, asking first if the song has one; Discard drops it. A score with no chord symbols offers the parts that have notes instead, and the part you pick is charted from its notes, one chord per group of notes.
 
+**Chart from MIDI** does the same for a MIDI file in the song's attachments: the ⋯ menu on the file reads its harmony as block chords, bar by bar, with the file's markers as sections and its tempo and meter, into the same draft card.
+
 From Dorico: File › Export › MusicXML, one flow per file, exporting layouts as separate files if you want the parts as well as the score. Slash regions and some engraving details do not travel in MusicXML; a PDF in the Attachments panel shows the page exactly as Dorico printed it.
 
 ## Your own notes

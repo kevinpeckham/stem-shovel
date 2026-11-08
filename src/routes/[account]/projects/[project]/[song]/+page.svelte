@@ -798,6 +798,11 @@
 		onnotation={async (files) => {
 			await docs.uploadNotation(files);
 		}}
+		onchart={(score) => {
+			chordDraft.fromScore(score);
+			// The draft card sits above the chart's text: show that view, where the Engraving view was.
+			void docs.setChartMode("text");
+		}}
 	/>
 	<SongAmpPanel
 		amp={songAmp}

@@ -337,6 +337,16 @@ in three steps driven by `src/lib/upload.ts`:
   `readBlob`, an `.mxl` unpacked by `readMxl`, 20 MB cap) into a barmark
   chart the draft card shows with the import's diagnostics and saves as
   the song's chart (docs/barmark-integration-audit.md).
+  "Chart from MIDI" (2026-11-08, the ⋯ menu on a `midi` attachment, editors,
+  song view only): the same path through `@barmark/midi`'s `importMidi`
+  (`chartFromMidi` in files.remote.ts, the row by `midiFileForImport`, the
+  bytes through the shared Blob reader): the harmony's notes named as
+  chords bar by bar (barmark's `nameNotes`), markers as headings, the
+  file's tempo and meter, written by `@barmark/sync`'s builder in play
+  order; the import never throws and its diagnostics (errors and warnings,
+  not its info notes) reach the draft card. The draft card is the one
+  "Chart from score" uses: heading "Chart from <file title>", no part
+  buttons (a MIDI file has no parts to choose).
 
 ## Retries (2026-10-12)
 

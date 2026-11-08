@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vite-plus/test";
 import { fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
-const { chartReadOfFile, saveChartRead } = await import("./data");
+const { chartReadOfFile, midiFileForImport, saveChartRead } = await import("./data");
 
 /**
  * A score's stored read (docs/audio-engine.md, "The chart read is stored"):
@@ -81,5 +81,40 @@ describe("saveChartRead", () => {
 	test("another account's file is not found and keeps its read", async () => {
 		await expect(saveChartRead("a2", "f1", "| x |", true)).resolves.toBeNull();
 		expect(row("f1")).toMatchObject({ chartRead: null, chartReadEdited: false });
+	});
+});
+
+describe("midiFileForImport", () => {
+	beforeEach(() =>
+		reset({
+			songFile: [
+				file("m1", {
+					kind: "midi",
+					isNotation: false,
+					url: "https://blob/m1.mid",
+					filename: "m1.mid",
+					title: "Groove",
+				}),
+				file("m2", { kind: "midi", status: "uploading" }),
+			],
+		}),
+	);
+
+	test("the account's file, whatever its kind or status, for the remote to check", async () => {
+		await expect(midiFileForImport("a1", "m1")).resolves.toEqual({
+			id: "m1",
+			songId: "sg1",
+			url: "https://blob/m1.mid",
+			filename: "m1.mid",
+			title: "Groove",
+			status: "ready",
+			kind: "midi",
+		});
+		await expect(midiFileForImport("a1", "m2")).resolves.toMatchObject({ status: "uploading" });
+	});
+
+	test("another account's or a missing file: null", async () => {
+		await expect(midiFileForImport("a2", "m1")).resolves.toBeNull();
+		await expect(midiFileForImport("a1", "nope")).resolves.toBeNull();
 	});
 });

@@ -6495,6 +6495,23 @@ export async function notationForImport(accountId: string, id: string) {
 	return row ?? null;
 }
 
+/** An attachment of the account, for "Chart from MIDI" (files.remote.ts `chartFromMidi`), which checks its kind and status; null when another tenant's or missing. */
+export async function midiFileForImport(accountId: string, id: string) {
+	const row = await db.query.songFile.findFirst({
+		where: and(eq(songFile.accountId, accountId), eq(songFile.id, id)),
+		columns: {
+			id: true,
+			songId: true,
+			url: true,
+			filename: true,
+			title: true,
+			status: true,
+			kind: true,
+		},
+	});
+	return row ?? null;
+}
+
 /** What the jobs function needs to engrave a notation file's PDF (src/lib/server/notationPdf.ts); by id alone, as a job has no account. */
 export function notationForPdf(notationId: string) {
 	return db.query.songNotation.findFirst({

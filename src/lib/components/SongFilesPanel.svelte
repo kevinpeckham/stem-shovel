@@ -13,6 +13,7 @@
 	} from "#lib/constants/fileFormats.js";
 	import { notationFormatOf } from "#lib/constants/notationFormats.js";
 	import { attachFile, deleteFile, updateFile, useAsDemo } from "#lib/remote/files.remote.js";
+	import { MidiChart, type OnMidiChart } from "#lib/state/midiChart.svelte.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
@@ -73,6 +74,8 @@
 		songHref?: (song: { slug: string }) => string;
 		/** A MusicXML file dropped here goes to the Chart tab's flow (the song view). */
 		onnotation?: (files: File[]) => Promise<void>;
+		/** "Chart from MIDI": a MIDI file's chart for the page's draft card (the song view). */
+		onchart?: OnMidiChart;
 	}
 	let {
 		songId,
@@ -84,6 +87,7 @@
 		songs = [],
 		songHref,
 		onnotation,
+		onchart,
 	}: Props = $props();
 	/** The project view lists across songs: tiles name their song and can move. */
 	let projectView = $derived(!songId && !!projectId);
@@ -212,6 +216,7 @@
 			notify(`Could not change it: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
+	const midiChart = new MidiChart();
 	/** A file moved to one of the project's songs, or back to the project itself (the project view). */
 	let attaching = $state<string | null>(null);
 	async function attach(f: PanelFile, to: string) {
@@ -263,21 +268,15 @@
 	}
 	const pagesLabel = (n: number | null) => (n === null ? "" : n === 1 ? "1 page" : `${n} pages`);
 	const nameOf = (f: { title: string; filename: string }) => f.title || f.filename;
-	const iconOf = (kind: FileKind) =>
-		kind === "pdf"
-			? "i-ph-file-pdf"
-			: kind === "image"
-				? "i-ph-image"
-				: kind === "audio"
-					? "i-ph-waveform"
-					: kind === "text"
-						? "i-ph-file-text"
-						: kind === "midi"
-							? "i-ph-piano-keys"
-							: kind === "dawproject"
-								? "i-ph-archive"
-								: "i-ph-file";
-
+	const ICONS: Record<FileKind, string> = {
+		pdf: "i-ph-file-pdf",
+		image: "i-ph-image",
+		audio: "i-ph-waveform",
+		text: "i-ph-file-text",
+		midi: "i-ph-piano-keys",
+		dawproject: "i-ph-archive",
+		other: "i-ph-file",
+	};
 	/** The file open in its own panel: a PDF or text in the browser's reader, an image, or audio with its player. */
 	let viewing = $state<PanelFile | null>(null);
 </script>
@@ -418,7 +417,7 @@
 								/>
 							{:else}
 								<span class="flex h-full w-full items-center justify-center text-oxford">
-									<span class="{iconOf(f.kind)} text-40px" aria-hidden="true"></span>
+									<span class="{ICONS[f.kind]} text-40px" aria-hidden="true"></span>
 								</span>
 							{/if}
 						</button>
@@ -557,6 +556,7 @@
 											(!projectView || !!f.songId),
 										action: () => setNotation(f, !f.isNotation),
 									},
+									midiChart.itemOf(f, { canEdit, projectView, onchart }),
 									{
 										id: "demo",
 										label: "Use as demo",

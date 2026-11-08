@@ -14,6 +14,8 @@
 		canEdit: boolean;
 		/** A MusicXML file dropped here goes to the Chart tab's flow. */
 		onnotation: (files: File[]) => Promise<void>;
+		/** "Chart from MIDI": a MIDI file's chart for the page's draft card. */
+		onchart?: FilesProps["onchart"];
 	}
 	let {
 		open = $bindable(),
@@ -23,6 +25,7 @@
 		scores,
 		canEdit,
 		onnotation,
+		onchart,
 	}: Props = $props();
 	let filesPanel = $state<SongFilesPanel | null>(null);
 
@@ -65,6 +68,7 @@
 			{scores}
 			{canEdit}
 			{onnotation}
+			{onchart}
 		/>
 	</FloatingPanel>
 </div>

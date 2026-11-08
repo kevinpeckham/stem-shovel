@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.248.0] - 2026-11-08
+
+### Added
+
+- **Chart from MIDI.** The ⋯ menu on a MIDI file in the song's attachments reads it into a chart draft (`files.remote.ts` `chartFromMidi` over `@barmark/midi`'s `importMidi`): the harmony as block chords read bar by bar, the file's markers as sections, its tempo and meter, in the same draft card as "Chart from score", to save as the song's chart. Completes the chart-source set: written, from a score, from a MIDI file, from the detected chords.
+
+### Fixed
+
+- **One copy of Svelte in the dev server.** The Sentry-triage bot's PR #9 dedupes `svelte` in vite.config.ts and keeps it out of `optimizeDeps`: two copies of the server runtime in the dev SSR graph left a component's `onDestroy` reading a null context (STEM-SHOVEL-7B). Merged from main.
+
 ## [0.247.0] - 2026-11-08
 
 ### Added

@@ -29,6 +29,15 @@ const redis = vi.hoisted(() => ({
 }));
 vi.mock("#lib/server/redis.js", () => redis);
 
+/** @barmark/midi's import, mocked: its own tests cover the reading. */
+const midi = vi.hoisted(() => ({
+	importMidi: vi.fn((_bytes: Uint8Array) => ({
+		text: "",
+		diagnostics: [] as { severity: string; code: string; message: string }[],
+	})),
+}));
+vi.mock("@barmark/midi", () => midi);
+
 /** Authorization of the attachment remote functions: an editor of the file's account (memberOf → accountOfFile). */
 const files = await import("./files.remote");
 
@@ -36,6 +45,21 @@ const FILE = fakeId("file-one");
 const SONG = fakeId("song-one");
 const DEMO = fakeId("demo-one");
 const READ = "key: C, time: 4/4\n| C | G |";
+/** The attachment `midiFileForImport` finds: a ready MIDI file of SONG. */
+const midiRow = (over: Record<string, unknown> = {}) => ({
+	id: FILE,
+	songId: SONG,
+	url: "https://blob/groove.mid",
+	filename: "groove.mid",
+	title: "Groove",
+	status: "ready",
+	kind: "midi",
+	...over,
+});
+const givenMidi = (over: Record<string, unknown> = {}) => {
+	data.midiFileForImport.mockResolvedValue(midiRow(over));
+	blob.readBlob.mockResolvedValue(new Response(new Uint8Array([0x4d, 0x54, 0x68, 0x64])));
+};
 /** The score file `chartReadOfFile` finds: a notation PDF of SONG, with a read when `chartRead` is given. */
 const scoreRow = (over: Record<string, unknown> = {}) => ({
 	id: FILE,
@@ -130,6 +154,18 @@ const cases = [
 		dataFn: "saveChartRead",
 		args: [ACCOUNT, FILE, null, false],
 		outcome: { cleared: true },
+	},
+	{
+		name: "chartFromMidi",
+		fn: files.chartFromMidi,
+		input: { id: FILE },
+		arrange: () => {
+			givenMidi();
+			midi.importMidi.mockReturnValue({ text: "", diagnostics: [] });
+		},
+		dataFn: "midiFileForImport",
+		args: [ACCOUNT, FILE],
+		outcome: { chart: "", chartHtml: "", diagnostics: [], parts: [] },
 	},
 ];
 
@@ -425,5 +461,80 @@ describe('"Chart from score": a MusicXML file read into a chart (chartFromScore)
 		asSignedOut();
 		givenNotation();
 		await expect(call(files.chartFromScore, { id: SCORE })).rejects.toMatchObject(httpError(401));
+	});
+});
+
+describe('"Chart from MIDI": a MIDI attachment read into a chart (chartFromMidi)', () => {
+	/** The remote's answer, typed (`call` answers unknown). */
+	const chartOf = () =>
+		call(files.chartFromMidi, { id: FILE }) as Promise<{
+			chart: string;
+			chartHtml: string;
+			diagnostics: { level: "error" | "warning"; message: string }[];
+			parts: string[];
+		}>;
+
+	beforeEach(() => asEditorOf(ACCOUNT));
+
+	it("an editor gets the import's chart and its HTML, read from the file's bytes", async () => {
+		givenMidi();
+		midi.importMidi.mockReturnValue({ text: "key: C, time: 4/4\n| C | G |", diagnostics: [] });
+		const r = await chartOf();
+		expect(r.chart).toBe("key: C, time: 4/4\n| C | G |");
+		expect(r.chartHtml).not.toBe("");
+		expect(r).toMatchObject({ diagnostics: [], parts: [] });
+		expect(blob.readBlob).toHaveBeenCalledWith("https://blob/groove.mid");
+		const bytes = midi.importMidi.mock.calls[0][0];
+		expect(Array.from(bytes)).toEqual([0x4d, 0x54, 0x68, 0x64]);
+	});
+
+	it("errors and warnings reach the card as they are; info notes are left out", async () => {
+		givenMidi();
+		midi.importMidi.mockReturnValue({
+			text: "",
+			diagnostics: [
+				{ severity: "error", code: "no-notes", message: "The file has no notes." },
+				{ severity: "warning", code: "tempo-ramp", message: "A tempo ramp was flattened." },
+				{ severity: "info", code: "drums-left-out", message: "The drums were left out." },
+			],
+		});
+		const r = await chartOf();
+		expect(r).toMatchObject({ chart: "", chartHtml: "", parts: [] });
+		expect(r.diagnostics).toEqual([
+			{ level: "error", message: "The file has no notes." },
+			{ level: "warning", message: "A tempo ramp was flattened." },
+		]);
+	});
+
+	it("404 for a file that is not MIDI or not ready, or not found in the account", async () => {
+		for (const over of [{ kind: "pdf" }, { kind: "audio" }, { status: "uploading" }]) {
+			givenMidi(over);
+			await expect(chartOf()).rejects.toMatchObject({
+				status: 404,
+				body: { message: "MIDI file not found" },
+			});
+		}
+		data.midiFileForImport.mockResolvedValue(null);
+		await expect(chartOf()).rejects.toMatchObject(httpError(404));
+		expect(midi.importMidi).not.toHaveBeenCalled();
+	});
+
+	it("shares the score's Blob read: 502 when Blob fails, 413 over 20 MB", async () => {
+		givenMidi();
+		blob.readBlob.mockResolvedValue(new Response(null, { status: 404 }));
+		await expect(chartOf()).rejects.toMatchObject({
+			status: 502,
+			body: { message: "The MIDI file could not be read" },
+		});
+		blob.readBlob.mockRejectedValue(new Error("down"));
+		await expect(chartOf()).rejects.toMatchObject(httpError(502));
+		blob.readBlob.mockResolvedValue(
+			new Response("x", { headers: { "content-length": String(21 * 1024 * 1024) } }),
+		);
+		await expect(chartOf()).rejects.toMatchObject({
+			status: 413,
+			body: { message: "The MIDI file is too large to chart" },
+		});
+		expect(midi.importMidi).not.toHaveBeenCalled();
 	});
 });
