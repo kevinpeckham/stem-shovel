@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.247.0] - 2026-11-08
+
 ### Added
 
 - **Chart as MIDI.** The song actions menu downloads the chord chart as a Standard MIDI File (`/api/songs/<id>/chart.mid`, `@barmark/midi` 0.2.0): the chart's play order as block chords with a bass, a track per part, headings as markers, lyrics as lyric events, the song's tempo when the chart names none; viewable like the song itself.

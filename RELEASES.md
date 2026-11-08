@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.247.0] - 2026-11-08
+
 ### Added
 
 - **Chart as MIDI.** The song's menu now downloads the chord chart as a MIDI file beside the MusicXML one: the chart's play order as block chords with a bass, one track per part, your section headings as markers and the lyrics as lyric events, ready for a DAW or a notation program.
