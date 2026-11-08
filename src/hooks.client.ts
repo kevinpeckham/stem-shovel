@@ -1,9 +1,10 @@
 import { dev } from "$app/env";
-import { updated } from "$app/state";
+import { navigating, page, updated } from "$app/state";
 import * as Sentry from "@sentry/sveltekit";
 import type { HandleClientError } from "@sveltejs/kit/hooks";
 import { SENTRY_DSN } from "#lib/constants/sentryDsn.js";
 import { isChunkLoadError } from "#lib/utils/isChunkLoadError.js";
+import { isNetworkFetchError } from "#lib/utils/isNetworkFetchError.js";
 
 /**
  * Sentry in the browser (docs/environment.md). The DSN is a public value.
@@ -39,5 +40,27 @@ const reportError: HandleClientError = Sentry.handleErrorWithSentry();
  */
 export const handleError: HandleClientError = async (input) => {
 	if (isChunkLoadError(input.error) && (await updated.check())) return;
+	if (isNetworkFetchError(input.error) && isPreload(input.event.url)) {
+		Sentry.addBreadcrumb({
+			category: "sveltekit.preload",
+			level: "warning",
+			message: `Preload of ${input.event.url.pathname} got no response`,
+			data: { url: input.event.url.href, error: String(input.error) },
+		});
+		return;
+	}
 	return reportError(input);
 };
+
+/**
+ * Hovering a link preloads its data (app.html). When that fetch gets no
+ * response (the connection dropped, the request was cut off, the machine slept)
+ * SvelteKit hands the error here though it then throws the preload away and
+ * nobody saw it. It is harmless: the click loads the data afresh, and if that
+ * fails it is a navigation, which is still reported. A preload is the one load
+ * with no navigation in progress that targets a page other than the current one
+ * (an invalidate reloads the current page, and is still reported).
+ */
+function isPreload(url: URL): boolean {
+	return navigating.to === null && url.href !== page.url.href;
+}
