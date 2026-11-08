@@ -83,6 +83,28 @@ adds the remedy that passes; if the catch map shows the downbeat is
 safe for `|x| < 0.5` beat and arm 4 shows real `x` stays under it, the
 app notes the fence as the guarantee and moves on.
 
+## Bench answer (2026-11-08, Studies 28 + 29; stem-bench e117b6c)
+
+Short form: ship v5 as planned; the fence plus the DTW tether are the
+guarantee you hoped for. Catch map (arm 1): downbeat caught for x in
+about [-0.4, +0.45] beats at every downbeat weight tried, including
+0.1, at 120 and 200 bpm; inside the fence no other beat is reachable,
+so backbeat weight cannot matter. Arm 3: kick-removed remixes of all
+four songs keep every Study 27 gate (deltas -0.05 to -0.14 beats).
+Arm 4: real phase errors are 0.05 to 0.10 beats; your 1.4-beat
+arithmetic was correct but measured the superseded truth anchor (the
+ruler Study 27 corrected), not the DTW phase. Arm 2 found the
+knife-edge exactly where you guessed (weak downbeat + pickup or
+hi-hat AT the fence edge), synthetic-only, so the conditional remedy
+arm did not run; one unit correction: an eighth is half a beat, so
+the pickup sits at the fence boundary, not inside it. Your proposed
+downbeat check belongs to the OTHER feature: the same morning, the
+capstone chartless draft (Study 28) saw the raw comb anchor land on
+the backbeat on two songs, because without the DTW tether the comb
+phase is a beat detector, not a downbeat detector. That check is the
+named next remedy for the auto-chart grid leg. Details: stem-bench
+REPORT.md Studies 28 and 29; results/study28.json, study29.json.
+
 ## Addendum, the same day: the envelope's lead
 
 Porting v5, the app measured `onsetEnvelope`'s time base on synthetic
