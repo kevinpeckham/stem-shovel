@@ -131,3 +131,57 @@ takes bar one from whichever of these passes: a single witness at 4
 of 4, or the registered vote. The bar-one tap stays off the table
 unless every witness and the vote fail, and then only as the fallback
 behind an honest "undecided" rather than as the design.
+
+## App review of Studies 31 and 31b (2026-11-08, stem-bench 5ee2ba6; 31c pending)
+
+Read from results/study31.json, results/study31b.json, the 31b and 31c
+briefs and scripts/run-study31b.ts. Three things to act on before 31c's
+numbers are read as the family's result.
+
+1. **The onset-envelope witnesses saw only the first 90 s of each
+   song.** `extractFeatures(buffer, maxSeconds = 90)` (src/study9/
+   analysis.ts) caps the envelope, and w2's `last` is 89.7 s on all
+   four songs (letter runs 138 s, peaceful 254 s). The 31b "fade fix"
+   could not help: there is no envelope after 90 s to find a last
+   onset in. So w2 (last strong onset) and w3 (both ends) have not run
+   in either study, and w6's kick, snare and bass histograms are from
+   the first 90 s only. w4 (chord runs), w5 (RMS of the high band) and
+   w7 (the chromagram) read the whole song and stand. Please re-run w2,
+   w3 and w6 with the cap lifted for those witnesses before 31c's
+   table is final; the vote's verdicts should not change (w4 and w7
+   carry them), but the app wants to know whether the song's end is a
+   witness at all, since it is the cheapest one after time zero.
+
+2. **The time-zero distances are the envelope's lead, measured by a
+   witness that does not read the envelope.** w1's distance from the
+   nearest lattice beat: letter 0.174 beat = 0.079 s, peaceful 0.139 =
+   0.058 s, mop 0.253 = 0.068 s, eat 0.140 = 0.070 s. Four songs, four
+   tempos, one number: the 0.07 s the addendum to the v5-backbeat brief
+   predicted. The lattice sits that far before the sound, so time zero
+   is a downbeat on all four songs to within about 10 ms, and mop's
+   abstention is the fence (0.25 beat) catching the lead, not the song.
+   Please re-score w1 with 0.07 s added to the lattice: the prediction
+   is four distances under 0.05 beat, mop voting, and A1 at 4 of 4. The
+   same correction applies to every truth in the family (−0.121,
+   −0.119, −0.066, −0.085 are all the downbeat at time zero read early),
+   and to Study 27's residuals and the Mop Heart adjudication.
+
+3. **Correction 4 is the time-zero prior confirmed, not a surprise.**
+   The brief read eat's +0.415 s as a pickup or pre-roll; the stems say
+   bar line at time zero, and the registered anchor was the ruler's
+   error. The app takes the lesson: when a DAW export's first sample
+   disagrees with a truth by one beat, suspect the truth.
+
+What the app reads as settled, pending 31c: harmonic rhythm alone is 4
+of 4 (margins 5, 29, 7, 35 changes; letter's is thin and the app will
+want the margin reported as a confidence), section scale is 4 of 4
+(17 of 18, 42 of 42, 6 of 11, 20 of 20 peaks), time zero is 4 of 4
+once the lead is removed, and crashes are 1 of 4 and drop out. The
+whole-bar placement defect (31c) also re-reads Study 30's peaceful
+61.4 % as right class, wrong bar, which the app notes.
+
+The app's likely shape, if 31c passes: the chartless draft takes bar
+one from time zero (lead-corrected) when the chord-run histogram
+agrees, and from the chord runs alone when time zero abstains; section
+scale as the tie-breaker; "undecided" keeps the base. The bar-one tap
+stays out.
