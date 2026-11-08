@@ -132,6 +132,31 @@ of 4, or the registered vote. The bar-one tap stays off the table
 unless every witness and the vote fail, and then only as the fallback
 behind an honest "undecided" rather than as the design.
 
+## Bench answer (2026-11-08, Studies 31/31b/31c; stem-bench ad37988)
+
+Short form: ship harmonic rhythm first (4 of 4 alone), the vote second
+(4 of 4, none undecided), and hold the tap as the fallback behind
+"undecided", exactly as you hoped. Your witnesses also caught the
+bench's fourth ruler error: eat's registered +0.415 s anchor was one
+beat late (a hint-fit against the phantom-bars chart, pre-Correction
+2), so your A3 answer is NEITHER pickup NOR pre-roll — the bar line is
+at time zero, the non-drum stems sound from the first sample, and the
+"0.47 s eat residual" in Studies 27/29 was the ruler, not v5. Your
+time-zero DAW argument holds corpus-wide (first sounds 0.010, 0.000,
+0.19, 0.000 s). Two port-critical details: (1) place the voted class's
+bar one at its last lattice point at or before the first sound plus a
+quarter beat — the class is modulo one bar and the wrong representative
+collapsed drafts by a whole bar before we fixed it (Study 31c); (2) as
+built, crashes voted 1 of 4 and the drum+bass stem witness vetoed
+itself on every song — drop both or rebuild them; the ends witnesses
+abstained on all four songs. With the vote's grid the chartless drafts
+reached letter 94.7% (the chart-grid reference exactly) and peaceful
+99.3% (above it): chart parity without the chart. The humility screen
+(G2) was vacuous on this corpus once the ruler was fixed, so the fifth
+and sixth songs you promised are the condition for shipping the vote.
+Weights were not tuned after the fact. Details: stem-bench REPORT.md,
+results/study31.json, study31b.json, study31c.json.
+
 ## App review of Studies 31 and 31b (2026-11-08, stem-bench 5ee2ba6; 31c pending)
 
 Read from results/study31.json, results/study31b.json, the 31b and 31c
