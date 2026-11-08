@@ -37,7 +37,11 @@ describe("SampledKit", () => {
 		await vi.waitFor(() => expect(captureException).toHaveBeenCalledTimes(1));
 		const [error, context] = captureException.mock.calls[0]!;
 		expect((error as Error).message).toBe("snare: 404");
-		expect(context.extra).toEqual({ kit: "acoustic", voice: "snare", url: "/kits/acoustic/snare.wav" });
+		expect(context.extra).toEqual({
+			kit: "acoustic",
+			voice: "snare",
+			url: "/kits/acoustic/snare.wav",
+		});
 		const out = {} as AudioNode;
 		expect(kit.play("snare", ctx, 0, 1, out)).toBeNull();
 	});
