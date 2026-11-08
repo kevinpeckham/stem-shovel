@@ -193,7 +193,15 @@ in three steps driven by `src/lib/upload.ts`:
   the song's title where the chart has none; `<song title>.musicxml`,
   `application/vnd.recordare.musicxml+xml`; a 404 naming what to fix when
   the chart is blank, has errors or has no bars to play, since the export
-  refuses a chart with errors). The chart section is drawn as a chart
+  refuses a chart with errors); and the chart alone as a Standard MIDI
+  File, `GET /api/songs/[id]/chart.mid` (2026-11-08: `utils/chartMidi.ts`
+  over `@barmark/midi`'s `exportMidi`, the chart's play order as block
+  chords with a bass, a track per part with its General MIDI program,
+  headings as markers, lyrics as lyric events, the song's tempo converted
+  to barmark's beat by `utils/songChartTempo.ts` when the chart names
+  none; `<song title>.mid`, `audio/midi`; the same 404 as the MusicXML
+  route; the three documentation routes share `viewableDocumentationSong`
+  in `server/songViewGate.ts`). The chart section is drawn as a chart
   (2026-11-05, `utils/chartToPdf.ts`): barmark's renderer model
   (`layoutChart`) into pdfkit, with the sections and their rehearsal
   letters, bar numbers, bar lines, repeat marks and ×N, endings, chords

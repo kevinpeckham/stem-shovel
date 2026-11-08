@@ -1,10 +1,9 @@
-import { songForDocumentation } from "#lib/server/data.js";
 import {
 	hasDocumentation,
 	notationPartsOf,
 	songDocumentationPdf,
 } from "#lib/server/documentation.js";
-import { requireSongView } from "#lib/server/songViewGate.js";
+import { viewableDocumentationSong } from "#lib/server/songViewGate.js";
 import { attachmentDisposition } from "#lib/utils/attachmentDisposition.js";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error } from "@sveltejs/kit";
@@ -21,9 +20,7 @@ export const config: Config = { maxDuration: 120 };
  * in any of the three is a 404, as is one that does not exist.
  */
 export const GET: RequestHandler = async ({ params, url, locals, cookies }) => {
-	const song = await songForDocumentation(params.id);
-	if (!song) error(404, "Not found");
-	await requireSongView(song, song.accountId, { locals, url, cookies });
+	const song = await viewableDocumentationSong(params.id, { locals, url, cookies });
 	const notation = await notationPartsOf(song);
 	if (!hasDocumentation(song, notation.length))
 		error(404, "This song has no lyrics, chart, notes or notation yet.");

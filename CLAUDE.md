@@ -95,6 +95,7 @@ bun run firewall:smoketest   # create the firewall rule that matches x-smoketest
 bun run db:generate / db:migrate / db:seed / db:studio   # drizzle-kit via varlock
 bun run db:migrate:steps                # db:migrate one statement at a time, when Turso answers 502 to the batch (same journal)
 bun run db:status                       # the last migration applied and any pending (APP_ENV=preview for staging); check production before a push to main
+bun run db:chart-check                  # read-only: every chart on the stage read by the installed barmark; lists errors/warnings before a barmark bump (APP_ENV=preview for staging; production from Kevin's machine)
 bun run db:kind                         # read-only: the stage's Turso kind (engine or classic) and PRAGMA foreign_keys; engine = cascade.ts is load-bearing (FINDINGS "Study AW")
 bun run db:fk-probe                     # the shared five-key foreign-key probe (docs/fk-coordinated-response-2026-11-03.md); writes and drops two scratch tables, so Kevin runs it on a stage
 bun run db:preview-bot <account-slug>   # enrol the Screenshot Bot in an account

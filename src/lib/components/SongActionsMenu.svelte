@@ -360,7 +360,7 @@
 	</details>
 {/snippet}
 
-<!-- The documents as files: the lyrics, chart and notes in one PDF, and the chart as MusicXML. A snippet of its own so the downloads menu stays readable (Fallow scores a top-level snippet as its own unit). -->
+<!-- The documents as files: the lyrics, chart and notes in one PDF, and the chart as MusicXML and as MIDI. A snippet of its own so the downloads menu stays readable (Fallow scores a top-level snippet as its own unit). -->
 {#snippet documentationMenu()}
 	{#if docs.lyrics || docs.chart || docs.notes}
 		<button
@@ -394,6 +394,17 @@
 		>
 			<span class="i-ph-file-code mr-2" aria-hidden="true"></span>
 			Chart as MusicXML
+		</button>
+		<button
+			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+			type="button"
+			role="menuitem"
+			title="The chord chart as a Standard MIDI File: the harmony as block chords, for a DAW or notation program"
+			onclick={() =>
+				downloadBuilt(`/api/songs/${song.id}/chart.mid`, "the MIDI chart", `${song.title}.mid`)}
+		>
+			<span class="i-ph-music-notes mr-2" aria-hidden="true"></span>
+			Chart as MIDI
 		</button>
 	{/if}
 {/snippet}

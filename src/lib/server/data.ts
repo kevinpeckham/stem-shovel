@@ -6128,6 +6128,8 @@ export async function songForDocumentation(songId: string) {
 			lyricsMarkdown: true,
 			chartMarkdown: true,
 			notesMarkdown: true,
+			// The declared tempo, for the MIDI chart (`songChartTempo`).
+			changes: true,
 		},
 		with: {
 			project: { columns: { name: true, isPrivate: true, isRestricted: true } },

@@ -1030,6 +1030,22 @@ song seen reading and then waiting again is shown as "did not read" (the
 job released its claim). The job reports nothing finer than claim and
 done, so a song's bar is empty, pulsing or full.
 
+## Charts and barmark releases
+
+While barmark is 0.x, a minor release may change the grammar, and two of
+them have made a chart that parsed clean read differently: 0.20.0 made a
+`Coda` with no bar after it an error (it used to play nothing after `To
+Coda`, silently) and changed a replay's `->` to cut the bar as written
+rather than the last bar played. A stored chart is the band's, so before
+a release bumps `barmark`, `bun run db:chart-check` reads every chart on
+a stage with the installed version, read-only, and lists the ones with
+an error or a warning (`APP_ENV=preview` for staging; production from
+Kevin's machine, like `db:status`). The packages pin each other exactly
+(`@barmark/render`, `@barmark/musicxml`, `@barmark/sync` and
+`@barmark/midi` each require the barmark minor they were tested with,
+since a caret range would not reach a minor), so they are bumped
+together, with exact pins in package.json.
+
 ## The chart built from the detections (2026-11-07)
 
 `@barmark/sync` (barmark's companion package, 0.1.0; its design is

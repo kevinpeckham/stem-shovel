@@ -1,5 +1,4 @@
-import { songForDocumentation } from "#lib/server/data.js";
-import { requireSongView } from "#lib/server/songViewGate.js";
+import { viewableDocumentationSong } from "#lib/server/songViewGate.js";
 import { attachmentDisposition } from "#lib/utils/attachmentDisposition.js";
 import { chartMusicXml } from "#lib/utils/chartMusicXml.js";
 import { error } from "@sveltejs/kit";
@@ -16,9 +15,7 @@ import type { RequestHandler } from "./$types";
  * exist.
  */
 export const GET: RequestHandler = async ({ params, url, locals, cookies }) => {
-	const song = await songForDocumentation(params.id);
-	if (!song) error(404, "Not found");
-	await requireSongView(song, song.accountId, { locals, url, cookies });
+	const song = await viewableDocumentationSong(params.id, { locals, url, cookies });
 	const xml = chartMusicXml(song.chartMarkdown, song.title);
 	if (!xml) {
 		error(

@@ -4,6 +4,14 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Chart as MIDI.** The song's menu now downloads the chord chart as a MIDI file beside the MusicXML one: the chart's play order as block chords with a bass, one track per part, your section headings as markers and the lyrics as lyric events, ready for a DAW or a notation program.
+
+### Fixed
+
+- **Charts exported as MusicXML keep their repeats and jumps in order** when a repeat holds a repeat or a jump runs through a replay, and scores from Dorico import with their section names as headings.
+
 ## [0.246.0] - 2026-11-08
 
 ### Fixed
