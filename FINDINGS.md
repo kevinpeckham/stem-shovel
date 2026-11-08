@@ -584,6 +584,31 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 30 (stem-bench ad39959, ~$0.15): downbeat disambiguation
+  for the chartless grid FAILED both gates, published as found — and
+  the failure sharpens the product answer.** Chroma novelty (the
+  registered primary scorer) is not a downbeat detector: 0 of 4, with
+  letter-lands' backbeat outscoring its true downbeat, mop-heart's
+  candidates tying to four decimals, and eat-all-the-clocks moved OFF
+  its already correct anchor; the same chroma smear that broke the DTW
+  geometry makes frame novelty mush at beat granularity. Kick-band
+  onsets (the secondary) went 2 of 4 and also moved a correct anchor
+  once. Cross-study tally: three cheap chartless scorers are now
+  measured (raw comb phase, chroma novelty, kick band) and none earns
+  the right to overrule a correct base. What IS measured solid for the
+  auto-chart feature: the period is exact (0.02 percent), the length
+  comes out within one bar from the audible span, and the onset
+  lattice is right, so the entire remaining uncertainty is ONE BIT per
+  song: which beat is bar one. The named remedy is therefore a
+  product gesture, not more DSP: a single bar-one tap from the user
+  (not a tempo tap; the grid is already machine-exact) selects among
+  the few beat candidates with zero risk, and the alignment feature's
+  v5 placement is unaffected (its DTW tether already supplies that
+  bit). Candidate DSP remedies left on the table, unregistered:
+  bass-note changes at candidate bar lines from the transcription the
+  pipeline already runs, and hint-change concentration. Details:
+  stem-bench REPORT.md Study 30, results/study30.json.
+
 - **Studies 28 + 29 (stem-bench e117b6c): the v5-backbeat ASK is
   answered, and the capstone chartless draft found the backbeat in the
   wild the same morning.** For the alignment placement the app is
