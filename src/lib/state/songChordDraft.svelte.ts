@@ -14,6 +14,16 @@ import {
 	songNotes,
 	useChartlessGrid,
 } from "#lib/remote/songs.remote.js";
+import {
+	BarOneError,
+	chordDraftErrorMessage,
+	ChordsError,
+	DraftError,
+	GridError,
+	ModelNotReady,
+	PlacementError,
+	SaveError,
+} from "#lib/state/chordDraftErrors.js";
 import { notify } from "#lib/state/notifications.svelte.js";
 import { alignmentFeaturesKey } from "#lib/utils/alignmentFeaturesKey.js";
 import { chartDraftOfScore } from "#lib/utils/chartDraftOfScore.js";
@@ -27,6 +37,7 @@ import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
 import type { ConfidenceRecord, TimingMap } from "@barmark/sync";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
+import * as Schedule from "effect/Schedule";
 
 /** What a score's import could not carry over, as the package words it (@barmark/musicxml's diagnostics). */
 export interface ScoreDiagnostic {
@@ -105,6 +116,9 @@ const MODEL_POLL_SECONDS = 3;
 /** How long a posted job may take to claim the song before the page stops waiting for it. */
 const MODEL_CLAIM_SECONDS = 9;
 const MODEL_WAIT_SECONDS = 90;
+
+/** A run's failure that it reports: a step that ends the run. */
+type StepError = GridError | ChordsError | DraftError | SaveError;
 
 /** Where each bar of the song starts on the grid, and where the last one ends. */
 function barStartsOf(grid: BarGrid, duration: number): number[] {
@@ -250,9 +264,9 @@ export class SongChordDraft {
 	generateChart = () =>
 		this.#run(
 			Effect.gen({ self: this }, function* () {
-				if (!(yield* this.#ensureGrid())) return;
+				yield* this.#ensureGrid();
 				if (!this.#ready())
-					return this.#fail("Generating the chart failed", "Every stem has to decode first");
+					return yield* new GridError({ cause: "Every stem has to decode first" });
 				this.#step = "Detecting the chords…";
 				yield* this.#detect();
 				if (!this.chordSegments) return;
@@ -260,19 +274,18 @@ export class SongChordDraft {
 				this.#step = "Drafting the chart with AI…";
 				yield* this.#draft();
 				if (this.draft) yield* this.#saveGenerated(this.draft, placed);
-			}).pipe(Effect.ensuring(Effect.sync(() => (this.#step = null)))),
+			}).pipe(Effect.catch(this.#fail), Effect.ensuring(Effect.sync(() => (this.#step = null)))),
 		);
 
-	/** The song's grid, set from the stems when it has none; false (reported) when it still has none. */
-	#ensureGrid(): Effect.Effect<boolean> {
+	/** The song's grid, set from the stems when it has none; a `GridError` when it still has none. */
+	#ensureGrid(): Effect.Effect<void, GridError> {
 		return Effect.gen({ self: this }, function* () {
-			if (this.#opts.grid()) return true;
+			if (this.#opts.grid()) return;
 			this.#step = "Setting the tempo and time signature from the stems…";
 			const ok = yield* attempt(() => this.#opts.ensureGrid()).pipe(
 				Effect.orElseSucceed(() => false),
 			);
-			if (!ok) this.#fail("Generating the chart failed", "Set a tempo and a time signature first");
-			return ok;
+			if (!ok) yield* new GridError({ cause: "Set a tempo and a time signature first" });
 		});
 	}
 
@@ -292,9 +305,10 @@ export class SongChordDraft {
 				await this.#opts.onsaved();
 				return use;
 			}).pipe(
-				Effect.catch((e) =>
+				Effect.mapError((cause) => new BarOneError({ cause })),
+				Effect.catchTag("BarOneError", (e) =>
 					Effect.sync(() => {
-						notify(errorMessage(e), { kind: "info" });
+						notify(errorMessage(e.cause), { kind: "info" });
 						return null;
 					}),
 				),
@@ -306,7 +320,7 @@ export class SongChordDraft {
 	#saveGenerated(
 		draft: ChartDraft,
 		placed: { startAt: number; bpm: number } | null,
-	): Effect.Effect<void> {
+	): Effect.Effect<void, SaveError> {
 		return Effect.gen({ self: this }, function* () {
 			this.#step = "Saving…";
 			const id = this.#opts.songId();
@@ -320,7 +334,7 @@ export class SongChordDraft {
 				yield* attempt(() => saveSections({ id, sections })).pipe(
 					Effect.catch((e) => Effect.sync(() => notify(errorMessage(e), { kind: "error" }))),
 				);
-			const saved = yield* attempt(() =>
+			yield* attempt(() =>
 				saveChartDraft({
 					id,
 					markdown: draft.chart,
@@ -330,16 +344,7 @@ export class SongChordDraft {
 						? { timing: draft.timing, confidence: draft.confidence ?? undefined }
 						: {}),
 				}),
-			).pipe(
-				Effect.as(true),
-				Effect.catch((e) =>
-					Effect.sync(() => {
-						this.#fail("Saving the chart failed", e);
-						return false;
-					}),
-				),
-			);
-			if (!saved) return;
+			).pipe(Effect.mapError((cause) => new SaveError({ cause })));
 			this.draft = null;
 			yield* attempt(() => this.#opts.onsaved()).pipe(Effect.ignore);
 			notify(
@@ -352,10 +357,12 @@ export class SongChordDraft {
 		});
 	}
 
-	#fail(what: string, e: unknown) {
-		this.chordError = errorMessage(e);
-		notify(`${what}: ${this.chordError}`, { kind: "error" });
-	}
+	/** The one place a run reports the step that ended it: the card's error and the notification. */
+	#fail = (e: StepError) =>
+		Effect.sync(() => {
+			this.chordError = errorMessage(e.cause);
+			notify(chordDraftErrorMessage(e), { kind: "error" });
+		});
 
 	#detect(): Effect.Effect<void> {
 		return Effect.gen({ self: this }, function* () {
@@ -369,20 +376,24 @@ export class SongChordDraft {
 			this.chordsChecked = null;
 			this.draft = null;
 			this.placement = null;
-			// The model's chords first: they feed the placement's chord-change witness.
-			const read = Effect.gen({ self: this }, function* () {
-				const chords = yield* this.#modelChords();
-				const barStarts = yield* this.#placeBars(engine, grid, chords);
-				this.#barStarts = barStarts;
-				if (chords) return yield* this.#readModelBars(chords, barStarts);
-				this.chordBusy = "Listening…";
-				this.#readBars(yield* this.#notes(engine), barStarts);
-				yield* this.#checkChords();
-			});
-			yield* read.pipe(
-				Effect.catch((e) => Effect.sync(() => this.#fail("Chord detection failed", e))),
+			yield* this.#read(engine, grid).pipe(
+				Effect.catch(this.#fail),
 				Effect.ensuring(Effect.sync(() => (this.chordBusy = null))),
 			);
+		});
+	}
+
+	/** The chords on the bars: the model's when it has read the mix, else from the notes, checked by the AI. */
+	#read(engine: StemEngine, grid: BarGrid): Effect.Effect<void, ChordsError> {
+		return Effect.gen({ self: this }, function* () {
+			// The model's chords first: they feed the placement's chord-change witness.
+			const chords = yield* this.#modelChords();
+			const barStarts = yield* this.#placeBars(engine, grid, chords);
+			this.#barStarts = barStarts;
+			if (chords) return yield* this.#readModelBars(chords, barStarts);
+			this.chordBusy = "Listening…";
+			this.#readBars(yield* this.#notes(engine), barStarts);
+			yield* this.#checkChords();
 		});
 	}
 
@@ -402,7 +413,8 @@ export class SongChordDraft {
 			if (!steadyGrid(grid)) return declared;
 			this.chordBusy = "Placing the bars on the stems…";
 			const placement = yield* attempt((signal) => this.#place(engine, grid, runs, signal)).pipe(
-				Effect.orElseSucceed(() => null),
+				Effect.mapError((cause) => new PlacementError({ cause })),
+				Effect.catchTag("PlacementError", () => Effect.succeed(null)),
 			);
 			this.placement = placement;
 			if (import.meta.env.DEV)
@@ -465,15 +477,44 @@ export class SongChordDraft {
 	 * AI is off for the song): null then, so the notes path runs.
 	 */
 	#awaitModelChords(id: string): Effect.Effect<ChordminiRuns | null> {
-		return Effect.gen({ self: this }, function* () {
-			for (let waited = 0; waited < MODEL_WAIT_SECONDS; waited += MODEL_POLL_SECONDS) {
-				yield* Effect.sleep(`${MODEL_POLL_SECONDS} seconds`);
-				const stored = yield* this.#storedChords(id);
-				if (stored?.chords) return stored.chords;
-				if (waited >= MODEL_CLAIM_SECONDS && stored && !stored.inFlight) return null;
-			}
-			return null;
-		});
+		const spaced = `${MODEL_POLL_SECONDS} seconds` as const;
+		// The first poll a poll's interval after the read before the wait, then one every interval up to the wait's end.
+		return Effect.sleep(spaced).pipe(
+			Effect.andThen(
+				this.#pollModelChords(id).pipe(
+					Effect.retry({
+						schedule: Schedule.spaced(spaced),
+						times: MODEL_WAIT_SECONDS / MODEL_POLL_SECONDS - 1,
+						while: (e) => e.inFlight || !e.claimWindowPassed,
+					}),
+					// A backstop for a poll that hangs: the polls themselves end at the wait's end.
+					Effect.timeout(`${MODEL_WAIT_SECONDS} seconds`),
+				),
+			),
+			// The last poll still not ready, or the timeout: the notes path runs.
+			Effect.orElseSucceed(() => null),
+		);
+	}
+
+	/**
+	 * One poll of the wait: the model's frames, or `ModelNotReady`. The claim
+	 * window is counted in polls (exact under fake timers), the first at no
+	 * time waited; a poll the server did not answer counts as a run in flight.
+	 */
+	#pollModelChords(id: string): Effect.Effect<ChordminiRuns, ModelNotReady> {
+		let polls = 0;
+		return Effect.suspend(() => this.#storedChords(id)).pipe(
+			Effect.flatMap((stored) => {
+				const waited = MODEL_POLL_SECONDS * polls++;
+				if (stored?.chords) return Effect.succeed(stored.chords);
+				return Effect.fail(
+					new ModelNotReady({
+						inFlight: stored?.inFlight ?? true,
+						claimWindowPassed: waited >= MODEL_CLAIM_SECONDS,
+					}),
+				);
+			}),
+		);
 	}
 
 	/**
@@ -519,7 +560,7 @@ export class SongChordDraft {
 	 * otherwise transcribed here (the server copy keeps growing in the
 	 * background).
 	 */
-	#notes(engine: StemEngine): Effect.Effect<Note[], unknown> {
+	#notes(engine: StemEngine): Effect.Effect<Note[], ChordsError> {
 		return Effect.gen({ self: this }, function* () {
 			const stored = yield* attempt(() => songNotes({ id: this.#opts.songId() })).pipe(
 				Effect.orElseSucceed(() => null),
@@ -529,7 +570,9 @@ export class SongChordDraft {
 				stored && stored.doneSeconds > 0
 					? `Listening… (server ${Math.round((100 * stored.doneSeconds) / Math.max(1, stored.duration))}% done)`
 					: "Listening…";
-			return yield* attempt((signal) => this.#transcribe(engine, signal));
+			return yield* attempt((signal) => this.#transcribe(engine, signal)).pipe(
+				Effect.mapError((cause) => new ChordsError({ cause })),
+			);
 		});
 	}
 
@@ -593,7 +636,8 @@ export class SongChordDraft {
 				}),
 			).pipe(
 				Effect.map((answer) => (this.draft = answer)),
-				Effect.catch((e) => Effect.sync(() => this.#fail("The draft failed", e))),
+				Effect.mapError((cause) => new DraftError({ cause })),
+				Effect.catch(this.#fail),
 				Effect.ensuring(Effect.sync(() => (this.draftBusy = false))),
 			);
 		});

@@ -226,6 +226,15 @@ describe("SongChordDraft", () => {
 		expect(cd.draftBusy).toBe(false);
 	});
 
+	test("a rejected draft as a remote function's error: the card's error and the step's sentence", async () => {
+		remote.draftChart.mockRejectedValueOnce({ status: 502, body: { message: "The AI is busy" } });
+		const cd = make();
+		await cd.draftFromPanel();
+		expect(cd.chordError).toBe("The AI is busy");
+		expect(notify).toHaveBeenCalledWith("The draft failed: The AI is busy", { kind: "error" });
+		expect(cd.draft).toBeNull();
+	});
+
 	test("a score's chart replaces the draft, marked as the score's", () => {
 		const cd = make();
 		cd.draft = DRAFT;
@@ -582,6 +591,29 @@ describe("SongChordDraft", () => {
 			])
 				expect(fn).not.toHaveBeenCalled();
 			expect(cd.progress).toBeNull();
+		});
+
+		test("a failed save ends the run with the step's sentence; the draft stays", async () => {
+			remote.saveChartDraft.mockRejectedValueOnce(new Error("Turso answered 502"));
+			const cd = make();
+			await cd.generateChart();
+			expect(cd.chordError).toBe("Turso answered 502");
+			expect(notify).toHaveBeenCalledWith("Saving the chart failed: Turso answered 502", {
+				kind: "error",
+			});
+			expect(cd.draft).toEqual(DRAFT);
+			expect(onsaved).not.toHaveBeenCalled();
+			expect(cd.progress).toBeNull();
+		});
+
+		test("a failed start of bar 1 is said, and the chart is still saved", async () => {
+			placing.chartlessGridInBrowser.mockResolvedValue(PLACED);
+			remote.useChartlessGrid.mockRejectedValueOnce(new Error("Not a member"));
+			const cd = make();
+			await cd.generateChart();
+			expect(notify).toHaveBeenCalledWith("Not a member", { kind: "info" });
+			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
+			expect(cd.chordError).toBeNull();
 		});
 
 		test("the song's own sections stay; no placement, no bar one", async () => {

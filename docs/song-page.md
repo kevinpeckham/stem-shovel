@@ -302,3 +302,19 @@ matters, the three run only on a click and could load behind a dynamic
 import like the transcriber. The server stays Effect's home; a client
 class adopts it only when it has this shape (cancellation, retry,
 timeout, a resource to release), never for plain state.
+
+**Extended 2026-11-08.** "Generate chart from the stems" is one more
+program in `SongChordDraft`'s fiber (grid, chords, bar one, draft, save),
+so Cancel interrupts it at any step and `ensuring` clears the progress.
+Two refinements Kevin asked for after it landed: the wait for the chord
+model's frames is `Effect.retry` on a `Schedule.spaced` poll with a
+`while` on "still in flight or inside the claim window" and a `times`
+limit that ends the wait at 90 s, under an `Effect.timeout` that only
+backstops a poll that hangs (a timeout alone fires before the last poll
+under fake timers); the last refusal and the timeout both fold to null so
+the notes path runs (the three constants and the four poll tests are
+unchanged); and each step fails with its own `Data.TaggedError`
+(`state/chordDraftErrors.ts`), so the one `Effect.catch` at the run's
+edge reports "<step>: <message>" from the error value, and the non-fatal
+steps (the placement, the start-of-bar-1 write) are `catchTag` at their
+site.

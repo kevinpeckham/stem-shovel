@@ -17,6 +17,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Notifications show above an open popover.** The notification stack is now a manual popover in the browser's top layer, shown again whenever a notification arrives, so a "Chart saved" fired from the song settings is no longer hidden under them (`components/Notifications.svelte`).
 - **The draft card's saves say so, and the card goes away.** "Save as chart" and "Save sections" read "Saving…" while they run; a saved chart dismisses the card (whose preview had doubled the chart until a reload) and saved sections leave a "Sections saved" mark.
 
+### Technical
+
+- **The chord draft's steps carry tagged errors, and the model wait is an Effect retry.** `state/chordDraftErrors.ts` gives each step of Detect chords, the draft and "Generate chart" its own `Data.TaggedError` (`GridError`, `ChordsError`, `PlacementError`, `BarOneError`, `DraftError`, `SaveError`, `ModelNotReady`), so the notification names the step from the error value rather than a string at the catch site; the wait for the chord model's frames is `Effect.retry` on a `Schedule.spaced` poll (a `times` limit ends it, an `Effect.timeout` backstops a hanging poll), in place of a hand-rolled loop, with the same 3 s / 9 s / 90 s behavior (docs/song-page.md "Effect on the client").
+
 ## [0.251.0] - 2026-11-08
 
 ### Added
