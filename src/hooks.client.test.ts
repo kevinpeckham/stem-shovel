@@ -111,6 +111,27 @@ describe("handleError", () => {
 		expect(h.report).not.toHaveBeenCalled();
 		expect(h.breadcrumb).toHaveBeenCalledOnce();
 	});
+	it("keeps a hover preload of another page out of Sentry (STEM-SHOVEL-71)", async () => {
+		h.page.url = new URL("https://www.stemshovel.com/releases");
+		const preload = {
+			params: {},
+			url: new URL("https://www.stemshovel.com/docs/copyright-policy"),
+			route: { id: "/docs/[slug]" as const },
+		};
+		await handleError({
+			kind: "unknown" as const,
+			error: new TypeError("Failed to fetch"),
+			event: preload,
+		});
+		expect(h.report).not.toHaveBeenCalled();
+		expect(h.breadcrumb).toHaveBeenCalledWith(
+			expect.objectContaining({
+				category: "sveltekit.preload",
+				message: "Preload of /docs/copyright-policy got no response",
+			}),
+		);
+		h.page.url = new URL("https://www.stemshovel.com/dashboard");
+	});
 	it("reports a navigation that got no response", async () => {
 		h.navigating.to = { url: event.url };
 		await handleError(caught(new TypeError("Failed to fetch")));
