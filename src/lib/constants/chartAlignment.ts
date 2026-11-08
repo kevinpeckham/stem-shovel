@@ -139,13 +139,16 @@ export const DOWNBEAT_MIN_SCORE = 2;
 export const DOWNBEAT_OFF_COMB_MARGIN = 2;
 
 /**
- * The app's own gate on the chord changes voting alone (no other witness on
- * the winner): the top beat class must hold at least 1.2 times the changes
- * of the runner-up. The thinnest margin the bench saw right was 1.27
- * (Study 31, 33 changes against 26); a flatter histogram is a song whose
- * harmony moves on every beat, and the draft keeps the declared grid.
+ * The chord-change witness abstains unless its top beat class holds at
+ * least 1.2 times the changes of the runner-up. The thinnest margin the
+ * bench saw right was 1.27 (Study 31, 33 changes against 26); a flatter
+ * histogram is a song whose harmony moves on every beat, or a recording cut
+ * off the beat (Study 32: a 0.3-beat pad thinned the histogram and put time
+ * zero off the lattice at once, and the one witness left could not decide).
+ * The bench's validated run of the vote applied the rule this way, to the
+ * witness rather than to the winner alone (Study 32, 2026-11-08).
  */
-export const HARMONIC_ALONE_MIN_RATIO = 1.2;
+export const HARMONIC_MIN_RATIO = 1.2;
 
 /**
  * The checkerboard kernels' half widths in beats (audio/chartlessGrid.ts

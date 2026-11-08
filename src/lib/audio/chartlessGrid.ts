@@ -2,7 +2,7 @@ import {
 	DOWNBEAT_MIN_SCORE,
 	DOWNBEAT_OFF_COMB_MARGIN,
 	DOWNBEAT_WEIGHTS,
-	HARMONIC_ALONE_MIN_RATIO,
+	HARMONIC_MIN_RATIO,
 	ONSET_ENVELOPE_LEAD_SEC,
 	PLACEMENT_FIRST_SOUND_SLACK_BEATS,
 	SECTION_NOVELTY_SPANS,
@@ -150,8 +150,11 @@ const NO_CHORD = new Set(["N", "N.C.", "X", "?", ""]);
  * by frame coverage (`chordminiBarChords` on the beats, so each merged
  * segment's start is a change), the changes between two chords (never to
  * or from no chord) counted per beat class; the top class votes. Abstains
- * without the model's chords, with fewer changes than beats in a bar, or
- * on a tie. On the bench 4 of 4, margins 19 to 14, 56 to 27, 33 to 26, 46 to 11.
+ * without the model's chords, with fewer changes than beats in a bar, on a
+ * tie, or when the top class holds under `HARMONIC_MIN_RATIO` times the
+ * runner-up's changes (a flat histogram: harmony moving on every beat, or a
+ * cut that starts off the beat, Study 32's one wrong placement). On the
+ * bench 4 of 4, margins 19 to 14, 56 to 27, 33 to 26, 46 to 11.
  */
 export function harmonicRhythmWitness(
 	runs: ChordminiRuns | null,
@@ -167,7 +170,8 @@ export function harmonicRhythmWitness(
 			histogram[mod(first + segments[i]!.bar - 1, lattice.beatsPerBar)]!++;
 		}
 	}
-	const { cls, ...detail } = histogramVote(histogram, lattice.beatsPerBar);
+	const { cls: top, ...detail } = histogramVote(histogram, lattice.beatsPerBar);
+	const cls = detail.ratio >= HARMONIC_MIN_RATIO ? top : null;
 	return { name: "harmonicRhythm", cls, weight: DOWNBEAT_WEIGHTS.harmonicRhythm, detail };
 }
 
@@ -266,9 +270,9 @@ export function sectionWitness(
  * The vote (Study 31's registered rule): each witness's weight on its
  * class; decided when the top score is at least `DOWNBEAT_MIN_SCORE`,
  * beats the runner-up by one, and is class 0 (the comb's own phase) or
- * beats class 0 by `DOWNBEAT_OFF_COMB_MARGIN`. The app's gate on top:
- * when the chord changes are the winner's only witness, their top class
- * must hold `HARMONIC_ALONE_MIN_RATIO` times the runner-up's changes.
+ * beats class 0 by `DOWNBEAT_OFF_COMB_MARGIN`. The chord witness's ratio
+ * rule (`HARMONIC_MIN_RATIO`) is applied where it votes, as the bench's
+ * validated run of the vote applied it (Study 32).
  */
 export function downbeatVote(
 	witnesses: DownbeatWitness[],
@@ -280,13 +284,10 @@ export function downbeatVote(
 	const cls = order[0]!;
 	const top = scores[cls]!;
 	const runner = scores[order[1]!] ?? 0;
-	const voters = witnesses.filter((w) => w.cls === cls);
-	const alone = voters.length === 1 && voters[0]!.name === "harmonicRhythm";
 	const decided =
 		top >= DOWNBEAT_MIN_SCORE &&
 		top >= runner + 1 &&
-		(cls === 0 || top >= scores[0]! + DOWNBEAT_OFF_COMB_MARGIN) &&
-		(!alone || (voters[0]!.detail.ratio ?? 0) >= HARMONIC_ALONE_MIN_RATIO);
+		(cls === 0 || top >= scores[0]! + DOWNBEAT_OFF_COMB_MARGIN);
 	return { cls, decided, scores };
 }
 

@@ -174,14 +174,16 @@ describe("chartlessGrid", () => {
 			expect(chartlessGrid(input)).toBeNull();
 		});
 
-		test("the chord changes alone under 1.2 times the runner-up: undecided", () => {
+		test("the chord changes under 1.2 times the runner-up abstain (Study 32's rule): undecided", () => {
 			// A change on every downbeat, and on beat 3 of all but four bars: 40 against 36.
 			const changes = truthOf(s).flatMap((t, i) => (i % 10 === 9 ? [t] : [t, t + 2 * beatOf(s)]));
 			const input = inputOf(s, { chroma: NO_CHROMA, runs: runsOf(changes, durationOf(s)) });
 			const lattice = chartlessLattice(input.onset, FPS, input.declaredBarSeconds, 4);
 			expect(timeZeroWitness(lattice).cls).toBeNull();
 			const harmonic = harmonicRhythmWitness(input.runs, lattice, input.duration);
-			expect(harmonic.cls).toBe(trueClass(s, input).cls);
+			expect(harmonic.cls).toBeNull();
+			const histogram = harmonic.detail.histogram!;
+			expect(histogram.indexOf(Math.max(...histogram))).toBe(trueClass(s, input).cls);
 			expect(harmonic.detail.ratio).toBeGreaterThan(1);
 			expect(harmonic.detail.ratio).toBeLessThan(1.2);
 			expect(chartlessGrid(input)).toBeNull();
@@ -232,6 +234,12 @@ describe("downbeatVote", () => {
 		expect(downbeatVote([witness("timeZero", 1), witness("harmonicRhythm", 3)], 4).decided).toBe(
 			false,
 		);
+	});
+
+	test("an abstaining witness carries no weight: time zero decides class 0 alone", () => {
+		expect(
+			downbeatVote([witness("timeZero", 0), witness("harmonicRhythm", null)], 4),
+		).toMatchObject({ cls: 0, decided: true, scores: [2, 0, 0, 0] });
 	});
 });
 

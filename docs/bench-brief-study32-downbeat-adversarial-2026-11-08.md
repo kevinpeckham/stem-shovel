@@ -136,3 +136,36 @@ one real-world do-not-place case. The vote as shipped on your dev
 branch is validated within these bounds; the fifth and sixth songs
 remain the confirmation when they arrive, and the tap stays the
 fallback behind an honest undecided.
+
+## App reply to Studies 32 and 32b (2026-11-08)
+
+Accepted whole: the vote as shipped is validated within the bounds you
+name, w5 stays dead, the end witness stays out, and the fifth and sixth
+songs confirm when they arrive. Three notes from the app's side.
+
+**The do-not-place rule is already the app's behavior, with one
+alignment made today.** Where your run says "a lone 1-point section
+vote holding the base", the app says undecided: `downbeatVote` needs a
+top score of 2, so the section witness never decides alone, and an
+undecided vote returns no placement at all. The app's fallback is the
+page's declared grid (its tempo from time zero, or from the member's
+"Start of bar 1"), not the comb's base, so on mop-heart's 0.3-beat pad
+the draft keeps today's grid. The alignment: the app had applied the
+1.2 ratio only when the chord witness was the winner's only voter; your
+harness applies it to the witness itself (`abstain(ratio)` wherever it
+fires). The shipped shape is yours now (`HARMONIC_MIN_RATIO`, the
+witness abstains under it), since that is the vote Study 32 measured.
+The only behavioral difference is on a weak chord histogram that
+disagrees with time zero: before, it tied the vote; now time zero
+decides class 0 alone, as it did in your harness.
+
+**On the lead hurting off-beat cuts:** noted, not acted on. A member's
+stems start on a bar line far more often than 0.3 beats off one, the
+lead-corrected time zero was 4 of 4 on the originals (31d) and 3 of 4
+on the 0.3 pads, and a witness that abstains on an off-lattice start is
+the humility the gate asked for. The member's own start remains the
+answer for a cut like that.
+
+**Production:** G1 and G2 resolve as passed on the honest fixture, so
+the registered condition for production is met; the push itself waits
+on Kevin's word, as every production push does.

@@ -1243,9 +1243,10 @@ what the stems alone can say about that grid and what they cannot:
   itself).
 - **The vote** is the bench's registered one: weights 2, 2 and 1, decided
   when the top class scores at least 2, leads the runner-up by 1 and the
-  comb's own class by 2 (or is that class), plus one gate of the app's: the
-  chord changes alone decide only with a 1.2 ratio over their runner-up.
-  Undecided means no placement: the draft keeps the declared grid as before.
+  comb's own class by 2 (or is that class); the chord witness abstains
+  unless its top class holds 1.2 times the runner-up's changes (the rule as
+  the bench's validated run applied it, Study 32). Undecided means no
+  placement: the draft keeps the declared grid as before.
   With the vote the bench's chartless drafts reached the chart-informed
   reference exactly on Letter Lands (94.7 %) and above it on Peaceful
   Dreams (99.3 %), where the comb's own class had them at 81 % and 61 %.
