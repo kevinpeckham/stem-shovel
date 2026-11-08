@@ -7,6 +7,18 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Two copies of Svelte's server runtime in dev SSR null the component context (2026-11-08)
+
+From Sentry STEM-SHOVEL-7B: `GET /` on the dev server threw
+`Cannot read properties of null (reading 'r')` at Piano.svelte's `onDestroy`.
+
+- **`ssr_context` is module state.** Svelte's renderer sets it just before a
+  component body runs; `onDestroy` reads it from `svelte`'s server entry. If the
+  dev SSR graph holds two copies of the runtime, the component reads the copy the
+  renderer never set.
+- **One Svelte.** vite.config.ts dedupes `svelte` and keeps it out of
+  `optimizeDeps`, so a re-optimisation or hot reload cannot load a second copy.
+
 ## An onset envelope over a whole song costs more than the warping it feeds (2026-11-08)
 
 From timing `alignChart` stage by stage after the Study 26c repair landed.
