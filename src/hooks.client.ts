@@ -39,6 +39,7 @@ const reportError: HandleClientError = Sentry.handleErrorWithSentry();
  * no new version out is a real fault and is still reported.
  */
 export const handleError: HandleClientError = async (input) => {
+	if (dev && isChunkLoadError(input.error) && reloadForDevModule(input.error)) return;
 	if (isChunkLoadError(input.error) && (await updated.check())) return;
 	if (isNetworkFetchError(input.error) && isPreload(input.event.url)) {
 		Sentry.addBreadcrumb({
@@ -51,6 +52,45 @@ export const handleError: HandleClientError = async (input) => {
 	}
 	return reportError(input);
 };
+
+/** Where the last dev reload for a module that would not load was recorded, and when. */
+const DEV_RELOAD_KEY = "stem-shovel:dev-module-reload";
+/** A module still failing this soon after its reload is a real fault, not a stale URL. */
+const DEV_RELOAD_WINDOW_MS = 10_000;
+
+/**
+ * The dev server's module URLs (.svelte-kit/generated/dev/..., ?t=) change on
+ * every HMR update and restart, and an open tab that asks for one it has
+ * dropped gets this error. version polling is off in dev, so updated.check()
+ * can never answer it; a reload fetches the current modules and the page
+ * recovers, so the failure is harmless and left as a breadcrumb. The same
+ * module failing again right after its reload is reported.
+ */
+function reloadForDevModule(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	const module = message.match(/https?:\/\/\S+/)?.[0]?.split("?")[0] ?? message;
+	try {
+		const last = JSON.parse(sessionStorage.getItem(DEV_RELOAD_KEY) ?? "null") as {
+			module: string;
+			at: number;
+		} | null;
+		if (last?.module === module && Date.now() - last.at < DEV_RELOAD_WINDOW_MS) {
+			sessionStorage.removeItem(DEV_RELOAD_KEY);
+			return false;
+		}
+		sessionStorage.setItem(DEV_RELOAD_KEY, JSON.stringify({ module, at: Date.now() }));
+	} catch {
+		return false;
+	}
+	Sentry.addBreadcrumb({
+		category: "sveltekit.dev-module",
+		level: "warning",
+		message: `Dev module ${module} would not load; reloading`,
+		data: { error: message },
+	});
+	location.reload();
+	return true;
+}
 
 /**
  * Hovering a link preloads its data (app.html). When that fetch gets no
