@@ -10,7 +10,8 @@
  * before a release bumps the package, this lists the charts whose read
  * changes: those with an error, and those whose played bar count differs
  * from the committed barmark's. Prints one line a chart with a problem,
- * a summary, and exits 1 when any chart has an error.
+ * a summary, and exits 1 when any chart has an error (2 when node_modules'
+ * barmark is not the one package.json pins: run `bun install` first).
  */
 import { createClient } from "@libsql/client";
 import { parseChart } from "barmark";
@@ -20,6 +21,19 @@ import { libsqlUrl } from "../src/lib/utils/libsqlUrl";
 const { TURSO_DATABASE_URL, TURSO_AUTH_TOKEN } = process.env;
 if (!TURSO_DATABASE_URL || !TURSO_AUTH_TOKEN)
 	throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are not set (run via `varlock run`)");
+
+// The barmark that reads the charts must be the one package.json pins: a stale
+// node_modules (a pull without `bun install`) once reported 0.2.0's messages as 0.21.0's.
+const require = createRequire(import.meta.url);
+const installed = (require("barmark/package.json") as { version: string }).version;
+const pinned = (require("../package.json") as { dependencies: Record<string, string> }).dependencies
+	.barmark;
+if (installed !== pinned) {
+	console.error(
+		`node_modules holds barmark ${installed} but package.json pins ${pinned}: run \`bun install\` first`,
+	);
+	process.exit(2);
+}
 
 const client = createClient({ url: libsqlUrl(TURSO_DATABASE_URL), authToken: TURSO_AUTH_TOKEN });
 console.log(`database: ${new URL(libsqlUrl(TURSO_DATABASE_URL)).host}`);
@@ -44,10 +58,7 @@ for (const row of rows.rows) {
 		);
 	}
 }
-const barmarkVersion = (
-	createRequire(import.meta.url)("barmark/package.json") as { version: string }
-).version;
 console.log(
-	`${rows.rows.length} charts read with barmark ${barmarkVersion}: ${errors} with errors, ${warnings} with warnings`,
+	`${rows.rows.length} charts read with barmark ${installed}: ${errors} with errors, ${warnings} with warnings`,
 );
 process.exit(errors > 0 ? 1 : 0);
