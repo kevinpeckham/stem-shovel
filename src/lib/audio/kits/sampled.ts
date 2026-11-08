@@ -1,6 +1,19 @@
 import { DRUM_VOICE_IDS, type DrumVoiceId } from "#lib/constants/drumMachine.js";
 import type { DrumHit, DrumKit } from "./types";
 
+/** A sample that would not fetch, to Sentry with which kit, voice and URL; the import is lazy so tests and SSR never load it. */
+async function reportMissingSample(
+	error: unknown,
+	extra: { kit: string; voice: DrumVoiceId; url: string },
+): Promise<void> {
+	try {
+		const Sentry = await import("@sentry/sveltekit");
+		Sentry.captureException(error, { tags: { "drum.kit": extra.kit }, extra });
+	} catch {
+		// no Sentry here
+	}
+}
+
 /**
  * A kit of one-shot samples (static/kits/<id>/<voice>.wav; the acoustic
  * and room kits are Groovie's CC0 recordings, credited in the docs and on
@@ -12,7 +25,8 @@ import type { DrumHit, DrumKit } from "./types";
  * included.
  */
 export class SampledKit implements DrumKit {
-	#files: Map<DrumVoiceId, Promise<ArrayBuffer>> | null = null;
+	/** Each voice's bytes, or null when its file could not be fetched (reported, and the voice stays silent). */
+	#files: Map<DrumVoiceId, Promise<ArrayBuffer | null>> | null = null;
 	#buffers = new Map<DrumVoiceId, AudioBuffer>();
 	#decoding: Promise<void> | null = null;
 
@@ -39,10 +53,16 @@ export class SampledKit implements DrumKit {
 			if (!url) continue;
 			this.#files.set(
 				voice,
-				fetch(url).then((r) => {
-					if (!r.ok) throw new Error(`${voice}: ${r.status}`);
-					return r.arrayBuffer();
-				}),
+				fetch(url)
+					.then((r) => {
+						if (!r.ok) throw new Error(`${voice}: ${r.status}`);
+						return r.arrayBuffer();
+					})
+					// Caught here, not left to reject unheard until `load` (warming alone never awaits): a missing file is reported with the kit and URL, and the voice stays silent.
+					.catch((error: unknown) => {
+						void reportMissingSample(error, { kit: this.id, voice, url });
+						return null;
+					}),
 			);
 		}
 	}
@@ -52,7 +72,9 @@ export class SampledKit implements DrumKit {
 		this.#decoding ??= Promise.all(
 			[...this.#files!].map(async ([voice, file]) => {
 				// decodeAudioData detaches the buffer: decode a copy so the bytes stay whole.
-				const bytes = (await file).slice(0);
+				const fetched = await file;
+				if (!fetched) return;
+				const bytes = fetched.slice(0);
 				this.#buffers.set(voice, await ctx.decodeAudioData(bytes));
 			}),
 		).then(() => undefined);
