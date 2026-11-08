@@ -13,6 +13,7 @@ const h = vi.hoisted(() => ({
 	breadcrumb: vi.fn(),
 	navigating: { to: null as unknown },
 	dev: false,
+	options: undefined as unknown,
 	page: { url: new URL("https://www.stemshovel.com/dashboard") },
 }));
 vi.mock("$app/env", () => ({
@@ -26,7 +27,7 @@ vi.mock("$app/state", () => ({
 	page: h.page,
 }));
 vi.mock("@sentry/sveltekit", () => ({
-	init: () => {},
+	init: (options: unknown) => void (h.options = options),
 	replayIntegration: () => ({}),
 	handleErrorWithSentry: () => h.report,
 	addBreadcrumb: h.breadcrumb,
@@ -120,5 +121,46 @@ describe("handleError", () => {
 		await handleError(caught(new TypeError("Load failed")));
 		expect(h.report).toHaveBeenCalledOnce();
 		h.page.url = new URL("https://www.stemshovel.com/dashboard");
+	});
+});
+
+/** STEM-SHOVEL-1A: a hot update Vite could not apply is left as a breadcrumb in development only. */
+describe("beforeSend", () => {
+	const beforeSend = (event: object) =>
+		(h.options as { beforeSend: (event: object) => object | null }).beforeSend(event);
+	const hmrFailure = {
+		exception: {
+			values: [
+				{
+					type: "TypeError",
+					value: "Cannot read properties of undefined (reading 'default')",
+					stacktrace: {
+						frames: [
+							{ filename: "/@vite/client" },
+							{ filename: "/src/routes/dashboard/+page.svelte" },
+						],
+					},
+				},
+			],
+		},
+	};
+	it("drops a failed hot update in development, leaving a breadcrumb", () => {
+		h.dev = true;
+		expect(beforeSend(hmrFailure)).toBeNull();
+		expect(h.breadcrumb).toHaveBeenCalledWith(
+			expect.objectContaining({
+				category: "sveltekit.dev-hmr",
+				message: "Hot update of /src/routes/dashboard/+page.svelte failed",
+			}),
+		);
+	});
+	it("reports it outside development", () => {
+		expect(beforeSend(hmrFailure)).toBe(hmrFailure);
+		expect(h.breadcrumb).not.toHaveBeenCalled();
+	});
+	it("reports other errors in development", () => {
+		h.dev = true;
+		const other = { exception: { values: [{ type: "Error", value: "boom" }] } };
+		expect(beforeSend(other)).toBe(other);
 	});
 });

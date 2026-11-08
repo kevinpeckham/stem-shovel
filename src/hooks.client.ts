@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/sveltekit";
 import type { HandleClientError } from "@sveltejs/kit/hooks";
 import { SENTRY_DSN } from "#lib/constants/sentryDsn.js";
 import { isChunkLoadError } from "#lib/utils/isChunkLoadError.js";
+import { hmrFailedModule, isViteHmrFailure } from "#lib/utils/isViteHmrFailure.js";
 import { isNetworkFetchError } from "#lib/utils/isNetworkFetchError.js";
 
 /**
@@ -26,7 +27,28 @@ Sentry.init({
 	replaysOnErrorSampleRate: 1.0,
 	integrations: [Sentry.replayIntegration()],
 	dataCollection: { userInfo: false, httpBodies: [] },
+	beforeSend: (event) => (dev && isViteHmrFailure(event) ? recordHmrFailure(event) : event),
 });
+
+/**
+ * In development, a hot update Vite could not apply (the edited file has a
+ * syntax error or a bad import, or the dev server restarted mid-update) makes
+ * the component's HMR accept handler read `default` of the module Vite failed
+ * to import: an unhandled rejection from Vite's client, not the app
+ * (STEM-SHOVEL-1A). It is harmless: Vite already reports the real error in the
+ * terminal and its overlay, and the next good save or a reload recovers. So it
+ * is left as a breadcrumb, naming the module, on whatever is reported next.
+ */
+function recordHmrFailure(event: Sentry.ErrorEvent): null {
+	const exception = event.exception?.values?.[0];
+	Sentry.addBreadcrumb({
+		category: "sveltekit.dev-hmr",
+		level: "warning",
+		message: `Hot update of ${hmrFailedModule(event) ?? "a module"} failed`,
+		data: { error: `${exception?.type ?? "Error"}: ${exception?.value ?? ""}` },
+	});
+	return null;
+}
 
 const reportError: HandleClientError = Sentry.handleErrorWithSentry();
 
