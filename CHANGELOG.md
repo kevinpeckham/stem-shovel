@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.246.0] - 2026-11-08
+
 ### Fixed
 
 - **The chart alignment's first and last bars.** The bar starts "Place from chart" and the timing map take from the alignment are repaired after the warping (stem-bench Studies 26/26b/26c, `audio/alignmentRepair.ts`): the bar period from an onset comb around the declared tempo, the middle kept where it lines up, the ends extrapolated at that period and slid by at most a quarter bar onto the recording's onsets. On Letter Lands the ends went from 7 and 15 s off to within a tenth of a second, so the aligned map now passes the fit gate. A chart whose bars do not line up through the middle is refused with a message that asks whether it is the right chart.
