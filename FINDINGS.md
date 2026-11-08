@@ -551,6 +551,29 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+- **Study 27 (stem-bench 1aba7c3, $0): recipe v5, whole-grid
+  re-phasing, supersedes v3 as the recommended worker recipe — and
+  mop-heart's bar-one anchor was 0.381 s later than every prior study
+  believed.** v5 adds one move to v3: after the comb period and the
+  median-phase trust line, slide the ENTIRE uniform grid (one delta)
+  onto the onset lattice with combSlide, fenced at half a beat
+  (period / meter beats) so the slide corrects sub-beat phase and can
+  never hop to the neighboring beat. Measured: mop-heart snaps exactly
+  onto the lattice (the mix comb and the drums-stem comb independently
+  agree at anchor -0.066 s vs the 0.315 s the oracle had named; reader
+  hints prefer it 115 vs 113 of 140; Study 24's draft split, 136 vs
+  103, was the same lattice speaking); letter-lands and peaceful-dreams
+  move about 40 ms with no regression (ends 0.05 to 0.07 s, middles
+  about 0.06 s); the corrected-chart eat passes within the quarter-bar
+  line; and the wrong-chart refusal fires unchanged on the superseded
+  86-bar fixture. Cost over v3: one comb slide. For the player, the
+  224 bpm phase problem named in the 26 answer is closed: bar lines at
+  fast tempos come from the onset lattice, not the DTW phase. Note for
+  the alignment-ends brief: the 0.32 s mop outro residual reported
+  there was mostly the superseded anchor (the ruler), not the map.
+  Reference implementation: stem-bench src/study27/rephase.ts, with
+  the fence proven in tests/study27.test.ts.
+
 - **CORRECTION 2 (same day, prompted by Kevin; stem-bench baf9d33):
   eat-all-the-clocks never had an arrangement mismatch — the BENCH's
   chart fixture carried 15 phantom bars (each Chorus as 12 bars where
