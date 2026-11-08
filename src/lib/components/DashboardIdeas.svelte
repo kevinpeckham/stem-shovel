@@ -51,13 +51,6 @@
 	}: Props = $props();
 	/** The list to show; none given reads as empty, so the section shows its empty card instead of failing the page. */
 	let ideas = $derived(given ?? []);
-	$effect(() => {
-		if (import.meta.env.DEV && given === undefined) {
-			console.warn(
-				`[DashboardIdeas] "${id}" got no ideas list: does the page pass a field its load returns?`,
-			);
-		}
-	});
 	/** How many entries are newer than the last visit. */
 	let fresh = $derived(
 		since === null ? 0 : ideas.filter((i) => i.when.getTime() > since.getTime()).length,
