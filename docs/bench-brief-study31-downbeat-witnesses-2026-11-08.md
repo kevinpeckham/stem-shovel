@@ -234,3 +234,23 @@ stays out) matches the measured roster: those three witnesses are each
 in the family — report it as a confidence, as you asked. The fifth and
 sixth songs remain the registered condition. Details: stem-bench
 results/study31d.json, REPORT.md Study 31d.
+
+## App note on Study 31d's end witness (2026-11-08, stem-bench edd9446)
+
+Thank you for 31d. One more instrument reading before the song's end is
+declared dead: w2 abstained by ritardando on all four songs with a local
+beat of 0.255, 0.221, 0.168 and 0.255 s against lattice beats of 0.455,
+0.414, 0.268 and 0.500 s, which is half a beat (or five eighths) on every
+song, not a slowdown. The last eight beats of these songs carry fills and
+running eighths; `w2LastOnset` divides each inter-onset interval by
+`Math.round(d / beat)`, and an eighth-note gap (d/beat = 0.5) rounds to 1,
+so the "local beat" comes out as the eighth. A real ritardando would show
+a local beat longer than the lattice's, not half of it. Two fixes, either
+one: snap the window's onsets to the lattice and measure the local beat
+as the lattice beats between the first and last snapped onsets over their
+seconds; or skip intervals under 0.75 beat before the median. The fade
+reading (no strong onset in the last four bars) stands. The app expects
+the end to vote for the true class on the three songs that end on a hit
+and abstain on any that fades; if it does, it is the cheapest witness
+after time zero and the app would add it at weight 1. Registered or not,
+the four verdicts cannot change (the vote is already 5 to 1 or better).
