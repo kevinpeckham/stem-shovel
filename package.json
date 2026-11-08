@@ -9,6 +9,7 @@
 		"#lib/*": "./src/lib/*"
 	},
 	"scripts": {
+		"predev": "bun scripts/check-deps.ts",
 		"dev": "vp dev",
 		"build": "vp build",
 		"preview": "vp preview",
