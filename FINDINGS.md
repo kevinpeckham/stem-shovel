@@ -592,6 +592,18 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+### stem-bench Study 34b: declared priors are not enough (2026-11-09, reg b8c1bf3, results e58f9f0 + a394aa2)
+
+**S34b-G1 FAIL, S34b-G2 FAIL: all five Study 34 confidently-wrong slots stay confidently wrong with the TRUE tempo and meter declared** ($0.408 of the $2 fence, 1,465 cells). The pipeline fails twice on non-modern material:
+
+- **Comb drift**: st-louis and livery settled 7.2% and 8.9% off their declared tempos (unevenly cut 78s; bar counts off 4 and 10) — the comb stage, before the drafter.
+- **Starved transcription**: dippermouth, the hymn and the waltz landed their declared grids TO THE BAR (114/114, 76, 149 — form expectations exactly) and still drafted 66% / 17–31% / 6–8% roots: Basic Pitch yields 1.3–2.2 notes per bar on acoustic-era audio vs 10+ on everything modern. The drafts look confident (unknownShare 0.000 on dippermouth, peak 0.36) — `GENERATED_MAX_UNKNOWN_SHARE` 0.5 catches none, and draftBars = gridN − 1 on all eight so the bar-count hold is blind.
+- **Pre-model signals flag all five (exploratory)**: grid-off-declared > 4% (comb mode) + a notes-per-bar floor (≤2.2 wrong vs ≥10 good so far). The refusal the drafter needs lives upstream of the draft, in signals the app already computes.
+- **Part A (what detection knew)**: tempo confidence separates wrong from right at ~0.84 (2/12 errors, both the safe direction). The ladder rungs carry the truth for only 3 of 7 wrong tempos — hymn, waltz, 4:3 are on NO rung, so re-rung-picking cannot rescue; a confidence refusal could (worth its own registered study). Key confidence does NOT separate (waltz: A minor at confidence 1.000); meter confidence separates nothing.
+- **S34b-G3**: declaring the key is real but insufficient (st-louis roots 3→19, hymn 13→23, waltz 7→9).
+- **Part C**: `PICKUP_MAX_BAR_FRACTION` 0.5 made zero false pickup calls on ten recordings incl. livery's 3.3-beat late entrance; the corpus holds no true pickups so the catch rate stays unmeasured.
+- For `@barmark/listen` (#17): `declared` stays required AND is not sufficient — a host should gate on the pre-model signals too. v0.255.0's detected-tempo hold is right but partial.
+
 ### stem-bench Study 34: the chartless draft outside MMKK (2026-11-09, reg 328f66b, results ba88e9c)
 
 **S34-G1 FAIL, S34-G2 FAIL (0 of 8 good) — the public signed-out upload tool does not ship on this evidence.** Twelve rights-clear recordings (three JAAH-annotated PD 78s, two Badverbs, two MIDI-sheet slots, two Josh Woodward artist-charted songs, three class-only), 802 scored cells, $0.708 of the $5 fence.
