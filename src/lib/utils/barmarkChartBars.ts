@@ -1,5 +1,5 @@
-import { parseChart } from "barmark";
-import type { ChartParse, Key, PlayedBar, SimpleSlot, Slot } from "barmark";
+import { beatsOf, parseChart, parseMeter } from "barmark";
+import type { ChartParse, Key, Meter, PlayedBar, SimpleSlot, Slot } from "barmark";
 import { chartDiagnosticText } from "./chartDiagnosticText.js";
 import { chartSectionName } from "./chartSectionName.js";
 
@@ -15,8 +15,19 @@ export interface ChartBar {
 	measure: number;
 	/** Chord symbols in order; [] means the previous bar's harmony holds; ["N.C."] is silence. */
 	chords: string[];
-	/** The tempo in force, bpm of the meter's beat. */
+	/**
+	 * The tempo in force as this bar counts it: bpm of its own meter's bottom
+	 * note, the app's unit (`chartBarSeconds`; a 6/8 bar at barmark's
+	 * `tempo: 40` dotted quarters is 120).
+	 */
 	bpm: number;
+	/**
+	 * The same tempo as the song counts it, bpm of the `time:` meter's bottom
+	 * note: set only on a one-bar meter with another bottom note (a `[6/8]`
+	 * bar in 4/4 at 120 has `bpm` 240 and `tempo` 120), so a tempo change is
+	 * read off `tempo ?? bpm` and such a bar is not one.
+	 */
+	tempo?: number;
 	/** The time signature in force, e.g. "4/4". */
 	meter: string;
 	/** The key in force, e.g. "D major"; null when the chart marks none. */
@@ -100,13 +111,48 @@ function markedSection(bar: PlayedBar): string | null {
 }
 
 /**
+ * The song's meter where the chart sets none: without a `time:` line
+ * barmark reads 4/4 (a 3/4 song's chart would be read wrong), so a 4/4 it
+ * assumed is the song's own; a one-bar `[n/d]` keeps its meter either way.
+ * As text for the bar, and in numbers for the tempo's unit.
+ */
+function meterRules(parse: ChartParse, songMeter: string | null) {
+	const chartSetsTime = parse.lines.some((l) => l.kind === "directive" && l.set.time);
+	const own = chartSetsTime ? null : songMeter;
+	const parsed = own ? parseMeter(own) : null;
+	const assumed = (m: Meter) => m.n === 4 && m.d === 4;
+	return {
+		meterOf: (m: Meter) => (own && assumed(m) ? own : `${m.n}/${m.d}`),
+		effective: (m: Meter): Meter => (parsed && assumed(m) ? parsed : m),
+	};
+}
+
+/**
+ * A played bar's tempo in the app's unit, bpm of a meter's bottom note:
+ * `tempo` as the song counts it (the `time:` meter's), `bpm` as the bar
+ * does (its own, which differs on a one-bar meter with another bottom
+ * note: the speed is kept, the count is not). barmark's `tempo` counts
+ * grammar 2.1's beat of the `time:` meter, the dotted quarter in 6/8;
+ * a bar without one takes `fallback`, already in the song's unit.
+ */
+function barTempo(bar: PlayedBar, effective: (m: Meter) => Meter, fallback: number) {
+	const meter = effective(bar.meter);
+	const time = bar.time ? effective(bar.time) : meter;
+	const tempo = bar.tempo === null ? fallback : (bar.tempo * time.n) / beatsOf(time);
+	return { tempo, bpm: (tempo * meter.d) / time.d };
+}
+
+/**
  * A barmark chart (the band's chord chart, docs/barmark-adoption-plan.md
  * Scope 1, and a score's read, `readChartWithAi`) as the bars it plays
  * (`ChartBar`, each under its written number), for chart alignment. barmark expands
  * repeats, replays and simile and leaves fermatas out; this maps each
  * played bar's slots to symbols that divide the bar equally (holds repeat
  * the symbol before them, `N.C.` and `--` are "N.C.", `?` holds, a group
- * plays its first member), the tempo in force (else `defaults.tempo`),
+ * plays its first member), the tempo in force (else `defaults.tempo`;
+ * barmark counts grammar 2.1's beat of the `time:` meter, the dotted
+ * quarter in 6/8, and the song its bottom note, so the chart's is
+ * converted and each bar gets the bpm of its own bottom note),
  * the meter (the song's own, `defaults.meter`, when the chart sets none:
  * barmark assumes 4/4 and a 3/4 song's chart would be read wrong), the
  * key and the section a bar begins (its heading, else its rehearsal mark,
@@ -119,24 +165,24 @@ export function barmarkChartBars(
 ): ChartBars | null {
 	const parse = parseChart(markdown);
 	const first = parse.bars[0];
-	let bpm = first?.tempo ?? defaults.tempo;
-	if (!first || bpm === null) return null;
+	if (!first || (first.tempo ?? defaults.tempo) === null) return null;
 	const sectionAt = headingsAt(parse);
-	// Without a `time:` line barmark reads 4/4; a one-bar `[n/d]` keeps its own meter either way.
-	const chartSetsTime = parse.lines.some((l) => l.kind === "directive" && l.set.time);
-	const meterOf = (m: { n: number; d: number }) =>
-		!chartSetsTime && defaults.meter && m.n === 4 && m.d === 4 ? defaults.meter : `${m.n}/${m.d}`;
+	const { meterOf, effective } = meterRules(parse, defaults.meter);
+	/** The tempo in force in the song's unit: bpm of the `time:` meter's bottom note. */
+	let tempo = 0;
 	const notes: Notes = { warnings: new Set(), grouped: false };
 	const bars: ChartBar[] = [];
 	let carried: string | null = null;
 	for (const bar of parse.bars) {
-		bpm = bar.tempo ?? defaults.tempo ?? bpm;
+		const { bpm, ...inForce } = barTempo(bar, effective, defaults.tempo ?? tempo);
+		tempo = inForce.tempo;
 		const chords = barChords(bar, carried, notes);
 		carried = chords.at(-1) ?? carried;
 		bars.push({
 			measure: bar.written,
 			chords,
 			bpm,
+			...(bpm === tempo ? {} : { tempo }),
 			meter: meterOf(bar.meter),
 			key: keyText(bar.key),
 			section: sectionAt.get(bar.index) ?? markedSection(bar),

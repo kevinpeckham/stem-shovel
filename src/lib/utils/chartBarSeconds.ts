@@ -7,7 +7,9 @@ import { meterBeats } from "./meterBeats.js";
  * a bar). The bench's `barSeconds` counted a compound meter's dotted beat
  * instead; the chart's defaults come from the song's changes, so the
  * app's rule holds here, or a 6/8 song would render three times too short
- * and fall outside the alignment's warp slopes. A meter without a readable
+ * and fall outside the alignment's warp slopes. A chart's own `tempo:`
+ * counts barmark's beat, so `barmarkChartBars` converts it to this unit
+ * before it gets here. A meter without a readable
  * numerator counts four.
  */
 export function chartBarSeconds(meter: string, bpm: number): number {

@@ -42,6 +42,13 @@ const alignment = (over: Partial<Alignment> = {}): Alignment => ({
 });
 
 describe("alignedPlacements", () => {
+	test("a one-bar meter's own bpm is not a tempo change; the song's tempo is what changes", () => {
+		// A [6/8] bar in 4/4 at 100 counts its eighths at 200 and keeps the tempo at 100.
+		const odd = bars.map((b, i) => (i === 1 ? bar({ meter: "6/8", bpm: 200, tempo: 100 }) : b));
+		expect(alignedPlacements(odd, alignment()).tempoChanges).toEqual([
+			{ at: 10.4, bpm: 120, hedged: false },
+		]);
+	});
 	test("sections, key and tempo changes at their bars; the first and last sections hedged; a first section near 0 at 0", () => {
 		const placed = alignedPlacements(bars, alignment());
 		expect(placed.sections).toEqual([

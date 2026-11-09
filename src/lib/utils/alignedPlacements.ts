@@ -92,9 +92,10 @@ export function alignedPlacements(bars: ChartBar[], alignment: Alignment): Align
 		keyChanges: changed
 			.filter(({ b, prev }) => b.key !== null && b.key !== prev.key)
 			.map(({ b, i }) => ({ at: at(i), key: b.key!, hedged: hedge(i) })),
+		// The song's unit (`ChartBar.tempo`): a one-bar meter's own bpm is not a change of tempo.
 		tempoChanges: changed
-			.filter(({ b, prev }) => b.bpm !== prev.bpm)
-			.map(({ b, i }) => ({ at: at(i), bpm: b.bpm, hedged: hedge(i) })),
+			.filter(({ b, prev }) => (b.tempo ?? b.bpm) !== (prev.tempo ?? prev.bpm))
+			.map(({ b, i }) => ({ at: at(i), bpm: b.tempo ?? b.bpm, hedged: hedge(i) })),
 		ratio,
 		samePiece,
 	};

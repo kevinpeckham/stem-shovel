@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A played bar's `tempo` is in barmark's beat, not the app's: compound-meter charts were timed three times too long (2026-11-09)
+
+Found reviewing the `@barmark/listen` design against the app. barmark's `PlayedBar.tempo` counts grammar 2.1's beat of the `time:` meter in force, the dotted quarter in 6/8, while the app counts a meter's bottom note everywhere (`chartBarSeconds`, the song's changes). The draft path converted on the way **out** (`barmarkTempo`, 2026-11-07), but `barmarkChartBars` read a chart's own tempo line straight **in**, so a 6/8 chart at `tempo: 40` got bars of 9 s where the song plays 3 s, and a `[6/8]` bar in a 4/4 chart at 120 got 3 s where it lasts 1.5 s. Nothing had hit it (no compound-meter song had been aligned from a chart with its own tempo line), but every chart "Generate chart from the stems" saves carries one. Two things to know: the conversion is `tempo × time.n / beatsOf(time)` on the `time:` meter, and `PlayedBar.time` is present **only** on a bar with a one-bar meter of its own (`tempo:` keeps counting the `time:` meter's beat there, "so a short or odd bar never changes speed"), so such a bar's bottom-note bpm differs from its neighbors' without the tempo having changed. `ChartBar` now carries `bpm` for the bar's own seconds and, on those bars only, `tempo` for the song's.
+
 ## A spectral-flux onset envelope reads onsets early by most of its window (2026-11-08)
 
 From porting stem-bench Study 27 (recipe v5) into the app. `onsetEnvelope`

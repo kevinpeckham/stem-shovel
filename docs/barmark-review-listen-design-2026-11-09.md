@@ -39,8 +39,10 @@ one, and Study 34 carries a 6/8 slot. Two asks:
   written, the equivalence run would fail on its own 6/8 fixtures with
   tempo lines and read as a porting bug.
 - **The app fixes its adapter before the equivalence script runs**, so
-  the goldens are taken from a correct reference. That is the app's work
-  and does not wait on the package.
+  the goldens are taken from a correct reference. **Done the same day**
+  (the commit after this note on `dev`): `barmarkChartBars` converts the
+  chart's tempo, and the three rows above now read 3.0, 4.0 and 1.5 s in
+  the app. Goldens taken from that commit on agree with barmark's rule.
 
 ## 2. Q1's precondition cannot be met as written (§12 step 7, §14 Q1)
 
@@ -129,6 +131,14 @@ default and every bench number stay as they are.
   `downbeat-undecided`, `nothing-fits` and adds `no-period`. No change
   asked: the app maps them at adoption and keeps `unavailable` for its
   own workers.
+- **The unit of a placed tempo change (§6.3).** `Placements.tempoChanges`
+  is "the app's, unchanged", but the app's `bpm` there is the song's unit
+  (the bottom note) and the package reads barmark's. Please state the
+  unit in the type (grammar 2.1's beat, like `Declared.tempo`, is the
+  consistent choice) and the app converts at adoption. One trap the app
+  just met: a bar with a one-bar meter of another bottom note has a
+  different bottom-note bpm without the tempo having changed, and must
+  not be reported as a tempo change.
 - **Runs in seconds.** The app's interim reading rounds them onto the
   chord model's frame; the spec votes by covered time. The app never
   passes runs in seconds, so nothing depends on it, and the spec's is the

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A compound-meter chart with its own tempo line is timed right.** `barmarkChartBars` handed barmark's `PlayedBar.tempo` (grammar 2.1's beat of the `time:` meter, the dotted quarter in 6/8) to `chartBarSeconds`, which counts the bottom note: a 6/8 chart at `tempo: 40` rendered bars of 9 s for a song that plays 3 s, and a `[6/8]` bar in a 4/4 chart 3 s for 1.5 s, so "Place from chart" would refuse or misplace it. The adapter now converts (`tempo × time.n / beatsOf(time)`), gives each bar the bpm of its own bottom note, and keeps the song's tempo beside it on a one-bar meter (`ChartBar.tempo`), which `alignedPlacements` reads so such a bar is not placed as a tempo change. Found reviewing the `@barmark/listen` design (docs/barmark-review-listen-design-2026-11-09.md); no stored data changes.
+
 ## [0.254.0] - 2026-11-09
 
 ### Changed

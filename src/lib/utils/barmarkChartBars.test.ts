@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import { barmarkChartBars } from "./barmarkChartBars.js";
+import { chartBarSeconds } from "./chartBarSeconds.js";
 
 const SONG = { tempo: 120, meter: "4/4" };
 const NONE = { tempo: null, meter: null };
@@ -150,6 +151,29 @@ describe("barmarkChartBars: tempo, meter, key and the null contracts", () => {
 	it("follows a tempo change from the next bar", () => {
 		const read = barmarkChartBars("| D |\ntempo: 100\n| A |", SONG)!;
 		expect(read.bars.map((b) => b.bpm)).toEqual([120, 100]);
+	});
+	it("a compound meter's tempo counts the dotted quarter in the chart and the bottom note in the app", () => {
+		// barmark's `tempo: 40` in 6/8 is 40 dotted quarters: 120 eighths, three seconds a bar.
+		const six = barmarkChartBars("time: 6/8, tempo: 40\n| C | G |", NONE)!;
+		expect(six.bars.map((b) => b.bpm)).toEqual([120, 120]);
+		expect(six.bars.map((b) => chartBarSeconds(b.meter, b.bpm))).toEqual([3, 3]);
+		const twelve = barmarkChartBars("time: 12/8, tempo: 60\n| C |", NONE)!;
+		expect(chartBarSeconds(twelve.bars[0]!.meter, twelve.bars[0]!.bpm)).toBe(4);
+		// The song's own tempo is already in the bottom note: unchanged.
+		const song = { tempo: 120, meter: "6/8" };
+		expect(barmarkChartBars("| C | G |", song)?.bars.map((b) => b.bpm)).toEqual([120, 120]);
+		// A chart's tempo line in a song whose meter the chart does not restate counts that meter's beat.
+		expect(barmarkChartBars("tempo: 40\n| C |", song)?.bars[0]?.bpm).toBe(120);
+	});
+	it("a one-bar meter keeps the speed: its bar counts its own bottom note, and the tempo is unchanged", () => {
+		const read = barmarkChartBars("time: 4/4, tempo: 120\n| C | [6/8] G | Am |", NONE)!;
+		expect(read.bars.map((b) => b.bpm)).toEqual([120, 240, 120]);
+		expect(read.bars.map((b) => b.tempo ?? b.bpm)).toEqual([120, 120, 120]);
+		expect(read.bars.map((b) => chartBarSeconds(b.meter, b.bpm))).toEqual([2, 1.5, 2]);
+		// The same bottom note: nothing to convert, no second field.
+		const two = barmarkChartBars("time: 4/4, tempo: 120\n| C | [2/4] G |", NONE)!;
+		expect(two.bars[1]).toMatchObject({ bpm: 120, meter: "2/4" });
+		expect(two.bars[1]!.tempo).toBeUndefined();
 	});
 	it("defaults the meter to 4/4 and gives no key when none is set", () => {
 		expect(barmarkChartBars("| D |", SONG)?.bars[0]).toMatchObject({ meter: "4/4", key: null });
