@@ -82,6 +82,7 @@
 			data.song.startAt,
 			data.song.chartTiming,
 			data.song.useChartTiming,
+			data.song.chartMarkdown,
 		),
 	});
 	/** The tempo, key and time signature rows (settings' Tempo & key tab), and the position helpers every editor shares. */
@@ -689,6 +690,7 @@
 						endAt={data.song.endAt}
 						timing={data.song.chartTiming}
 						useTiming={data.song.useChartTiming}
+						chartMarkdown={data.song.chartMarkdown}
 						fps={data.song.frameRate}
 						onengine={(e) => (playerEngine = e)}
 						contextItems={(_stem, seconds) =>

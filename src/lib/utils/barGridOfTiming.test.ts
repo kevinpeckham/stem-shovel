@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { TimingMap } from "@barmark/sync";
+import { chartHash, type TimingMap } from "@barmark/sync";
 import { barAt, barGrid, secondsAtBar } from "#lib/audio/measures.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
 import { barGridOfTiming, songGrid } from "./barGridOfTiming";
@@ -67,6 +67,26 @@ describe("barGridOfTiming", () => {
 			{ bar: 1, start: 4 },
 		];
 		expect(barAt(barGridOfTiming(map, [])!, 4.0001).bar).toBe(3);
+	});
+
+	describe("written numbers", () => {
+		const chart = "|: C | G :|\n| Am |";
+		const repeat = (hash: string) => mapOf([0, 2, 4, 6, 8], 10, { chart: { bars: 5, hash } });
+		it("numbers the bars as the chart the map was built for writes them", () => {
+			expect(barGridOfTiming(repeat(chartHash(chart)), [], chart)!.written).toEqual([
+				1, 2, 1, 2, 3,
+			]);
+		});
+		it("has none for another chart's text or without one", () => {
+			expect(barGridOfTiming(repeat("other"), [], chart)!.written).toBeUndefined();
+			expect(barGridOfTiming(repeat(chartHash(chart)), [])!.written).toBeUndefined();
+			expect(barGridOfTiming(repeat(chartHash("")), [], "")!.written).toBeUndefined();
+		});
+		it("passes through songGrid", () => {
+			expect(songGrid([], 0, repeat(chartHash(chart)), true, chart)!.written).toEqual([
+				1, 2, 1, 2, 3,
+			]);
+		});
 	});
 
 	it("is null for an empty map or a span that is not positive", () => {

@@ -1580,12 +1580,14 @@ export async function songGrid(songId: string) {
 			frameRate: true,
 			chartTiming: true,
 			useChartTiming: true,
+			chartMarkdown: true,
 		},
 	});
 	return s
 		? {
 				fps: s.frameRate,
-				grid: songBarGrid(s.changes, s.startAt, s.chartTiming, s.useChartTiming),
+				// The chart's text numbers a timing map's bars as written, so "at 5 | 1" matches the transport.
+				grid: songBarGrid(s.changes, s.startAt, s.chartTiming, s.useChartTiming, s.chartMarkdown),
 			}
 		: null;
 }

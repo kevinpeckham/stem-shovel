@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Bar readouts show the chart's written bar numbers when the player follows its timing map.** The map keys bars on their play position, so after a repeat or a D.C. the transport, the position fields and a comment's position said "9 | 1" where the chart says bar 5. A grid built from the map now carries each bar's written number (`BarGrid.written`, from `utils/writtenBarsOf.ts` when the map's chart hash matches the song's chart) and `formatPosition` prints it, a typed bar position reads as a written number (the first pass of a repeated bar), and the draft card's section line does the same for the draft's chart; every lookup, seek and stored value stays on the play position (stem-shovel issue #16, ahead of barmark numbering a pickup bar 0).
+
 ## [0.252.0] - 2026-11-09
 
 ### Added

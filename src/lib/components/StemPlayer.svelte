@@ -63,6 +63,8 @@
 		/** The chart's timing map, and whether the grid follows it instead of the declared tempo (barGridOfTiming). */
 		timing?: TimingMap | null;
 		useTiming?: boolean;
+		/** The chart's text, so a grid that follows its timing map shows bars by their written numbers (a repeat's bars again). */
+		chartMarkdown?: string | null;
 		/** Frame rate for timecode. */
 		fps?: number;
 		/** When given, members get an "Add section at playhead" button. */
@@ -96,6 +98,7 @@
 		endAt = null,
 		timing = null,
 		useTiming = false,
+		chartMarkdown = null,
 		fps = 25,
 		onaddsection,
 		onengine,
@@ -107,7 +110,7 @@
 	}: Props = $props();
 
 	const engine = new StemEngine();
-	let grid = $derived(songGrid(changes, startAt, timing, useTiming)); // the declared tempo's, or the chart's timing map's
+	let grid = $derived(songGrid(changes, startAt, timing, useTiming, chartMarkdown)); // the declared tempo's, or the chart's timing map's
 	/** Where a row was Ctrl / ⌘-clicked or right-clicked, for the menu at the pointer (PointerMenu after the rows). */
 	let contextAt = $state<{ stem: StemState; seconds: number; x: number; y: number } | null>(null);
 	const contextMenuItems = (c: NonNullable<typeof contextAt>): MenuItems => [

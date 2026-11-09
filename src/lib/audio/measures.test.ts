@@ -253,6 +253,25 @@ describe("parsePosition / formatPosition", () => {
 			expect(parsePosition(text, ctx)).toBeCloseTo(88.25, 2);
 		}
 	});
+	describe("with a chart's written numbers", () => {
+		// A repeat: play positions 1-5 are written bars 1, 2, 1, 2, 3; a bar is two seconds.
+		const chartCtx = { fps: 25, grid: { ...grid, written: [1, 2, 1, 2, 3] } };
+		test("bars read as written; bars beyond the map keep their play number", () => {
+			expect(formatPosition("bars", 4, chartCtx)).toBe("1 | 1");
+			expect(formatPosition("bars", 4.5, chartCtx)).toBe("1 | 2");
+			expect(formatPosition("bars", 6, chartCtx)).toBe("2 | 1");
+			expect(formatPosition("bars", 8, chartCtx)).toBe("3 | 1");
+			expect(formatPosition("bars", 10, chartCtx)).toBe("6 | 1");
+			expect(formatPosition("bars", 4, ctx)).toBe("3 | 1");
+		});
+		test("a typed bar is a written number, its first pass; one the chart lacks is a play position", () => {
+			expect(parsePosition("2|1", chartCtx)).toBe(2);
+			expect(parsePosition("1|1", chartCtx)).toBe(0);
+			expect(parsePosition("3|1", chartCtx)).toBe(8);
+			expect(parsePosition("7|1", chartCtx)).toBe(12);
+			expect(parsePosition("3|1", ctx)).toBe(4);
+		});
+	});
 });
 
 describe("formatBarSpan", () => {

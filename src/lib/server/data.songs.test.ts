@@ -1,3 +1,4 @@
+import { chartHash } from "@barmark/sync";
 import { barGrid } from "#lib/audio/measures.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
@@ -383,5 +384,30 @@ describe("songGrid", () => {
 			song: [{ ...s1, changes, startAt: 0, frameRate: 30, chartTiming, useChartTiming: false }],
 		});
 		expect((await songGrid("s1"))?.grid).toEqual(barGrid(changes, 0));
+	});
+
+	test("a timing map's bars carry the chart's written numbers, as the transport shows them", async () => {
+		const chartMarkdown = "|: C | G :|";
+		const chartTiming = {
+			format: "barmark-timing",
+			version: 1,
+			chart: { bars: 4, hash: chartHash(chartMarkdown) },
+			bars: [1, 2, 3, 4].map((bar) => ({ bar, start: bar })),
+			end: 5,
+		};
+		reset({
+			song: [
+				{
+					...s1,
+					changes: [],
+					startAt: 0,
+					frameRate: 30,
+					chartTiming,
+					chartMarkdown,
+					useChartTiming: true,
+				},
+			],
+		});
+		expect((await songGrid("s1"))?.grid?.written).toEqual([1, 2, 1, 2]);
 	});
 });

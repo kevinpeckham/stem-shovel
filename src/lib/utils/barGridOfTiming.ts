@@ -1,6 +1,7 @@
-import type { TimingMap } from "@barmark/sync";
+import { chartHash, type TimingMap } from "@barmark/sync";
 import { barGrid, type BarGrid } from "#lib/audio/measures.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import { writtenBarsOf } from "./writtenBarsOf.js";
 
 /** The song's time signatures as a grid's meters, 4/4 from 0:00 when it has none. */
 function metersOf(changes: SongChange[]): BarGrid["meters"] {
@@ -18,10 +19,16 @@ function metersOf(changes: SongChange[]): BarGrid["meters"] {
  * own `end` or the map's), so every bar line lands on an entry's start. The
  * meters are the song's time signature changes (4/4 without any). Entries
  * count in recording order, a repeat's bars again, as a readout wants; the
- * beat onsets are not used. Null for an empty map or a span that is not
- * positive.
+ * beat onsets are not used. With the chart's text, when the map was built
+ * for that very chart (its hash), the grid carries each bar's written
+ * number (`BarGrid.written`) for the readouts. Null for an empty map or a
+ * span that is not positive.
  */
-export function barGridOfTiming(map: TimingMap, changes: SongChange[]): BarGrid | null {
+export function barGridOfTiming(
+	map: TimingMap,
+	changes: SongChange[],
+	chartMarkdown?: string | null,
+): BarGrid | null {
 	const entries = map.bars;
 	if (entries.length < 1) return null;
 	const startAt = entries[0]!.start;
@@ -39,17 +46,28 @@ export function barGridOfTiming(map: TimingMap, changes: SongChange[]): BarGrid 
 		const meter = meters.findLast((m) => entry.start >= m.start) ?? meters[0]!;
 		tempos.push({ start: entry.start, bpm: (meter.beatsPerBar * 60) / span });
 	}
-	return { tempos, meters, startAt };
+	const grid: BarGrid = { tempos, meters, startAt };
+	const written = writtenOf(map, chartMarkdown);
+	if (written) grid.written = written;
+	return grid;
 }
 
-/** The player's grid for a song: its timing map's when it has one and follows it (falling back when the map makes none), else the declared tempo's. */
+/** The written number of each map entry, from the chart the map was built for; null for another chart's text or none. */
+function writtenOf(map: TimingMap, chartMarkdown: string | null | undefined): number[] | null {
+	if (!chartMarkdown || chartHash(chartMarkdown) !== map.chart.hash) return null;
+	const written = writtenBarsOf(chartMarkdown);
+	return written && map.bars.map((e) => written[e.bar - 1] ?? e.bar);
+}
+
+/** The player's grid for a song: its timing map's when it has one and follows it (falling back when the map makes none; the chart's text numbers its bars as written), else the declared tempo's. */
 export function songGrid(
 	changes: SongChange[],
 	startAt: number | null,
 	timing: TimingMap | null,
 	useTiming: boolean,
+	chartMarkdown?: string | null,
 ): BarGrid | null {
 	return useTiming && timing
-		? (barGridOfTiming(timing, changes) ?? barGrid(changes, startAt))
+		? (barGridOfTiming(timing, changes, chartMarkdown) ?? barGrid(changes, startAt))
 		: barGrid(changes, startAt);
 }

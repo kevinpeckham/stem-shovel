@@ -1113,6 +1113,19 @@ chart existed.
   "Bar timing" block, which says where the map came from and how many bars
   it has, with Follow / Stop and Forget; a chart edit that drops the map
   turns the switch off with it.
+- **Readouts show written bar numbers** (2026-11-09, stem-shovel issue
+  #16). The map keys bars on their play position (`index`), unique across
+  repeats and replays, so a grid built from it numbered every readout by
+  play position: after a repeat or a D.C. the transport said "9 | 1" where
+  the chart says bar 5. `barGridOfTiming` now takes the song's chart text
+  and, when the map's chart hash matches it, sets `BarGrid.written` (each
+  grid bar's written number, `utils/writtenBarsOf.ts` from barmark's
+  `PlayedBar.written`); `formatPosition` prints it and `parsePosition`
+  reads a typed bar as a written number (the first pass of a repeated bar).
+  Lookups, seeks, section starts and everything stored stay on `index`.
+  The draft card's section line maps the draft's own chart the same way.
+  When barmark numbers a pickup bar 0 (0.22), the readouts follow with the
+  bump; the Studio ruler is the Studio's own grid and is not a chart's.
 - **An aligned map is gated on its fit** (`utils/alignmentFit.ts`). On
   Letter Lands (music from 0:00, 132 bpm, a 1.82 s bar) the alignment put
   bar 1 at 8.06 s with half-length bars at the head and ended 15 s early,

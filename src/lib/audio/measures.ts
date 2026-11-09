@@ -24,6 +24,14 @@ export interface BarGrid {
 	tempos: { start: number; bpm: number; ramp?: TempoCurve }[];
 	meters: { start: number; beatsPerBar: number; beatUnit?: number }[];
 	startAt: number;
+	/**
+	 * The written number of each bar in play order (`written[bar - 1]`),
+	 * set only by a grid that follows a chart's timing map
+	 * (barGridOfTiming): the map counts play positions, so after a repeat
+	 * bar 9 may be written bar 5. Readouts show it; every lookup stays on
+	 * play positions.
+	 */
+	written?: number[];
 }
 
 /** Tempo beats (quarter notes, when the meter names a unit) in one beat of the bar: a half for eighths, two for halves, one without a unit. */
@@ -304,6 +312,16 @@ export function secondsAfterBeats(grid: BarGrid, from: number, beats: number): n
 }
 
 /**
+ * The play position of a typed bar: on a grid with written numbers, the
+ * first bar played under that number (a repeated bar's first pass; the
+ * later passes cannot be told apart by number), else the number itself.
+ */
+function playedBar(grid: BarGrid, bar: number): number {
+	const i = grid.written?.indexOf(bar) ?? -1;
+	return i >= 0 ? i + 1 : bar;
+}
+
+/**
  * A position typed in any of the three formats → seconds. Digital time
  * ("1:23.4"), timecode ("01:23:15.72" — three or four colon groups) and bars
  * ("12|3", needs a grid). null when it is none of them.
@@ -313,7 +331,10 @@ export function parsePosition(
 	ctx: { fps: number; grid: BarGrid | null },
 ): number | null {
 	const bars = parseBarsText(text);
-	if (bars) return ctx.grid ? secondsAtBar(ctx.grid, bars.bar, bars.beat, bars.fraction) : null;
+	if (bars)
+		return ctx.grid
+			? secondsAtBar(ctx.grid, playedBar(ctx.grid, bars.bar), bars.beat, bars.fraction)
+			: null;
 	const groups = text.trim().split(":").length;
 	if (groups >= 3) return parseTimecode(text, ctx.fps);
 	return parseTime(text);
@@ -331,7 +352,9 @@ export function formatPosition(
 		// The readout shows whole beats; editors show the fraction too so it survives a round trip.
 		const p = barAt(ctx.grid, seconds);
 		const fraction = Math.round(p.fraction * 1000) / 1000;
-		return `${p.bar} | ${p.beat}${opts.precise && fraction > 0 && fraction < 1 ? ` | ${fraction}` : ""}`;
+		// A chart's written number where the grid has one; bars beyond the map keep their play number.
+		const bar = ctx.grid.written?.[p.bar - 1] ?? p.bar;
+		return `${bar} | ${p.beat}${opts.precise && fraction > 0 && fraction < 1 ? ` | ${fraction}` : ""}`;
 	}
 	// Bars without a grid: timecode.
 	return formatTimecode(seconds, ctx.fps);

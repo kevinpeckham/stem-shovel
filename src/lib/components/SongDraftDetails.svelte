@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ChartDraft } from "#lib/state/songChordDraft.svelte.js";
+	import { writtenBarsOf } from "#lib/utils/writtenBarsOf.js";
 
 	/** What an AI draft carries besides its chart (the draft card, SongDraftCard.svelte): the chords by bar, the sections, the progressions and the AI's notes, each only when it has content (a score's chart has none). */
 	let { draft }: { draft: ChartDraft } = $props();
@@ -12,7 +13,11 @@
 			lines.push(`| ${cells.slice(i, i + 4).join(" | ")} |`);
 		return lines.join("\n");
 	}
-	let sectionsLine = $derived(draft.sections.map((s) => `${s.name} @ bar ${s.bar}`).join(" · "));
+	/** The draft chart's written bar numbers: a section's `bar` is a play position, and after a repeat the two differ. */
+	let written = $derived(writtenBarsOf(draft.chart));
+	let sectionsLine = $derived(
+		draft.sections.map((s) => `${s.name} @ bar ${written?.[s.bar - 1] ?? s.bar}`).join(" · "),
+	);
 </script>
 
 {#if draft.chords.trim()}

@@ -38,6 +38,17 @@ describe("Transport", () => {
 		await user.click(button);
 		expect(button).toHaveTextContent("45 | 1");
 	});
+	test("on a grid with a chart's written numbers the readout shows the bar as written", () => {
+		// Bar 3 is a repeat's second pass of bar 1: 4 s in at two seconds a bar.
+		render(Transport, {
+			props: {
+				engine: fakeEngine({ position: 4.2 }),
+				grid: { ...grid!, written: [1, 2, 1, 2] },
+				fps: 25,
+			},
+		});
+		expect(screen.getByRole("button", { name: /Readout format/ })).toHaveTextContent("1 | 1");
+	});
 	test("without a grid the readout stays on timecode", async () => {
 		const user = userEvent.setup();
 		render(Transport, { props: { engine: fakeEngine({ position: 10 }), fps: 25 } });
