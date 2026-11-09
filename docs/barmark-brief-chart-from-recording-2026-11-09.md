@@ -166,3 +166,21 @@ on meters and phone recordings, that is a reasonable order.
 
 Replies: an issue on `kevinpeckham/stem-shovel`, as with the pickup
 change (#16), or an answer appended to this file.
+
+## App update (2026-11-09): two of #17's decisions are already in the app
+
+After the reply in stem-shovel issue #17, the app moved its own modules
+onto two of the decided contract points, so the design reads code that
+already has them:
+
+- **Refusals as values.** `chartlessGrid(input)` returns
+  `{ ok: true, grid } | { ok: false, reason, witnesses }` with reasons
+  `no-input`, `undecided` and `no-fit` (the browser wrapper adds
+  `unavailable`). An undecided vote keeps its witnesses, and the page
+  says what each read.
+- **One detections shape.** `ChartlessGridInput.runs` is sync's
+  `ChordRuns`, and `utils/chordminiBarChords.ts` reads it in frames or
+  in seconds, with a `label` or a `symbol`.
+
+The alignment side (`alignChart`, `alignmentFit`) is unchanged and still
+reports its refusals through `utils/alignmentReason.ts`.

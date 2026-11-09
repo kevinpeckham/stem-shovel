@@ -9,7 +9,7 @@ import {
 	TIME_ZERO_SNAP_BEATS,
 } from "#lib/constants/chartAlignment.js";
 import { chordminiBarChords } from "#lib/utils/chordminiBarChords.js";
-import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
+import type { ChordRuns } from "@barmark/sync";
 import { jointOnsetComb } from "./alignmentRepair.js";
 
 /**
@@ -25,7 +25,8 @@ import { jointOnsetComb } from "./alignmentRepair.js";
  * novelty on beat-synchronous chroma). A decided vote places bar one so
  * that it holds the first sound; an undecided one places nothing, and the
  * draft keeps the declared grid. A song's own start, when it has one, wins
- * over the vote. Pure arithmetic.
+ * over the vote. A refusal is a value with its reason and the witnesses'
+ * readings (`ChartlessRefusal`), never a bare null. Pure arithmetic.
  */
 
 /** The comb's lattice: `anchor` a bar line candidate (lead-corrected), its beat and bar in seconds. */
@@ -79,8 +80,33 @@ export interface ChartlessGridInput {
 	declaredBarSeconds: number;
 	beatsPerBar: number;
 	startAt: number | null;
-	runs: ChordminiRuns | null;
+	/** The chord model's runs (the stored `ChordminiRuns` is one). */
+	runs: ChordRuns | null;
 }
+
+/**
+ * Why no grid was placed: `no-input`, no onset envelope, declared bar or
+ * meter to read; `undecided`, the vote did not decide (the witnesses say
+ * what each read); `no-fit`, no bar start fell inside the recording;
+ * `unavailable`, the browser wrapper's own (audio/chartlessGridInBrowser.ts:
+ * no Worker, no audio, a worker's error, the timeout or a cancel).
+ */
+export type ChartlessRefusalReason = "no-input" | "undecided" | "no-fit" | "unavailable";
+
+export interface ChartlessRefusal {
+	ok: false;
+	reason: ChartlessRefusalReason;
+	/** The witnesses' readings (empty but for `undecided`). */
+	witnesses: DownbeatWitness[];
+}
+
+/** The read's answer: the placed grid, or the refusal and why. */
+export type ChartlessGridResult = { ok: true; grid: ChartlessGrid } | ChartlessRefusal;
+
+const refused = (
+	reason: ChartlessRefusalReason,
+	witnesses: DownbeatWitness[] = [],
+): ChartlessRefusal => ({ ok: false, reason, witnesses });
 
 /** The most bars a draft's grid carries (ChartDraftSchema's limit). */
 const MAX_BARS = 2000;
@@ -157,7 +183,7 @@ const NO_CHORD = new Set(["N", "N.C.", "X", "?", ""]);
  * bench 4 of 4, margins 19 to 14, 56 to 27, 33 to 26, 46 to 11.
  */
 export function harmonicRhythmWitness(
-	runs: ChordminiRuns | null,
+	runs: ChordRuns | null,
 	lattice: ChartlessLattice,
 	duration: number,
 ): DownbeatWitness {
@@ -328,23 +354,31 @@ export function placeChartlessGrid(
 }
 
 /** The song's own start wins: bar one at the lattice beat nearest `startAt`, whatever its class, at the comb's period. */
-function placedAtStart(lattice: ChartlessLattice, startAt: number, duration: number) {
+function placedAtStart(
+	lattice: ChartlessLattice,
+	startAt: number,
+	duration: number,
+): ChartlessGridResult {
 	const k = Math.round((startAt - lattice.anchor) / lattice.beat);
 	const barStarts = barStartsFrom(lattice.anchor + k * lattice.beat, lattice.period, duration);
-	if (!barStarts) return null;
+	if (!barStarts) return refused("no-fit");
 	const { period, beatsPerBar } = lattice;
 	const cls = mod(k, beatsPerBar);
-	return { barStarts, period, beatsPerBar, cls, decided: true, byStart: true, witnesses: [] };
+	const grid = { barStarts, period, beatsPerBar, cls, decided: true, byStart: true, witnesses: [] };
+	return { ok: true, grid };
 }
 
 /**
  * The whole read: the lattice, then bar one at the song's start when it
- * has one, else the three witnesses and the vote. Null when the vote is
- * undecided or nothing fits: the draft keeps the declared grid.
+ * has one, else the three witnesses and the vote. A refusal when there is
+ * nothing to read (`no-input`), the vote is undecided (`undecided`, the
+ * witnesses kept) or nothing fits (`no-fit`): the draft keeps the
+ * declared grid.
  */
-export function chartlessGrid(input: ChartlessGridInput): ChartlessGrid | null {
+export function chartlessGrid(input: ChartlessGridInput): ChartlessGridResult {
 	const { onset, fps, duration, beatsPerBar, declaredBarSeconds } = input;
-	if (onset.length === 0 || !(declaredBarSeconds > 0) || !(beatsPerBar >= 1)) return null;
+	if (onset.length === 0 || !(declaredBarSeconds > 0) || !(beatsPerBar >= 1))
+		return refused("no-input");
 	const lattice = chartlessLattice(onset, fps, declaredBarSeconds, beatsPerBar);
 	if (input.startAt !== null) return placedAtStart(lattice, input.startAt, duration);
 	const witnesses = [
@@ -353,11 +387,11 @@ export function chartlessGrid(input: ChartlessGridInput): ChartlessGrid | null {
 		sectionWitness(input.chroma, input.hopSec, lattice, duration),
 	];
 	const vote = downbeatVote(witnesses, beatsPerBar);
-	if (!vote.decided) return null;
+	if (!vote.decided) return refused("undecided", witnesses);
 	const barStarts = placeChartlessGrid(lattice, vote.cls, input.firstSound, duration);
-	if (!barStarts) return null;
+	if (!barStarts) return refused("no-fit");
 	const { period } = lattice;
-	return {
+	const grid = {
 		barStarts,
 		period,
 		beatsPerBar,
@@ -366,4 +400,5 @@ export function chartlessGrid(input: ChartlessGridInput): ChartlessGrid | null {
 		byStart: false,
 		witnesses,
 	};
+	return { ok: true, grid };
 }

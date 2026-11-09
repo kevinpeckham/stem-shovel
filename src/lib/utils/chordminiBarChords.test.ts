@@ -65,4 +65,31 @@ describe("chordminiBarChords", () => {
 			["Am7", 1],
 		]);
 	});
+	test("runs in seconds with barmark symbols read as their frames-based twin", () => {
+		const twin = stored([
+			["D", 45],
+			["G:min", 35],
+			["N", 20],
+		]);
+		const inSeconds = {
+			runs: [
+				{ start: 0, end: 45 * frameSec, symbol: "D" },
+				{ start: 45 * frameSec, end: 80 * frameSec, symbol: "Gm" },
+				{ start: 80 * frameSec, end: 100 * frameSec, symbol: "N.C." },
+			],
+		};
+		const barStarts = bars(6, 20);
+		expect(chordminiBarChords(inSeconds, barStarts)).toEqual(chordminiBarChords(twin, barStarts));
+		expect(chordminiBarChords(inSeconds, barStarts).map((s) => [s.chord, s.bars])).toEqual([
+			["D", 2],
+			["Gm", 2],
+			["N.C.", 2],
+		]);
+	});
+	test("without a total, the frames end at the last run's end", () => {
+		const { frames: _, ...noTotal } = stored([["A", 10]]);
+		expect(chordminiBarChords(noTotal, bars(2, 20))).toEqual(
+			chordminiBarChords(stored([["A", 10]]), bars(2, 20)),
+		);
+	});
 });

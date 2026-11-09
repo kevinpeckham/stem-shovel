@@ -1314,3 +1314,27 @@ what the stems alone can say about that grid and what they cannot:
   timing map (`saveChartDraft`, `replace: false`), the draft cleared and
   the page's data read again. The Docs panel shows the step (`progress`)
   with Cancel; the final notification is `utils/generatedChartLine.ts`.
+- **Refusals are values** (2026-11-09). `chartlessGrid` answers with a
+  result: the grid, or a refusal with its reason and the witnesses'
+  readings (`no-input`, `undecided`, `no-fit`; the browser wrapper adds
+  `unavailable` for no workers, no audio, a failure or a timeout). The
+  draft state keeps the refusal beside the placement
+  (`placementRefusal`), and `chartlessPlacementLine` says it on the
+  Tempo & key tab: for an undecided vote, what each witness read ("the
+  chord changes say beat 3, the recording's start says beat 1, the
+  section changes abstain") and that the bars follow the song's own
+  tempo and start. The grid's chord input is `@barmark/sync`'s
+  `ChordRuns`, which the stored `ChordminiRuns` already fits;
+  `chordminiBarChords` reads either, runs in seconds included. Both are
+  the contract `@barmark/listen` will carry (stem-shovel issue #17).
+- **The verdict before an unattended save** (2026-11-09,
+  `utils/generatedChartVerdict.ts`). "Generate chart from the stems" no
+  longer saves whatever the draft step returns. The draft is **held** on
+  the draft card, with one notification saying why and nothing saved,
+  when it carries an error diagnostic, when its timing map was dropped
+  (the refinement changed the bar count), or when more than half its
+  bars have no chord the model could name (`?` or `N.C.`;
+  `GENERATED_MAX_UNKNOWN_SHARE`, a provisional floor that Study 34 will
+  measure). It is saved **with a note** in the notification when the
+  vote left bar 1 unplaced or the chart carries warnings. A held draft
+  keeps its Save as chart and Discard, so nothing is thrown away.

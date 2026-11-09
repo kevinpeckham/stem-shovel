@@ -127,6 +127,13 @@ function trueClass(s: Song, input: ReturnType<typeof inputOf>) {
 
 const FROM_ZERO: Song = { bpm: 117, beatsPerBar: 4, downbeat: 0, bars: 40 };
 
+/** The placed grid, failing the test on a refusal. */
+function placedGrid(input: Parameters<typeof chartlessGrid>[0]) {
+	const result = chartlessGrid(input);
+	if (!result.ok) throw new Error(`refused: ${result.reason}`);
+	return result.grid;
+}
+
 describe("chartlessGrid", () => {
 	test("the comb lands on a backbeat; all three witnesses vote the true downbeat and bar one holds the first sound", () => {
 		const input = inputOf(FROM_ZERO);
@@ -135,8 +142,7 @@ describe("chartlessGrid", () => {
 			0.001,
 		);
 		expect([1, 3]).toContain(cls);
-		const grid = chartlessGrid(input)!;
-		expect(grid).not.toBeNull();
+		const grid = placedGrid(input);
 		expect(grid.byStart).toBe(false);
 		expect(grid.cls).toBe(cls);
 		expect(grid.witnesses.map((w) => [w.name, w.cls])).toEqual([
@@ -157,8 +163,7 @@ describe("chartlessGrid", () => {
 		test("time zero abstains; the chord changes decide on a clear margin", () => {
 			const input = inputOf(s, { chroma: NO_CHROMA });
 			const { cls } = trueClass(s, input);
-			const grid = chartlessGrid(input)!;
-			expect(grid).not.toBeNull();
+			const grid = placedGrid(input);
 			const [zero, harmonic, sections] = grid.witnesses;
 			expect(zero!.cls).toBeNull();
 			expect(zero!.detail.distanceBeats).toBeGreaterThan(0.25);
@@ -171,7 +176,13 @@ describe("chartlessGrid", () => {
 		test("a chord on every beat is a flat histogram: undecided, nothing placed", () => {
 			const everyBeat = Array.from({ length: s.bars * 4 }, (_, b) => s.downbeat + b * beatOf(s));
 			const input = inputOf(s, { chroma: NO_CHROMA, runs: runsOf(everyBeat, durationOf(s)) });
-			expect(chartlessGrid(input)).toBeNull();
+			const result = chartlessGrid(input);
+			expect(result).toMatchObject({ ok: false, reason: "undecided" });
+			expect(result.ok ? [] : result.witnesses.map((w) => w.name)).toEqual([
+				"timeZero",
+				"harmonicRhythm",
+				"sections",
+			]);
 		});
 
 		test("the chord changes under 1.2 times the runner-up abstain (Study 32's rule): undecided", () => {
@@ -186,13 +197,13 @@ describe("chartlessGrid", () => {
 			expect(histogram.indexOf(Math.max(...histogram))).toBe(trueClass(s, input).cls);
 			expect(harmonic.detail.ratio).toBeGreaterThan(1);
 			expect(harmonic.detail.ratio).toBeLessThan(1.2);
-			expect(chartlessGrid(input)).toBeNull();
+			expect(chartlessGrid(input)).toMatchObject({ ok: false, reason: "undecided" });
 		});
 	});
 
 	test("the song's own start wins: bar one at the lattice beat nearest it, whatever its class", () => {
 		const backbeatAt = truthOf(FROM_ZERO)[3]! + beatOf(FROM_ZERO);
-		const grid = chartlessGrid(inputOf(FROM_ZERO, { startAt: backbeatAt + 0.1 }))!;
+		const grid = placedGrid(inputOf(FROM_ZERO, { startAt: backbeatAt + 0.1 }));
 		expect(grid.byStart).toBe(true);
 		expect(grid.witnesses).toEqual([]);
 		expect(Math.abs(grid.barStarts[0]! - backbeatAt)).toBeLessThanOrEqual(0.03);
@@ -200,12 +211,29 @@ describe("chartlessGrid", () => {
 		expect(grid.barStarts[1]! - grid.barStarts[0]!).toBeCloseTo(period, 2);
 	});
 
+	test("nothing to read is no-input; a start past the end is no-fit; neither keeps witnesses", () => {
+		const input = inputOf(FROM_ZERO);
+		expect(chartlessGrid({ ...input, onset: new Float32Array(0) })).toEqual({
+			ok: false,
+			reason: "no-input",
+			witnesses: [],
+		});
+		expect(chartlessGrid({ ...input, declaredBarSeconds: 0 })).toMatchObject({
+			reason: "no-input",
+		});
+		expect(chartlessGrid({ ...input, startAt: input.duration + 10 })).toEqual({
+			ok: false,
+			reason: "no-fit",
+			witnesses: [],
+		});
+	});
+
 	test("a 3/4 song: the comb on beat 2, the vote back on the downbeat", () => {
 		const s: Song = { bpm: 150, beatsPerBar: 3, downbeat: 0, bars: 60 };
 		const input = { ...inputOf(s), onset: onsetOf(s, (b) => (b === 1 ? 1 : 0.45)) };
 		const { cls } = trueClass(s, input);
 		expect(cls).toBe(2);
-		const grid = chartlessGrid(input)!;
+		const grid = placedGrid(input);
 		expect(grid.beatsPerBar).toBe(3);
 		expect(grid.cls).toBe(cls);
 		expectOnTruth(grid.barStarts, s);

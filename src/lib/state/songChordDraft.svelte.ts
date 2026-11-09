@@ -1,7 +1,11 @@
 import { extractFeatures } from "#lib/audio/analysis.js";
 import { chordsPerBar, describeBars, type ChordSegment, type Note } from "#lib/audio/chords.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
-import type { ChartlessGrid } from "#lib/audio/chartlessGrid.js";
+import type {
+	ChartlessGrid,
+	ChartlessGridResult,
+	ChartlessRefusal,
+} from "#lib/audio/chartlessGrid.js";
 import { chartlessGridInBrowser } from "#lib/audio/chartlessGridInBrowser.js";
 import { barSecondsAt, beatsPerBarAt, secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
 import { chartFromScore } from "#lib/remote/files.remote.js";
@@ -32,6 +36,7 @@ import { chordminiBarChords } from "#lib/utils/chordminiBarChords.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { generatedChartLine } from "#lib/utils/generatedChartLine.js";
+import { generatedChartVerdict } from "#lib/utils/generatedChartVerdict.js";
 import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
 import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
 import type { ConfidenceRecord, TimingMap } from "@barmark/sync";
@@ -132,6 +137,9 @@ function barStartsOf(grid: BarGrid, duration: number): number[] {
 	return barStarts;
 }
 
+/** The placement could not run (no audio, no workers, a failure): the declared grid stands, nothing to say. */
+const UNAVAILABLE: ChartlessRefusal = { ok: false, reason: "unavailable", witnesses: [] };
+
 /** A grid of one tempo, without a ramp, in one meter: the only kind the chartless placement reads (one bar length, one lattice). */
 const steadyGrid = (grid: BarGrid) =>
 	grid.tempos.length === 1 && !grid.tempos[0]!.ramp && grid.meters.length === 1;
@@ -169,6 +177,8 @@ export class SongChordDraft {
 	 * tempo or meter, an undecided vote, or the placement failed).
 	 */
 	placement = $state<ChartlessGrid | null>(null);
+	/** Why nothing was placed, when the placement ran and refused (`placement` is then null). */
+	placementRefusal = $state<ChartlessRefusal | null>(null);
 	/** "Generate chart"'s step while it runs (`progress` reads it). */
 	#step = $state<string | null>(null);
 	/** Where each bar the chords were read on starts, and where the last ends: the draft's grid. */
@@ -217,7 +227,7 @@ export class SongChordDraft {
 		this.chordSegments = null;
 		this.chordSource = null;
 		this.draft = null;
-		this.placement = null;
+		this.#setPlacement(null);
 	};
 
 	/** A score's chart (the Docs panel's `onchart`) shown in the draft card, in place of any draft. */
@@ -273,7 +283,7 @@ export class SongChordDraft {
 				const placed = yield* this.#useBarOne();
 				this.#step = "Drafting the chart with AI…";
 				yield* this.#draft();
-				if (this.draft) yield* this.#saveGenerated(this.draft, placed);
+				if (this.draft) yield* this.#saveOrHold(this.draft, placed);
 			}).pipe(Effect.catch(this.#fail), Effect.ensuring(Effect.sync(() => (this.#step = null)))),
 		);
 
@@ -316,10 +326,34 @@ export class SongChordDraft {
 		});
 	}
 
+	/**
+	 * The generated draft saved when the verdict (utils/generatedChartVerdict.ts)
+	 * finds nothing to hold it for; else it stays on the draft card for review,
+	 * said once, and nothing is saved.
+	 */
+	#saveOrHold(
+		draft: ChartDraft,
+		placed: { startAt: number; bpm: number } | null,
+	): Effect.Effect<void, SaveError> {
+		const verdict = generatedChartVerdict({
+			draft,
+			segments: this.chordSegments ?? [],
+			undecided: this.placementRefusal?.reason === "undecided",
+		});
+		if (verdict.save) return this.#saveGenerated(draft, placed, verdict.notes);
+		return Effect.sync(() =>
+			notify(
+				`Chart drafted but not saved: ${verdict.holds.join("; ")}. Review it on the draft card.`,
+				{ kind: "info" },
+			),
+		);
+	}
+
 	/** The generated draft's sections (unless the song has some) and its chart saved; the draft goes and the page refreshes. */
 	#saveGenerated(
 		draft: ChartDraft,
 		placed: { startAt: number; bpm: number } | null,
+		notes: string[],
 	): Effect.Effect<void, SaveError> {
 		return Effect.gen({ self: this }, function* () {
 			this.#step = "Saving…";
@@ -352,6 +386,7 @@ export class SongChordDraft {
 					bars: draft.timing?.chart.bars ?? bars,
 					sections: draft.sections.length,
 					placed,
+					notes,
 				}),
 			);
 		});
@@ -375,7 +410,7 @@ export class SongChordDraft {
 			this.chordSource = null;
 			this.chordsChecked = null;
 			this.draft = null;
-			this.placement = null;
+			this.#setPlacement(null);
 			yield* this.#read(engine, grid).pipe(
 				Effect.catch(this.#fail),
 				Effect.ensuring(Effect.sync(() => (this.chordBusy = null))),
@@ -412,26 +447,32 @@ export class SongChordDraft {
 			const declared = barStartsOf(grid, engine.duration);
 			if (!steadyGrid(grid)) return declared;
 			this.chordBusy = "Placing the bars on the stems…";
-			const placement = yield* attempt((signal) => this.#place(engine, grid, runs, signal)).pipe(
+			const result = yield* attempt((signal) => this.#place(engine, grid, runs, signal)).pipe(
 				Effect.mapError((cause) => new PlacementError({ cause })),
-				Effect.catchTag("PlacementError", () => Effect.succeed(null)),
+				Effect.catchTag("PlacementError", () => Effect.succeed(UNAVAILABLE)),
 			);
-			this.placement = placement;
+			this.#setPlacement(result);
 			if (import.meta.env.DEV)
-				(window as unknown as { __chartlessGrid?: unknown }).__chartlessGrid = placement;
-			return placement?.barStarts ?? declared;
+				(window as unknown as { __chartlessGrid?: unknown }).__chartlessGrid = result;
+			return this.placement?.barStarts ?? declared;
 		});
 	}
 
-	/** The chartless grid on the decoded stems (audio/chartlessGridInBrowser.ts); null without buffers. */
+	/** The placement's answer kept: the grid when placed, else the refusal; null clears both. */
+	#setPlacement(result: ChartlessGridResult | null) {
+		this.placement = result?.ok ? result.grid : null;
+		this.placementRefusal = result && !result.ok ? result : null;
+	}
+
+	/** The chartless grid on the decoded stems (audio/chartlessGridInBrowser.ts); unavailable without buffers. */
 	async #place(
 		engine: StemEngine,
 		grid: BarGrid,
 		runs: ChordminiRuns | null,
 		signal: AbortSignal,
-	): Promise<ChartlessGrid | null> {
+	): Promise<ChartlessGridResult> {
 		const buffers = await engine.decodedBuffers();
-		if (buffers.length === 0) return null;
+		if (buffers.length === 0) return UNAVAILABLE;
 		return chartlessGridInBrowser({
 			buffers,
 			cacheKey: alignmentFeaturesKey(engine.sourceUrls(), buffers[0]!.sampleRate),

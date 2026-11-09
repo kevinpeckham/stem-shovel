@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import type { ChartlessGrid, DownbeatWitness } from "#lib/audio/chartlessGrid.js";
+import type { ChartlessGrid, ChartlessRefusal, DownbeatWitness } from "#lib/audio/chartlessGrid.js";
 import { chartlessPlacementLine } from "./chartlessPlacementLine.js";
 
 const witness = (name: DownbeatWitness["name"], cls: number | null): DownbeatWitness => ({
@@ -63,5 +63,39 @@ describe("chartlessPlacementLine", () => {
 			"Bars placed on the stems' own beat from your start of bar 1: 76 bars.",
 		);
 		expect(chartlessPlacementLine(null)).toBe("");
+	});
+
+	test("an undecided vote says what each witness read, 1-based, and that the song's own grid stands", () => {
+		const refusal: ChartlessRefusal = {
+			ok: false,
+			reason: "undecided",
+			witnesses: [witness("timeZero", 0), witness("harmonicRhythm", 2), witness("sections", null)],
+		};
+		expect(chartlessPlacementLine(null, refusal)).toBe(
+			"Bar 1 not placed from the stems: the chord changes say beat 3, the recording's start says beat 1, the section changes abstain. The bars follow your tempo and start of bar 1.",
+		);
+		expect(
+			chartlessPlacementLine(null, {
+				...refusal,
+				witnesses: [witness("timeZero", null), witness("sections", 1)],
+			}),
+		).toBe(
+			"Bar 1 not placed from the stems: the recording's start abstains, the section changes say beat 2. The bars follow your tempo and start of bar 1.",
+		);
+	});
+
+	test("no usable beat, no fit, and an unavailable reading", () => {
+		const refusal = (reason: ChartlessRefusal["reason"]): ChartlessRefusal => ({
+			ok: false,
+			reason,
+			witnesses: [],
+		});
+		expect(chartlessPlacementLine(null, refusal("no-input"))).toBe(
+			"Bar 1 not placed from the stems: they gave no usable beat.",
+		);
+		expect(chartlessPlacementLine(null, refusal("no-fit"))).toBe(
+			"Bar 1 not placed from the stems: no bar on their beat fits the recording.",
+		);
+		expect(chartlessPlacementLine(null, refusal("unavailable"))).toBe("");
 	});
 });

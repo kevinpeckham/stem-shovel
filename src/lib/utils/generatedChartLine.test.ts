@@ -19,4 +19,20 @@ describe("generatedChartLine", () => {
 			"Chart generated from the stems: 1 bar, 1 section; start of bar 1 set to 1:23.4 and tempo to 99.5 bpm.",
 		);
 	});
+
+	test("the verdict's notes follow, joined", () => {
+		expect(
+			generatedChartLine({
+				bars: 78,
+				sections: 0,
+				placed: null,
+				notes: ["bar 1 was not placed from the stems", "2 warnings on the chart"],
+			}),
+		).toBe(
+			"Chart generated from the stems: 78 bars, no sections. Note: bar 1 was not placed from the stems; 2 warnings on the chart.",
+		);
+		expect(generatedChartLine({ bars: 1, sections: 0, placed: null, notes: [] })).toBe(
+			"Chart generated from the stems: 1 bar, no sections.",
+		);
+	});
 });

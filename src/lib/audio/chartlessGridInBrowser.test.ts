@@ -12,7 +12,7 @@ const cache = vi.hoisted(() => ({
 }));
 vi.mock("./alignmentFeaturesCache.js", () => cache);
 const grid = vi.hoisted(() => ({
-	chartlessGrid: vi.fn((_input: unknown): unknown => ({ barStarts: [0, 2] })),
+	chartlessGrid: vi.fn((_input: unknown): unknown => ({ ok: true, grid: { barStarts: [0, 2] } })),
 }));
 vi.mock("./chartlessGrid.js", () => grid);
 
@@ -76,7 +76,10 @@ afterEach(() => {
 describe("chartlessGridInBrowser", () => {
 	test("a miss runs both workers, reads the grid from their answers and keeps the record", async () => {
 		const posted = fakeWorkers();
-		await expect(chartlessGridInBrowser(input())).resolves.toEqual({ barStarts: [0, 2] });
+		await expect(chartlessGridInBrowser(input())).resolves.toEqual({
+			ok: true,
+			grid: { barStarts: [0, 2] },
+		});
 		expect(posted.toSorted()).toEqual(["envelope", "features"]);
 		expect(grid.chartlessGrid).toHaveBeenCalledWith(
 			expect.objectContaining({ firstSound: 0.5, hopSec: 0.1, fps: 86, duration: 8 }),
@@ -104,12 +107,13 @@ describe("chartlessGridInBrowser", () => {
 		expect(cache.writeAlignmentFeatures).not.toHaveBeenCalled();
 	});
 
-	test("a worker's error, or no Worker, resolves null and keeps nothing", async () => {
+	test("a worker's error, or no Worker, resolves the unavailable refusal and keeps nothing", async () => {
+		const unavailable = { ok: false, reason: "unavailable", witnesses: [] };
 		fakeWorkers("features");
-		await expect(chartlessGridInBrowser(input())).resolves.toBeNull();
+		await expect(chartlessGridInBrowser(input())).resolves.toEqual(unavailable);
 		expect(cache.writeAlignmentFeatures).not.toHaveBeenCalled();
 		vi.stubGlobal("Worker", undefined);
-		await expect(chartlessGridInBrowser(input(null))).resolves.toBeNull();
+		await expect(chartlessGridInBrowser(input(null))).resolves.toEqual(unavailable);
 		expect(grid.chartlessGrid).not.toHaveBeenCalled();
 	});
 });

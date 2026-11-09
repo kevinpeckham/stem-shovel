@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Generate chart from the stems holds a doubtful draft for review.** A verdict (`utils/generatedChartVerdict.ts`) runs before the unattended save: a draft with an error diagnostic, without its timing map (the refinement changed the bar count) or with more than half its bars unnamed (`GENERATED_MAX_UNKNOWN_SHARE` 0.5, provisional until stem-bench Study 34) stays on the draft card with one notification saying why, nothing saved; an undecided downbeat vote or warnings are appended to the saved notification as notes (`generatedChartLine`).
+- **The Tempo & key tab says why bar 1 was not placed.** `chartlessGrid` and its browser wrapper return a result, the grid or a refusal with a reason (`no-input`, `undecided`, `no-fit`, `unavailable`) and the witnesses' readings, kept on the draft state as `placementRefusal`; `chartlessPlacementLine` writes the sentence, for an undecided vote what each witness read.
+
+### Technical
+
+- **The grid reads `@barmark/sync`'s `ChordRuns`.** `ChartlessGridInput.runs` and `chordminiBarChords` take sync's shape (frames with `frameSec`, or seconds; a Harte `label` or a barmark `symbol`), which the stored `ChordminiRuns` already fits. With the refusals above, this is the contract the coming `@barmark/listen` package carries (stem-shovel issue #17).
+
 ## [0.253.0] - 2026-11-09
 
 ### Changed

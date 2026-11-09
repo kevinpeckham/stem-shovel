@@ -23,7 +23,7 @@ const files = vi.hoisted(() => ({ chartFromScore: vi.fn() }));
 vi.mock("#lib/remote/files.remote.js", () => files);
 const notify = vi.hoisted(() => vi.fn());
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify }));
-/** The chartless placement on the stems: null (the declared grid stands) unless a test says otherwise. */
+/** The chartless placement on the stems: unavailable (the declared grid stands) unless a test says otherwise. */
 const placing = vi.hoisted(() => ({ chartlessGridInBrowser: vi.fn() }));
 vi.mock("#lib/audio/chartlessGridInBrowser.js", () => placing);
 
@@ -105,6 +105,10 @@ const MODEL: ChordminiRuns = {
 	],
 };
 const STORED = { chords: MODEL, inFlight: false, hasMix: true };
+const UNAVAILABLE = { ok: false, reason: "unavailable", witnesses: [] };
+/** The placement's answer for a placed grid. */
+const placedAs = (grid: object) => ({ ok: true, grid });
+const WITNESS = { name: "timeZero", cls: null, weight: 2, detail: {} };
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -113,7 +117,7 @@ beforeEach(() => {
 	remote.reconcileChords.mockResolvedValue({ chords: ["D", "D", "A", "Em"] });
 	remote.draftChart.mockResolvedValue(DRAFT);
 	decodedBuffers.mockResolvedValue([BUFFER]);
-	placing.chartlessGridInBrowser.mockResolvedValue(null);
+	placing.chartlessGridInBrowser.mockResolvedValue(UNAVAILABLE);
 	remote.useChartlessGrid.mockImplementation(async (input: object) => input);
 	remote.saveSections.mockResolvedValue(undefined);
 	remote.saveChartDraft.mockResolvedValue(undefined);
@@ -459,7 +463,7 @@ describe("SongChordDraft", () => {
 
 		test("a placed grid is what the chords are read on and what the draft is built on", async () => {
 			remote.songChords.mockImplementation(() => asQuery(STORED));
-			placing.chartlessGridInBrowser.mockResolvedValue(PLACED);
+			placing.chartlessGridInBrowser.mockResolvedValue(placedAs(PLACED));
 			const cd = make({ startAt: 0.3 });
 			await cd.draftFromPanel();
 			expect(placing.chartlessGridInBrowser).toHaveBeenCalledWith(
@@ -480,7 +484,7 @@ describe("SongChordDraft", () => {
 		});
 
 		test("the notes path places too, without the model's chords", async () => {
-			placing.chartlessGridInBrowser.mockResolvedValue(PLACED);
+			placing.chartlessGridInBrowser.mockResolvedValue(placedAs(PLACED));
 			const cd = make();
 			await cd.detectChords();
 			expect(placing.chartlessGridInBrowser).toHaveBeenCalledWith(
@@ -495,7 +499,19 @@ describe("SongChordDraft", () => {
 			await cd.draftFromPanel();
 			expect(placing.chartlessGridInBrowser).toHaveBeenCalledOnce();
 			expect(cd.placement).toBeNull();
+			expect(cd.placementRefusal).toEqual(UNAVAILABLE);
 			expect(remote.draftChart.mock.calls[0][0].grid).toEqual([0, 2, 4, 6, 7.9]);
+		});
+
+		test("an undecided vote keeps its refusal beside no placement; dismiss clears it", async () => {
+			const undecided = { ok: false, reason: "undecided", witnesses: [WITNESS] };
+			placing.chartlessGridInBrowser.mockResolvedValue(undecided);
+			const cd = make();
+			await cd.detectChords();
+			expect(cd.placement).toBeNull();
+			expect(cd.placementRefusal).toEqual(undecided);
+			cd.dismiss();
+			expect(cd.placementRefusal).toBeNull();
 		});
 
 		test("a failed placement is the declared grid, never a failed run", async () => {
@@ -544,7 +560,7 @@ describe("SongChordDraft", () => {
 
 		test("the chords, bar one, the sections and the chart saved; the draft goes", async () => {
 			remote.songChords.mockImplementation(() => asQuery(STORED));
-			placing.chartlessGridInBrowser.mockResolvedValue(PLACED);
+			placing.chartlessGridInBrowser.mockResolvedValue(placedAs(PLACED));
 			remote.draftChart.mockResolvedValue(TWO_SECTIONS);
 			const cd = make();
 			const run = cd.generateChart();
@@ -607,7 +623,7 @@ describe("SongChordDraft", () => {
 		});
 
 		test("a failed start of bar 1 is said, and the chart is still saved", async () => {
-			placing.chartlessGridInBrowser.mockResolvedValue(PLACED);
+			placing.chartlessGridInBrowser.mockResolvedValue(placedAs(PLACED));
 			remote.useChartlessGrid.mockRejectedValueOnce(new Error("Not a member"));
 			const cd = make();
 			await cd.generateChart();
@@ -623,6 +639,51 @@ describe("SongChordDraft", () => {
 			expect(remote.saveSections).not.toHaveBeenCalled();
 			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
 			expect(notify).toHaveBeenCalledWith("Chart generated from the stems: 4 bars, 1 section.");
+		});
+
+		test("a draft whose timing map was dropped is held on the card: not saved, said once", async () => {
+			remote.draftChart.mockResolvedValue({ ...DRAFT, timing: null, diagnostics: [] });
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.saveChartDraft).not.toHaveBeenCalled();
+			expect(remote.saveSections).not.toHaveBeenCalled();
+			expect(cd.draft).toMatchObject({ chart: "## Verse", timing: null });
+			expect(notify).toHaveBeenCalledWith(
+				"Chart drafted but not saved: its bar count no longer matches the stems, so it has no timing. Review it on the draft card.",
+				{ kind: "info" },
+			);
+			expect(cd.progress).toBeNull();
+		});
+
+		test("a draft with an error is held", async () => {
+			remote.draftChart.mockResolvedValue({
+				...DRAFT,
+				diagnostics: [{ level: "error", message: "Bar 3 does not parse" }],
+			});
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.saveChartDraft).not.toHaveBeenCalled();
+			expect(cd.draft).not.toBeNull();
+			expect(notify).toHaveBeenCalledWith(
+				"Chart drafted but not saved: the chart has errors. Review it on the draft card.",
+				{ kind: "info" },
+			);
+		});
+
+		test("an undecided vote with a clean draft saves, and the notification says bar 1 was not placed", async () => {
+			placing.chartlessGridInBrowser.mockResolvedValue({
+				ok: false,
+				reason: "undecided",
+				witnesses: [WITNESS],
+			});
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.useChartlessGrid).not.toHaveBeenCalled();
+			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
+			expect(cd.draft).toBeNull();
+			expect(notify).toHaveBeenCalledWith(
+				"Chart generated from the stems: 4 bars, 1 section. Note: bar 1 was not placed from the stems.",
+			);
 		});
 	});
 });

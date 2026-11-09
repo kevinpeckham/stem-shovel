@@ -1,8 +1,8 @@
-import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import type {
 	RecordingFeaturesReply,
 	RecordingFeaturesRequest,
 } from "#lib/workers/recordingFeatures.worker.js";
+import type { ChordRuns } from "@barmark/sync";
 import * as Effect from "effect/Effect";
 import { type AlignmentFeaturesRecord, readAlignmentFeatures } from "./alignmentFeaturesCache.js";
 import {
@@ -14,7 +14,7 @@ import {
 	WORKER_TIMEOUT,
 } from "./alignmentWorkers.js";
 import type { RecordingFeatures } from "./chartAlignment.js";
-import { type ChartlessGrid, chartlessGrid } from "./chartlessGrid.js";
+import { type ChartlessGridResult, type ChartlessRefusal, chartlessGrid } from "./chartlessGrid.js";
 import { monoOfBuffers } from "./monoOfBuffers.js";
 
 /**
@@ -28,7 +28,8 @@ import { monoOfBuffers } from "./monoOfBuffers.js";
  * only for what the cache lacks, the record written after (fire and
  * forget). The reading is a help, never a step that can fail the draft:
  * no Worker, no audio, a worker's error, the 90 s timeout or an aborted
- * `signal` all resolve null, and the draft keeps the declared grid.
+ * `signal` all resolve the `unavailable` refusal (no witnesses), and the
+ * draft keeps the declared grid; the grid's own refusals pass through.
  */
 export interface ChartlessGridBrowserInput {
 	buffers: AudioBuffer[];
@@ -36,7 +37,7 @@ export interface ChartlessGridBrowserInput {
 	declaredBarSeconds: number;
 	beatsPerBar: number;
 	startAt: number | null;
-	runs: ChordminiRuns | null;
+	runs: ChordRuns | null;
 	duration: number;
 	/** Aborted when the draft's run is canceled: the workers end with it. */
 	signal?: AbortSignal;
@@ -96,12 +97,14 @@ function readingOf(
 	);
 }
 
+const UNAVAILABLE: ChartlessRefusal = { ok: false, reason: "unavailable", witnesses: [] };
+
 export function chartlessGridInBrowser(
 	input: ChartlessGridBrowserInput,
-): Promise<ChartlessGrid | null> {
+): Promise<ChartlessGridResult> {
 	const { buffers, cacheKey } = input;
-	const program = Effect.suspend(() => {
-		if (typeof Worker === "undefined" || buffers.length === 0) return Effect.succeed(null);
+	const program = Effect.suspend((): Effect.Effect<ChartlessGridResult, Error> => {
+		if (typeof Worker === "undefined" || buffers.length === 0) return Effect.succeed(UNAVAILABLE);
 		return Effect.promise(() =>
 			cacheKey ? readAlignmentFeatures(cacheKey) : Promise.resolve(null),
 		).pipe(
@@ -121,6 +124,6 @@ export function chartlessGridInBrowser(
 				}),
 			),
 		);
-	}).pipe(Effect.catchCause(() => Effect.succeed(null)));
-	return Effect.runPromise(program, { signal: input.signal }).catch(() => null);
+	}).pipe(Effect.catchCause(() => Effect.succeed(UNAVAILABLE)));
+	return Effect.runPromise(program, { signal: input.signal }).catch(() => UNAVAILABLE);
 }

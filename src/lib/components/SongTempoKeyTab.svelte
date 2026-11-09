@@ -282,6 +282,9 @@
 					onclick={() => usePlacement(placement)}>Use as start of bar 1</button
 				>
 			</p>
+		{:else if chordDraft.placementRefusal}
+			{@const refusalLine = chartlessPlacementLine(null, chordDraft.placementRefusal)}
+			{#if refusalLine}<p class="mt-1 text-xs opacity-80">{refusalLine}</p>{/if}
 		{/if}
 	</div>
 {/snippet}
