@@ -283,3 +283,43 @@ Neither belongs in Study 34's registration. Until one of them runs, the
 public tool treats phone input as unmeasured: it warns, or it declines
 recordings that look like one. Study 34's live recording with an
 audience remains the corpus's one reading of a real room's balance.
+
+## App request (2026-11-09, before the run): two more columns per song
+
+The app shipped a verdict on the generated draft the same day as this
+brief (v0.254.0, `src/lib/utils/generatedChartVerdict.ts`), after the
+scoring above was written. "Generate chart from the stems" no longer
+saves every draft: it holds one for review, unsaved, in three cases.
+Two of them rest on judgment, not on a study, and the corpus can
+measure both at no extra cost, since the bench has the numbers in hand
+on every run. Please add to the per-song report:
+
+1. **Whether the draft step changed the bar count.** The starting
+   chart's played bars (the builder's, `timing.chart.bars`) against the
+   refined chart's (`parseChart(answer).bars.length`), both numbers, and
+   whether they differ. When they differ the app drops the timing map
+   and holds the draft (`draftChart` in `src/lib/remote/songs.remote.ts`
+   is the rule). What the app wants to learn: does this hold fall on
+   charts the study classes as good, or on the wrong ones?
+2. **The share of bars with no named chord.** Over the chord segments
+   the draft was built from: bars whose chord is `?` or `N.C.`, divided
+   by all bars. The app holds a draft above 0.5
+   (`GENERATED_MAX_UNKNOWN_SHARE`, provisional, "not yet set by a bench
+   study"). What the app wants to learn: where the good charts and the
+   wrong ones sit on this number, so the value can be set from data.
+
+The third hold, a chart with an error diagnostic, needs no column: the
+bench sees the diagnostics already. Please report it where it happens.
+
+**How this reads against the classes, with nothing re-registered.** The
+classes and S34-G1 stand as written: "confidently wrong" is a wrong
+chart the pipeline produced. Beside it, please mark each song **saved**
+or **held** by the app's verdict (held = an error, a changed bar count,
+or a share over 0.5). A confidently wrong chart that the app would have
+held is a different finding from one it would have saved unattended,
+and the report should let a reader tell them apart. G1's pass or fail
+is still taken on the registered reading; the app will read the second
+one when it decides whether to move either rule.
+
+Twelve songs will bound these two values, not fix them. That is enough
+for the app's purpose: to know whether either rule is plainly wrong.
