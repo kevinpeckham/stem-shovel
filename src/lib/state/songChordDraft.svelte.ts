@@ -274,7 +274,7 @@ export class SongChordDraft {
 	generateChart = () =>
 		this.#run(
 			Effect.gen({ self: this }, function* () {
-				yield* this.#ensureGrid();
+				const detectedGrid = yield* this.#ensureGrid();
 				if (!this.#ready())
 					return yield* new GridError({ cause: "Every stem has to decode first" });
 				this.#step = "Detecting the chords…";
@@ -283,19 +283,25 @@ export class SongChordDraft {
 				const placed = yield* this.#useBarOne();
 				this.#step = "Drafting the chart with AI…";
 				yield* this.#draft();
-				if (this.draft) yield* this.#saveOrHold(this.draft, placed);
+				if (this.draft) yield* this.#saveOrHold(this.draft, placed, detectedGrid);
 			}).pipe(Effect.catch(this.#fail), Effect.ensuring(Effect.sync(() => (this.#step = null)))),
 		);
 
-	/** The song's grid, set from the stems when it has none; a `GridError` when it still has none. */
-	#ensureGrid(): Effect.Effect<void, GridError> {
+	/**
+	 * The song's grid, set from the stems when it has none: true when this
+	 * run set it (the verdict then holds the draft: a detected tempo or meter
+	 * is the one error the draft cannot show); a `GridError` when it still
+	 * has none.
+	 */
+	#ensureGrid(): Effect.Effect<boolean, GridError> {
 		return Effect.gen({ self: this }, function* () {
-			if (this.#opts.grid()) return;
+			if (this.#opts.grid()) return false;
 			this.#step = "Setting the tempo and time signature from the stems…";
 			const ok = yield* attempt(() => this.#opts.ensureGrid()).pipe(
 				Effect.orElseSucceed(() => false),
 			);
-			if (!ok) yield* new GridError({ cause: "Set a tempo and a time signature first" });
+			if (!ok) return yield* new GridError({ cause: "Set a tempo and a time signature first" });
+			return true;
 		});
 	}
 
@@ -334,11 +340,13 @@ export class SongChordDraft {
 	#saveOrHold(
 		draft: ChartDraft,
 		placed: { startAt: number; bpm: number } | null,
+		detectedGrid: boolean,
 	): Effect.Effect<void, SaveError> {
 		const verdict = generatedChartVerdict({
 			draft,
 			segments: this.chordSegments ?? [],
 			undecided: this.placementRefusal?.reason === "undecided",
+			detectedGrid,
 		});
 		if (verdict.save) return this.#saveGenerated(draft, placed, verdict.notes);
 		return Effect.sync(() =>

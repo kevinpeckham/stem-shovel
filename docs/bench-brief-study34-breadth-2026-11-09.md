@@ -345,7 +345,8 @@ one these gates tested; that re-scoping is the app's call, and a
 revised brief would need its own registration.
 
 **On the two requested columns:**
-1. *Bar-count change:* computable this run only through the bench's
+
+1. _Bar-count change:_ computable this run only through the bench's
    chords channel, which showed draftBars = gridN - 1 uniformly on
    all eleven parsed drafts — a channel artifact carrying no
    differential signal. The real finding underneath: the draft step
@@ -356,13 +357,13 @@ revised brief would need its own registration.
    would have saved, not held, all five confidently-wrong charts.**
    That rule is not plainly wrong, but it is blind to the dominant
    failure mode this study found.
-2. *Unknown share:* not recoverable from this run — the runner stored
+2. _Unknown share:_ not recoverable from this run — the runner stored
    parsed metrics, not raw drafts. It now persists `rawDraft`,
    `barCountChanged` and `unknownShare` on every future run (bench
    ba88e9c), so the next drafted study bounds the 0.5 threshold for
    free. Until then `GENERATED_MAX_UNKNOWN_SHARE` stays "not yet set
    by a bench study".
-3. *Error-diagnostic holds:* one occurred — interbellum, the clean
+3. _Error-diagnostic holds:_ one occurred — interbellum, the clean
    DAW export, returned no parseable answer (the study's only
    refusal). The app's verdict would have held it, correctly.
 

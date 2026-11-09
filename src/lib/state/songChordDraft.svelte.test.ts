@@ -65,11 +65,13 @@ function make({
 	grid = GRID as typeof GRID | null,
 	startAt = null as number | null,
 	hasSections = false,
+	/** A grid that changes during the run (the stems' scan sets it); else `grid`. */
+	gridOf = undefined as (() => typeof GRID | null) | undefined,
 } = {}) {
 	return new SongChordDraft({
 		songId: () => "song1",
 		engine: () => engine,
-		grid: () => grid,
+		grid: gridOf ?? (() => grid),
 		aiAvailable: () => ai,
 		startAt: () => startAt,
 		ensureGrid,
@@ -653,6 +655,23 @@ describe("SongChordDraft", () => {
 				{ kind: "info" },
 			);
 			expect(cd.progress).toBeNull();
+		});
+
+		test("on a song with no tempo the run sets one from the stems and holds its draft for review", async () => {
+			let grid: typeof GRID | null = null;
+			ensureGrid.mockImplementationOnce(async () => {
+				grid = GRID;
+				return true;
+			});
+			const cd = make({ gridOf: () => grid });
+			await cd.generateChart();
+			expect(ensureGrid).toHaveBeenCalledOnce();
+			expect(remote.saveChartDraft).not.toHaveBeenCalled();
+			expect(cd.draft).not.toBeNull();
+			expect(notify).toHaveBeenCalledWith(
+				"Chart drafted but not saved: its tempo and time signature were detected from the stems and need checking. Review it on the draft card.",
+				{ kind: "info" },
+			);
 		});
 
 		test("a draft with an error is held", async () => {

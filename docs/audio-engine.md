@@ -1332,10 +1332,25 @@ what the stems alone can say about that grid and what they cannot:
   `utils/generatedChartVerdict.ts`). "Generate chart from the stems" no
   longer saves whatever the draft step returns. The draft is **held** on
   the draft card, with one notification saying why and nothing saved,
-  when it carries an error diagnostic, when its timing map was dropped
-  (the refinement changed the bar count), or when more than half its
-  bars have no chord the model could name (`?` or `N.C.`;
-  `GENERATED_MAX_UNKNOWN_SHARE`, a provisional floor that Study 34 will
-  measure). It is saved **with a note** in the notification when the
+  when the run set the song's tempo and time signature from the stems
+  itself (a song that had none; see below), when it carries an error
+  diagnostic, when its timing map was dropped (the refinement changed
+  the bar count), or when more than half its bars have no chord the
+  model could name (`?` or `N.C.`; `GENERATED_MAX_UNKNOWN_SHARE`, a
+  provisional floor no study has measured yet). It is saved **with a note** in the notification when the
   vote left bar 1 unplaced or the chart carries warnings. A held draft
   keeps its Save as chart and Discard, so nothing is thrown away.
+- **Why a detected tempo holds the draft** (2026-11-09, stem-bench
+  Study 34). Twelve recordings from outside the band went through this
+  path with every prior detected: five of the eight graded drafts were
+  confidently wrong, and every one was wrong at the grid, from the
+  detector's tempo level, meter or key (a waltz read as 4/4, a blues at
+  half tempo). The draft step kept each wrong grid's bar count, so the
+  dropped-map hold saw none of them. A wrong tempo is the one error the
+  draft cannot show, so the run that detected it does not save
+  unattended: the member checks the tempo and time signature the run
+  just set (Tempo & key), then saves the draft from its card. The hold
+  is the run's alone: the song records no source for its tempo, so a
+  later Generate on the same song saves as before. Study 34b
+  (`docs/bench-brief-study34b-declared-priors-2026-11-09.md`) measures
+  whether the detector's own confidence could narrow this.

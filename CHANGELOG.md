@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Generate chart holds its draft when the run detected the tempo and time signature itself.** On a song with no tempo, "Generate chart from the stems" sets one from the stems and then drafted and saved the chart unattended. stem-bench Study 34 put twelve recordings from outside the band through that path: five of the eight graded drafts were confidently wrong, each drafted faithfully on a grid whose tempo level, meter or key the detector had wrong, and the dropped-timing-map hold saw none of them. `SongChordDraft.#ensureGrid` now reports that it set the grid, and `generatedChartVerdict` holds on it ("its tempo and time signature were detected from the stems and need checking"): the draft stays on its card with Save as chart and Discard. The hold is the run's alone, since a song records no source for its tempo. The user-docs seed `song-settings.md` says so. The bench's answer is in `docs/bench-brief-study34-breadth-2026-11-09.md`; the follow-up brief (declared tempo and meter, what the detector's confidence knew) is `docs/bench-brief-study34b-declared-priors-2026-11-09.md`.
+
 ### Technical
 
 - **`db:chart-check` reads every barmark text a stage keeps.** It read each song's chord chart only; it now also reads each score's stored read (`song_pdf.chart_read`, which the song check places on the stems like a chart) and each idea's chart, and counts each kind in its summary. Wanted before `@barmark/listen` is adopted: barmark will read none of the seven old chord spellings the app's pad renderer rewrote (`CM7`, `CSus4`, `CmMaj7`, `CmM7`, `C69`, `C(7)sus4`, a Unicode minus), and the check lists a stored text that still carries one as an error.

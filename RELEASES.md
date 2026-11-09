@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **Generate chart asks you to check a tempo it had to guess.** On a song with no tempo set, Generate chart from the stems still sets the tempo and time signature and drafts the chart, but it no longer saves that chart on its own. The draft waits on its card so you can check the tempo and time signature first.
+
 ## [0.254.1] - 2026-11-09
 
 ### Fixed

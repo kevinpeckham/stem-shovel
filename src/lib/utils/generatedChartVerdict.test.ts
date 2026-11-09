@@ -17,6 +17,21 @@ describe("generatedChartVerdict", () => {
 		});
 	});
 
+	test("a run that detected the tempo and time signature itself holds an otherwise clean draft (Study 34)", () => {
+		expect(
+			generatedChartVerdict({
+				draft: CLEAN,
+				segments: CHORDS,
+				undecided: false,
+				detectedGrid: true,
+			}),
+		).toEqual({
+			save: false,
+			holds: ["its tempo and time signature were detected from the stems and need checking"],
+			notes: [],
+		});
+	});
+
 	test("an error, a dropped timing map and mostly unnamed bars each hold it", () => {
 		const held = generatedChartVerdict({
 			draft: { diagnostics: [{ level: "error" }], timing: null },
