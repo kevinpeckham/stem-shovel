@@ -40,7 +40,7 @@ one, and Study 34 carries a 6/8 slot. Two asks:
   tempo lines and read as a porting bug.
 - **The app fixes its adapter before the equivalence script runs**, so
   the goldens are taken from a correct reference. **Done the same day**
-  (the commit after this note on `dev`): `barmarkChartBars` converts the
+  (`1e120b2e` on `dev`): `barmarkChartBars` converts the
   chart's tempo, and the three rows above now read 3.0, 4.0 and 1.5 s in
   the app. Goldens taken from that commit on agree with barmark's rule.
 
