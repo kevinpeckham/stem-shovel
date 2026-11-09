@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.252.1] - 2026-11-09
+
 ### Fixed
 
 - **Bar numbers match the chart after a repeat.** When the player follows a chart's timing, the transport, the position fields and comment positions now show the bar number as the chart writes it, so a bar played again under a repeat keeps its written number.
