@@ -8,12 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.252.0] - 2026-11-09
+
 ### Added
 
 - **Generate chart from the stems, in one click.** An empty Chart tab offers it to an editor when the AI is on for the song (a ⋯ menu item too): the tempo and time signature are set from the stems when the song has none, the chords are detected and the bars placed, a decided placement becomes the song's start of bar 1 and tempo, the AI drafts the chart, and the draft's sections (unless the song has some) and the chart are saved, with the step shown as it runs and Cancel at hand (`SongChordDraft.generateChart`, `utils/generatedChartLine.ts`). One Effect run, so Cancel stops it at its current step.
 
 ### Fixed
 
+- **A regression test from the Sentry-triage bot** for the network-level preload failures PR #7 keeps out of Sentry, merged from main (PR #15; `utils/isNetworkFetchError.test.ts`, `hooks.client.test.ts`).
 - **Notifications show above an open popover.** The notification stack is now a manual popover in the browser's top layer, shown again whenever a notification arrives, so a "Chart saved" fired from the song settings is no longer hidden under them (`components/Notifications.svelte`).
 - **The draft card's saves say so, and the card goes away.** "Save as chart" and "Save sections" read "Saving…" while they run; a saved chart dismisses the card (whose preview had doubled the chart until a reload) and saved sections leave a "Sections saved" mark.
 
