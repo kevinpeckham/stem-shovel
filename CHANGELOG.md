@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The stem player renders before its scripts load.** `StemEngine.prepare(sources)` seeds the placeholder rows and the song's duration from the manifest synchronously (what `load()` did first, now shared), `StemPlayer` calls it as it is created, and the template renders in the `idle` state too, so the server sends the transport and the stem rows with their names and faders and the first paint has them; the waveforms draw and the controls enable as the engine loads after hydration. The status line says "Loading the stems…" until then (docs/stem-engine.md "Loading").
+
 ## [0.252.1] - 2026-11-09
 
 ### Fixed

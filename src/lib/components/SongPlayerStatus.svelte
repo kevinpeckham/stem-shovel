@@ -48,7 +48,9 @@
 <!-- The player's status, the body's first line (the player's own box is hidden; the header has no room beside the views and the controls). -->
 {#if engine}
 	<p class="mb-2 text-13px opacity-70" aria-live="polite">
-		{#if engine.status === "loading"}
+		{#if engine.status === "idle"}
+			Loading the stems…
+		{:else if engine.status === "loading"}
 			Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}…
 		{:else if engine.status === "ready"}
 			{stemCount}

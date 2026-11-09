@@ -185,6 +185,7 @@
 		if (songId) saveLocalMix(songId, null);
 	}
 	untrack(() => onengine)?.(engine); // once, at creation: the engine object never changes
+	engine.prepare(untrack(() => manifest.stems)); // the rows at once, so the server and the first render show the player
 	// A dev-only hook for the browser tests (tests/e2e): the engine's mode, status and position.
 	if (dev && typeof window !== "undefined") (window as { __stems?: StemEngine }).__stems = engine;
 	if (dev && typeof window !== "undefined") (window as { __click?: StemClick }).__click = click;
@@ -290,6 +291,7 @@
 	const memoryBudget = stemMemoryBudget(
 		typeof navigator === "undefined" ? null : (navigator as { deviceMemory?: number }).deviceMemory,
 	);
+	let overBudget = $derived(engine.status !== "idle" && engine.estimatedBytes > memoryBudget); // not while idle: the server's budget is not the browser's
 	let orderAtStart: string[] = [];
 	const order = () => engine.stems.map((s) => s.id);
 	const moveTo = (id: string, index: number) => engine.reorder(moveId(order(), id, index));
@@ -351,7 +353,7 @@
 				<p class="mt-3 text-sm">{@render errorHint()}</p>
 			{/if}
 		</div>
-	{:else if engine.status === "loading" || engine.status === "ready"}
+	{:else}
 		{#if engine.lastLoadDied}
 			<p
 				class="mb-3 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm"
@@ -362,7 +364,7 @@
 					engine.lastLoadDied.bytes,
 				)} once decoded). Try it on a computer, or with fewer stems.
 			</p>
-		{:else if engine.estimatedBytes > memoryBudget}
+		{:else if overBudget}
 			<p
 				class="mb-3 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm"
 				role="status"
@@ -459,7 +461,7 @@
 				: 'hidden'}"
 			aria-live="polite"
 		>
-			{#if engine.status === "loading"}
+			{#if engine.status === "idle"}Loading the stems…{:else if engine.status === "loading"}
 				Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}… play and seek
 				enable when every stem is ready.
 			{:else if engine.status === "ready"}

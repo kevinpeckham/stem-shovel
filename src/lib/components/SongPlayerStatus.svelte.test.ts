@@ -27,6 +27,11 @@ function setup(
 }
 
 describe("SongPlayerStatus", () => {
+	test("idle, before the load starts: loading the stems", () => {
+		setup({ status: "idle", loaded: 0, total: 3 });
+		expect(screen.getByText(/Loading the stems…/)).toBeInTheDocument();
+	});
+
 	test("decoding: which stem of how many", () => {
 		setup({ status: "loading", loaded: 1, total: 3 });
 		expect(screen.getByText(/Decoding stem 2 of 3…/)).toBeInTheDocument();

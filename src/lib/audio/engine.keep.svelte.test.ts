@@ -89,6 +89,34 @@ beforeEach(() => {
 	cache.songs.mockImplementation(async () => []);
 });
 
+describe("prepare", () => {
+	const sources: StemSource[] = [
+		{ ...src("a"), duration: 8, peaks: [0.1, 0.5], gain: 0.5, pan: -0.25, tint: "red" },
+		{ ...src("b"), duration: 12, channels: 2 },
+	];
+	it("fills a placeholder row per stem from the manifest, nothing decoded, the status still idle", () => {
+		const engine = new StemEngine();
+		engine.prepare(sources);
+		expect(engine.status).toBe("idle");
+		expect(engine.total).toBe(2);
+		expect(engine.duration).toBe(12);
+		expect(engine.stems).toMatchObject([
+			{ id: "a", label: "a", duration: 8, peaks: [0.1, 0.5], gain: 0.5, pan: -0.25, tint: "red" },
+			{ id: "b", label: "b", duration: 12, channels: 2, peaks: [], gain: 1, pan: 0, tint: null },
+		]);
+		expect(engine.stems.every((s) => !s.decoded)).toBe(true);
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+	it("a load of the same stems after it still loads", async () => {
+		const engine = new StemEngine();
+		engine.prepare(sources);
+		await engine.load(sources, { choice: "buffered" });
+		expect(engine.status).toBe("ready");
+		expect(engine.stems.map((s) => s.id)).toEqual(["a", "b"]);
+		expect(engine.stems.every((s) => s.decoded)).toBe(true);
+	});
+});
+
 describe("buffered load and the kept copy", () => {
 	it("a song not kept never asks the cache and fetches every stem", async () => {
 		const engine = new StemEngine();

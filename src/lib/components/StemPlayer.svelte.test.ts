@@ -119,6 +119,24 @@ describe("StemPlayer", () => {
 		expect(onengine).toHaveBeenCalledTimes(1);
 	});
 
+	test("before the load starts (idle), the rows and the transport render from the manifest alone", () => {
+		// A kept-songs cache that never answers holds the load back, so the engine stays idle.
+		cache.available = true;
+		cache.songs.mockImplementation(() => new Promise(() => {}));
+		try {
+			const onengine = vi.fn<(engine: StemEngine) => void>();
+			render(StemPlayer, { props: { manifest: manifest(), onengine, songId: "song1" } });
+			expect(onengine.mock.calls[0][0].status).toBe("idle");
+			expect(rowNames()).toEqual(["Drums", "Bass", "Vox"]);
+			expect(screen.getByRole("button", { name: "Play" })).toBeDisabled();
+			expect(screen.getByText(/Loading the stems…/)).toBeInTheDocument();
+			expect(fetchSpy).not.toHaveBeenCalled();
+		} finally {
+			cache.available = false;
+			cache.songs.mockImplementation(async () => []);
+		}
+	});
+
 	test("without onreorder there are no grips; with it, the arrow keys move a row and report the order", async () => {
 		const user = userEvent.setup();
 		const { unmount } = render(StemPlayer, { props: { manifest: manifest() } });

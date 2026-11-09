@@ -32,6 +32,17 @@ and right samples match collapses to one channel (`lib/audio/mono.ts`).
 Play enables only once every stem is ready, because a partial mix is not
 the song.
 
+Since 2026-11-09 the rows are on the page before the engine starts:
+`StemPlayer` calls `engine.prepare(manifest.stems)` as it is created,
+which seeds the same placeholder rows (and the song's duration) without
+touching the AudioContext, so the server renders the transport and the
+rows and the first paint has them; `load()` runs the same seeding again
+before it fetches. The template therefore renders in the `idle` state
+too, with a "Loading the stems…" status line until the effect that
+starts the load runs after hydration. Before that the player area was
+empty until the page's scripts had loaded (about 2 s warm on the dev
+server, under a second on production).
+
 ## Sync
 
 Web Audio source nodes are one-shot, so `play()` creates a fresh

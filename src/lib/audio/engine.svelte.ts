@@ -355,26 +355,14 @@ export class StemEngine {
 	}
 
 	/**
-	 * Load the stems: the rows appear at once from what the manifest knows,
-	 * then either every file is fetched and decoded (buffered) or a worker
-	 * and a worklet stream them (docs/stem-streaming.md), as the listener's
-	 * choice, the site's setting and the device's budget decide
-	 * (utils/stemPlaybackMode). A streamed load that fails before it is
-	 * ready falls back to buffered.
+	 * Fill the rows from the manifest alone (label, duration, peaks, gain, pan,
+	 * tint), nothing decoded and the status untouched. Synchronous and free of
+	 * browser APIs, so the player can call it at creation and the server
+	 * renders the rows; `load` starts with it.
 	 */
-	async load(
-		sources: StemSource[],
-		options: { choice?: StemModeChoice | null; site?: StemStreamingSetting; ahead?: number } = {},
-	): Promise<void> {
-		this.#reset();
-		this.status = "loading";
+	prepare(sources: StemSource[]): void {
 		this.total = sources.length;
-		this.loaded = 0;
 		this.#manifest = sources;
-
-		// Rows appear immediately from what the manifest knows (duration, peaks
-		// recorded at upload); each is filled in as its file decodes. Playback
-		// waits for all of them — a partial mix is not the song.
 		this.stems = sources.map((src) => ({
 			id: src.id,
 			label: src.label,
@@ -391,6 +379,27 @@ export class StemEngine {
 			decoded: false,
 		}));
 		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
+	}
+
+	/**
+	 * Load the stems: the rows appear at once from what the manifest knows,
+	 * then either every file is fetched and decoded (buffered) or a worker
+	 * and a worklet stream them (docs/stem-streaming.md), as the listener's
+	 * choice, the site's setting and the device's budget decide
+	 * (utils/stemPlaybackMode). A streamed load that fails before it is
+	 * ready falls back to buffered.
+	 */
+	async load(
+		sources: StemSource[],
+		options: { choice?: StemModeChoice | null; site?: StemStreamingSetting; ahead?: number } = {},
+	): Promise<void> {
+		this.#reset();
+		this.status = "loading";
+		this.loaded = 0;
+		// Rows appear immediately from what the manifest knows (duration, peaks
+		// recorded at upload); each is filled in as its file decodes. Playback
+		// waits for all of them — a partial mix is not the song.
+		this.prepare(sources);
 
 		const capable =
 			typeof AudioDecoder !== "undefined" &&
