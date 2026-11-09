@@ -119,3 +119,111 @@ A melody line on the score is out of scope here: melody extraction from
 a full mix is unmeasured and would be its own study.
 
 Please append your answer to this file and push to dev, as before.
+
+## Bench answer (2026-11-09): accepted, with the corpus proposal the brief asked for
+
+The design is accepted as the registered core: twelve recordings, one
+pipeline, no per-song tuning, the three classes with "confidently
+wrong" as the finding, gates registered before the run and never moved.
+Nothing below runs until Kevin approves the corpus, the fence and the
+two items only he can supply. Reconciliations first, then the corpus.
+
+### Reconciliations (registered deviations, same spirit as Studies 31 to 33)
+
+1. **The pipeline is the bench's committed port**, as in every study
+   since 23: the Study 23 production prompt, nchord as the disclosed
+   ChordMini substitution, Basic Pitch per-bar notes, the Study 32 vote
+   with the 1.2 ratio, the 31c placement rule, mono downmix in. When
+   the app extracts the pipeline as a package, the bench re-pins
+   against it; until then the port is what is measurable.
+2. **Chord quality grades mechanically through barmark**, already a
+   bench dependency: `parseChord().quality` mapped to the brief's
+   classes (major, minor, dominant, diminished, suspended; extensions
+   ignored; slash bass scored as its own column). The grader and its
+   unit tests are committed before any run.
+3. **Structure truths are hand-placed anchors with a stated method.**
+   Bar count and section boundaries come from the reference chart; the
+   bar-one truth for a wild recording is a hand-measured anchor
+   committed with a diagnostic (the Correction 4 lesson: DAW exports
+   start on bar lines, phone captures and 78s do not). Each anchor's
+   derivation is committed beside the chart before the run.
+4. **Reference charts: authorship is disclosed per song.** Where a
+   public annotation exists for a rights-clear recording (the jazz
+   slot below) it is used and cited. Where the bench agent writes the
+   chart, it is written from the recording, committed before
+   registration, and listed for Kevin's spot-check; charts Kevin
+   writes are preferred for the MMKK captures. No chart is edited
+   after the first scored run.
+5. **"The draft's own confidence" is reported only where the schema
+   carries it.** The production draft schema has no confidence field
+   today; the bench will report the mechanical proxies it has (vote
+   margin, fit-gate residual, hint agreement rate) rather than invent
+   one.
+6. **G3's pairing**: the phone captures should be of songs whose clean
+   mixes already have measured drafts (letter-lands 97.4 %,
+   peaceful-dreams 99.3 % from Study 33), so the within-three-bars
+   comparison has a frozen baseline.
+
+### The proposed corpus (twelve slots)
+
+Audio fetched at run time, never committed; links and licenses go in
+the registration manifest. US sound recordings published through 1925
+are public domain as of 2026 (the Music Modernization Act's 100-year
+term), which opens the 1920s jazz and dance-band catalog on the
+Internet Archive.
+
+1. **Phone capture, MMKK rehearsal: letter-lands** (Kevin records;
+   mono room capture, bleed welcome). Truth: the band's chart, anchor
+   hand-measured.
+2. **Phone capture, MMKK rehearsal: peaceful-dreams** (Kevin records;
+   if one capture naturally lands left-only, keep it — the app has
+   the fix and the bench gets the worst case). Same truths.
+3. **Solo singer with acoustic guitar**: a CC-licensed
+   singer-songwriter recording (Free Music Archive or Jamendo, CC BY
+   or BY-SA, picked at corpus-commit time with the license in the
+   manifest). Chart hand-written from the recording.
+4. **Solo piano**: a public-domain 1920s piano solo from the Internet
+   Archive (stride or novelty, recorded ≤1925, e.g. James P. Johnson's
+   own piano records). Chart hand-written; published lead-sheet
+   harmony cited where one matches the performance.
+5. **Live band with audience noise**: a Live Music Archive recording
+   from a CC-licensed taper-friendly band, one song, crowd and all.
+   Chart hand-written.
+6. **3/4 or 6/8**: a public-domain 1920s waltz record (the dance-band
+   catalog is full of them). Chart hand-written.
+7. **Modulation at the bridge**: chosen from the PD standards so the
+   key change is in the written harmony, not an arranger's liberty.
+8. **Jazz with sevenths, ninths and altered harmony**: a recording
+   from the JAAH set (Jazz Audio-Aligned Harmony: Internet Archive
+   audio with published, time-aligned chord annotations) whose source
+   record is PD by date. The public annotation is the truth, cited.
+9. **Pickup bar**: chosen so the written melody starts before bar one
+   (barmark numbers it bar 0; the chart will).
+10. **Extreme tempo**: under 70 or over 180 bpm, from the PD pool
+    (hot jazz runs well past 180; a 1920s ballad sits under 70).
+11. **Interbellum** (Badverbs' own, non-public): the fifth song the
+    program has waited for since Study 31's coda, and the one corpus
+    song with a genuine ritardando — the end-of-song behavior nothing
+    in MMKK exercises. Chart from the band.
+12. **Clean MMKK control: eat-all-the-clocks** mono downmix, the one
+    MMKK song with no chartless draft number yet; excluded from the
+    G2 count per the brief, riding as the in-run control.
+
+Slots 7, 9 and 10 may share recordings with 4, 6 and 8 if the picks
+cover two categories at once; if so the freed slots take a second
+singer-songwriter and a second live capture, keeping twelve distinct
+recordings. Final links, licenses and the per-song truth authorship
+table go in the bench registration (BRIEF-STUDY34) for sign-off before
+any scored run.
+
+### Fence and order of work
+
+Twelve drafts at Study 33's measured per-song costs is ≈$1.20–2.00
+(peaceful-sized prompts at ~27k tokens are the ceiling; no multi-buffer
+arms this time). The $5 fence is accepted with room for the odd retry;
+per-song cost will be in the report as asked. Order: (1) corpus
+manifest + reference charts + anchors + the two new graders committed;
+(2) registration; (3) one run, captures last so Kevin can record them
+while the rest of the corpus is assembled. Needed from Kevin: the two
+rehearsal captures (letter and peaceful), the Interbellum file and
+chart, a rights pass on the final link list, and the fence go-ahead.
