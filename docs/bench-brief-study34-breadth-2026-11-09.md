@@ -227,3 +227,27 @@ manifest + reference charts + anchors + the two new graders committed;
 while the rest of the corpus is assembled. Needed from Kevin: the two
 rehearsal captures (letter and peaceful), the Interbellum file and
 chart, a rights pass on the final link list, and the fence go-ahead.
+
+### Bench amendment (2026-11-09, later the same day): Kevin's two corpus decisions
+
+Kevin ruled on the two items the proposal flagged: **Interbellum is
+published on stemshovel.com** and is already fetched into the bench
+inventory (stem-bench 2bed589: 7 stems, mix, the band's chart, declared
+C 4/4 115) — its chart alone covers the key-change category (C to A at
+the DAOM section), sevenths and slash bass, and the one genuine
+ritardando in the catalog. And **the rehearsal phone captures are
+dropped for now** as too low quality to measure, which defers S34-G3
+(the phone-input gate) to its own study when captures worth measuring
+exist; the brief's own fallback anticipated exactly this.
+
+The corpus proposal is revised accordingly (stem-bench
+docs/CORPUS-STUDY34.md): the two freed slots become a no-drums vocal
+quartet side (the grid's hardest case) and one modern full-band CC
+production (so the corpus is not all vintage). Three slots now arrive
+with published beat-aligned truth from the JAAH dataset (CC BY
+annotations over public-domain 1917-1925 recordings: Dippermouth
+Blues 1923, St. Louis Blues 1925, Livery Stable Blues 1917), which
+supplies their bar-one anchors and section boundaries mechanically.
+Remaining before registration: Kevin's rights pass on the final link
+list and the $5 fence go-ahead; then the manifest, reference charts,
+anchors and the two new graders are committed and the study registers.
