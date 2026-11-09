@@ -1,6 +1,8 @@
 /**
- * Every chart on a stage read by the installed barmark, read-only
- * (docs/audio-engine.md, "Charts and barmark releases"):
+ * Every barmark text on a stage read by the installed barmark, read-only
+ * (docs/audio-engine.md, "Charts and barmark releases"): each song's chord
+ * chart, each score's stored read (`song_pdf.chart_read`, which the song
+ * check places on the stems like a chart) and each idea's chart:
  *
  *   bun run db:chart-check                 # the stage varlock resolves (dev here; production from Kevin's machine)
  *   APP_ENV=preview bun run db:chart-check # staging
@@ -37,28 +39,46 @@ if (installed !== pinned) {
 
 const client = createClient({ url: libsqlUrl(TURSO_DATABASE_URL), authToken: TURSO_AUTH_TOKEN });
 console.log(`database: ${new URL(libsqlUrl(TURSO_DATABASE_URL)).host}`);
-const rows = await client.execute(
-	"select s.slug, p.slug as project, a.slug as account, s.chart_markdown as chart from song s join project p on p.id = s.project_id join account a on a.id = s.account_id where s.chart_markdown <> ''",
-);
+const str = (v: unknown) => (typeof v === "string" ? v : "");
+const songPath = "'/' || a.slug || '/projects/' || p.slug || coalesce('/' || s.slug, '')";
+/** Every barmark text a stage keeps: a song's chord chart, a score's stored read, an idea's chart. */
+const SOURCES = [
+	{
+		kind: "chart",
+		sql: `select ${songPath} as path, s.chart_markdown as chart from song s join project p on p.id = s.project_id join account a on a.id = s.account_id where s.chart_markdown <> ''`,
+	},
+	{
+		kind: "score read",
+		sql: `select ${songPath} || ' (' || f.filename || ')' as path, f.chart_read as chart from song_pdf f join project p on p.id = f.project_id join account a on a.id = f.account_id left join song s on s.id = f.song_id where f.chart_read is not null and f.chart_read <> ''`,
+	},
+	{
+		kind: "idea chart",
+		sql: "select '/' || a.slug || ' idea ' || i.id as path, i.chart as chart from idea i join account a on a.id = i.account_id where i.chart <> ''",
+	},
+];
 let errors = 0;
 let warnings = 0;
-const str = (v: unknown) => (typeof v === "string" ? v : "");
-for (const row of rows.rows) {
-	const parse = parseChart(str(row.chart));
-	const errs = parse.diagnostics.filter((d) => d.severity === "error");
-	const warns = parse.diagnostics.filter((d) => d.severity === "warning");
-	const path = `/${str(row.account)}/projects/${str(row.project)}/${str(row.slug)}`;
-	if (errs.length > 0) {
-		errors++;
-		console.log(`ERROR    ${path}: ${errs.map((d) => d.message).join("; ")}`);
-	} else if (warns.length > 0) {
-		warnings++;
-		console.log(
-			`warning  ${path}: ${warns.map((d) => d.message).join("; ")} (${parse.bars.length} bars)`,
-		);
+const counts: string[] = [];
+for (const source of SOURCES) {
+	const rows = await client.execute(source.sql);
+	counts.push(`${rows.rows.length} ${source.kind}${rows.rows.length === 1 ? "" : "s"}`);
+	for (const row of rows.rows) {
+		const parse = parseChart(str(row.chart));
+		const errs = parse.diagnostics.filter((d) => d.severity === "error");
+		const warns = parse.diagnostics.filter((d) => d.severity === "warning");
+		const where = `${source.kind} ${str(row.path)}`;
+		if (errs.length > 0) {
+			errors++;
+			console.log(`ERROR    ${where}: ${errs.map((d) => d.message).join("; ")}`);
+		} else if (warns.length > 0) {
+			warnings++;
+			console.log(
+				`warning  ${where}: ${warns.map((d) => d.message).join("; ")} (${parse.bars.length} bars)`,
+			);
+		}
 	}
 }
 console.log(
-	`${rows.rows.length} charts read with barmark ${installed}: ${errors} with errors, ${warnings} with warnings`,
+	`${counts.join(", ")} read with barmark ${installed}: ${errors} with errors, ${warnings} with warnings`,
 );
 process.exit(errors > 0 ? 1 : 0);

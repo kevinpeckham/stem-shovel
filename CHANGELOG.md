@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **`db:chart-check` reads every barmark text a stage keeps.** It read each song's chord chart only; it now also reads each score's stored read (`song_pdf.chart_read`, which the song check places on the stems like a chart) and each idea's chart, and counts each kind in its summary. Wanted before `@barmark/listen` is adopted: barmark will read none of the seven old chord spellings the app's pad renderer rewrote (`CM7`, `CSus4`, `CmMaj7`, `CmM7`, `C69`, `C(7)sus4`, a Unicode minus), and the check lists a stored text that still carries one as an error.
+
 ## [0.254.1] - 2026-11-09
 
 ### Fixed

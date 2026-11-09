@@ -1037,9 +1037,10 @@ them have made a chart that parsed clean read differently: 0.20.0 made a
 `Coda` with no bar after it an error (it used to play nothing after `To
 Coda`, silently) and changed a replay's `->` to cut the bar as written
 rather than the last bar played. A stored chart is the band's, so before
-a release bumps `barmark`, `bun run db:chart-check` reads every chart on
-a stage with the installed version, read-only, and lists the ones with
-an error or a warning (`APP_ENV=preview` for staging; production from
+a release bumps `barmark`, `bun run db:chart-check` reads every barmark
+text on a stage with the installed version, read-only (each song's chord
+chart, each score's stored read and each idea's chart), and lists the
+ones with an error or a warning (`APP_ENV=preview` for staging; production from
 Kevin's machine, like `db:status`). The packages pin each other exactly
 (`@barmark/render`, `@barmark/musicxml`, `@barmark/sync` and
 `@barmark/midi` each require the barmark minor they were tested with,
