@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.256.0] - 2026-11-09
+
 ### Changed
 
 - **Generate chart holds its draft when the bars drifted off the declared tempo or the transcription is too thin.** stem-bench Study 34b ran Study 34's five confidently wrong recordings again with the true tempo and meter declared, and all five stayed wrong: two because the comb settled 7.2 % and 8.9 % off the tempo on unevenly cut 78s, three because the transcription found 1.3 to 2.2 notes a bar on acoustic-era audio while the grid was exact to the bar. Neither showed in the draft's shape. `generatedChartVerdict` now holds on the placed grid's period against the declared bar (`GENERATED_MAX_GRID_DRIFT`, 4 %) and on the transcription's notes a bar (`GENERATED_MIN_NOTES_PER_BAR`, 3; `SongChordDraft` keeps the count from either read), both provisional until a registered study sets them (`constants/chartVerdict.ts`). The held notification says which ("its bars settled 7% off the declared tempo"; "the stems gave too few notes to hear the chords (2.0 a bar)"). The bench's answer is in `docs/bench-brief-study34b-declared-priors-2026-11-09.md`.
