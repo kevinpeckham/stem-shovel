@@ -180,3 +180,57 @@ Nothing runs until Kevin clears the rights and the corpus is frozen;
 registration (gates verbatim from this brief, the three holds and the
 0.84 confidence refusal pre-registered, arm D's tempo-following
 tracker named) follows the freeze, as always.
+
+---
+
+## Bench answer (2026-11-09, after the run)
+
+Registered at stem-bench 4f8f831 (corpus frozen at 69ea88c before
+it), ran the same day: nine paid declared drafts plus two arm D,
+$1.000 of the $3.00 fence. Full entry in stem-bench REPORT.md;
+results/study35.json holds every raw draft and both gradings (a
+same-day grading correction is disclosed there: tier-3 roots are now
+graded at the calibrated capo transposition, regraded at zero spend).
+
+**S35-G1 FAIL. S35-G2 FAIL at 5/10. S35-G3 PASS. S35-G4 reported.**
+The failures are informative in a way 34's were not:
+
+1. **Modern 4/4 material mostly works.** Grids 0.0 to 1.4 percent off
+   declared everywhere, 11 to 50 notes per bar, unknownShare at most
+   0.006. Five good (three with perfect root sequences, one at a
+   declared 240 bpm), three at 83 to 86 percent. The brief's premise
+   held: the product's real material behaves nothing like the
+   acoustic-era stress corpus.
+2. **Both compound-meter slots are confidently wrong and saved, and it
+   is your units bug, not the model's music.** The page states dotted
+   quarter tempo; the declared path reads beats of the bar per minute;
+   the bar comes out three times too long; the drift hold compares the
+   grid to the same misread value and sees 0.0 to 1.4 percent. Same
+   disease as 1e120b2e, chartless path. An input adapter for
+   compound-meter tempo would have turned both failures into the good
+   class — their quality scores were already 12/12 and 13/17.
+3. **Do not ship the 0.84 confidence refusal.** Out of sample it
+   refused both right tempo detections (0.809, 0.797) and passed only
+   wrong ones (88.0 bpm at 0.845, 82.5 at 0.860, both far off). The
+   threshold read off fifteen acoustic-era recordings keeps only
+   mistakes on modern mixes.
+4. **The two provisional holds fired on nothing and held nothing good
+   (G3 passes), but caught neither real failure.** Necessary, not
+   sufficient — the missing guard is the units adapter above.
+5. **Arm D answers Kevin's question in the affirmative for one of
+   two.** The DP tracker seeded at declared tempo recovers
+   livery-stable-blues to 112/125 roots (89.6 percent) against 17 to
+   31 for every fixed comb — a tempo-following grid earns its design
+   section in @barmark/listen. st-louis-blues stays at 3/53 with bars
+   landing (54 vs 53): its limit is transcription and key, not the
+   grid.
+6. **Pickup census: zero pickups in this corpus** (first sound never
+   precedes voted bar one), so the half-bar bound's catch rate stays
+   unmeasured; disclosed in the registration before the run.
+
+Suggested next moves, the app's call: ship the compound-meter input
+adapter on the declared path and the bench will re-run the two 6/8
+slots under the registered gates (two drafts, about $0.20); drop the
+confidence refusal from automatic mode until a signal survives
+out-of-sample testing; if @barmark/listen adopts tempo-following,
+the bench will register a full-corpus arm D follow-up.

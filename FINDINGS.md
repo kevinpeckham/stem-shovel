@@ -7,6 +7,33 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Study 35: a visitor typing the artist's own 6/8 tempo gets a chart three bars long per bar, and the holds cannot see it (2026-11-09)
+
+The bench's Study 35 (stem-bench REPORT.md, registration
+docs/BRIEF-STUDY35.md there) ran declared mode on ten modern CC BY
+recordings whose artist pages state tempo, key, meter and chords. The
+good news is real: every 4/4 grid landed 0.0 to 1.4 percent off
+declared, five of ten drafts graded good (three of them perfect-root:
+afterglow 15/15, cherubs 28/28, goodbye-to-spring 43/43 at a declared
+240 bpm) and three more sat at 83 to 86 percent. But both 6/8 slots
+landed confidently wrong AND saved, and the cause is this repo's known
+units disease on a path the 1e120b2e fix does not reach: the artist
+writes compound tempo in dotted quarters, the declared chartless path
+reads typed tempo as beats of the bar per minute (measures.ts, "6/8 at
+120 = 120 eighth notes a minute"), so the declared bar comes out three
+times too long. GENERATED_MAX_GRID_DRIFT is blind by construction — it
+measures the landed grid against the same misread value and reports
+0.0 to 1.4 percent. The fix is an input adapter, not a threshold: ask
+the visitor (or assume) which note their tempo counts in compound
+meter, or offer the x3 reading when the meter is 6/8 and the typed
+tempo is slow. Two more Study 35 readings matter here: the 0.84 tempo
+confidence refusal INVERTED out of sample (it refused both right
+detections and passed only wrong ones — do not ship it), and the
+exploratory tempo-following DP tracker recovered livery-stable-blues
+to 89.6 percent roots against 17 to 31 for every fixed comb, which is
+the strongest case yet for tempo-following in the @barmark/listen
+design.
+
 ## A played bar's `tempo` is in barmark's beat, not the app's: compound-meter charts were timed three times too long (2026-11-09)
 
 Found reviewing the `@barmark/listen` design against the app. barmark's `PlayedBar.tempo` counts grammar 2.1's beat of the `time:` meter in force, the dotted quarter in 6/8, while the app counts a meter's bottom note everywhere (`chartBarSeconds`, the song's changes). The draft path converted on the way **out** (`barmarkTempo`, 2026-11-07), but `barmarkChartBars` read a chart's own tempo line straight **in**, so a 6/8 chart at `tempo: 40` got bars of 9 s where the song plays 3 s, and a `[6/8]` bar in a 4/4 chart at 120 got 3 s where it lasts 1.5 s. Nothing had hit it (no compound-meter song had been aligned from a chart with its own tempo line), but every chart "Generate chart from the stems" saves carries one. Two things to know: the conversion is `tempo × time.n / beatsOf(time)` on the `time:` meter, and `PlayedBar.time` is present **only** on a bar with a one-bar meter of its own (`tempo:` keeps counting the `time:` meter's beat there, "so a short or odd bar never changes speed"), so such a bar's bottom-note bpm differs from its neighbors' without the tempo having changed. `ChartBar` now carries `bpm` for the bar's own seconds and, on those bars only, `tempo` for the song's.
