@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.254.0] - 2026-11-09
+
 ### Changed
 
 - **Generate chart from the stems checks its work before saving.** A draft with errors, without its timing, or with most of its bars unnamed now waits on the draft card for you to review, with a note saying why, instead of being saved. When it does save, the notification mentions anything worth a look.

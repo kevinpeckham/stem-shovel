@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.254.0] - 2026-11-09
+
 ### Changed
 
 - **Generate chart from the stems holds a doubtful draft for review.** A verdict (`utils/generatedChartVerdict.ts`) runs before the unattended save: a draft with an error diagnostic, without its timing map (the refinement changed the bar count) or with more than half its bars unnamed (`GENERATED_MAX_UNKNOWN_SHARE` 0.5, provisional until stem-bench Study 34) stays on the draft card with one notification saying why, nothing saved; an undecided downbeat vote or warnings are appended to the saved notification as notes (`generatedChartLine`).
