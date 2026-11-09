@@ -588,7 +588,7 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
-### stem-bench Study 33 pilot: a stereo file drafts without stems (2026-11-09, reg 88fceeb, results 7181de8)
+### stem-bench Study 33: a stereo file drafts without stems (2026-11-09, reg 88fceeb, pilot 7181de8, matrix da9bacc)
 
 Kevin's question — is a stereo file worth treating as two stems for the
 chart draft? — answered on letter-lands with five transcription-input
@@ -612,12 +612,27 @@ against the chart, frozen stems ref 72/76 = 94.7%:
   exactly the trap.
 - **Mid/side was the best arm, 75/76 = 98.7%** - one bar above mono,
   inside the disclosed sampling noise (all five arms span three
-  bars). The registered matrix (peaceful-dreams x the five arms,
-  fence $0.6, Kevin's go) decides whether that edge is real.
+  bars). The registered matrix (peaceful-dreams x the five arms)
+  decided whether that edge was real - see below: it was not.
 
-Production reading for a chartless stereo upload: downmix to mono,
-same grid, same hints, same draft - stems-ceiling quality on this
-pilot. No channel splitting, no source separation.
+**Matrix (same day, peaceful-dreams, results da9bacc).** Everything
+re-confirmed and the open question closed: stems sum 151/153 (the
+frozen ref to the bar, again), mono mix 152/153 ABOVE it (twice now),
+L/R split 152/153 - a tie with mono at double the transcription, so
+S33-G2 passed on both songs and the question is final. **Mid/side
+crashed to 146/153**, six bars under mono: the side channel's ~2,270
+extra notes (cymbals, reverb, width) read as harmony in enough bars to
+poison the draft. The pilot's one-bar edge was noise. HPSS tied mono
+here (152/153) after costing two bars on letter: inconsistent per song
+and never better - pure cost. Fence disclosure: the matrix spent
+$0.68 against the registered $0.6 (arms B and C carry nearly double
+the notes, so peaceful's drafts grew to ~38k tokens in each); found
+after the run, published as spent.
+
+Production reading for a chartless stereo upload, now final on both
+songs measured: downmix to mono, same grid, same hints, same draft -
+stems-ceiling quality. No channel splitting, no mid/side, no source
+separation.
 
 ### Dated note on the end witness's abstain label (2026-11-08, stem-bench 97040ca)
 
