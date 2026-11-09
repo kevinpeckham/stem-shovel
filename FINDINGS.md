@@ -592,6 +592,16 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+### stem-bench Study 34: the chartless draft outside MMKK (2026-11-09, reg 328f66b, results ba88e9c)
+
+**S34-G1 FAIL, S34-G2 FAIL (0 of 8 good) — the public signed-out upload tool does not ship on this evidence.** Twelve rights-clear recordings (three JAAH-annotated PD 78s, two Badverbs, two MIDI-sheet slots, two Josh Woodward artist-charted songs, three class-only), 802 scored cells, $0.708 of the $5 fence.
+
+- **The failure is the declared-input stage, not the drafter.** All five confidently-wrong slots trace to `analyse()` mis-detecting tempo, meter or key on acoustic-era or sparse-vocal material before the grid ran: the hymn quartet read 78.6 bpm C minor (truth ~105, Ab major, roots 0/16), the 3/4 waltz read 4/4 (roots 8%), dippermouth's grid sat at exactly half tempo (57 bars vs 114). On modern full-band recordings the priors held and drafts reached 86–89% sequence roots with 80–100% quality families — just under "good". The control reproduced its ceiling (eat 67/68 roots).
+- **Section sensing survives grid failure**: livery placed 11/11 section boundaries while its harmony timeline was wrong. Structure and harmony fail independently.
+- **The app's `draftChart` verdict, read against the classes**: the changed-bar-count hold would have SAVED all five confidently-wrong charts (the draft preserves the grid's bar count; the error is upstream of both numbers it compares). The one error-diagnostic hold that occurred (interbellum, the study's only refusal — on the clean DAW export) it would have held correctly. The unknown-share threshold could not be bounded this run (raw drafts not persisted; the bench runner now records rawDraft/barCountChanged/unknownShare every run).
+- Truth instruments: chroma timeline fitting was built, validated against known Badverbs truth, and REJECTED pre-registration (33–74% label agreement; bench docs/VALIDATION-STUDY34-INSTRUMENTS.md); truth rests on JAAH beat annotations (contrast-gated transfer alignment), source-matching MIDIs of PD sheets (mechanical per-bar extraction), artist-published progressions (one graded transposition-invariantly after a refused calibration gate), and the band's charts.
+- Phone input (deferred S34-G3): bench takes the degradation sweep as the registered core of the future study plus Kevin's re-amped captures as the real-capture anchor. Until then, warning on or declining phone-looking input matches the evidence.
+
 ### stem-bench Study 33: a stereo file drafts without stems (2026-11-09, reg 88fceeb, pilot 7181de8, matrix da9bacc)
 
 Kevin's question — is a stereo file worth treating as two stems for the
