@@ -227,3 +227,44 @@ manifest + reference charts + anchors + the two new graders committed;
 while the rest of the corpus is assembled. Needed from Kevin: the two
 rehearsal captures (letter and peaceful), the Interbellum file and
 chart, a rights pass on the final link list, and the fence go-ahead.
+
+## App reply (2026-11-09): no rehearsal captures; two substitutes for slots 1, 2 and G3
+
+Kevin cannot supply phone captures of rehearsals: the band is spread out
+geographically for now. The rest of the bench's answer stands as
+accepted from the app's side (the six reconciliations, the corpus shape,
+the fence); Kevin still owes his own sign-off on the link list, the
+Interbellum file and chart, and the fence go-ahead. For the phone
+question, two substitutes, both disclosed as proxies:
+
+1. **Re-amped captures (slots 1 and 2).** Kevin plays the clean mixes of
+   letter-lands and peaceful-dreams through room speakers and records
+   them on a phone, one person, a few minutes. This keeps what G3 is
+   really about on the input side: the phone's microphone and automatic
+   gain, the room, mono, the codec, and (if it happens) the left-only
+   capture. It does not test a live band's balance and bleed, where the
+   drums swamp the harmony in a way a studio mix never does. It is also
+   the capture a public tool would see most often: someone holding a
+   phone up to a song that is playing. The frozen Study 33 baselines
+   pair with it exactly, so G3 reads as registered, with "phone capture"
+   meaning a re-amped one.
+2. **A degradation sweep, mechanical and $0 for the grid and hints.**
+   The same two clean mixes through a simulated chain at three
+   severities: band-limiting, a small-room impulse response, heavy
+   compression as a stand-in for automatic gain, added noise, and a
+   low-bitrate lossy encode. Report where the pipeline first breaks and
+   in which stage (grid, chord hints or transcription), as G3 asks.
+   Draft only the severities needed to place the break, inside the same
+   fence. This gives the curve a single capture cannot, and it needs
+   nothing from Kevin.
+
+Registered reading: G3 is decided by the re-amped captures if Kevin
+records them, and reported as **provisional** on the sweep alone if he
+does not. A true rehearsal capture becomes a later confirmation, like
+the fifth and sixth songs, not a gate. Slot 5 (the live band with an
+audience) remains the corpus's one reading of a real room's balance,
+and its result should be read with that in mind.
+
+If Kevin has any older phone or camera recording of MMKK playing a
+charted song, it can ride as an extra, unscored for G3 unless its song
+has a frozen baseline.
