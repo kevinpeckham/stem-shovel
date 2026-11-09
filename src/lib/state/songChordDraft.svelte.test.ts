@@ -674,6 +674,38 @@ describe("SongChordDraft", () => {
 			);
 		});
 
+		test("bars that settled 7% off the declared tempo hold the draft (Study 34b's comb drift)", async () => {
+			// 120 bpm in 4/4 is a two-second bar; the comb settled at 2.144 s.
+			placing.chartlessGridInBrowser.mockResolvedValueOnce(
+				placedAs({ ...PLACED, period: 2.144, barStarts: [0.3, 2.444, 4.588, 6.732, 7.9] }),
+			);
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.saveChartDraft).not.toHaveBeenCalled();
+			expect(cd.draft).not.toBeNull();
+			expect(notify).toHaveBeenCalledWith(
+				"Chart drafted but not saved: its bars settled 7% off the declared tempo. Review it on the draft card.",
+				{ kind: "info" },
+			);
+		});
+
+		test("a transcription of under three notes a bar holds the draft (Study 34b's starved transcriptions)", async () => {
+			// Four bars, eight notes: two a bar.
+			remote.songNotes.mockResolvedValueOnce({
+				complete: true,
+				notes: NOTES.slice(0, 8),
+				doneSeconds: 8,
+				duration: 8,
+			});
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.saveChartDraft).not.toHaveBeenCalled();
+			expect(notify).toHaveBeenCalledWith(
+				"Chart drafted but not saved: the stems gave too few notes to hear the chords (2.0 a bar). Review it on the draft card.",
+				{ kind: "info" },
+			);
+		});
+
 		test("a draft with an error is held", async () => {
 			remote.draftChart.mockResolvedValue({
 				...DRAFT,

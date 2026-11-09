@@ -32,6 +32,41 @@ describe("generatedChartVerdict", () => {
 		});
 	});
 
+	test("bars that settled far off the declared tempo hold it; within the drift they do not (Study 34b's comb failures)", () => {
+		const drifted = generatedChartVerdict({
+			draft: CLEAN,
+			segments: CHORDS,
+			undecided: false,
+			gridDrift: 0.072,
+		});
+		expect(drifted.save).toBe(false);
+		expect(drifted.holds).toEqual(["its bars settled 7% off the declared tempo"]);
+		expect(
+			generatedChartVerdict({ draft: CLEAN, segments: CHORDS, undecided: false, gridDrift: 0.008 })
+				.save,
+		).toBe(true);
+	});
+
+	test("too few transcribed notes a bar hold it; an unknown count does not (Study 34b's starved transcriptions)", () => {
+		// Four bars: nine notes is 2.2 a bar, the bench's worst good-looking wrong draft.
+		const thin = generatedChartVerdict({
+			draft: CLEAN,
+			segments: CHORDS,
+			undecided: false,
+			noteCount: 9,
+		});
+		expect(thin.save).toBe(false);
+		expect(thin.holds).toEqual(["the stems gave too few notes to hear the chords (2.3 a bar)"]);
+		expect(
+			generatedChartVerdict({ draft: CLEAN, segments: CHORDS, undecided: false, noteCount: 40 })
+				.save,
+		).toBe(true);
+		expect(
+			generatedChartVerdict({ draft: CLEAN, segments: CHORDS, undecided: false, noteCount: null })
+				.save,
+		).toBe(true);
+	});
+
 	test("an error, a dropped timing map and mostly unnamed bars each hold it", () => {
 		const held = generatedChartVerdict({
 			draft: { diagnostics: [{ level: "error" }], timing: null },

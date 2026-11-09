@@ -179,6 +179,8 @@ export class SongChordDraft {
 	placement = $state<ChartlessGrid | null>(null);
 	/** Why nothing was placed, when the placement ran and refused (`placement` is then null). */
 	placementRefusal = $state<ChartlessRefusal | null>(null);
+	/** The notes the last read transcribed over the whole song (the verdict's thin-transcription hold); null when none were at hand. */
+	#noteCount: number | null = null;
 	/** "Generate chart"'s step while it runs (`progress` reads it). */
 	#step = $state<string | null>(null);
 	/** Where each bar the chords were read on starts, and where the last ends: the draft's grid. */
@@ -342,11 +344,17 @@ export class SongChordDraft {
 		placed: { startAt: number; bpm: number } | null,
 		detectedGrid: boolean,
 	): Effect.Effect<void, SaveError> {
+		const grid = this.#opts.grid();
 		const verdict = generatedChartVerdict({
 			draft,
 			segments: this.chordSegments ?? [],
 			undecided: this.placementRefusal?.reason === "undecided",
 			detectedGrid,
+			gridDrift:
+				this.placement && grid
+					? Math.abs(this.placement.period / barSecondsAt(grid, grid.startAt) - 1)
+					: null,
+			noteCount: this.#noteCount,
 		});
 		if (verdict.save) return this.#saveGenerated(draft, placed, verdict.notes);
 		return Effect.sync(() =>
@@ -418,6 +426,7 @@ export class SongChordDraft {
 			this.chordSource = null;
 			this.chordsChecked = null;
 			this.draft = null;
+			this.#noteCount = null;
 			this.#setPlacement(null);
 			yield* this.#read(engine, grid).pipe(
 				Effect.catch(this.#fail),
@@ -578,6 +587,7 @@ export class SongChordDraft {
 				Effect.orElseSucceed(() => null),
 			);
 			this.chordBars = notes?.complete ? describeBars(notes.notes, barStarts) : [];
+			this.#noteCount = notes?.complete ? notes.notes.length : null;
 			this.chordSegments = chordminiBarChords(chords, barStarts);
 			this.chordSource = "model";
 			this.chordsChecked = null;
@@ -600,6 +610,7 @@ export class SongChordDraft {
 		this.chordSegments = chordsPerBar(notes, barStarts);
 		this.chordSource = "notes";
 		this.chordBars = describeBars(notes, barStarts);
+		this.#noteCount = notes.length;
 		if (this.chordSegments.length === 0)
 			this.chordError = "No bars to read; check the tempo and time signature.";
 	}

@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **Generate chart holds a draft it has reason to doubt.** When the bars it placed drift well off the song's tempo, or the stems give too few notes to hear the chords, the draft waits on its card with the reason instead of being saved on its own.
+
 ## [0.255.0] - 2026-11-09
 
 ### Changed

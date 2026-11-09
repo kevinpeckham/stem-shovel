@@ -1333,11 +1333,15 @@ what the stems alone can say about that grid and what they cannot:
   longer saves whatever the draft step returns. The draft is **held** on
   the draft card, with one notification saying why and nothing saved,
   when the run set the song's tempo and time signature from the stems
-  itself (a song that had none; see below), when it carries an error
-  diagnostic, when its timing map was dropped (the refinement changed
-  the bar count), or when more than half its bars have no chord the
-  model could name (`?` or `N.C.`; `GENERATED_MAX_UNKNOWN_SHARE`, a
-  provisional floor no study has measured yet). It is saved **with a note** in the notification when the
+  itself (a song that had none; see below), when the placed bars
+  settled more than 4 % off the declared tempo's bar
+  (`GENERATED_MAX_GRID_DRIFT`), when the transcription at hand averages
+  under three notes a bar (`GENERATED_MIN_NOTES_PER_BAR`), when it
+  carries an error diagnostic, when its timing map was dropped (the
+  refinement changed the bar count), or when more than half its bars
+  have no chord the model could name (`?` or `N.C.`;
+  `GENERATED_MAX_UNKNOWN_SHARE`, a provisional floor no study has
+  measured yet). It is saved **with a note** in the notification when the
   vote left bar 1 unplaced or the chart carries warnings. A held draft
   keeps its Save as chart and Discard, so nothing is thrown away.
 - **Why a detected tempo holds the draft** (2026-11-09, stem-bench
@@ -1351,6 +1355,28 @@ what the stems alone can say about that grid and what they cannot:
   unattended: the member checks the tempo and time signature the run
   just set (Tempo & key), then saves the draft from its card. The hold
   is the run's alone: the song records no source for its tempo, so a
-  later Generate on the same song saves as before. Study 34b
-  (`docs/bench-brief-study34b-declared-priors-2026-11-09.md`) measures
-  whether the detector's own confidence could narrow this.
+  later Generate on the same song saves as before.
+- **Why drift and a thin transcription hold it** (2026-11-09, stem-bench
+  Study 34b, `docs/bench-brief-study34b-declared-priors-2026-11-09.md`).
+  The same five recordings were run again with the true tempo and meter
+  declared, and all five stayed confidently wrong, in two ways. Two were
+  unevenly cut 78s whose grids settled 7.2 % and 8.9 % off the declared
+  tempo, bars short: the comb's one fixed period cannot follow a
+  recording whose speed wanders. Three landed their grids to the bar and
+  still drafted wrong charts, because the transcription found 1.3 to 2.2
+  notes a bar on acoustic-era audio (every modern recording measured
+  gave 10 or more), and the draft filled the silence confidently. The
+  draft's own shape showed neither (unknown share peaked at 0.36, the
+  bar count matched), but both are visible before the model runs, in
+  numbers the run already has: the placed grid's period against
+  `barSecondsAt` of the declared grid, and the transcription's note
+  count over the bars (`SongChordDraft` keeps it from either read; on
+  the model path only when the server's transcription is complete, else
+  the hold does not apply). The two thresholds are the bench's
+  exploratory separation, set provisionally (4 % sits between the
+  under-1 % grids that held and the 7 % that drifted; three notes a bar
+  sits just above the starved recordings) until a registered study on
+  fresh recordings sets them. The detector's own tempo confidence also
+  separated right from wrong in that study (about 0.84, two safe-side
+  errors in twelve) and is a candidate refusal for an automatic mode,
+  not used here.
