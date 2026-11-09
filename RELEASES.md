@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.253.0] - 2026-11-09
+
 ### Changed
 
 - **The song page shows the player at once.** The transport and the stem rows are on the page as soon as it arrives, instead of appearing after the scripts load; the waveforms and controls fill in as the stems load.
