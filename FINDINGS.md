@@ -588,6 +588,37 @@ From putting the indexability audit and the smoke test behind `swamp workflow ru
 
 ## AI features
 
+### stem-bench Study 33 pilot: a stereo file drafts without stems (2026-11-09, reg 88fceeb, results 7181de8)
+
+Kevin's question — is a stereo file worth treating as two stems for the
+chart draft? — answered on letter-lands with five transcription-input
+arms sharing one grid, vote, placement and hint set (the grid half was
+already settled: Studies 28-32 all ran on mono downmixes). Root scores
+against the chart, frozen stems ref 72/76 = 94.7%:
+
+- **The mono mix drafts AT the stems ceiling: 74/76 = 97.4%**, above
+  the non-drum stem sum itself (72/76). Basic Pitch transcribes drums
+  weakly (the mix yielded fewer notes than the stems sum) and the
+  draft model reads through the bleed. A stereo upload with no stems
+  can go straight into the pipeline as its mono downmix.
+- **L/R as two pseudo-stems is not worth it** (S33-G2 PASS): 73/76,
+  one bar under plain mono for twice the transcription. The corpus
+  mixes correlate L/R at 0.83-0.90 with the side channel 10-13 dB
+  down and the lows centered; each channel is a near-copy of the band.
+- **Do not HPSS** (S33-G3 FAIL, published as found): the harmonic
+  component cost two bars (72/76) - the median filter reads strummed
+  attacks and vibrato as percussive. On clean synthetics it is
+  perfect (99.6-99.7% chord-tone purity at every pan width), which is
+  exactly the trap.
+- **Mid/side was the best arm, 75/76 = 98.7%** - one bar above mono,
+  inside the disclosed sampling noise (all five arms span three
+  bars). The registered matrix (peaceful-dreams x the five arms,
+  fence $0.6, Kevin's go) decides whether that edge is real.
+
+Production reading for a chartless stereo upload: downmix to mono,
+same grid, same hints, same draft - stems-ceiling quality on this
+pilot. No channel splitting, no source separation.
+
 ### Dated note on the end witness's abstain label (2026-11-08, stem-bench 97040ca)
 
 Kevin corrected the published "every song ends in a ritardando" claim:
