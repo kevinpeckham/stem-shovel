@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.254.1] - 2026-11-09
+
 ### Fixed
 
 - **Charts in 6/8 and other compound meters place correctly.** A chart with its own tempo line in a compound meter was read three times too slow when placed on the stems.
