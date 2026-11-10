@@ -4,6 +4,14 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **A tempo unit for 6/8 and other compound meters.** The app counts a 6/8 tempo in eighth notes (120 is 40 dotted quarters a minute), which it now says in Song settings, and a tempo row in a compound meter offers the unit you count in: type 40 dotted quarters and it is saved as 120.
+
+### Changed
+
+- **Setting a song's tempo from the stems prefers the finer bar.** When the stems scan sets a song that has no tempo yet and two bar lengths nearly tie, it takes the shorter one, which a chart can always merge up without losing a chord.
+
 ## [0.257.0] - 2026-11-10
 
 ### Added

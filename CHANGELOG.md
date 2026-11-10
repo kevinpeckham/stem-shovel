@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A tempo unit for compound meters in Song settings.** The app counts a tempo in the meter's bottom note (6/8 at 120 is 120 eighth notes a minute), while musicians write a 6/8 tempo in dotted quarters, and nothing said which: stem-bench Study 35 found both 6/8 recordings drafted confidently wrong charts, bars three times too long, from the artist's own tempo typed in. On a tempo row whose meter in force is compound (`meterInForceAt`), the Tempo & key tab offers the unit (`tempoUnitLabels`: eighth notes or dotted quarters; sixteenths or dotted eighths over 16), a dotted tempo is multiplied by three on save, and a hint line says how the app counts. Help page song-settings updated.
+
+### Changed
+
+- **A song with no settings takes the finer bar from the stems.** The stems scan that sets a song's tempo and time signature when it has none (and "Generate chart from the stems" on such a song) now prefers the doubled tempo when the detector's ×2 rung nearly ties the beat (`preferFinerBar`, `AUTOMATIC_FINER_BAR_SHARE` 0.9, under `AUTOMATIC_FINER_BAR_MAX_BPM` 240; a compound beat is left alone), with the ladder re-based so the summary and the saved rows agree. stem-bench Study 36b: a wrong bar is a half bar three and a half times more often than a double; Study 37: a chart at half the bar loses no chord, one at double the bar does. A song with settings is only offered, as before. Bench brief `docs/bench-brief-study37-meter-witness-2026-11-10.md` asks the bench to sweep the share and to pick the second witness the detector's 6/8 call needs (false on 28 % of plain 4/4 songs).
+
 ## [0.257.0] - 2026-11-10
 
 ### Added

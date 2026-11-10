@@ -335,6 +335,30 @@ are deferred until a tempo map for drifting live recordings wants them.
   calling an equivalent count a mismatch. stem-bench Study 11 validates
   the rule's false-accept rate and the subdivision test on both corpora.
 
+### The finer bar on a song with no settings (2026-11-10)
+
+stem-bench Study 36b (261 songs against the artist's declared tempo and
+meter) found that when a tracker's bar is wrong it is a half bar three
+and a half times more often than a double, and Study 37 that a chart
+drafted at half the bar loses no chord (roots 20/21, 16/18 and 33/33
+against 18/21, 15/18 and 28/33 at the declared bar) while one at double
+the bar loses them: the metrical octave needs no detector, and a near
+tie should go to the finer bar. So the stems scan that sets a song with
+no settings (`songCheck.svelte.ts`, `#scan` when `fresh`, which is also
+"Generate chart from the stems" on such a song) passes the detection
+through `preferFinerBar`: when the ×2 rung's strength is at least
+`AUTOMATIC_FINER_BAR_SHARE` (0.9) of the beat's and the doubled tempo
+stays under `AUTOMATIC_FINER_BAR_MAX_BPM` (240), the tempo is doubled
+and the ladder re-based on it, so the summary, its alternates and the
+saved rows agree. A compound beat is left alone (its bar is two dotted
+beats). A song with settings is never touched: the scan only offers
+there, with every rung shown. Both constants are provisional; the
+bench's Study 37 app brief (docs/bench-brief-study37-meter-witness-
+2026-11-10.md) sweeps the share, and the same brief asks for the second
+witness the detector's 6/8 call needs (false on 28 % of plain 4/4 songs
+in 36b; Study 37 ruled the harmonic-rhythm witness out, so it is an
+autocorrelation or margin witness, not yet chosen).
+
 ## One tempo for the page
 
 The metronome engine's `bpm` (`lib/audio/metronome.svelte.ts`, remembered
