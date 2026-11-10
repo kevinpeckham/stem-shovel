@@ -20,7 +20,7 @@ misread. That is why the bench saw "the true calls fall faster than
 the false ones" at every threshold. A lag-ratio witness on the kept
 beat tests the beat's octave, not the meter; the meter question needs
 the accent pattern within the bar, which a log-compressed flux
-envelope flattens. The detector now never names 6/8 (v0.259.9).
+envelope flattens. The detector now never names 6/8 (v0.259.8).
 
 ## barmark's diagnostics carry a `suggestion` worth using; `/_Em` and `:| x3` are grammar (2026-11-10)
 

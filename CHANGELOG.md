@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.259.8] - 2026-11-10
+
 ### Changed
 
 - **The stems scan no longer names 6/8, and no longer doubles a tempo on a

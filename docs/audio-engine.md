@@ -299,7 +299,7 @@ are deferred until a tempo map for drifting live recordings wants them.
   fixtures): with the dotted quarter as the kept beat the 6/8 bar is 2L
   and two bars 4L, so the "duple" side is always the strong side on a
   real 6/8 and the witness kept 6/8 only where the beat was misread. So
-  the tests, their constants and the re-pick came out in v0.259.9: the
+  the tests, their constants and the re-pick came out in v0.259.8: the
   detector reads a straight pulse and 4/4 or 3/4 by lean, 6/8 is the
   musician's to declare (the settings and the compound tempo unit are
   untouched), and `tempo.subdivision` is always 2 (the type keeps 3 for
@@ -359,7 +359,7 @@ strict bars 95 → 73): the detector's ×2 rung is the wrong octave as
 often as the right one, and its strength does not mark the half-bar
 readings. The 36b observation was about the TRACKERS' half bars,
 which are merge-safe because a tracker's beat is the beat. The rule,
-its constants and its tests came out in v0.259.9; the scan saves the
+its constants and its tests came out in v0.259.8; the scan saves the
 detection as read. The bench's standing recommendation is the larger
 one: on full-band material take a tracker's bar as read (Study 38),
 which docs/bench-brief-one-tracker-2026-11-10.md asks the bench to

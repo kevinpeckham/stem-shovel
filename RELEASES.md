@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.259.8] - 2026-11-10
+
 ### Changed
 
 - **The stems scan reads the tempo and time signature more plainly.** It no
