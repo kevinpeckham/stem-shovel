@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **A score that opens without chord symbols reads into a clean chart.** A melody-only first section used to come out as holds with nothing to hold, which the grid marked and the score refused. Such bars now read as N.C., and Read again repairs a chart read earlier.
+
 ## [0.258.0] - 2026-11-10
 
 ### Fixed

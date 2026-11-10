@@ -470,6 +470,16 @@ than one and a display that names them all.
 
 ## The score as the AI's chart (2026-10-12)
 
+**A melody-only opening (2026-11-10).** The read prompt once asked for
+`/` in every measure without a chord symbol, and on a score whose first
+section is a vocal line with no chords (Kevin's "I Just Wanna Be—Yours")
+the model wrote `|: / | / | / |` before any chord: barmark reports "/ has
+nothing before it to hold", the grid draws the line as text with a
+squiggle, and the score refuses. The prompt now asks for N.C. there, and
+`repairLeadingHolds` (utils) turns the cells barmark reports into N.C.,
+one at a time from the first, on every read `readChartOfScore` returns,
+stored reads included, so Read again repairs a chart read before the fix.
+
 The profile detector kept hearing neighbor keys on Kevin's modal vamp
 (above), and Kevin's thought was the obvious one: when a song has its
 notation uploaded, go straight to the AI and give it the chart.
