@@ -5,12 +5,14 @@ import { fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
 const {
 	accountActivity,
+	activityItemOf,
 	accountBand,
 	accountCounts,
 	accountNudges,
 	accountPendingWork,
 	accountQuota,
 	dashboardSeenAtOf,
+	deleteSongDocVersion,
 	listDashboardPins,
 	membershipsOfUser,
 	recentRecordingSessions,
@@ -704,7 +706,7 @@ describe("accountActivity", () => {
 			user: users,
 			recordingSession: [session("new", A), session("b", B)],
 			project: [
-				project("p1", A, 1, { createdAt: at("2026-10-21T00:00:00Z") }),
+				project("p1", A, 1, { createdBy: U, createdAt: at("2026-10-21T00:00:00Z") }),
 				project("p2", A, 1, { createdAt: at("2026-10-01T00:00:00Z") }),
 				project("pr", A, 1, {
 					isPrivate: true,
@@ -809,6 +811,8 @@ describe("accountActivity", () => {
 			kind: "stem",
 			at: at("2026-10-22T10:00:00Z"),
 			who: "Uma",
+			byId: U,
+			acting: false,
 			label: "Label st1",
 			title: "Song s1",
 			href: "/band/projects/p1/s1",
@@ -841,7 +845,9 @@ describe("accountActivity", () => {
 			id: "project:p1",
 			kind: "project",
 			at: at("2026-10-21T00:00:00Z"),
-			who: null,
+			who: "Uma",
+			byId: U,
+			acting: false,
 			label: "Project p1",
 			title: "Project p1",
 			href: "/band/projects/p1",
@@ -888,6 +894,96 @@ describe("accountActivity", () => {
 			"comment:cm1",
 		]);
 		expect(await accountActivity("nobody______________", "x", since, 10)).toEqual([]);
+	});
+});
+
+describe("accountActivity: a super admin's acting work", () => {
+	const since = at("2026-10-20T00:00:00Z");
+	/** Kev is a super admin with no membership in A; Sue is one who really belongs to A; Uma is a plain member. */
+	const K = "user-kev____________";
+	const S = "user-sue____________";
+	beforeEach(() =>
+		reset({
+			user: [
+				{ id: U, name: "Uma", isSuperAdmin: false },
+				{ id: K, name: "Kev", isSuperAdmin: true },
+				{ id: S, name: "Sue", isSuperAdmin: true },
+			],
+			accountMember: [
+				{ id: "m1", accountId: A, userId: U, role: "member" },
+				{ id: "m2", accountId: A, userId: S, role: "owner" },
+				{ id: "m3", accountId: B, userId: K, role: "owner" },
+			],
+			recordingSession: [session("new", A)],
+			project: [project("p1", A, 1, { createdBy: K, createdAt: at("2026-10-21T00:00:00Z") })],
+			song: [song("s1", A, "p1", 2, { createdBy: K, createdAt: at("2026-10-21T01:00:00Z") })],
+			stem: [
+				file("st1", "s1", "2026-10-22T10:00:00Z", { uploadedBy: K }),
+				file("st2", "s1", "2026-10-22T11:00:00Z", { uploadedBy: S }),
+				file("st3", "s1", "2026-10-22T12:00:00Z", { uploadedBy: U }),
+			],
+			sessionRecording: [
+				recording("r1", A, "new", { uploadedBy: K, createdAt: at("2026-10-22T13:00:00Z") }),
+			],
+			songDocVersion: [
+				{
+					id: "dv1",
+					songId: "s1",
+					kind: "chart",
+					userId: null,
+					createdBy: K,
+					createdAt: at("2026-10-22T14:00:00Z"),
+				},
+			],
+		}),
+	);
+
+	test("marks each event with its actor, acting only for a super admin without a real membership", async () => {
+		const rows = await accountActivity(A, "band", since, 50);
+		const flags = Object.fromEntries(rows.map((r) => [r.id, [r.byId, r.acting]]));
+		expect(flags).toEqual({
+			"stem:st1": [K, true],
+			"stem:st2": [S, false],
+			"stem:st3": [U, false],
+			"session-recording:r1": [K, true],
+			"doc:dv1": [K, true],
+			"song:s1": [K, true],
+			"project:p1": [K, true],
+		});
+		expect(rows.find((r) => r.id === "stem:st1")?.who).toBe("Kev");
+	});
+});
+
+describe("activityItemOf and deleteSongDocVersion", () => {
+	beforeEach(() =>
+		reset({
+			project: [project("p1", A, 1, { createdBy: U })],
+			song: [song("s1", A, "p1", 2, { createdBy: V }), song("sb", B, "p1", 2)],
+			stem: [file("st1", "s1", "2026-10-22T10:00:00Z")],
+			chatMessage: [message("c1", A, "s1", V, "2026-10-22T16:00:00Z")],
+			songDocVersion: [
+				{ id: "dv1", songId: "s1", kind: "chart", userId: null, createdBy: V },
+				{ id: "dv2", songId: "s1", kind: "mynotes", userId: U, createdBy: U },
+				{ id: "dvb", songId: "sb", kind: "lyrics", userId: null, createdBy: V },
+			],
+		}),
+	);
+
+	test("the row's account and actor per kind; null when it is gone or a private note's", async () => {
+		expect(await activityItemOf("stem", "st1")).toEqual({ accountId: A, actorId: U });
+		expect(await activityItemOf("chat", "c1")).toEqual({ accountId: A, actorId: V });
+		expect(await activityItemOf("song", "s1")).toEqual({ accountId: A, actorId: V });
+		expect(await activityItemOf("project", "p1")).toEqual({ accountId: A, actorId: U });
+		expect(await activityItemOf("doc", "dv1")).toEqual({ accountId: A, actorId: V });
+		expect(await activityItemOf("doc", "dv2")).toBeNull();
+		expect(await activityItemOf("stem", "nope")).toBeNull();
+	});
+
+	test("deleteSongDocVersion removes a shared revision of the account's song only", async () => {
+		expect(await deleteSongDocVersion(A, "dvb")).toBe(false);
+		expect(await deleteSongDocVersion(A, "dv2")).toBe(false);
+		expect(await deleteSongDocVersion(A, "dv1")).toBe(true);
+		expect(fake.rows("songDocVersion").map((r) => r.id)).toEqual(["dv2", "dvb"]);
 	});
 });
 

@@ -6,6 +6,7 @@ import {
 import type { ReportKind, ReportVote } from "#lib/val/BugReportSchema.js";
 import { chartHash, type ConfidenceRecord, type TimingMap } from "@barmark/sync";
 import { byStatus } from "#lib/utils/byStatus.js";
+import { actingActors } from "#lib/utils/actingActors.js";
 import type { Membership } from "#lib/utils/actingMemberships.js";
 import { reorderById } from "#lib/utils/reorderById.js";
 import { sortOrderMoves } from "#lib/utils/sortOrderMoves.js";
@@ -165,6 +166,7 @@ import type { Note } from "#lib/audio/chords.js";
 import type { DashboardPinKind } from "#lib/val/DashboardPinSchema.js";
 import type {
 	ActivityEvent,
+	ActivityKind,
 	ActivitySongFacts,
 	Nudge,
 	PendingState,
@@ -5456,7 +5458,7 @@ export async function accountActivity(
 			),
 			orderBy: desc(sessionRecording.createdAt),
 			limit,
-			columns: { id: true, title: true, createdAt: true },
+			columns: { id: true, title: true, uploadedBy: true, createdAt: true },
 			with: { session: ACTIVITY_SESSION },
 		}),
 		// A doc revision carries no account: its song's says whose it is.
@@ -5523,7 +5525,7 @@ export async function accountActivity(
 			),
 			orderBy: desc(song.createdAt),
 			limit,
-			columns: { ...ACTIVITY_SONG.columns, createdAt: true },
+			columns: { ...ACTIVITY_SONG.columns, createdBy: true, createdAt: true },
 			with: ACTIVITY_SONG.with,
 		}),
 		db.query.project.findMany({
@@ -5534,7 +5536,7 @@ export async function accountActivity(
 			),
 			orderBy: desc(project.createdAt),
 			limit,
-			columns: { id: true, name: true, slug: true, createdAt: true },
+			columns: { id: true, name: true, slug: true, createdBy: true, createdAt: true },
 		}),
 	]);
 
@@ -5545,15 +5547,18 @@ export async function accountActivity(
 				...stems.map((r) => r.uploadedBy),
 				...demos.map((r) => r.uploadedBy),
 				...mixes.map((r) => r.uploadedBy),
+				...recordings.map((r) => r.uploadedBy),
 				...docs.map((r) => r.createdBy),
 				...chats.map((r) => r.userId),
 				...sessionChats.map((r) => r.userId),
 				...comments.map((r) => r.userId),
 				...sessionComments.map((r) => r.userId),
+				...songs.map((r) => r.createdBy),
+				...projects.map((r) => r.createdBy),
 			].filter((id): id is string => id != null),
 		),
 	];
-	const [docSongs, people] = await Promise.all([
+	const [docSongs, people, members] = await Promise.all([
 		docSongIds.length === 0
 			? []
 			: db.query.song.findMany({
@@ -5565,12 +5570,25 @@ export async function accountActivity(
 			? []
 			: db.query.user.findMany({
 					where: inArray(user.id, userIds),
-					columns: { id: true, name: true },
+					columns: { id: true, name: true, isSuperAdmin: true },
 				}),
+		// Which of them really belong here: a super admin who does not is acting as the owner.
+		userIds.length === 0
+			? []
+			: db
+					.select({ userId: accountMember.userId })
+					.from(accountMember)
+					.where(
+						and(eq(accountMember.accountId, accountId), inArray(accountMember.userId, userIds)),
+					),
 	]);
 	const songById = new Map<string, ActivitySongRow>(docSongs.map((s) => [s.id, s]));
 	const nameById = new Map(people.map((p) => [p.id, p.name]));
 	const who = (id: string | null) => (id ? (nameById.get(id) ?? null) : null);
+	const acting = actingActors(
+		people,
+		members.map((m) => m.userId),
+	);
 
 	const events: ActivityEvent[] = [];
 	const push = (
@@ -5581,7 +5599,17 @@ export async function accountActivity(
 		label: string,
 		by: string | null,
 	) => {
-		if (place) events.push({ id: `${kind}:${rowId}`, kind, at, who: who(by), label, ...place });
+		if (place)
+			events.push({
+				id: `${kind}:${rowId}`,
+				kind,
+				at,
+				who: who(by),
+				byId: by,
+				acting: by !== null && acting.has(by),
+				label,
+				...place,
+			});
 	};
 	for (const r of stems)
 		push("stem", r.id, r.createdAt, songPlace(accountSlug, r.song), r.label, r.uploadedBy);
@@ -5596,7 +5624,7 @@ export async function accountActivity(
 			r.createdAt,
 			sessionPlace(accountSlug, r.session),
 			r.title,
-			null,
+			r.uploadedBy,
 		);
 	for (const r of docs)
 		push(
@@ -5622,7 +5650,8 @@ export async function accountActivity(
 			"",
 			r.userId,
 		);
-	for (const r of songs) push("song", r.id, r.createdAt, songPlace(accountSlug, r), r.title, null);
+	for (const r of songs)
+		push("song", r.id, r.createdAt, songPlace(accountSlug, r), r.title, r.createdBy);
 	for (const r of projects)
 		push(
 			"project",
@@ -5630,9 +5659,82 @@ export async function accountActivity(
 			r.createdAt,
 			{ title: r.name, href: `/${accountSlug}/projects/${r.slug}`, song: null },
 			r.name,
-			null,
+			r.createdBy,
 		);
 	return events.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, limit);
+}
+
+/** An activity row's account and the person who made it (null when the row records nobody). */
+interface ActivityOwner {
+	accountId: string;
+	actorId: string | null;
+}
+
+/** Per kind, the account and the actor of one activity row by id (unscoped: the caller checks both). */
+const ACTIVITY_OWNER: Record<ActivityKind, (id: string) => Promise<ActivityOwner[]>> = {
+	stem: (id) =>
+		db
+			.select({ accountId: stem.accountId, actorId: stem.uploadedBy })
+			.from(stem)
+			.where(eq(stem.id, id)),
+	demo: (id) =>
+		db
+			.select({ accountId: demo.accountId, actorId: demo.uploadedBy })
+			.from(demo)
+			.where(eq(demo.id, id)),
+	mix: (id) =>
+		db
+			.select({ accountId: songMix.accountId, actorId: songMix.uploadedBy })
+			.from(songMix)
+			.where(eq(songMix.id, id)),
+	"session-recording": (id) =>
+		db
+			.select({ accountId: sessionRecording.accountId, actorId: sessionRecording.uploadedBy })
+			.from(sessionRecording)
+			.where(eq(sessionRecording.id, id)),
+	// A shared doc's revision only: a private note's is not activity.
+	doc: (id) =>
+		db
+			.select({ accountId: song.accountId, actorId: songDocVersion.createdBy })
+			.from(songDocVersion)
+			.innerJoin(song, eq(song.id, songDocVersion.songId))
+			.where(and(eq(songDocVersion.id, id), isNull(songDocVersion.userId))),
+	chat: (id) =>
+		db
+			.select({ accountId: chatMessage.accountId, actorId: chatMessage.userId })
+			.from(chatMessage)
+			.where(eq(chatMessage.id, id)),
+	"session-chat": (id) =>
+		db
+			.select({ accountId: sessionChatMessage.accountId, actorId: sessionChatMessage.userId })
+			.from(sessionChatMessage)
+			.where(eq(sessionChatMessage.id, id)),
+	comment: (id) =>
+		db
+			.select({ accountId: comment.accountId, actorId: comment.userId })
+			.from(comment)
+			.where(eq(comment.id, id)),
+	"session-comment": (id) =>
+		db
+			.select({ accountId: sessionComment.accountId, actorId: sessionComment.userId })
+			.from(sessionComment)
+			.where(eq(sessionComment.id, id)),
+	song: (id) =>
+		db
+			.select({ accountId: song.accountId, actorId: song.createdBy })
+			.from(song)
+			.where(eq(song.id, id)),
+	project: (id) =>
+		db
+			.select({ accountId: project.accountId, actorId: project.createdBy })
+			.from(project)
+			.where(eq(project.id, id)),
+};
+
+/** The account an activity event's row belongs to and who made it, or null when the row is gone (dashboard.remote.ts `removeActivityItem`). */
+export async function activityItemOf(kind: ActivityKind, rowId: string) {
+	const [row] = await ACTIVITY_OWNER[kind](rowId);
+	return row ?? null;
 }
 
 /** A file's unfinished state: still uploading, its rendition owed (null = not attempted yet) or rendering, or the rendition failed. */
@@ -8997,6 +9099,29 @@ export async function docVersionById(
 		columns: { id: true, versionNumber: true, markdown: true },
 	});
 	return row ?? null;
+}
+
+/**
+ * Deletes one revision of a song's shared document (a chart, lyrics or notes
+ * edit) when the song is the account's; the document's current text stays on
+ * the song. A super admin removes their acting edits this way
+ * (dashboard.remote.ts `removeActivityItem`). False when there is no such row.
+ */
+export async function deleteSongDocVersion(accountId: string, versionId: string) {
+	const [row] = await db
+		.select({ id: songDocVersion.id })
+		.from(songDocVersion)
+		.innerJoin(song, eq(song.id, songDocVersion.songId))
+		.where(
+			and(
+				eq(songDocVersion.id, versionId),
+				isNull(songDocVersion.userId),
+				eq(song.accountId, accountId),
+			),
+		);
+	if (!row) return false;
+	await db.delete(songDocVersion).where(eq(songDocVersion.id, versionId));
+	return true;
 }
 
 // ---- private song notes: one per user and song ---------------------------

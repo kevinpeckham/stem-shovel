@@ -2,6 +2,7 @@
 	import { DASHBOARD_IDEAS_PAGE, type DashboardEntry } from "#lib/constants/dashboardLinks.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import { pageOf } from "#lib/utils/pageOf.js";
+	import DashboardPinButton from "./DashboardPinButton.svelte";
 
 	/** A dashboard section's ideas after the search: the first `shown`, then how many of how many with a Show more button while some remain. */
 	interface Props {
@@ -16,6 +17,8 @@
 		/** The pins the person has, as `kind:id`, with the toggle's handler; rows with a `pin` get a pin button. */
 		pins?: Set<string>;
 		onpin?: (idea: DashboardEntry, pinned: boolean) => void;
+		/** Removes a super admin's acting entry (one with `acting`); such an entry is tagged as hidden from the band either way. */
+		onremove?: (idea: DashboardEntry) => void;
 	}
 	let {
 		heading,
@@ -26,6 +29,7 @@
 		since = null,
 		pins,
 		onpin,
+		onremove,
 	}: Props = $props();
 
 	let page = $derived(pageOf(ideas, shown));
@@ -53,22 +57,19 @@
 					{#if idea.meta}
 						<div class="text-12px opacity-70">{idea.meta}</div>
 					{/if}
+					{#if idea.acting}
+						<div class="text-12px text-dim">
+							Yours, hidden from the band
+							{#if onremove}
+								· <button type="button" class="link" onclick={() => onremove(idea)}>Remove</button>
+							{/if}
+						</div>
+					{/if}
 				</div>
 				<span class="flex items-center gap-2 text-12px opacity-60">
 					{idea.whenText ?? formatDate(idea.when)}
 					{#if idea.pin && onpin}
-						{@const pinned = isPinned(idea)}
-						<button
-							type="button"
-							class="button button-xs px-1.5 {pinned ? 'text-accent' : ''}"
-							aria-pressed={pinned}
-							aria-label="{pinned ? 'Unpin' : 'Pin'} {idea.title || 'Untitled'}"
-							title={pinned ? "Unpin from your dashboard" : "Pin to your dashboard"}
-							onclick={() => onpin(idea, !pinned)}
-						>
-							<span class={pinned ? "i-ph-push-pin-fill" : "i-ph-push-pin"} aria-hidden="true"
-							></span>
-						</button>
+						<DashboardPinButton {idea} pinned={isPinned(idea)} {onpin} />
 					{/if}
 				</span>
 			</li>

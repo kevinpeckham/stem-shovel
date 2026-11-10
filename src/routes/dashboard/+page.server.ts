@@ -46,6 +46,7 @@ import { upcomingEvents } from "#lib/server/calendar.js";
 import { listInbox } from "#lib/server/notifications.js";
 import { canViewProject, canViewSong, type Viewer } from "#lib/server/viewAccess.js";
 import { realMemberships, type Membership } from "#lib/utils/actingMemberships.js";
+import { activityNoun } from "#lib/utils/activityNoun.js";
 import { activityText } from "#lib/utils/activityText.js";
 import { countdownText } from "#lib/utils/countdownText.js";
 import { formatWhen } from "#lib/utils/formatWhen.js";
@@ -118,7 +119,10 @@ async function dashboardAccount(m: Membership, userId: string, since: Date) {
 		songChats: songChats.filter((c) => canViewSong(c, who, [])),
 		sessionChats,
 		// A song's event or job shows only when the person may open the song; a session's shows to every member.
-		activity: activity.filter((e) => !e.song || canViewSong(e.song, who, [])),
+		// A super admin's acting work shows only to them, on that account's acting view; never to its members.
+		activity: activity.filter(
+			(e) => (!e.song || canViewSong(e.song, who, [])) && (!e.acting || !!m.actingAs),
+		),
 		pending: pending.filter((p) => !p.song || canViewSong(p.song, who, [])),
 		nudges: nudges.filter((n) => !n.song || canViewSong(n.song, who, [])),
 	};
@@ -274,7 +278,7 @@ function showEntries(tiles: Tile[], today: string): DashboardEntry[] {
 	});
 }
 
-/** Activity: what happened across the person's accounts in the last DASHBOARD_ACTIVITY_DAYS, newest first; the title is the song or session, the line under it who did what (and the account, with several). */
+/** Activity: what happened across the person's accounts in the last DASHBOARD_ACTIVITY_DAYS, newest first; the title is the song or session, the line under it who did what (and the account, with several); a super admin's acting event carries `acting` for its tag and its Remove. */
 function activityEntries(tiles: Tile[]): DashboardEntry[] {
 	const several = tiles.length > 1;
 	return tiles
@@ -287,6 +291,7 @@ function activityEntries(tiles: Tile[]): DashboardEntry[] {
 				whenText: formatWhen(e.at),
 				account: t.slug,
 				meta: line([activityText(e), several ? t.name : ""]),
+				...(e.acting ? { acting: { id: e.id, noun: activityNoun(e) } } : {}),
 			})),
 		)
 		.sort(newestFirst);

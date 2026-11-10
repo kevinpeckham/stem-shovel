@@ -307,6 +307,43 @@ describe("dashboard load: one account (?account=)", () => {
 	});
 });
 
+describe("dashboard load: a super admin's acting work in Activity", () => {
+	const acting = member(OTHER_ACCOUNT, "owner", { actingAs: true });
+	const admin = () => fakeUser(USER, { isSuperAdmin: true });
+	beforeEach(() =>
+		data.accountActivity.mockResolvedValue([
+			{ ...event("stem:mine", day(3)), byId: USER, acting: true },
+			{ ...event("doc:edit", day(2)), kind: "doc", label: "chart", byId: USER, acting: true },
+			{ ...event("stem:band", day(1)), byId: "pat", acting: false },
+		]),
+	);
+
+	it("a member's dashboard, default or narrowed to a real account, drops acting events", async () => {
+		const slug = member().slug;
+		expect(ids((await run([member(ACCOUNT)])).activity)).toEqual([`${slug}:stem:band`]);
+		const narrowed = await run([member(ACCOUNT)], fakeUser(), `?account=${slug}`);
+		expect(ids(narrowed.activity)).toEqual([`${slug}:stem:band`]);
+	});
+
+	it("the super admin's acting view keeps them, marked with the event id and what a removal deletes", async () => {
+		const r = await run([member(ACCOUNT), acting], admin(), `?account=${acting.slug}`);
+		expect(ids(r.activity)).toEqual([
+			`${acting.slug}:stem:mine`,
+			`${acting.slug}:doc:edit`,
+			`${acting.slug}:stem:band`,
+		]);
+		expect(r.activity[0].acting).toEqual({ id: "stem:mine", noun: "stem" });
+		expect(r.activity[1].acting).toEqual({ id: "doc:edit", noun: "version of the chart" });
+		expect(r.activity[2].acting).toBeUndefined();
+	});
+
+	it("the super admin's own dashboard (real memberships only) shows none", async () => {
+		const r = await run([member(ACCOUNT), acting], admin());
+		expect(r.activity.every((e: Row) => e.acting === undefined)).toBe(true);
+		expect(r.activity).toHaveLength(1);
+	});
+});
+
 describe("dashboard load: another user's dashboard (?user=)", () => {
 	const TARGET = fakeId("user-target");
 	const ADMIN = fakeId("user-admin");

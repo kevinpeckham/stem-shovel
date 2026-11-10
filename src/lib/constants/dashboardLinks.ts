@@ -65,6 +65,8 @@ export interface DashboardEntry {
 	account?: string;
 	/** What a pin of this entry is (its kind and the target's id), for the pin toggle on the row; absent on entries that cannot be pinned. */
 	pin?: { kind: DashboardPinKind; id: string };
+	/** A super admin's acting work in the account (an Activity event the members do not see): the event's id and what removing it deletes ("stem"). */
+	acting?: { id: string; noun: string };
 }
 
 /** Ideas, loops or multitracks a dashboard section shows at first, and how many more each "Show more" reveals. */

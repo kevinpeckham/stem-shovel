@@ -30,6 +30,10 @@ export interface ActivityEvent {
 	at: Date;
 	/** The person's name (user.name) when the row records one, else null. */
 	who: string | null;
+	/** The person's user id when the row records one (uploadedBy, createdBy, userId), else null. */
+	byId: string | null;
+	/** A super admin's work in an account they do not really belong to (acting as its owner): hidden from the members' dashboards (`actingActors`). */
+	acting: boolean;
 	/** The thing: a stem's, demo's or mix's label ("v3 Rough mix" for a mix), a doc's kind ("chart", "lyrics", "notes"), a session recording's title, a song's or project's name; "" for a message or comment. */
 	label: string;
 	/** The song's title or the session's display name. */

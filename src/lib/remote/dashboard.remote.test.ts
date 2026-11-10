@@ -2,16 +2,26 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 import "../../../tests/helpers/fakeServerModules";
 import {
 	ACCOUNT,
+	OTHER_ACCOUNT,
 	USER,
 	asMemberOf,
 	asOutsider,
 	asSignedOut,
+	asSuperAdmin,
 	asViewerOf,
 	call,
 	fakeId,
+	fakeMembership,
 	httpError,
 } from "../../../tests/helpers/fakeRequestEvent";
-import { data, givenRow, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
+import {
+	background,
+	data,
+	givenRow,
+	jobs,
+	lifecycle,
+	resetRemoteMocks,
+} from "../../../tests/helpers/fakeServerModules";
 
 /** Authorization of dashboard pins (docs/dashboard-plan.md, step 5): a member of the target's account pins it to their own dashboard. */
 const dashboard = await import("./dashboard.remote");
@@ -144,5 +154,114 @@ describe("setPin", () => {
 		asViewerOf(ACCOUNT);
 		await expect(call(dashboard.setPin, input)).resolves.toEqual({ pinned: true });
 		expect(data.setDashboardPin).toHaveBeenCalledWith(USER, "song", SONG, ACCOUNT, true);
+	});
+});
+
+describe("removeActivityItem", () => {
+	const SUPER = fakeId("superadmin");
+	const ROW = fakeId("row-one");
+	/** The super admin: a real member of OTHER_ACCOUNT, acting as the owner of ACCOUNT. */
+	const asKevin = () =>
+		asSuperAdmin([
+			fakeMembership(OTHER_ACCOUNT, "owner"),
+			fakeMembership(ACCOUNT, "owner", { actingAs: true }),
+		]);
+	const remove = (id: string) => call(dashboard.removeActivityItem, { id });
+	const given = (accountId: string, actorId: string | null) =>
+		data.activityItemOf.mockResolvedValue({ accountId, actorId });
+	const deletes = [
+		"deleteStem",
+		"deleteDemo",
+		"deleteMix",
+		"deleteSessionRecording",
+		"deleteSongDocVersion",
+		"deleteChatMessage",
+		"deleteSessionChatMessage",
+		"deleteComment",
+		"deleteSessionComment",
+		"deleteSong",
+	];
+	const nothingDeleted = () => {
+		for (const fn of deletes) expect(data[fn]).not.toHaveBeenCalled();
+		expect(lifecycle.deleteProject).not.toHaveBeenCalled();
+	};
+
+	it("404 signed out and for anyone but a super admin, even the band's owner", async () => {
+		given(ACCOUNT, USER);
+		asSignedOut();
+		await expect(remove(`stem:${ROW}`)).rejects.toMatchObject(httpError(404));
+		asMemberOf(ACCOUNT, "owner");
+		await expect(remove(`stem:${ROW}`)).rejects.toMatchObject(httpError(404));
+		expect(data.activityItemOf).not.toHaveBeenCalled();
+		nothingDeleted();
+	});
+
+	it("refuses a malformed id", async () => {
+		asKevin();
+		await expect(remove("idea:abc")).rejects.toThrow();
+		await expect(remove("stem:")).rejects.toThrow();
+		nothingDeleted();
+	});
+
+	it("404 for a row that is gone, someone else's, or one without an author", async () => {
+		asKevin();
+		data.activityItemOf.mockResolvedValue(null);
+		await expect(remove(`stem:${ROW}`)).rejects.toMatchObject(httpError(404));
+		given(ACCOUNT, "pat");
+		await expect(remove(`stem:${ROW}`)).rejects.toMatchObject(httpError(404));
+		given(ACCOUNT, null);
+		await expect(remove(`session-recording:${ROW}`)).rejects.toMatchObject(httpError(404));
+		nothingDeleted();
+	});
+
+	it("404 in an account the super admin really belongs to (their work there is a member's)", async () => {
+		asKevin();
+		given(OTHER_ACCOUNT, SUPER);
+		await expect(remove(`stem:${ROW}`)).rejects.toMatchObject(httpError(404));
+		nothingDeleted();
+	});
+
+	it.each([
+		["stem", "deleteStem", [ACCOUNT, ROW]],
+		["demo", "deleteDemo", [ACCOUNT, ROW]],
+		["mix", "deleteMix", [ACCOUNT, ROW]],
+		["session-recording", "deleteSessionRecording", [ACCOUNT, ROW]],
+		["doc", "deleteSongDocVersion", [ACCOUNT, ROW]],
+		["chat", "deleteChatMessage", [ROW]],
+		["session-chat", "deleteSessionChatMessage", [ROW]],
+		["comment", "deleteComment", [ROW]],
+		["session-comment", "deleteSessionComment", [ROW]],
+		["song", "deleteSong", [ACCOUNT, ROW]],
+	])("a %s they made while acting goes through %s, audited", async (kind, fn, args) => {
+		asKevin();
+		given(ACCOUNT, SUPER);
+		await expect(remove(`${kind}:${ROW}`)).resolves.toEqual({ removed: true });
+		expect(data.activityItemOf).toHaveBeenCalledWith(kind, ROW);
+		expect(data[fn]).toHaveBeenCalledWith(...args);
+		for (const other of deletes.filter((d) => d !== fn)) expect(data[other]).not.toHaveBeenCalled();
+		// requireMember's audit line for the acting membership
+		expect(background).toHaveBeenCalledTimes(1);
+		await background.mock.calls[0][0]();
+		expect(data.logAudit).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: SUPER, accountId: ACCOUNT }),
+		);
+	});
+
+	it("a stem's removal re-renders its song's mix", async () => {
+		asKevin();
+		given(ACCOUNT, SUPER);
+		data.deleteStem.mockResolvedValue({ songId: "song-x" });
+		await remove(`stem:${ROW}`);
+		expect(jobs.scheduleMix).toHaveBeenCalledWith(["song-x"]);
+	});
+
+	it("a project goes through projectLifecycle's delete; an active one is refused with a 400", async () => {
+		asKevin();
+		given(ACCOUNT, SUPER);
+		lifecycle.deleteProject.mockResolvedValue("deleted");
+		await expect(remove(`project:${ROW}`)).resolves.toEqual({ removed: true });
+		expect(lifecycle.deleteProject).toHaveBeenCalledWith(ACCOUNT, ROW);
+		lifecycle.deleteProject.mockResolvedValue("active");
+		await expect(remove(`project:${ROW}`)).rejects.toMatchObject(httpError(400));
 	});
 });

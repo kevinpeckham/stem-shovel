@@ -34,6 +34,8 @@
 		/** The pins the person has (`kind:id`) and the toggle's handler, for rows that can be pinned. */
 		pins?: Set<string>;
 		onpin?: (idea: DashboardEntry, pinned: boolean) => void;
+		/** Removes a super admin's acting entry (Activity): the row's Remove. */
+		onremove?: (idea: DashboardEntry) => void;
 	}
 	let {
 		id,
@@ -48,6 +50,7 @@
 		since = null,
 		pins,
 		onpin,
+		onremove,
 	}: Props = $props();
 	/** The list to show; none given reads as empty, so the section shows its empty card instead of failing the page. */
 	let ideas = $derived(given ?? []);
@@ -126,6 +129,7 @@
 			{since}
 			{pins}
 			{onpin}
+			{onremove}
 			onmore={() => (pages += 1)}
 		/>
 	{/if}

@@ -15,7 +15,8 @@
 	import { dashboardTools } from "#lib/utils/dashboardTools.js";
 	import { onboardingSteps, showOnboarding } from "#lib/utils/onboardingSteps.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
-	import { setPin } from "#lib/remote/dashboard.remote.js";
+	import { removeActivityItem, setPin } from "#lib/remote/dashboard.remote.js";
+	import { invalidateAll } from "$app/navigation";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import type { DashboardEntry } from "#lib/constants/dashboardLinks.js";
@@ -68,6 +69,20 @@
 				]
 			: pinned.filter((p) => p.pin!.id !== id || p.pin!.kind !== kind);
 		notify(on ? "Pinned to your dashboard" : "Unpinned");
+	}
+	/** A super admin removes their acting work from the band's account (the Activity row's Remove), once confirmed. */
+	async function removeActing(entry: DashboardEntry) {
+		if (!entry.acting) return;
+		if (!confirm(`Remove this ${entry.acting.noun} from the band's account? This deletes it.`))
+			return;
+		try {
+			await removeActivityItem({ id: entry.acting.id });
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+			return;
+		}
+		await invalidateAll();
+		notify("Removed");
 	}
 	const PIN_KIND_LABEL = {
 		song: "Song",
@@ -153,6 +168,7 @@
 					empty="Nothing in the last seven days."
 					search="Search activity"
 					since={data.seenAt}
+					onremove={removeActing}
 				/>
 				<DashboardIdeas
 					id="dashboard-projects"
