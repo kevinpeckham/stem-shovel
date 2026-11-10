@@ -14,6 +14,11 @@ describe("chartMusicXml", () => {
 	it("the title names a chart that has none of its own", () => {
 		expect(chartMusicXml("| C | F |", "So What")).toContain("So What");
 	});
+	it("a chart whose MusicXML would pass the budget is null, and a budget that fits is honored", () => {
+		const chart = "|: C | F | G | C :| x 8";
+		expect(chartMusicXml(chart, "Song", 2_000)).toBeNull();
+		expect(chartMusicXml(chart, "Song")).toContain("<measure");
+	});
 	it("a blank chart, one without bars and one with an error are null", () => {
 		expect(chartMusicXml("", "Song")).toBeNull();
 		expect(chartMusicXml("  \n ", "Song")).toBeNull();

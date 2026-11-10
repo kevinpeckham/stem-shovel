@@ -264,6 +264,13 @@ describe("parsePosition / formatPosition", () => {
 			expect(formatPosition("bars", 10, chartCtx)).toBe("6 | 1");
 			expect(formatPosition("bars", 4, ctx)).toBe("3 | 1");
 		});
+		test("a chart's pickup reads and parses as bar 0 (barmark 0.22)", () => {
+			const pickupCtx = { fps: 25, grid: { ...grid, written: [0, 1, 2, 3] } };
+			expect(formatPosition("bars", 0, pickupCtx)).toBe("0 | 1");
+			expect(formatPosition("bars", 2, pickupCtx)).toBe("1 | 1");
+			expect(parsePosition("0|1", pickupCtx)).toBe(0);
+			expect(parsePosition("1|1", pickupCtx)).toBe(2);
+		});
 		test("a typed bar is a written number, its first pass; one the chart lacks is a play position", () => {
 			expect(parsePosition("2|1", chartCtx)).toBe(2);
 			expect(parsePosition("1|1", chartCtx)).toBe(0);

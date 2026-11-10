@@ -142,18 +142,18 @@ each page; the bench's copies would be fetched from there, hashes
 committed, audio gitignored as always. The two measured songs count
 toward the ten, as the brief says.
 
-| # | Song | Page | Declared | Arrangement axis |
-|---|---|---|---|---|
-| 1 | Let It In (measured, 86% roots) | joshwoodward.com/song/letitin | 121 bpm, D minor, 4/4 straight | piano-led full band |
-| 2 | Same Boat (measured, 89% roots) | joshwoodward.com/song/sameboat | 93 bpm, F# major, 4/4 | acoustic, capo (the transposition-invariant grading slot) |
-| 3 | Border Blaster | joshwoodward.com/song/borderblaster | 49 bpm, F major, 6/8 straight | the compound-meter slot, acoustic |
-| 4 | Gravity | joshwoodward.com/song/gravity | 48 bpm, F major, 6/8 swing | a second compound slot, electric guitar and drums, swung |
-| 5 | California Lullabye | joshwoodward.com/song/californialullabye | 176 bpm, A major, 4/4 | the most produced track found: electric, electronic and piano tags, fast |
-| 6 | Swansong | joshwoodward.com/song/swansong | 170 bpm, G# major, 4/4 | fast full-band rock |
-| 7 | Afterglow | joshwoodward.com/song/afterglow | 98 bpm, A major, 4/4 | mid-tempo drums-and-guitar pop-rock |
-| 8 | Once Tomorrow | joshwoodward.com/song/oncetomorrow | 133 bpm, F major, 4/4 swing | swung acoustic with drums and banjo |
-| 9 | Crazy Glue | joshwoodward.com/song/crazyglue | 134 bpm, D# major, 4/4 swing | acoustic folk, capo 8 (a second capo slot) |
-| 10 | I'm Letting Go | joshwoodward.com/song/imlettinggo | 76 bpm, A minor, 4/4 | sparse slow singer-with-banjo (the thin-arrangement probe for the notes-per-bar hold) |
+| #   | Song                            | Page                                     | Declared                       | Arrangement axis                                                                      |
+| --- | ------------------------------- | ---------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------- |
+| 1   | Let It In (measured, 86% roots) | joshwoodward.com/song/letitin            | 121 bpm, D minor, 4/4 straight | piano-led full band                                                                   |
+| 2   | Same Boat (measured, 89% roots) | joshwoodward.com/song/sameboat           | 93 bpm, F# major, 4/4          | acoustic, capo (the transposition-invariant grading slot)                             |
+| 3   | Border Blaster                  | joshwoodward.com/song/borderblaster      | 49 bpm, F major, 6/8 straight  | the compound-meter slot, acoustic                                                     |
+| 4   | Gravity                         | joshwoodward.com/song/gravity            | 48 bpm, F major, 6/8 swing     | a second compound slot, electric guitar and drums, swung                              |
+| 5   | California Lullabye             | joshwoodward.com/song/californialullabye | 176 bpm, A major, 4/4          | the most produced track found: electric, electronic and piano tags, fast              |
+| 6   | Swansong                        | joshwoodward.com/song/swansong           | 170 bpm, G# major, 4/4         | fast full-band rock                                                                   |
+| 7   | Afterglow                       | joshwoodward.com/song/afterglow          | 98 bpm, A major, 4/4           | mid-tempo drums-and-guitar pop-rock                                                   |
+| 8   | Once Tomorrow                   | joshwoodward.com/song/oncetomorrow       | 133 bpm, F major, 4/4 swing    | swung acoustic with drums and banjo                                                   |
+| 9   | Crazy Glue                      | joshwoodward.com/song/crazyglue          | 134 bpm, D# major, 4/4 swing   | acoustic folk, capo 8 (a second capo slot)                                            |
+| 10  | I'm Letting Go                  | joshwoodward.com/song/imlettinggo        | 76 bpm, A minor, 4/4           | sparse slow singer-with-banjo (the thin-arrangement probe for the notes-per-bar hold) |
 
 Covered: full band (1, 5, 6, 7), singer with guitar or piano (2, 9,
 10), electronic-leaning production (5, and 4's electric tags), 3/4 or

@@ -75,10 +75,11 @@
 	},
 	"dependencies": {
 		"@ai-sdk/gateway": "^4.0.127",
-		"@barmark/midi": "0.2.0",
-		"@barmark/musicxml": "0.7.1",
-		"@barmark/render": "0.17.1",
-		"@barmark/sync": "0.2.1",
+		"@barmark/midi": "0.3.0",
+		"@barmark/musicxml": "0.8.0",
+		"@barmark/render": "0.18.0",
+		"@barmark/score": "0.2.0",
+		"@barmark/sync": "0.3.0",
 		"@better-auth/passkey": "^1.7.14",
 		"@kevinpeckham/barkdown": "0.1.1",
 		"@kevinpeckham/woof-editor": "0.3.0",
@@ -92,7 +93,7 @@
 		"@vercel/blob": "2.8.2",
 		"@vercel/speed-insights": "^2.0.0",
 		"ai": "^7.0.154",
-		"barmark": "0.21.0",
+		"barmark": "0.22.0",
 		"better-auth": "^1.7.14",
 		"client-zip": "^2.5.1",
 		"drizzle-orm": "0.45.4",
@@ -114,7 +115,7 @@
 		"svg-to-pdfkit": "^0.1.8",
 		"valibot": "^1.5.0",
 		"varlock": "^1.23.0",
-		"verovio": "^6.3.0"
+		"verovio": "6.4.1"
 	},
 	"devDependencies": {
 		"@iconify-json/ph": "^1.2.2",

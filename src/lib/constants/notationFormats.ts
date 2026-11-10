@@ -33,3 +33,12 @@ export function notationFormatOf(filename: string): NotationFormat | null {
 	if (ext === "musicxml" || ext === "xml") return "musicxml";
 	return null;
 }
+
+/**
+ * The most MusicXML a chart export writes, in characters (`@barmark/musicxml`'s
+ * `maxLength`, 0.8.0): a short chart whose repeats are written out can run to
+ * gigabytes, and the export runs in a Vercel function and in the browser's
+ * score worker. Twenty million is a few thousand crowded bars; past it the
+ * export answers nothing and the chart is not offered as a score.
+ */
+export const MUSICXML_MAX_LENGTH = 20_000_000;
