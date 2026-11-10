@@ -155,13 +155,13 @@ the straight meter at the detector's FIRST pulse (before the super-beat
 re-pick), with its own 3/4-or-4/4 lean. c = ac(1.5L) + ac(3L),
 d = ac(2L) + ac(4L), L the kept beat lag.
 
-| r | strict | folded | meter | false 6/8 | true 6/8 | right→wrong | wrong→right |
-|---|---|---|---|---|---|---|---|
-| 0.80 | 109 | 195 | 192 | 19 | 4 | 3 | 17 |
-| 1.00 | 114 | 201 | 214 | 10 | 4 | 0 | 19 |
-| 1.15 | 112 | 201 | 216 | 3 | 1 | 2 | 19 |
-| 1.30 | 112 | 200 | 217 | 2 | 1 | 2 | 19 |
-| never 6/8 | 112 | 200 | 217 | 0 | 0 | 2 | 19 |
+| r         | strict | folded | meter | false 6/8 | true 6/8 | right→wrong | wrong→right |
+| --------- | ------ | ------ | ----- | --------- | -------- | ----------- | ----------- |
+| 0.80      | 109    | 195    | 192   | 19        | 4        | 3           | 17          |
+| 1.00      | 114    | 201    | 214   | 10        | 4        | 0           | 19          |
+| 1.15      | 112    | 201    | 216   | 3         | 1        | 2           | 19          |
+| 1.30      | 112    | 200    | 217   | 2         | 1        | 2           | 19          |
+| never 6/8 | 112    | 200    | 217   | 0         | 0        | 2           | 19          |
 
 The witness does not separate true 6/8 from false: at every r the true
 calls fall faster than the false ones. It still pays, because the 6/8
@@ -189,12 +189,12 @@ comment above `COMPOUND_MARGIN` already suspected.
 **Ask B, the finer bar.** Net negative at every s on the detector's own
 tempo:
 
-| s | ×2 taken | made right | made wrong | strict (baseline 95) |
-|---|---|---|---|---|
-| 0.60 | 147 | 27 | 71 | 51 |
-| 0.80 | 78 | 14 | 41 | 68 |
-| 0.85 | 67 | 12 | 34 | 73 |
-| 1.00 | 27 | 2 | 17 | 80 |
+| s    | ×2 taken | made right | made wrong | strict (baseline 95) |
+| ---- | -------- | ---------- | ---------- | -------------------- |
+| 0.60 | 147      | 27         | 71         | 51                   |
+| 0.80 | 78       | 14         | 41         | 68                   |
+| 0.85 | 67       | 12         | 34         | 73                   |
+| 1.00 | 27       | 2          | 17         | 80                   |
 
 The ×2 rung's strength does not mark the half-bar readings, and bpm
 does not either: the 37 songs ×2 would fix have detected tempos 70 to
