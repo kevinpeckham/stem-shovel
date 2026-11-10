@@ -281,26 +281,29 @@ its summed-envelope autocorrelation (it beat every per-stem and neural
 alternative) and gains a ladder; beat timestamps and a neural tracker
 are deferred until a tempo map for drifting live recordings wants them.
 
-- **Subdivision.** `analysis.ts` tests the detected beat lag L for a
-  three-feel, on the autocorrelation of the summed envelope: at the
-  sub-beat, ac(L/3) > 1.15 · ac(L/2) and ac(L/3) ≥ 0.55 · ac(L)
-  (running triplets measure 0.67–0.69 of the beat, swing at most 0.5 in
-  theory and 0.46–0.50 measured: a swung 4/4 stays straight, on a thin
-  margin; a comparison of L/3 against 2L/3 cannot do it, since an
-  envelope that repeats every beat has ac(τ) = ac(L − τ)); and at the
-  super-beat, ac(1.5L) > 1.05 · ac(2L) with ac(1.5L) ≥ 0.2 · ac(L), the
-  case the bench saw on every 6/8 item: the autocorrelation picks the
-  quarter where the beat is the dotted quarter (the margin is low
-  because the log-compressed envelope flattens accents: a 6/8 whose
-  dotted beats are four times louder reaches only 1.02–1.12, while
-  straight eighths cannot exceed 1.0 and measure 0.91–0.97). Either
-  firing makes `tempo.subdivision` 3, the super-beat case re-picks the
-  pulse at L × 1.5 (refined), and `detectMeter` answers `"6/8"` (the
-  only compound meter emitted). Straight meters behave as before;
-  silence now gives bpm 0 instead of the range's first lag. The
-  constants carry these numbers with their reasons; the 1.05 margin is
-  the one to watch for false 6/8 on real recordings, which stem-bench
-  Study 11 measures.
+- **Subdivision: tried and withdrawn (v0.200.0 to v0.259.8).** From
+  v0.200.0 `analysis.ts` tested the detected beat lag L for a three-feel
+  on the summed envelope's autocorrelation (sub-beat: ac(L/3) > 1.15 ·
+  ac(L/2) and ≥ 0.55 · ac(L); super-beat: ac(1.5L) > 1.05 · ac(2L) and
+  ≥ 0.2 · ac(L), which re-picked the pulse at 1.5L), and either firing
+  made `tempo.subdivision` 3 and `detectMeter` answer 6/8. stem-bench
+  Study 36b found that call false on 63 of 223 plain 4/4 songs (the
+  sub-beat test fires on straight running eighths of a log-compressed
+  flux envelope) and, when it named 6/8 on a true 6/8 song, strict on
+  the bar on 2 of 21; Study 40 swept the second witnesses the app asked
+  for (a duple-bar autocorrelation witness and the sub-beat thresholds)
+  and none separates true 6/8 from false, while dropping every 6/8 call
+  loses within two songs of the best witness on every count (strict
+  bars 95 → 112, folded 176 → 200, meter class right 180 → 217 of 261).
+  The witness also drops the textbook 6/8 (the app's synthetic
+  fixtures): with the dotted quarter as the kept beat the 6/8 bar is 2L
+  and two bars 4L, so the "duple" side is always the strong side on a
+  real 6/8 and the witness kept 6/8 only where the beat was misread. So
+  the tests, their constants and the re-pick came out in v0.259.9: the
+  detector reads a straight pulse and 4/4 or 3/4 by lean, 6/8 is the
+  musician's to declare (the settings and the compound tempo unit are
+  untouched), and `tempo.subdivision` is always 2 (the type keeps 3 for
+  the rung text's sake). Silence gives bpm 0.
 - **Alternates.** `tempo.alternates` lists the rungs ×2, ×½, ×1.5, ×⅔
   and ×3 of the chosen bpm with the autocorrelation at each rung's lag
   relative to the chosen one as `strength`; the song page shows the
@@ -342,29 +345,25 @@ are deferred until a tempo map for drifting live recordings wants them.
   calling an equivalent count a mismatch. stem-bench Study 11 validates
   the rule's false-accept rate and the subdivision test on both corpora.
 
-### The finer bar on a song with no settings (2026-11-10)
+### The finer bar on a song with no settings: tried and withdrawn (2026-11-10)
 
-stem-bench Study 36b (261 songs against the artist's declared tempo and
-meter) found that when a tracker's bar is wrong it is a half bar three
-and a half times more often than a double, and Study 37 that a chart
-drafted at half the bar loses no chord (roots 20/21, 16/18 and 33/33
-against 18/21, 15/18 and 28/33 at the declared bar) while one at double
-the bar loses them: the metrical octave needs no detector, and a near
-tie should go to the finer bar. So the stems scan that sets a song with
-no settings (`songCheck.svelte.ts`, `#scan` when `fresh`, which is also
-"Generate chart from the stems" on such a song) passes the detection
-through `preferFinerBar`: when the ×2 rung's strength is at least
-`AUTOMATIC_FINER_BAR_SHARE` (0.9) of the beat's and the doubled tempo
-stays under `AUTOMATIC_FINER_BAR_MAX_BPM` (240), the tempo is doubled
-and the ladder re-based on it, so the summary, its alternates and the
-saved rows agree. A compound beat is left alone (its bar is two dotted
-beats). A song with settings is never touched: the scan only offers
-there, with every rung shown. Both constants are provisional; the
-bench's Study 37 app brief (docs/bench-brief-study37-meter-witness-
-2026-11-10.md) sweeps the share, and the same brief asks for the second
-witness the detector's 6/8 call needs (false on 28 % of plain 4/4 songs
-in 36b; Study 37 ruled the harmonic-rhythm witness out, so it is an
-autocorrelation or margin witness, not yet chosen).
+v0.258.0 passed the stems scan's detection through a `preferFinerBar`
+rule on a song with no settings: when the detected beat's ×2 rung was
+nearly as strong as the beat's, the tempo was doubled, on stem-bench
+Study 36b's observation that a wrong bar is a half bar far more often
+than a double and Study 37's that a chart at half the bar loses no
+chord. The bench's Study 40 then swept the rule on the 261-song census
+at the detector's own tempo and found it net negative at every
+threshold (at a share of 0.85: 12 bars made right, 34 made wrong;
+strict bars 95 → 73): the detector's ×2 rung is the wrong octave as
+often as the right one, and its strength does not mark the half-bar
+readings. The 36b observation was about the TRACKERS' half bars,
+which are merge-safe because a tracker's beat is the beat. The rule,
+its constants and its tests came out in v0.259.9; the scan saves the
+detection as read. The bench's standing recommendation is the larger
+one: on full-band material take a tracker's bar as read (Study 38),
+which docs/bench-brief-one-tracker-2026-11-10.md asks the bench to
+settle for Beat This small.
 
 ## One tempo for the page
 

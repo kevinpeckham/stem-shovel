@@ -10,6 +10,27 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The stems scan no longer names 6/8, and no longer doubles a tempo on a
+  song with no settings.** Both came from stem-bench Study 40, which swept
+  the detector's meter witnesses and the finer-bar rule on the 261-song
+  census against the artists' declared tempo and meter. The detector's 6/8
+  call (a sub-beat and a super-beat autocorrelation test since v0.200.0)
+  was false on 63 of 223 plain 4/4 songs and placed a strict bar on 2 of
+  the 21 true 6/8 songs it named; no second witness separates true from
+  false (the duple-bar one the app asked for also drops a textbook 6/8,
+  which the app's own fixtures showed), and dropping the call outright
+  reads the bar strict on 112 songs for 95 and the meter class right on
+  217 for 180. So `analysis.ts` reads a straight pulse and 4/4 or 3/4 by
+  lean; 6/8 is the musician's to declare, and the settings and the
+  compound tempo unit are untouched. The finer-bar rule of v0.258.0
+  (`preferFinerBar`, the doubled tempo when the ×2 rung nearly tied) is
+  net negative at every threshold on the detector (at a share of 0.85:
+  12 bars made right, 34 made wrong), because the detector's ×2 rung is
+  the wrong octave as often as the right one; the rule, its constants and
+  tests are gone and the scan saves the detection as read.
+  docs/audio-engine.md "The tempo ladder" and "The finer bar" record
+  both; docs/bench-brief-one-tracker-2026-11-10.md asks the bench to
+  settle Beat This small as the one tracker for the automatic chart.
 - **A chart draft the AI service stops is shown, not swallowed.** When the model
   answers with no text twice (the gateway's safety filter stops a few
   acoustic recordings reproducibly, bench Study 38; the output budget can

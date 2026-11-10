@@ -7,6 +7,21 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A duple-bar autocorrelation witness cannot keep a true 6/8 (2026-11-10)
+
+The second witness the app asked the bench to sweep before a 6/8 call
+(stem-bench Study 40: keep 6/8 when ac(1.5L) + ac(3L) ≥ r · (ac(2L) +
+ac(4L)), L the kept beat) drops the textbook 6/8, which the app's own
+synthetic fixtures in `src/lib/audio/analysis.test.ts` showed as soon
+as it was coded: with the dotted quarter as the kept beat the 6/8 bar
+IS 2L and two bars 4L, so the "duple" side is the strong side on every
+real 6/8, and the witness kept 6/8 only where the beat had been
+misread. That is why the bench saw "the true calls fall faster than
+the false ones" at every threshold. A lag-ratio witness on the kept
+beat tests the beat's octave, not the meter; the meter question needs
+the accent pattern within the bar, which a log-compressed flux
+envelope flattens. The detector now never names 6/8 (v0.259.9).
+
 ## barmark's diagnostics carry a `suggestion` worth using; `/_Em` and `:| x3` are grammar (2026-11-10)
 
 `| @A G |` is refused with the suggestion `| @A | G |`, and `| @B "words" C |` with "words go on a bar, not on a rehearsal mark"; a hold as the first member of a group, `F /_Em`, is valid (Em on the and of the beat); a repeat played several times closes `:| x3` (`:|3`, `(3x)` and `"3x"` are errors). A model reading a score fuses the mark with its bar even when the prompt shows the right shape, so the read prompt now says never `| @A F |` and `repairRehearsalCells` fixes it by diagnostic. From Kevin's "You Get What You Want, Then You Don't Want It" score.

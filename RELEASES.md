@@ -6,6 +6,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ### Changed
 
+- **The stems scan reads the tempo and time signature more plainly.** It no
+  longer guesses 6/8 (on a catalog of 261 songs that guess was wrong three
+  times in four, and even when right it rarely placed the bar), and on a
+  song with no settings it no longer doubles the tempo when the beat
+  could be counted twice as fast. Set 6/8 yourself in Song settings when
+  the song is in 6/8; the scan's other counts are still offered.
 - **When the AI cannot draft a chart, you still get one.** If the AI service
   stops a draft before writing anything (its safety filter does that on a
   few recordings, and sometimes not on a second try), the card now shows the

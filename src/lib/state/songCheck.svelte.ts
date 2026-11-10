@@ -38,7 +38,6 @@ import { formatSongChange } from "#lib/utils/formatSongChange.js";
 import { keyLine } from "#lib/utils/keyLine.js";
 import { keyWindows } from "#lib/utils/keyWindows.js";
 import { placeAnswerByAlignment, type PlacedAnswer } from "#lib/utils/placeAnswerByAlignment.js";
-import { preferFinerBar } from "#lib/utils/preferFinerBar.js";
 import type { AlignedChart } from "#lib/utils/placedSections.js";
 import { scanOffer, type ScanLadder, type ScanOffer } from "#lib/utils/scanOffer.js";
 import { tempoAlternatesText, tempoRungText } from "#lib/utils/tempoRungText.js";
@@ -317,9 +316,9 @@ export class SongCheck {
 		const buffers = await engine.decodedBuffers();
 		const combined = combineFeatures(buffers.map((b) => extractFeatures(b)));
 		if (!combined) return;
-		// On a song with no settings the stems' grid is saved as read, taking the finer bar when two fold (Studies 36b and 37).
+		// On a song with no settings the stems' grid is saved as read; the finer-bar rule (v0.258.0) came out after Study 40 found the detector's ×2 rung the wrong octave as often as the right one.
 		const fresh = this.#opts.song().changes.length === 0;
-		const detection = fresh ? preferFinerBar(analyse(combined)) : analyse(combined);
+		const detection = analyse(combined);
 		// The key per section (or half minute), so a song that moves through keys gets each where it begins (docs/audio-engine.md, "Several keys").
 		const boundaries = this.#keyBoundaries();
 		const keys = detectKeys(

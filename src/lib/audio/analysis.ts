@@ -281,19 +281,24 @@ const NO_TEMPO: Detection["tempo"] = { bpm: 0, confidence: 0, subdivision: 2, al
 
 /**
  * Tempo in the 50–210 bpm range, preferring the octave nearest 110 bpm,
- * with how the beat divides (`subdivisionOf`) and the other rungs of the
- * ladder the same grid could be counted at (`tempoAlternates`).
+ * with the other rungs of the ladder the same grid could be counted at
+ * (`tempoAlternates`).
  */
 function detectTempo(onset: Float32Array, fps: number): Detection["tempo"] {
 	const x = detrend(onset, fps);
 	const pulse = findPulse(x, fps);
 	if (!pulse) return NO_TEMPO;
-	const { lag, subdivision } = subdivisionOf(x, pulse.lag);
+	// The pulse as found, always a straight beat: the detector's 6/8 call (a sub-beat and a
+	// super-beat autocorrelation test, v0.200.0 to v0.259.8) came out after stem-bench Study 40
+	// found it false on 63 of 223 plain 4/4 songs and strict on 2 of the 21 true 6/8 songs it
+	// named; without it the census reads 112 strict bars for 95 and the meter class right on
+	// 217 for 180 (docs/audio-engine.md "The tempo ladder").
+	const { lag } = pulse;
 	const bpm = Math.round(((60 * fps) / lag) * 10) / 10;
 	return {
 		bpm,
 		confidence: pulse.confidence,
-		subdivision,
+		subdivision: 2,
 		alternates: tempoAlternates(x, lag, bpm),
 	};
 }
@@ -343,52 +348,6 @@ function acNear(x: Float32Array, centre: number): number {
 		if (lag > 0 && lag < x.length) best = Math.max(best, autocorrelation(x, lag));
 	}
 	return best;
-}
-
-// Subdivision thresholds. The plan's starting points (docs/tempo-grid-plan.md)
-// were 1.15 for both margins; the synthetic fixtures in analysis.test.ts
-// moved the super-beat one. The onset envelope is log-compressed spectral
-// flux, which flattens accents: a 6/8 whose dotted beats are four times
-// louder than its other eighths reads only 1.02–1.12 at three eighths
-// against four, while straight eighths can never exceed 1 (ab ≤ (a² + b²)/2;
-// 0.91–0.97 measured).
-/** The third-of-a-beat lag must beat the half-beat lag by this much (sub-beat test). */
-const COMPOUND_MARGIN = 1.15;
-/** The dotted-beat lag must beat the two-beat lag by this much (super-beat test): above straight's ceiling of 1. */
-const DOTTED_MARGIN = 1.05;
-/**
- * And the third-of-a-beat lag must carry this share of the beat's own:
- * running triplets pair every onset with the next (6/8 with 3+3 accents
- * scores 0.6–1), a swung beat pairs only the late off-beat with the next
- * downbeat (at most 0.5, at equal loudness). This replaces the plan's
- * second clause, ac(L/3) ≥ 0.8·ac(2L/3), which an envelope periodic in L
- * always passes: ac(τ) = ac(L − τ), so swing scores the two alike.
- */
-const TRIPLET_SHARE = 0.55;
-/** The dotted-beat lag must carry this share of the beat's, so two near-silent lags decide nothing. */
-const DOTTED_FLOOR = 0.2;
-
-/**
- * Straight or compound, and the beat lag to keep. Two tests, both on the
- * autocorrelation at lags around the detected beat L:
- * - sub-beat: the beat splits in three (ac at L/3 beats L/2, and running
- *   triplets fill it): the detector found the dotted beat, keep it;
- * - super-beat: groups of three of half the beat (ac at 1.5 L beats 2 L):
- *   the detector took two eighths of a 6/8 for the beat (1.5× the true
- *   tempo, every 6/8 item on the bench), so the dotted beat, 1.5 L, is
- *   re-picked as the pulse.
- */
-function subdivisionOf(x: Float32Array, lag: number): { lag: number; subdivision: Subdivision } {
-	const beat = acNear(x, lag);
-	const third = acNear(x, lag / 3);
-	if (third > COMPOUND_MARGIN * acNear(x, lag / 2) && third >= TRIPLET_SHARE * beat) {
-		return { lag, subdivision: 3 };
-	}
-	const dotted = acNear(x, lag * 1.5);
-	if (dotted > DOTTED_MARGIN * acNear(x, lag * 2) && dotted >= DOTTED_FLOOR * beat) {
-		return { lag: refinePeriod(x, lag * 1.5), subdivision: 3 };
-	}
-	return { lag, subdivision: 2 };
 }
 
 /** Each rung with the autocorrelation at its lag over the beat's, strongest first. */
@@ -453,22 +412,21 @@ function meterLean(x: Float32Array, fps: number, bpm: number): number {
 }
 
 /**
- * 4/4 against 3/4, and 6/8 when the beat divides in three. With several stems each votes with its own envelope,
+ * 4/4 against 3/4. With several stems each votes with its own envelope,
  * weighted by how decisive it is: a kick that repeats every beat says
  * nothing, a hat or bass with a clear four-beat pattern says a lot, and one
  * riff with a three-feel cannot outvote them — which is what happened when
  * the summed envelope alone decided. 4/4 is the prior: 3/4 needs a clear
- * lean. The confidence is the size of the agreed lean. A compound beat
- * (subdivision 3) is always 6/8, two dotted beats to the bar, the only
- * compound meter emitted; the grouping vote's confidence stays.
+ * lean. The confidence is the size of the agreed lean. No compound meter
+ * is emitted (Study 40, see `detectTempo`); 6/8 is the musician's to declare.
  */
 function detectMeter(
 	onset: Float32Array,
 	fps: number,
-	tempo: Pick<Detection["tempo"], "bpm" | "subdivision">,
+	tempo: Pick<Detection["tempo"], "bpm">,
 	parts?: Float32Array[],
 ): Detection["meter"] {
-	const { bpm, subdivision } = tempo;
+	const { bpm } = tempo;
 	if (!bpm) return { value: "4/4", confidence: 0 };
 	const envelopes = parts && parts.length > 1 ? parts : [onset];
 	let total = 0;
@@ -479,7 +437,7 @@ function detectMeter(
 		weight += Math.abs(lean);
 	}
 	const lean = weight > 0 ? total / weight : 0;
-	const value = subdivision === 3 ? "6/8" : lean > 0.03 ? "3/4" : "4/4";
+	const value = lean > 0.03 ? "3/4" : "4/4";
 	return { value, confidence: Math.max(0, Math.min(1, Math.abs(lean))) };
 }
 

@@ -111,7 +111,7 @@ $0.20 again.
 then made unnecessary.** Study 37 D drafted let-it-in, same-boat and
 im-letting-go at HALF the declared bar: 20/21, 16/18 and 33/33 roots
 against 18/21, 15/18 and 28/33 at the declared bar, and merging
-identical neighbours brought each chart under its declared-grid
+identical neighbors brought each chart under its declared-grid
 length. So "prefer the finer bar" costs nothing. Then Study 38 drafted
 all ten Josh Woodward slots with NOTHING typed, on madmom's downbeats
 as read (tempo = median beat, meter = beats per bar): ten of ten within

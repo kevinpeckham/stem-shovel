@@ -221,27 +221,30 @@ describe("subdivision and the tempo ladder", { timeout: 30_000 }, () => {
 	/** One bar of 6/8 in dotted beats (an eighth is a third), accented 3+3, the other eighths at `light`. */
 	const sixEight = (light: number): [number, number][] =>
 		[0, 1, 2, 3, 4, 5].map((e) => [e / 3, e === 0 ? 1 : e === 3 ? 0.8 : light]);
-	test("6/8 at a dotted-quarter 80 with running eighths, the dotted beat found first: 80, compound", () => {
-		// Light eighths: the autocorrelation peaks at three eighths (80) and the sub-beat test fires.
+	test("6/8 at a dotted-quarter 80 with light eighths: the dotted beat as a straight pulse, never 6/8 (Study 40)", () => {
+		// Light eighths: the autocorrelation peaks at three eighths (80). The detector no longer
+		// names 6/8 (stem-bench Study 40: its call was false on 63 of 223 plain 4/4 songs and
+		// protected no bar); the meter is the musician's to declare, the ladder keeps the eighths.
 		const hits = sixEight(0.1);
 		const d = analyse(extractFeatures(pattern(80, 2, hits)));
 		expect(Math.abs(d.tempo.bpm - 80)).toBeLessThan(1.5);
-		expect(d.tempo.subdivision).toBe(3);
-		expect(d.meter.value).toBe("6/8");
-		expect(Math.abs(rung(d, 1.5)!.bpm - 120)).toBeLessThan(3);
-		// The eighths of the 6/8 at 80, three to the dotted beat.
+		expect(d.tempo.subdivision).toBe(2);
+		expect(d.meter.value).not.toBe("6/8");
 		expect(Math.abs(rung(d, 3)!.bpm - 240)).toBeLessThan(3);
 		expect(rung(d, 3)!.strength).toBeGreaterThan(0.5);
 	});
-	test("6/8 at 80 where the autocorrelation picks two eighths (120) first: re-picked to 80", () => {
-		// Louder eighths: the bare peak sits at two eighths, 1.5× the dotted beat; the super-beat test re-picks.
+	test("6/8 at 80 where the autocorrelation picks two eighths (120) first: left at 120, straight", () => {
+		// Louder eighths: the bare peak sits at two eighths, 1.5× the dotted beat. The super-beat
+		// re-pick to 80 went with the 6/8 call (Study 40); the read stays at the first pulse.
 		const hits = sixEight(0.2);
 		const d = analyse(extractFeatures(pattern(80, 2, hits)));
-		expect(Math.abs(d.tempo.bpm - 80)).toBeLessThan(1.5);
-		expect(d.tempo.subdivision).toBe(3);
-		expect(d.meter.value).toBe("6/8");
-		expect(Math.abs(rung(d, 3)!.bpm - 240)).toBeLessThan(3);
-		expect(rung(d, 3)!.strength).toBeGreaterThan(0.5);
+		expect(Math.abs(d.tempo.bpm - 120)).toBeLessThan(1.5);
+		expect(d.tempo.subdivision).toBe(2);
+		expect(d.meter.value).not.toBe("6/8");
+		// The ladder still carries the eighths (×2) and the dotted beat (×⅔) for a musician to pick.
+		expect(Math.abs(rung(d, 2)!.bpm - 240)).toBeLessThan(3);
+		expect(rung(d, 2)!.strength).toBeGreaterThan(0.5);
+		expect(Math.abs(rung(d, 2 / 3)!.bpm - 80)).toBeLessThan(3);
 	});
 	test("swung 4/4 at 100 (off-beats at two thirds): subdivision 2, 4/4", () => {
 		const hits: [number, number][] = [0, 1, 2, 3].flatMap((b): [number, number][] => [
