@@ -101,7 +101,8 @@ describe("editor-gated functions", () => {
 			arrange: () => data.saveSongDoc.mockResolvedValue({ ok: true, version: 2, changed: true }),
 			dataFn: "saveSongDoc",
 			args: [ACCOUNT, USER, SONG, "chart", "# C", { confirmEmpty: false }],
-			outcome: { version: 2, changed: true, html: expect.stringMatching(/^<barmark-chart /) },
+			// The saved chart comes back as the song's own chart: the grid with its score switch.
+			outcome: { version: 2, changed: true, html: expect.stringMatching(/^<barmark-score /) },
 		},
 		{
 			name: "createSong",

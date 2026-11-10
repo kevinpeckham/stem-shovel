@@ -29,10 +29,10 @@ describe("renderPreview", () => {
 			call(markdown.renderPreview, { markdown: "x".repeat(50_001), kind: "text" }),
 		).rejects.toThrow();
 	});
-	it("draws a chart with barmark's renderer", async () => {
+	it("draws a chart with barmark's renderer, with its score switch", async () => {
 		asSignedOut();
 		await expect(
 			call(markdown.renderPreview, { markdown: "| D | A |", kind: "chart" }),
-		).resolves.toContain("<barmark-chart");
+		).resolves.toContain("<barmark-score");
 	});
 });

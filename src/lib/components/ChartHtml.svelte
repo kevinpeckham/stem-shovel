@@ -19,6 +19,13 @@
 	 * redraws from the same text with chord names. `text` (the Key menu's
 	 * transposition) is drawn in place of `markdown` the same way. Never set,
 	 * nothing loads and the server's HTML stays as it is.
+	 *
+	 * The song's own chart comes as `<barmark-score>` (`renderScoreChartHtml`):
+	 * the same grid with a Grid / Score switch, which is inert until the
+	 * element upgrades, so its module always loads after the re-parse. That
+	 * import registers both elements and does not load Verovio: the element
+	 * loads it in its worker on the first switch to the score. `numerals` and
+	 * `text` go to whichever element the HTML holds; both take them.
 	 */
 	interface Props {
 		html: string;
@@ -33,22 +40,35 @@
 	let { html, markdown, numerals = null, text: textProp = null, paper = null }: Props = $props();
 
 	type ChartElement = HTMLElement & { text: string | null; numerals: string | null };
+	/** The grid alone (`renderChartHtml`) or the grid with its score switch (`renderScoreChartHtml`). */
+	const CHARTS = "barmark-chart, barmark-score";
 	/** The element has been given text, so a return to names must be drawn too. */
 	let drawn = false;
+
+	/** Parses the HTML again when Svelte's innerHTML left the declarative shadow root inert. */
+	function reparse(node: HTMLElement, html: string) {
+		const chart = node.querySelector(CHARTS);
+		if (chart && !chart.shadowRoot && "setHTMLUnsafe" in node) node.setHTMLUnsafe(html);
+	}
+
+	/** Loads the element module the HTML needs: the score's always (its switch), the grid's only to redraw. */
+	async function upgrade(node: HTMLElement, redraw: boolean) {
+		if (node.querySelector("barmark-score")) await import("@barmark/score/element");
+		else if (redraw) await import("@barmark/render/element");
+	}
 
 	const draw = (html: string) => (node: HTMLElement) => {
 		const dialect = numerals;
 		const moved = !!textProp && textProp !== markdown;
 		const text = textProp ?? markdown ?? "";
+		const redraw = !!dialect || moved || drawn;
 		let live = true;
 		void tick().then(async () => {
-			const chart = node.querySelector("barmark-chart");
-			if (chart && !chart.shadowRoot && "setHTMLUnsafe" in node) node.setHTMLUnsafe(html);
-			if (!dialect && !moved && !drawn) return;
-			await import("@barmark/render/element");
+			reparse(node, html);
+			await upgrade(node, redraw);
 			// Queried again: the re-parse above replaced the element.
-			const element = node.querySelector<ChartElement>("barmark-chart");
-			if (!live || !element) return;
+			const element = node.querySelector<ChartElement>(CHARTS);
+			if (!redraw || !live || !element) return;
 			element.numerals = dialect;
 			element.text = text;
 			drawn = true;

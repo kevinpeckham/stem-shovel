@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("./markdown.js", () => ({ renderMarkdown: (md: string) => `<p>${md}</p>` }));
-const { renderChartHtml, renderDocHtml } = await import("./chartHtml.js");
+const { renderChartHtml, renderDocHtml, renderScoreChartHtml } = await import("./chartHtml.js");
 
 describe("renderChartHtml", () => {
 	it("draws a barmark chart as <barmark-chart> with a declarative shadow root", () => {
@@ -28,6 +28,26 @@ describe("renderChartHtml", () => {
 describe("renderDocHtml", () => {
 	it("routes the chart to the renderer and the other documents to markdown", () => {
 		expect(renderDocHtml("lyrics", "| D |")).toBe("<p>| D |</p>");
-		expect(renderDocHtml("chart", "| D |")).toContain("<barmark-chart");
+		expect(renderDocHtml("chart", "| D |")).toMatch(/^<barmark-score /);
+	});
+	it("draws the song's chart as <barmark-score>: the grid and the Grid / Score switch in a declarative shadow root", () => {
+		const html = renderDocHtml("chart", "## Verse\n| D | A |");
+		expect(html).toMatch(/^<barmark-score theme="dark" rehearsal-letters>/);
+		expect(html).toContain('<template shadowrootmode="open">');
+		expect(html).toContain('role="radiogroup"');
+		expect(html).toContain('data-view="score"');
+		expect(html).toContain("Verse");
+		expect(html).not.toContain("<barmark-chart");
+	});
+});
+
+describe("renderScoreChartHtml", () => {
+	it("is empty for a blank chart", () => {
+		expect(renderScoreChartHtml("  \n")).toBe("");
+	});
+	it("leaves renderChartHtml the plain grid, with no switch", () => {
+		const html = renderChartHtml("## Verse\n| D | A |");
+		expect(html).toMatch(/^<barmark-chart /);
+		expect(html).not.toContain('role="radiogroup"');
 	});
 });

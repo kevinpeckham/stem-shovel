@@ -1,4 +1,5 @@
 import { renderChart } from "@barmark/render";
+import { renderScoreHtml } from "@barmark/score/server";
 import { renderMarkdown } from "./markdown.js";
 
 /**
@@ -22,7 +23,24 @@ export function renderChartHtml(markdown: string): string {
 	return renderChart(markdown, { theme: "dark", rehearsalLetters: true });
 }
 
-/** A song document's HTML: the chart through the renderer, the others through renderMarkdown. */
+/**
+ * The song's own chord chart with a Grid / Score switch: `<barmark-score>`
+ * from `@barmark/score`, drawn on the server as the same grid
+ * `renderChartHtml` draws (the dark palette with rehearsal letters) plus the
+ * switch, all in the declarative shadow root, so the grid shows before any
+ * script runs. The switch engraves the full score on demand once the element
+ * upgrades in the browser (`ChartHtml.svelte` imports the element module):
+ * Verovio (about 7 MB) loads only on the first switch to the score, in the
+ * package's own Web Worker, and one worker serves every score on the page.
+ * Every other chart (drafts, history revisions, score reads, the set-list
+ * show page) stays the plain grid of `renderChartHtml`. "" for a blank chart.
+ */
+export function renderScoreChartHtml(markdown: string): string {
+	if (!markdown.trim()) return "";
+	return renderScoreHtml(markdown, { theme: "dark", rehearsalLetters: true });
+}
+
+/** A song document's HTML: the chart as a grid with its score switch, the others through renderMarkdown. */
 export function renderDocHtml(kind: string, markdown: string): string {
-	return kind === "chart" ? renderChartHtml(markdown) : renderMarkdown(markdown);
+	return kind === "chart" ? renderScoreChartHtml(markdown) : renderMarkdown(markdown);
 }

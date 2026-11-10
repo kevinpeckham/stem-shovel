@@ -3,9 +3,13 @@ import { tick } from "svelte";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 // The element module is browser-only; the factory runs only if the component loads it.
-const loaded = vi.hoisted(() => ({ element: false }));
+const loaded = vi.hoisted(() => ({ element: false, score: false }));
 vi.mock("@barmark/render/element", () => {
 	loaded.element = true;
+	return {};
+});
+vi.mock("@barmark/score/element", () => {
+	loaded.score = true;
 	return {};
 });
 const { default: ChartHtml } = await import("./ChartHtml.svelte");
@@ -19,6 +23,7 @@ async function settle() {
 }
 
 const CHART = '<barmark-chart><template shadowrootmode="open"><p>D</p></template></barmark-chart>';
+const SCORE = '<barmark-score><template shadowrootmode="open"><p>D</p></template></barmark-score>';
 
 afterEach(() => {
 	Reflect.deleteProperty(HTMLElement.prototype, "setHTMLUnsafe");
@@ -84,6 +89,7 @@ describe("ChartHtml", () => {
 		await settle();
 		const chart = container.querySelector("barmark-chart") as ChartElement;
 		expect(loaded.element).toBe(false);
+		expect(loaded.score).toBe(false);
 		expect(chart.text).toBeUndefined();
 		expect(chart.numerals).toBeUndefined();
 	});
@@ -119,5 +125,34 @@ describe("ChartHtml", () => {
 		await rerender({ text: null });
 		await settle();
 		expect(chart.text).toBe("key: D\n| D | A |");
+	});
+
+	test("a <barmark-score> (the chart with its score switch) loads the score element, so the switch works; names stay as drawn", async () => {
+		const html = SCORE;
+		const setHTMLUnsafe = vi.fn();
+		Object.defineProperty(HTMLElement.prototype, "setHTMLUnsafe", {
+			value: setHTMLUnsafe,
+			configurable: true,
+		});
+		const { container } = render(ChartHtml, { html, markdown: "| D |" });
+		await settle();
+		const score = container.querySelector("barmark-score") as ChartElement;
+		expect(setHTMLUnsafe).toHaveBeenCalledWith(html);
+		expect(loaded.score).toBe(true);
+		expect(score.text).toBeUndefined();
+		expect(score.numerals).toBeUndefined();
+	});
+
+	test("numerals and text go to the <barmark-score> as they do to the grid", async () => {
+		const { container } = render(ChartHtml, {
+			html: SCORE,
+			markdown: "key: D\n| D | A |",
+			numerals: "nashville",
+		});
+		await settle();
+		const score = container.querySelector("barmark-score") as ChartElement;
+		expect(loaded.score).toBe(true);
+		expect(score.numerals).toBe("nashville");
+		expect(score.text).toBe("key: D\n| D | A |");
 	});
 });

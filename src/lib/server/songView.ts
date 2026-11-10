@@ -11,7 +11,7 @@ import {
 	stemsWantingMetadata,
 	stemsWantingPlayback,
 } from "#lib/server/data.js";
-import { renderChartHtml } from "#lib/server/chartHtml.js";
+import { renderScoreChartHtml } from "#lib/server/chartHtml.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import {
 	scheduleDemoPeaks,
@@ -58,7 +58,7 @@ export async function songView(song: SongRow) {
 		/** Comments on the demo recordings, every demo's together; the Demos view keeps the current demo's. */
 		demoComments,
 		docs: {
-			chart: renderChartHtml(song.chartMarkdown),
+			chart: renderScoreChartHtml(song.chartMarkdown),
 			lyrics: renderMarkdown(song.lyricsMarkdown),
 			notes: renderMarkdown(song.notesMarkdown),
 		},
