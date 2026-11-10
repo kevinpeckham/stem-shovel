@@ -1,4 +1,5 @@
 import { renderChart } from "@barmark/render";
+import { chartRehearsalLetters } from "#lib/utils/chartRehearsalLetters.js";
 import { renderScoreHtml } from "@barmark/score/server";
 import { renderMarkdown } from "./markdown.js";
 
@@ -14,13 +15,17 @@ import { renderMarkdown } from "./markdown.js";
  * registered once per page by src/app.html's `<style data-barmark-font>`,
  * because a browser ignores @font-face inside a shadow root (and the element
  * leaves a page's own registration alone). Drawn the way barmark.dev does:
- * the dark palette with rehearsal letters, carried as attributes
+ * the dark palette with rehearsal letters unless the chart writes its own
+ * marks (`chartRehearsalLetters`), carried as attributes
  * (`theme="dark" rehearsal-letters`) so the element keeps them when it loads. "" for a blank
  * chart.
  */
 export function renderChartHtml(markdown: string): string {
 	if (!markdown.trim()) return "";
-	return renderChart(markdown, { theme: "dark", rehearsalLetters: true });
+	return renderChart(markdown, {
+		theme: "dark",
+		rehearsalLetters: chartRehearsalLetters(markdown),
+	});
 }
 
 /**
@@ -37,7 +42,10 @@ export function renderChartHtml(markdown: string): string {
  */
 export function renderScoreChartHtml(markdown: string): string {
 	if (!markdown.trim()) return "";
-	return renderScoreHtml(markdown, { theme: "dark", rehearsalLetters: true });
+	return renderScoreHtml(markdown, {
+		theme: "dark",
+		rehearsalLetters: chartRehearsalLetters(markdown),
+	});
 }
 
 /** A song document's HTML: the chart as a grid with its score switch, the others through renderMarkdown. */
