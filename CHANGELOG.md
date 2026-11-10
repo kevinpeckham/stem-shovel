@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.258.1] - 2026-11-10
+
 ### Fixed
 
 - **A score read whose opening has no chord symbols no longer breaks the chart.** The read prompt asked for `/` in every chordless measure, so a melody-only first section came out as holds with nothing to hold: barmark marked the line, the grid drew it as text and the score refused (Kevin's "I Just Wanna Be—Yours"). The prompt now asks for N.C. before the first chord, and `repairLeadingHolds` turns such cells into N.C. on every read returned, stored reads included, so Read again repairs an older read.
