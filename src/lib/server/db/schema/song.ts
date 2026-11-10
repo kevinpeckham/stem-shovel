@@ -122,6 +122,15 @@ export const song = table(
 		 * turns it on in the Tempo & key tab once a map exists.
 		 */
 		useChartTiming: t.integer("use_chart_timing", { mode: "boolean" }).notNull().default(false),
+		/**
+		 * Where `chartMarkdown` came from when it was not written by hand
+		 * (`ChartSourceSchema`): the score file it was read or imported from,
+		 * or the stems. The Chart panel says so in one line and offers to read
+		 * the file again; null for a chart the band wrote or edited.
+		 */
+		chartSource: t
+			.text("chart_source", { mode: "json" })
+			.$type<import("../../../val/ChartSourceSchema").ChartSource>(),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

@@ -827,6 +827,13 @@
       "when": 1794080267338,
       "tag": "0117_nifty_doctor_doom",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "6",
+      "when": 1794270519170,
+      "tag": "0118_military_wong",
+      "breakpoints": true
     }
   ]
 }
