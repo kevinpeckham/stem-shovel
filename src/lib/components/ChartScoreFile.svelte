@@ -14,9 +14,10 @@
 	 * A chart read from an uploaded score: the band's approved chart is that
 	 * file, so the Score view shows its pages rather than an engraving of the
 	 * read. A Grid / Score switch like `<barmark-score>`'s (the same labels
-	 * and radio pattern), Grid first.
+	 * and radio pattern). Score first: the file is the band's source of truth,
+	 * so the page opens on it, and Grid is the read beside it (Kevin, 2026-11-10).
 	 */
-	let view = $state<"grid" | "score">("grid");
+	let view = $state<"grid" | "score">("score");
 	const VIEWS = [
 		{ id: "grid", label: "Grid" },
 		{ id: "score", label: "Score" },

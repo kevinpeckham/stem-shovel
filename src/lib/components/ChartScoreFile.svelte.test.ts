@@ -14,12 +14,9 @@ describe("ChartScoreFile", () => {
 		expect(screen.queryByRole("radiogroup")).toBeNull();
 	});
 
-	test("a PDF: Grid first, Score shows it in a frame with its name and a link", async () => {
+	test("a PDF: Score first, in a frame with its name and a link; Grid shows the read", async () => {
 		const { container } = render(ChartScoreFile, { file: pdf, children });
 		expect(screen.getByRole("radiogroup", { name: "View" })).toBeInTheDocument();
-		expect(screen.getByRole("radio", { name: "Grid" })).toHaveAttribute("aria-checked", "true");
-		expect(screen.getByText("the grid")).toBeInTheDocument();
-		await fireEvent.click(screen.getByRole("radio", { name: "Score" }));
 		expect(screen.getByRole("radio", { name: "Score" })).toHaveAttribute("aria-checked", "true");
 		expect(screen.queryByText("the grid")).toBeNull();
 		const frame = container.querySelector("iframe");
@@ -39,7 +36,6 @@ describe("ChartScoreFile", () => {
 			file: { ...pdf, kind: "image", url: "https://blob/f1.png" },
 			children,
 		});
-		await fireEvent.click(screen.getByRole("radio", { name: "Score" }));
 		expect(screen.getByRole("img", { name: "Lead sheet" })).toHaveAttribute(
 			"src",
 			"https://blob/f1.png",

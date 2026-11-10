@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **A chart read from an uploaded score opens on the score.** The Chart tab shows the uploaded page first for such a chart, with Grid beside it.
+
 ## [0.259.0] - 2026-11-10
 
 ### Fixed

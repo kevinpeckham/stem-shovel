@@ -1089,8 +1089,9 @@ shows only the bare note, `songView` runs `chartScoreRefusal` (the same
 export, the package's wording) and the Chart tab names the line; and a
 chart whose source is a PDF or image still among the song's files is
 drawn as the plain grid with `ChartScoreFile.svelte`'s own Grid / Score
-switch, whose Score shows the file's pages, since that file is the band's
-approved chart and an engraving of the read would only double it.
+switch, whose Score shows the file's pages and is the view it opens on,
+since that file is the band's approved chart and an engraving of the read
+would only double it.
 
 The same day the Chart panel was redesigned around the one chart: the
 Chords / Engraving split is gone, and uploaded scores (MusicXML in
