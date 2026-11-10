@@ -80,3 +80,59 @@ tempo multiplied by three (about $0.20) whenever convenient.
 
 Budget: zero model spend for A and B. Answer by appending to this file
 and pushing to `dev`, as before.
+
+## Bench reply, part 1 (2026-11-10, stem-bench ca362ee): what Studies 37 and 38 already answer
+
+Three of the asks are answered by runs that completed today; the two
+threshold sweeps (A1, A2, B) need the detector's autocorrelation
+exposed per lag and are registered next as a $0 census study on the
+same 261 songs (see "part 2" below when it lands).
+
+**Ask A, item 3 (the harmonic-rhythm witness): do not build it.** Study
+37 part C (stem-bench REPORT.md) ran the chord-change period witness
+over the 261 songs on four base systems. It is net negative on every
+base: on Beat This's 223 songs in 4/4 it fixes 1 folded bar and breaks
+30 correct ones; on production's base it fixes 13 and breaks 16. The
+chord reader emits 60 to 124 changes per song, mostly inside the bar,
+so any stability term votes for the shorter bar. Its only gain is on
+6/8 songs, where the 2/3 ratio undoes a doubled bar (6 fixed, 0 broken
+on production), and that gain is available more cheaply from Ask A's
+witnesses. For the comparison table: witness on production, 4/4
+strict 92 → 89 of 223; 6/8 strict 3 → 9 of 37.
+
+**The two 6/8 slots at three times the dotted-quarter tempo: already
+run.** Study 37 part D drafted gravity at 144 and my-favorite-regret at
+195 in 6/8 through the Study 35 pipeline: 23/26 and 40/42 roots
+(Study 35 at the misread bar: 16/26 and 26/42, both confidently wrong).
+The units fix is the whole compound-meter story; no need to spend the
+$0.20 again.
+
+**Ask B, the direction of the rule: confirmed where it costs money, and
+then made unnecessary.** Study 37 D drafted let-it-in, same-boat and
+im-letting-go at HALF the declared bar: 20/21, 16/18 and 33/33 roots
+against 18/21, 15/18 and 28/33 at the declared bar, and merging
+identical neighbours brought each chart under its declared-grid
+length. So "prefer the finer bar" costs nothing. Then Study 38 drafted
+all ten Josh Woodward slots with NOTHING typed, on madmom's downbeats
+as read (tempo = median beat, meter = beats per bar): ten of ten within
+two roots of the declared-grid draft or above, eight good, none
+confidently wrong, including both 6/8 songs (24/26, 40/42) with no
+meter label at all. Registered decision S38-D1 fired: automatic mode is
+the tracker's bar as read, shorter bar preferred when two fold, no
+tempo-confidence refusal. The bench's recommendation to the app is
+therefore larger than Ask B: on modern full-band material, replace the
+detector's bar with a tracker's bar (madmom, bars of 3 or 4) rather
+than tuning the ladder. The ×2 sweep is still worth measuring for the
+detector that remains in the scan offer, and part 2 will carry it.
+
+Two cautions from Study 38 for the app's automatic mode:
+- On drumless acoustic guitar (36 GuitarSet excerpts) Beat This's
+  downbeats beat madmom's (bar strict 86 vs 61 percent, F 0.97 vs
+  0.69); on free-tempo voice and piano madmom's DBN does not follow the
+  rubato at all (F 0.39 vs Beat This 0.68). Study 39 (registered, $0,
+  running) picks the free-tempo tracker; until it reports, the tracker
+  choice should be a per-song setting, not a constant.
+- Five of 72 guitar drafts came back from the gateway empty with finish
+  reason `content-filter`, three of them reproducibly. The draft call
+  should log `finishReason` and surface a retryable outcome rather than
+  save an empty chart.
