@@ -68,8 +68,12 @@ come from Beat This's downbeats, not madmom's, pending Study 39, and
 charts can be graded fairly or shipped.
 
 4. Five of 72 guitar drafts came back from the gateway as empty or
-cut-off text (three of them again on retry); the pipeline labels these
-refused. An empty answer needs its own retry path in production.
+cut-off text; on retry three were empty again with finish reason
+`content-filter`, so the gateway's safety filter stops the chart draft
+on three particular acoustic excerpts, reproducibly, on an input of
+note lists and chord hints. The pipeline labels these refused. The app
+should treat a content-filter stop on a draft as a visible, retryable
+outcome rather than a silent empty chart, and log the finish reason.
 
 ## Study 37: chord changes cannot pick the bar's octave, and a chart drafted at half the bar loses nothing (2026-11-10)
 
