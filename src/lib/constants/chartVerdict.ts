@@ -29,3 +29,24 @@ export const GENERATED_MAX_GRID_DRIFT = 0.04;
  * ones so a sparse but real arrangement is not held; a study moves it.
  */
 export const GENERATED_MIN_NOTES_PER_BAR = 3;
+
+/**
+ * How strong the detected beat's ×2 rung must be, as a share of the beat's
+ * own autocorrelation, for the automatic grid (the stems' tempo saved on a
+ * song with no settings) to take the finer bar instead
+ * (utils/preferFinerBar.ts). stem-bench Study 36b: when a tracker's bar is
+ * wrong it is a half bar three and a half times more often than a double,
+ * and Study 37: a chart drafted at half the bar loses no chord (20/21,
+ * 16/18 and 33/33 roots against 18/21, 15/18 and 28/33 at the declared
+ * bar), while one at double the bar loses them. So a near tie goes to the
+ * finer bar. Provisional: the bench's Study 37 app brief sweeps it.
+ */
+export const AUTOMATIC_FINER_BAR_SHARE = 0.9;
+
+/**
+ * The fastest tempo the finer bar may produce; above it the detected beat
+ * stands. Study 36b's doubles sat on songs declared around 212 bpm and
+ * its halves around 72, so the doubling that helps lands well under this;
+ * the song settings take up to 400.
+ */
+export const AUTOMATIC_FINER_BAR_MAX_BPM = 240;
