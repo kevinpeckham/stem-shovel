@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.259.5] - 2026-11-10
+
 ### Fixed
 
 - **A score read places its chords on beats.** barmark's slots divide a bar evenly, so a 4/4 bar read as `Db7 C7 Bm7` warned "3 slots divide 4 beats unevenly" and played the chords in thirds; the score holds Db7 for three beats with C7 and Bm7 sharing the last. The read prompt now writes a measure as its beats when its chords do not divide it: one slot a beat, `/` when the chord before still sounds, two chords in a beat joined by `_` (`| Db7 / / C7_Bm7 |`, `| Db7_Fm7 B7_Ebm7 A7_C#m7 / |`), with the slot count per meter (four in 4/4, three in 3/4, two dotted quarters in 6/8). A stored read keeps its warning until Read again (Kevin's "2FA (To Feel Alive)").
