@@ -293,6 +293,27 @@ describe("SongDraftCard with a chart built from the detected chords", () => {
 		expect(screen.getByText("The meter was assumed 4/4.")).toHaveClass("text-amber-300");
 	});
 
+	test("a built chart standing in for a stopped AI draft says why, first among its notes", () => {
+		const b = built();
+		setup({
+			value: {
+				...b,
+				stopped: { reason: "content-filter" },
+				diagnostics: [
+					{
+						level: "warning" as const,
+						message: "The AI service's safety filter stopped the draft.",
+					},
+					...b.diagnostics,
+				],
+			} as never,
+		});
+		expect(screen.getByText("Draft from the detected chords")).toBeInTheDocument();
+		const notes = screen.getAllByRole("listitem").map((li) => li.textContent);
+		expect(notes[0]).toBe("The AI service's safety filter stopped the draft.");
+		expect(screen.getByText(/safety filter stopped/)).toHaveClass("text-amber-300");
+	});
+
 	test("Save as chart sends the timing map and the confidence beside the chart", async () => {
 		const { onchartsaved } = setup({ value: built() as never });
 		await fireEvent.click(screen.getByRole("button", { name: "Save as chart" }));

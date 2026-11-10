@@ -35,6 +35,8 @@ import {
  * editor there (memberOf → requireEditor), never trusting an account from
  * the request; the private note goes by who may view the song.
  */
+import { DraftStoppedError, draftStopNotice } from "#lib/utils/draftStopped.js";
+
 const songs = await import("./songs.remote");
 
 const SONG = fakeId("song-one");
@@ -874,6 +876,24 @@ describe("draftChart builds the chart on the browser's grid", () => {
 		expect(draft.confidence?.bars).toHaveLength(4);
 		expect(aiDetect.draftChartWithAi).not.toHaveBeenCalled();
 		expect(rateLimited).not.toHaveBeenCalled();
+	});
+
+	it("a draft the model stopped (the gateway's safety filter) is the built chart with the reason, not an error", async () => {
+		data.getSongById.mockResolvedValue(song());
+		aiDetect.draftChartWithAi.mockRejectedValue(new DraftStoppedError("content-filter"));
+		const draft = (await call(songs.draftChart, input)) as { chart: string };
+		expect(draft).toMatchObject({
+			source: "built",
+			stopped: { reason: "content-filter" },
+			diagnostics: [{ level: "warning", message: draftStopNotice("content-filter") }],
+		});
+		expect(draft.chart).toContain("| D |");
+	});
+
+	it("any other AI failure is a 502 with its message", async () => {
+		data.getSongById.mockResolvedValue(song());
+		aiDetect.draftChartWithAi.mockRejectedValue(new Error("The model's answer did not make sense"));
+		await expect(call(songs.draftChart, input)).rejects.toMatchObject(httpError(502));
 	});
 
 	it("a song with AI switched off gets the built chart too", async () => {

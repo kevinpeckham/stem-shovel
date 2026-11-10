@@ -4,6 +4,7 @@ import { createGateway } from "@ai-sdk/gateway";
 import { chartStatedAnswer } from "#lib/utils/chartStatedAnswer.js";
 import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
 import { barmarkChartPlays } from "#lib/utils/barmarkChartPlays.js";
+import { DraftStoppedError } from "#lib/utils/draftStopped.js";
 import { repairChordSpellings } from "#lib/utils/repairChordSpellings.js";
 import { repairLeadingHolds } from "#lib/utils/repairLeadingHolds.js";
 import { repairRehearsalCells } from "#lib/utils/repairRehearsalCells.js";
@@ -743,6 +744,83 @@ You get a STARTING CHART in barmark, the band's chart notation, built from a cho
 Reply with JSON only, no prose before or after, keep the chart under 8000 characters: {"chords":"D7sus4 % % C5 G5 …","sections":[{"name":"Intro","bar":1},…],"progressions":[{"section":"Intro","chords":"…"}],"chart":"markdown…","notes":"one sentence on anything uncertain"}`;
 }
 
+type DraftLog = { kind: string; model: string; userId: string; songId: string; prompt: string };
+
+type DraftAttempt = {
+	text: string;
+	finishReason: string;
+	usage: { inputTokens?: number; outputTokens?: number };
+};
+
+/** One draft request: its text, the gateway's finish reason and the token usage. */
+async function draftAttempt(
+	gateway: ReturnType<typeof createGateway>,
+	system: string,
+	question: string,
+): Promise<DraftAttempt> {
+	const result = await generateText({
+		model: gateway(DRAFT_MODEL),
+		system,
+		prompt: question,
+		maxOutputTokens: 8000,
+		// Fable thinks adaptively by default and can spend the whole output budget on
+		// it for 150 bars of notes; low effort answered in 50 s where default hit the cap.
+		providerOptions: { anthropic: { thinking: { type: "adaptive" }, effort: "low" } },
+	});
+	return {
+		text: result.text,
+		finishReason: result.finishReason ?? "unknown",
+		usage: { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens },
+	};
+}
+
+/** An empty answer logged with the gateway's finish reason. */
+const logEmptyDraft = (log: DraftLog, started: number, answer: DraftAttempt, suffix: string) =>
+	logAiRequest({
+		...log,
+		response: "",
+		error: `The model returned an empty completion (finish reason: ${answer.finishReason})${suffix}`,
+		durationMs: Date.now() - started,
+		inputTokens: answer.usage.inputTokens ?? null,
+		outputTokens: answer.usage.outputTokens ?? null,
+	});
+
+/**
+ * The draft's completion: one request, and one more when the first comes
+ * back with no text at all (0 output tokens, reproducible for one song in
+ * stem-bench Study 1, FINDINGS.md "AI features"; the gateway's safety filter
+ * on three acoustic excerpts in Study 38), each empty answer logged with
+ * the gateway's finish reason. Empty twice is a `DraftStoppedError`, for the
+ * remote function to fall back on the built chart; a transport failure is
+ * logged and thrown.
+ */
+async function draftCompletion(
+	gateway: ReturnType<typeof createGateway>,
+	system: string,
+	question: string,
+	log: DraftLog,
+	started: number,
+): Promise<DraftAttempt> {
+	let answer: DraftAttempt;
+	try {
+		answer = await draftAttempt(gateway, system, question);
+		if (!answer.text.trim()) {
+			await logEmptyDraft(log, started, answer, "; retried");
+			answer = await draftAttempt(gateway, system, question);
+		}
+	} catch (e) {
+		await logAiRequest({
+			...log,
+			error: e instanceof Error ? e.message : String(e),
+			durationMs: Date.now() - started,
+		});
+		throw e;
+	}
+	if (answer.text.trim()) return answer;
+	await logEmptyDraft(log, started, answer, "");
+	throw new DraftStoppedError(answer.finishReason);
+}
+
 /**
  * From the starting chart built on the detected chords (chartBuild.ts) and
  * the notes per bar, the model names the sections, the progression of
@@ -780,41 +858,7 @@ ${examples ? `THIS BAND'S CHARTS, FOR STYLE:\n${examples}` : "No example charts 
 		songId: who.songId,
 		prompt: `SYSTEM:\n${system}\n\nUSER:\n${question}`,
 	};
-	let text = "";
-	let usage: { inputTokens?: number; outputTokens?: number } = {};
-	try {
-		// A prompt can come back with no text at all (0 output tokens, reproducible for
-		// one song in stem-bench Study 1, FINDINGS.md "AI features"): one more try.
-		for (let attempt = 1; attempt <= 2 && !text.trim(); attempt++) {
-			const result = await generateText({
-				model: gateway(DRAFT_MODEL),
-				system,
-				prompt: question,
-				maxOutputTokens: 8000,
-				// Fable thinks adaptively by default and can spend the whole output budget on
-				// it for 150 bars of notes; low effort answered in 50 s where default hit the cap.
-				providerOptions: { anthropic: { thinking: { type: "adaptive" }, effort: "low" } },
-			});
-			text = result.text;
-			usage = { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens };
-			if (!text.trim() && attempt === 1)
-				await logAiRequest({
-					...log,
-					response: "",
-					error: "The model returned an empty completion; retried",
-					durationMs: Date.now() - started,
-					inputTokens: usage.inputTokens ?? null,
-					outputTokens: usage.outputTokens ?? null,
-				});
-		}
-	} catch (e) {
-		await logAiRequest({
-			...log,
-			error: e instanceof Error ? e.message : String(e),
-			durationMs: Date.now() - started,
-		});
-		throw e;
-	}
+	const { text, usage } = await draftCompletion(gateway, system, question, log, started);
 	const json = text.match(/\{[\s\S]*\}/)?.[0];
 	let parsed: v.SafeParseResult<typeof ChartDraftAnswerSchema> | null = null;
 	try {

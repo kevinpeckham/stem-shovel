@@ -91,6 +91,8 @@ export type ChartDraft = ChartDraftAnswer & {
 	partName?: string;
 	/** The file a score's chart came from, for the chart's source once saved (`chartSourceOfDraft`). */
 	scoreFile?: { kind: "notation" | "file"; id: string };
+	/** A built draft standing in for the AI's, which the model stopped: the gateway's finish reason; the notice (`draftStopNotice`) leads the diagnostics. */
+	stopped?: { reason: string };
 };
 
 /** What the page supplies: functions, since each follows the page's data and the player. */

@@ -8,6 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **A chart draft the AI service stops is shown, not swallowed.** When the model
+  answers with no text twice (the gateway's safety filter stops a few
+  acoustic recordings reproducibly, bench Study 38; the output budget can
+  run out too), the draft card now shows the chart built from the detected
+  chords with a leading note that says why the AI's draft is missing and
+  that Generate chart tries again, instead of a bare "The AI did not answer"
+  error. Each empty answer is logged with the gateway's finish reason
+  (`content-filter`, `length`, …) in the AI request log.
+  `src/lib/utils/draftStopped.ts` holds the error and the notice;
+  `draftChart` in `songs.remote.ts` falls back on the built draft with
+  `stopped: { reason }` beside it.
+
 ## [0.259.7] - 2026-11-10
 
 ### Fixed

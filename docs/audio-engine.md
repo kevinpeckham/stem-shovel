@@ -178,6 +178,13 @@ fields are `$state`, so components read `engine.position` directly.
   its verse, chorus and second verse match the band's chart bar for bar.
   The chords come back as one space-separated string ("D5 % A5 …") and the
   chart is capped, so the answer is a fraction of its earlier 11k tokens.
+  An answer with no text is asked for once more; empty twice (the
+  gateway's safety filter stops a few acoustic recordings reproducibly,
+  bench Study 38, finish reason `content-filter`; `length` when the output
+  budget ran out), the draft is the chart built from the detected chords
+  with `stopped: { reason }` and a leading warning that says why
+  (`utils/draftStopped.ts`), each empty answer logged with its finish
+  reason; Generate chart again is the retry.
   The action sits in the Chart panel's ⋯ menu (next to the edit button;
   while a run is listening or drafting the menu shows its progress and a
   Cancel) and in song settings; it runs Detect chords first when that has

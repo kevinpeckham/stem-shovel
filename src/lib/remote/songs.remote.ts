@@ -2,6 +2,7 @@ import { command, form, getRequestEvent, query } from "$app/server";
 import { parseChart, printParsed } from "barmark";
 import { background } from "#lib/server/background.js";
 import { notifySong } from "#lib/server/notifications.js";
+import { DraftStoppedError, draftStopNotice } from "#lib/utils/draftStopped.js";
 import { chartHash, checkTimingMap } from "@barmark/sync";
 import { SongChangesSaveSchema } from "#lib/val/SongChangeSchema.js";
 import { ChartlessGridUseSchema } from "#lib/val/ChartlessGridUseSchema.js";
@@ -460,6 +461,16 @@ async function aiOrError<T>(work: Promise<T>): Promise<T> {
 	}
 }
 
+/** As `aiOrError`, but a draft the model stopped comes back as its `DraftStoppedError`, for the caller to fall back on. */
+async function aiOrStopped<T>(work: Promise<T>): Promise<T | DraftStoppedError> {
+	try {
+		return await work;
+	} catch (e) {
+		if (e instanceof DraftStoppedError) return e;
+		error(502, e instanceof Error ? e.message : "The AI did not answer");
+	}
+}
+
 /**
  * A chart drafted from the browser's chord detection (members): built on its
  * bar grid by `chartFromDetections` (src/lib/server/chartBuild.ts), with the
@@ -490,23 +501,23 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, s
 	if (!built.chart || !built.timing) error(422, "No bars to chart");
 	const timing = built.timing;
 	const sections = sectionBarsOnMap(timing, song.sections);
-	if (!aiAvailable() || song.noAi || song.project.noAi)
-		return {
-			chords: "",
-			sections,
-			progressions: [],
-			chart: built.chart,
-			notes: "",
-			chartHtml: renderChartHtml(built.chart),
-			timing,
-			confidence: built.confidence,
-			diagnostics: built.diagnostics,
-			source: "built" as const,
-		};
+	const builtDraft = {
+		chords: "",
+		sections,
+		progressions: [],
+		chart: built.chart,
+		notes: "",
+		chartHtml: renderChartHtml(built.chart),
+		timing,
+		confidence: built.confidence,
+		diagnostics: built.diagnostics,
+		source: "built" as const,
+	};
+	if (!aiAvailable() || song.noAi || song.project.noAi) return builtDraft;
 	if (await rateLimited(`chart:${user.id}`, 5, HOUR)) error(429, "Too many drafts in one hour.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
-	const answer = await aiOrError(
+	const answer = await aiOrStopped(
 		draftChartWithAi(
 			{
 				title: song.title,
@@ -527,6 +538,17 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, s
 			{ userId: user.id, songId: id },
 		),
 	);
+	// A draft the model stopped (the gateway's safety filter, the output budget): the built
+	// chart stands in, with the reason, so the card shows a chart and says why (Study 38).
+	if (answer instanceof DraftStoppedError)
+		return {
+			...builtDraft,
+			stopped: { reason: answer.reason },
+			diagnostics: [
+				{ level: "warning" as const, message: draftStopNotice(answer.reason) },
+				...builtDraft.diagnostics,
+			],
+		};
 	// The map fits the refined chart only if it plays the same bars; it is re-hashed to it.
 	const parse = parseChart(answer.chart);
 	const kept =

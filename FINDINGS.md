@@ -74,6 +74,13 @@ its beats per bar as the meter, the v0.200 key. 106 drafts, $3.84.
    note lists and chord hints. The pipeline labels these refused. The app
    should treat a content-filter stop on a draft as a visible, retryable
    outcome rather than a silent empty chart, and log the finish reason.
+   Done in v0.259.8: the AI SDK's `generateText` result carries
+   `finishReason` (`stop`, `length`, `content-filter`, `other`, …) beside
+   its `text`, and an empty `text` says nothing on its own; the draft call
+   now logs the reason with each empty answer, and after the second one
+   throws a `DraftStoppedError` carrying it, which the remote function
+   turns into the chart built from the detected chords plus a leading
+   warning that says why the AI's is missing (`src/lib/utils/draftStopped.ts`).
 
 ## Study 37: chord changes cannot pick the bar's octave, and a chart drafted at half the bar loses nothing (2026-11-10)
 

@@ -4,6 +4,14 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **When the AI cannot draft a chart, you still get one.** If the AI service
+  stops a draft before writing anything (its safety filter does that on a
+  few recordings, and sometimes not on a second try), the card now shows the
+  chart built from the detected chords and says why the AI's draft is
+  missing. Generate chart again tries the AI once more.
+
 ## [0.259.7] - 2026-11-10
 
 ### Fixed

@@ -13,7 +13,7 @@ vi.mock("ai", () => ({ generateText: vi.fn() }));
 
 const { logAiRequest } = await import("#lib/server/data.js");
 const { generateText } = await import("ai");
-const { chartCacheKey, draftBarLines, readChartWithAi, reconcileChordsWithAi } =
+const { chartCacheKey, draftBarLines, draftChartWithAi, readChartWithAi, reconcileChordsWithAi } =
 	await import("./aiDetect");
 
 const log = vi.mocked(logAiRequest);
@@ -182,5 +182,51 @@ describe("readChartWithAi", () => {
 				error: "The second read was no better; the first is kept",
 			}),
 		);
+	});
+});
+
+describe("draftChartWithAi", () => {
+	const draftInput = {
+		title: "Track",
+		tempo: "120",
+		key: "D major",
+		meter: "4/4",
+		existingSections: [],
+		bars: [{ bar: 1, notes: "D2" }],
+		source: "model" as const,
+		startingChart: "key: D, time: 4/4, tempo: 120\n\n| D | G |",
+		barCount: 2,
+		examples: [],
+	};
+
+	it("an answer empty twice is a DraftStoppedError carrying the gateway's finish reason, both tries logged with it", async () => {
+		generate.mockResolvedValue({ text: "", finishReason: "content-filter", usage: {} } as never);
+		await expect(draftChartWithAi(draftInput, who)).rejects.toMatchObject({
+			name: "DraftStoppedError",
+			reason: "content-filter",
+		});
+		expect(generate).toHaveBeenCalledTimes(2);
+		expect(log).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: "chart-draft",
+				error: "The model returned an empty completion (finish reason: content-filter); retried",
+			}),
+		);
+		expect(log).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				error: "The model returned an empty completion (finish reason: content-filter)",
+			}),
+		);
+	});
+
+	it("an answer empty once and then written is the written one", async () => {
+		generate
+			.mockResolvedValueOnce({ text: "", finishReason: "other", usage: {} } as never)
+			.mockResolvedValueOnce({
+				text: '{"chords":"D G","sections":[{"name":"Verse","bar":1}],"progressions":[],"chart":"| D | G |","notes":""}',
+				finishReason: "stop",
+				usage: {},
+			} as never);
+		await expect(draftChartWithAi(draftInput, who)).resolves.toMatchObject({ chart: "| D | G |" });
 	});
 });
