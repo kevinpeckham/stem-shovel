@@ -1048,9 +1048,17 @@ read, the set-list show page) stays the plain grid of `renderChartHtml`.
 A chart too large to engrave (`MAX_SCORE_COST`, `MAX_XML_LENGTH`) is
 refused by the package with "The score couldn't be drawn", not attempted;
 the app's own MusicXML export passes `MUSICXML_MAX_LENGTH` for the same
-reason. The Chart panel's Chords / Engraving split, which this doubles
-(the Engraving view shows uploaded score files), is the redesign that
-follows (`song.chart_source`, 2026-11-10).
+reason.
+
+The same day the Chart panel was redesigned around the one chart: the
+Chords / Engraving split is gone, and uploaded scores (MusicXML in
+`song_notation`, PDFs and images marked as notation in `song_pdf`) are
+sources for the chart, listed in a Scores section at the top of the
+Attachments panel with Use as chart, which always lands on the draft card.
+The chart remembers its source in `song.chart_source` (`ChartSourceSchema`:
+the file's kind, id and name, or the stems, with the time of the save);
+`saveSongDoc` sets it with a sourced save and clears it when the chart text
+changes without one, so a hand-edited chart is the band's own again.
 
 ## Charts and barmark releases
 
