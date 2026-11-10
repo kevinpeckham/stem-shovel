@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.257.0] - 2026-11-10
+
 ### Added
 
 - **One chart: the Chart panel redesigned around it.** The Chart tab's Chords / Engraving split is retired: the song has one chart (text, grid or engraved score through the Grid / Score switch), and uploaded scores are sources for it. The score files (MusicXML in `song_notation`, PDFs and images marked as notation in `song_pdf`) move to a **Scores** section at the top of the Attachments panel with their viewer, read editor (`ScoreReadPanel.svelte`, split out of `SongNotationPanel.svelte`), share links and **Use as chart** (the MusicXML importer with its part picker; the model read for a PDF or image), which always lands on the draft card, so an existing chart is replaced only through the card's confirmation. The chart remembers its source (`song.chart_source`, `ChartSourceSchema`: the file's kind, id and name as it was, or the stems, with the time of the save; `saveSongDoc` sets it with a sourced save and clears it when the text changes without one): the Chart tab says "From ‹file›, read ‹date›" with **Read again**, or "Generated from the stems on ‹date›". An editor's empty chart offers **Write it**, **Generate from the stems** (with stems and the AI on) and **Import from a score** (the Scores section, or the notation upload when there are none). "Upload notation" and the song check's read review open the Attachments side. `songDocs.svelte.ts` loses the chart mode, its storage key and the notation plumbing and gains `showChart()`. Help pages (charts-lyrics-and-notes, downloads-and-sharing, song-settings) rewritten for the Scores section: production owes `db:update-docs`.

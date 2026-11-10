@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.257.0] - 2026-11-10
+
 ### Added
 
 - **One chart, and your scores as its sources.** The Chart tab's Chords / Engraving switch is gone: a song has one chart, seen as text, as the grid or as an engraved score. Uploaded scores (MusicXML, or a PDF or image of a score) now live in a **Scores** section at the top of the song's Attachments panel, each with **Use as chart**, which reads the score into a draft you can check before it becomes the chart. The Chart tab says where the chart came from ("From Lead sheet, read Nov 10, 2026") with **Read again**; a song with no chart yet offers **Write it**, **Generate from the stems** and **Import from a score**.
