@@ -11,7 +11,7 @@ import {
 	stemsWantingMetadata,
 	stemsWantingPlayback,
 } from "#lib/server/data.js";
-import { renderScoreChartHtml } from "#lib/server/chartHtml.js";
+import { renderChartHtml, renderScoreChartHtml } from "#lib/server/chartHtml.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import {
 	scheduleDemoPeaks,
@@ -20,8 +20,40 @@ import {
 	schedulePlayback,
 	scheduleStemMetadata,
 } from "#lib/server/jobs.js";
+import { chartScoreRefusal } from "#lib/utils/chartScoreRefusal.js";
 
 export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
+
+/** The uploaded score the chart was read from, as the Chart tab's Score view shows it. */
+export interface ChartScoreFile {
+	id: string;
+	kind: "pdf" | "image";
+	url: string;
+	name: string;
+}
+
+/**
+ * The PDF or image the chart was read from (`chartSource.kind === "file"`),
+ * while it is still among the song's ready files: the band's approved
+ * chart, which the Score view shows in place of an engraving of the read.
+ * Null for any other source, or once the file is gone.
+ */
+function chartScoreFileOf(
+	source: SongRow["chartSource"],
+	files: {
+		id: string;
+		kind: string;
+		url: string;
+		title: string;
+		filename: string;
+		status: string;
+	}[],
+): ChartScoreFile | null {
+	if (source?.kind !== "file" || !source.id) return null;
+	const f = files.find((x) => x.id === source.id && x.status === "ready");
+	if (!f || (f.kind !== "pdf" && f.kind !== "image")) return null;
+	return { id: f.id, kind: f.kind, url: f.url, name: f.title || f.filename };
+}
 
 /**
  * What a page needs to play, read and download a song: the song with file
@@ -45,6 +77,7 @@ export async function songView(song: SongRow) {
 		listMixComments(song.id),
 		listDemoComments(song.id),
 	]);
+	const scoreFile = chartScoreFileOf(song.chartSource, presented.files);
 	return {
 		// The mixes (docs/mixes.md) carry their notes rendered, as the documents are.
 		song: {
@@ -52,6 +85,10 @@ export async function songView(song: SongRow) {
 			mixes: presented.mixes.map((m) => ({ ...m, notesHtml: renderMarkdown(m.notes) })),
 			/** Where the chart came from (a score file or the stems), null for the band's own: the Chart tab's source line. */
 			chartSource: song.chartSource ?? null,
+			/** The PDF or image the chart was read from, still attached: the Score view shows it, and the chart is the plain grid. */
+			chartScoreFile: scoreFile,
+			/** Why the Score view cannot engrave the chart (`chartScoreRefusal`), null when it can or shows the file instead. */
+			chartScoreNote: scoreFile ? null : chartScoreRefusal(song.chartMarkdown),
 		},
 		manifest,
 		comments,
@@ -60,7 +97,10 @@ export async function songView(song: SongRow) {
 		/** Comments on the demo recordings, every demo's together; the Demos view keeps the current demo's. */
 		demoComments,
 		docs: {
-			chart: renderScoreChartHtml(song.chartMarkdown),
+			// A chart read from a PDF or image is the plain grid: the Chart tab's own switch shows the file as its score.
+			chart: scoreFile
+				? renderChartHtml(song.chartMarkdown)
+				: renderScoreChartHtml(song.chartMarkdown),
 			lyrics: renderMarkdown(song.lyricsMarkdown),
 			notes: renderMarkdown(song.notesMarkdown),
 		},

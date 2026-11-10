@@ -41,6 +41,8 @@ function setup({
 	progress = null as string | null,
 	chartSource = null as Record<string, unknown> | null,
 	sourceGone = false,
+	chartScoreNote = null as string | null,
+	chartScoreFile = null as Record<string, unknown> | null,
 } = {}) {
 	h.doc = null;
 	h.write.mockClear();
@@ -52,6 +54,8 @@ function setup({
 		noAi,
 		project: { noAi: false },
 		chartSource: chartSource as never,
+		chartScoreNote,
+		chartScoreFile: chartScoreFile as never,
 	};
 	const docs = new SongDocs({
 		song: () => ({
@@ -181,5 +185,30 @@ describe("SongDocsPanel", () => {
 		setup({ chartSource: { kind: "stems", at: "2026-11-10T12:00:00Z" } });
 		expect(screen.getByText("Generated from the stems on Nov 10, 2026")).toBeInTheDocument();
 		expect(screen.queryByRole("button", { name: "Read again" })).toBeNull();
+	});
+
+	test("a chart the score cannot draw: the reason, and how to fix it", () => {
+		setup({ chartScoreNote: "Line 2: Qz7: a chord starts with a root A–G" });
+		expect(
+			screen.getByText(
+				"The score can't be drawn: Line 2: Qz7: a chord starts with a root A–G. Fix it in the text and the score follows.",
+			),
+		).toBeInTheDocument();
+	});
+
+	test("no note without one, or without a chart", () => {
+		setup();
+		expect(screen.queryByText(/The score can't be drawn/)).toBeNull();
+		setup({ chartScoreNote: "Line 1: x", docsHtml: { chart: "", lyrics: "", notes: "" } });
+		expect(screen.queryByText(/The score can't be drawn/)).toBeNull();
+	});
+
+	test("a chart read from a PDF: the document is handed the file for its Score view", async () => {
+		const file = { id: "f1", kind: "pdf", url: "https://blob/f1.pdf", name: "Lead sheet" };
+		const { docs } = setup({ chartScoreFile: file });
+		expect(h.doc?.scoreFile).toEqual(file);
+		docs.panel = "lyrics";
+		flushSync();
+		expect(h.doc?.scoreFile).toBeNull();
 	});
 });

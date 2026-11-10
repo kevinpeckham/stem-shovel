@@ -2,8 +2,10 @@
 	import ChartHtml from "#lib/components/ChartHtml.svelte";
 	import ChartPreview from "#lib/components/ChartPreview.svelte";
 	import ChartReadout from "#lib/components/ChartReadout.svelte";
+	import ChartScoreFile from "#lib/components/ChartScoreFile.svelte";
 	import MarkdownDocEditor from "#lib/components/MarkdownDocEditor.svelte";
 	import { saveDoc } from "#lib/remote/songs.remote.js";
+	import type { ChartScoreFile as ScoreFile } from "#lib/server/songView.js";
 	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
 	import { refreshAll } from "$app/navigation";
@@ -48,6 +50,8 @@
 		chartText?: string | null;
 		/** The chart's background in place of the look's paper: the home page's demo draws it transparent on its own panel. */
 		chartPaper?: string | null;
+		/** The PDF or image the chart was read from: the chart's Score view shows it (`ChartScoreFile`). */
+		scoreFile?: ScoreFile | null;
 	}
 
 	let {
@@ -69,6 +73,7 @@
 		numerals = null,
 		chartText = null,
 		chartPaper = null,
+		scoreFile = null,
 	}: Props = $props();
 
 	const fields = saveDoc.fields;
@@ -256,7 +261,9 @@
 		<article class={readBox}>
 			{@render above?.()}
 			{#if kind === "chart"}
-				<ChartHtml {html} {markdown} {numerals} text={chartText} paper={chartPaper} />
+				<ChartScoreFile file={scoreFile}>
+					<ChartHtml {html} {markdown} {numerals} text={chartText} paper={chartPaper} />
+				</ChartScoreFile>
 			{:else}
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
 				{@html html}

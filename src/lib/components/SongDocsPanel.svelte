@@ -7,6 +7,7 @@
 	import { DOC_HINTS, DOC_LABELS, type SongDocs } from "#lib/state/songDocs.svelte.js";
 	import { chartDefaults } from "#lib/utils/chartDefaults.js";
 	import { chartSourceText } from "#lib/utils/chartSourceText.js";
+	import type { ChartScoreFile } from "#lib/server/songView.js";
 	import type { ChartSource } from "#lib/val/ChartSourceSchema.js";
 	import type { SongDocKind } from "#lib/val/SongDocKindSchema.js";
 
@@ -19,6 +20,10 @@
 			chartMarkdown: string;
 			/** Where the chart came from (a score file or the stems), null for the band's own. */
 			chartSource: ChartSource | null;
+			/** The PDF or image the chart was read from, still attached: the Score view shows it. */
+			chartScoreFile?: ChartScoreFile | null;
+			/** Why the score cannot be engraved, null when it can. */
+			chartScoreNote?: string | null;
 			noAi: boolean;
 			project: { noAi: boolean };
 		};
@@ -69,6 +74,8 @@
 	let readAgain = $derived(
 		song.chartSource?.kind !== "stems" && canEdit && !sourceGone ? onreadagain : undefined,
 	);
+	/** The chart's uploaded score, for its Score view: the Chart tab only. */
+	let scoreFile = $derived(docs.doc === "chart" ? song.chartScoreFile : null);
 </script>
 
 <!-- Above the chart: the generation's progress, where the chart came from, then the page's draft card. -->
@@ -89,7 +96,17 @@
 				>{/if}
 		</p>
 	{/if}
+	{@render scoreNote(docsHtml.chart ? song.chartScoreNote : null)}
 	{@render above?.()}
+{/snippet}
+
+<!-- Why the Score view cannot engrave the chart, with the way out. -->
+{#snippet scoreNote(note: string | null | undefined)}
+	{#if note}
+		<p class="mb-4 text-sm text-dim">
+			The score can't be drawn: {note.replace(/\.$/, "")}. Fix it in the text and the score follows.
+		</p>
+	{/if}
 {/snippet}
 
 <!-- An editor's empty chart: the three ways to fill it. -->
@@ -169,6 +186,7 @@
 				chartDefaults={chartDefaults(song.changes)}
 				numerals={docs.numerals}
 				chartText={docs.chartKey.text(song.chartMarkdown)}
+				{scoreFile}
 			/>
 		{/key}
 	{/if}
