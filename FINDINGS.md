@@ -39,6 +39,22 @@ between a tracker's 70 percent strict bar and its 90 percent folded bar.
    bar. Which songs are in 6/8 is still unsolved for every system (Study
    36b), but once the meter is known the chart is right.
 
+## `<barmark-score>` refuses a chart with any parse error and keeps the reason to the console (2026-11-10)
+
+Kevin's chart read by the AI from a PDF: the grid drew it, Score said
+"The score couldn't be drawn" and nothing else. `@barmark/score`'s
+`engraveChart` exports the chart with `exportMusicXml`, which returns
+`{ ok: false, diagnostics }` for a chart with an error-severity barmark
+diagnostic or no bars (and `tooLarge` past the budget), and the element's
+`#fail` writes the bare note into the shadow root while `console.warn`
+gets `the score couldn't be drawn: Line N: message`. No event or
+attribute carries the reason. The app runs the same export on the server
+(`chartScoreRefusal`, the package's `refusal()` wording) and shows it on
+the Chart tab; a `scoreerror` event on the element would let it follow
+the element's own attempt instead. @barmark/render draws a chart with
+errors regardless, so a chart can look fine as a grid and refuse as a
+score.
+
 ## Study 36b: on 261 modern songs the detector's bar is right one time in three, an off-the-shelf tracker three times in four, and the detector's own 6/8 call is its largest error (2026-11-10)
 
 The bench's Study 36b (stem-bench REPORT.md, registration

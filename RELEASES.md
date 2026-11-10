@@ -4,6 +4,11 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **"The score couldn't be drawn" now says why.** The Chart tab names the line the score engraver cannot read, so you can fix it in the text.
+- **A chart read from a PDF or image shows that file as its score.** When your chart came from an uploaded score page, Score on the Chart tab shows the page itself, not an engraving of the read.
+
 ### Added
 
 - **A tempo unit for 6/8 and other compound meters.** The app counts a 6/8 tempo in eighth notes (120 is 40 dotted quarters a minute), which it now says in Song settings, and a tempo row in a compound meter offers the unit you count in: type 40 dotted quarters and it is saved as 120.
