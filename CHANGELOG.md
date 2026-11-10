@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.259.6] - 2026-11-10
+
 ### Fixed
 
 - **Read again reads again.** `readChartWithAi` cached a file's read in Redis for a month by its URL alone, so after a prompt fix Read again cleared the stored read and was served the old read back; v0.259.5's beat-slot rule never reached the model (Kevin's "2FA (To Feel Alive)" still warned "3 slots divide 4 beats unevenly"). The cache key (`chart3:`) now hashes the URL with the read prompt, so a prompt change reads afresh. The earlier repairs (`repairRead`) were not affected, since they run on the way out.
