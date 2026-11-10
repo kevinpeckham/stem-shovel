@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A chart with its own rehearsal marks is not lettered twice.** The grid, the score and the documentation PDF letter sections automatically (`rehearsalLetters`), so a chart that writes `@A`, `@B` marks of its own, as a score read does when the score prints boxed letters, showed each letter twice: on the heading and in the bar (Kevin's "I Just Wanna Be—Yours"). `chartRehearsalLetters` turns the automatic letters off when the parse holds a bar with a `rehearsal` mark; a chart without marks is lettered as before.
+
 ## [0.258.1] - 2026-11-10
 
 ### Fixed

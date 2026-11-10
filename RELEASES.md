@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **No doubled rehearsal letters.** A chart that carries its own rehearsal marks keeps them, and the automatic letters on section headings stand down instead of repeating each letter.
+
 ## [0.258.1] - 2026-11-10
 
 ### Fixed
