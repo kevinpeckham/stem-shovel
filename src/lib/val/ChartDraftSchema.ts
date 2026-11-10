@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { ChartSourceSchema } from "./ChartSourceSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 
 /** The chords the browser detected, one segment per run of bars. */
@@ -51,6 +52,8 @@ export const ChartSaveSchema = v.object({
 	/** The draft's timing map and confidence (@barmark/sync), checked against the saved chart on the server, not here. */
 	timing: v.optional(v.unknown()),
 	confidence: v.optional(v.unknown()),
+	/** Where the draft came from (a score file or the stems), kept as the chart's source; absent for a chart of the member's own. */
+	source: v.optional(ChartSourceSchema),
 });
 
 /** A timing map for the song's own chart, from the chart aligned to the stems; checked on the server. */

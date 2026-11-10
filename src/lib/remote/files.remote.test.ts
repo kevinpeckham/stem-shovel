@@ -366,6 +366,8 @@ describe('"Chart from score": a MusicXML file read into a chart (chartFromScore)
 		expect(r.diagnostics).toEqual([]);
 		expect(r.parts).toEqual([]);
 		expect(r).not.toHaveProperty("partName");
+		// The file, for the chart's source line once the draft is saved.
+		expect(r).toMatchObject({ id: SCORE, kind: "notation" });
 		expect(data.notationForImport).toHaveBeenCalledWith(ACCOUNT, SCORE);
 		expect(blob.readBlob).toHaveBeenCalledWith("https://blob/score.musicxml");
 	});
@@ -388,7 +390,7 @@ describe('"Chart from score": a MusicXML file read into a chart (chartFromScore)
 		givenNotation({ format: "mxl" });
 		served("not a zip");
 		const damaged = await chartOf(SCORE);
-		expect(damaged).toMatchObject({ chart: "", chartHtml: "" });
+		expect(damaged).toMatchObject({ chart: "", chartHtml: "", id: SCORE, kind: "notation" });
 		expect(damaged.diagnostics[0]).toMatchObject({ level: "error", message: expect.any(String) });
 		givenNotation();
 		served('<?xml version="1.0"?><score-partwise version="4.0"><part-list/></score-partwise>');

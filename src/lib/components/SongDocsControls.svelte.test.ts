@@ -27,7 +27,6 @@ function setup({ canEdit = true, busy = false } = {}) {
 		signedIn: () => true,
 		canEdit: () => canEdit,
 		aiAvailable: () => false,
-		notationCount: () => 0,
 		chordDraft: () => ({}) as never,
 		engineStatus: () => null,
 		hasGrid: () => false,
@@ -45,8 +44,8 @@ describe("SongDocsControls", () => {
 	test("the documents as tabs; the first with content selected", () => {
 		setup();
 		const tabs = screen.getAllByRole("tab");
-		expect(tabs.map((t) => t.textContent)).toEqual(["Lyrics", "Chart (1)", "Notes"]);
-		expect(screen.getByRole("tab", { name: "Chart (1)" })).toHaveAttribute("aria-selected", "true");
+		expect(tabs.map((t) => t.textContent)).toEqual(["Lyrics", "Chart", "Notes"]);
+		expect(screen.getByRole("tab", { name: "Chart" })).toHaveAttribute("aria-selected", "true");
 	});
 
 	test("a tab shows its document", async () => {

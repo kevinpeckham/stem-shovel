@@ -1,10 +1,12 @@
 <script lang="ts">
 	import ChartHtml from "#lib/components/ChartHtml.svelte";
+	import ChartPreview from "#lib/components/ChartPreview.svelte";
 	import { secondsAtBar } from "#lib/audio/measures.js";
 	import { saveChartDraft, saveSections } from "#lib/remote/songs.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import SongDraftDetails from "#lib/components/SongDraftDetails.svelte";
 	import type { ChartDraft, SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
+	import { chartSourceOfDraft } from "#lib/utils/chartSourceOfDraft.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 
 	interface Props {
@@ -73,6 +75,8 @@
 				id: songId,
 				markdown: draft.chart,
 				replace,
+				// Where it came from (a score file or the stems): the chart's source line.
+				source: chartSourceOfDraft(draft, new Date().toISOString()),
 				...(draft.timing
 					? { timing: draft.timing, confidence: draft.confidence ?? undefined }
 					: {}),
@@ -153,7 +157,11 @@
 			<SongDraftDetails {draft} />
 			<!-- The suggested chart as it would look once saved. -->
 			<article class="mt-3 chart-body rounded-md border border-current/40 bg-blue-300/5 px-6 py-6">
-				<ChartHtml html={draft.chartHtml} />
+				<!-- A score's read (a PDF or image) comes as text alone: drawn in the browser. -->
+				{#if draft.chartHtml}<ChartHtml html={draft.chartHtml} />{:else}<ChartPreview
+						text={draft.chart}
+						label="Drafted chart"
+					/>{/if}
 			</article>
 			<details class="mt-1 text-12px">
 				<summary class="cursor-pointer opacity-70">Chart markdown</summary>

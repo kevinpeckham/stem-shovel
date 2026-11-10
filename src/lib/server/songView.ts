@@ -50,6 +50,8 @@ export async function songView(song: SongRow) {
 		song: {
 			...presented,
 			mixes: presented.mixes.map((m) => ({ ...m, notesHtml: renderMarkdown(m.notes) })),
+			/** Where the chart came from (a score file or the stems), null for the band's own: the Chart tab's source line. */
+			chartSource: song.chartSource ?? null,
 		},
 		manifest,
 		comments,

@@ -180,12 +180,13 @@ const scoreDiagnosticOf = (d: { severity: string; message: string }) => ({
  * nothing comes back as an empty chart with an error, not as an HTTP error.
  * A score without chord symbols names its parts of notes in `parts`; with
  * `part`, that part's notes are charted as note sets and its name comes back
- * as `partName` (and `parts` is empty).
+ * as `partName` (and `parts` is empty). The file's `id` and `kind` come
+ * back for the chart's source (`song.chartSource`) once it is saved.
  */
 export const chartFromScore = command(ChartFromScoreSchema, async ({ id, part: asked }) => {
 	const part = asked || undefined;
-	/** A part asked for is echoed for the draft card's heading. */
-	const partOf = part ? { partName: part } : {};
+	/** The file, for the chart's source line, and a part asked for, echoed for the draft card's heading. */
+	const partOf = { id, kind: "notation" as const, ...(part ? { partName: part } : {}) };
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfNotation, id);
 	const row = await notationForImport(accountId, id);

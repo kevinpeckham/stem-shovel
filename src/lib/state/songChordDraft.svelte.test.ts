@@ -252,6 +252,8 @@ describe("SongChordDraft", () => {
 			diagnostics,
 			source: "Lead sheet",
 			notationId: "score-1",
+			id: "score-1",
+			kind: "notation",
 			parts: [],
 		});
 		expect(cd.chordError).toBeNull();
@@ -262,6 +264,7 @@ describe("SongChordDraft", () => {
 			source: "score",
 			scoreName: "Lead sheet",
 			diagnostics,
+			scoreFile: { kind: "notation", id: "score-1" },
 		});
 	});
 
@@ -277,6 +280,8 @@ describe("SongChordDraft", () => {
 			],
 			source: "Lead sheet",
 			notationId: "score-1",
+			id: "score-1",
+			kind: "notation" as const,
 			parts: ["Piano", "Bass"],
 		};
 
@@ -307,6 +312,8 @@ describe("SongChordDraft", () => {
 				notationId: "score-1",
 				parts: [],
 				partName: "Piano",
+				// The file stays the draft's source through the part's chart.
+				scoreFile: { kind: "notation", id: "score-1" },
 			});
 		});
 
@@ -581,6 +588,8 @@ describe("SongChordDraft", () => {
 				id: "song1",
 				markdown: "## Verse",
 				replace: false,
+				// The chart remembers the stems as its source.
+				source: { kind: "stems", at: expect.any(String) },
 			});
 			expect(cd.draft).toBeNull();
 			expect(cd.progress).toBeNull();

@@ -129,7 +129,7 @@ describe("SongFilesPanel: tiles", () => {
 		).toBeInTheDocument();
 		expect(screen.queryByText("pending.pdf")).toBeNull();
 	});
-	test("a MusicXML score is listed too, with a download link and a mention button, and says it lives on the Chart tab", async () => {
+	test("a MusicXML score is listed too, with a download link and a mention button", async () => {
 		const user = userEvent.setup();
 		render(SongFilesPanel, {
 			props: base({
@@ -155,7 +155,7 @@ describe("SongFilesPanel: tiles", () => {
 			}),
 		});
 		const score = tile("lead.musicxml");
-		expect(score).toHaveTextContent("4 KB · score, on the Chart tab");
+		expect(score).toHaveTextContent("4 KB · score");
 		expect(within(score).getByRole("link", { name: "Download the MusicXML file" })).toHaveAttribute(
 			"href",
 			"/f/sc-code?download=1",
@@ -164,6 +164,11 @@ describe("SongFilesPanel: tiles", () => {
 		await user.click(within(score).getByRole("button", { name: "Copy a mention for the notes" }));
 		expect(await clipboard()).toBe("@lead.musicxml");
 		expect(h.notify).toHaveBeenCalledWith("Mention copied");
+	});
+	test("scoresApart: the files marked as notation are left to the Scores section", () => {
+		render(SongFilesPanel, { props: base({ scoresApart: true }) });
+		expect(screen.queryByRole("listitem", { name: "Lead sheet" })).toBeNull();
+		expect(tile("band.jpg")).toBeInTheDocument();
 	});
 	test("says so when there is nothing yet, with the upload hint for an editor only", () => {
 		const { unmount } = render(SongFilesPanel, { props: base({ files: [], canEdit: false }) });

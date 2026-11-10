@@ -25,7 +25,6 @@ function setup({ panel = "chart" as Kind, editing = false, signedIn = true } = {
 		signedIn: () => signedIn,
 		canEdit: () => true,
 		aiAvailable: () => false,
-		notationCount: () => 2,
 		chordDraft: () => ({}) as never,
 		engineStatus: () => null,
 		hasGrid: () => false,
@@ -33,7 +32,7 @@ function setup({ panel = "chart" as Kind, editing = false, signedIn = true } = {
 	});
 	docs.panel = panel;
 	docs.editing = editing;
-	render(SongDocsToolbar, { docs, notationCount: 2, chartMarkdown: "| C |" });
+	render(SongDocsToolbar, { docs, chartMarkdown: "| C |" });
 	return docs;
 }
 
@@ -44,12 +43,12 @@ afterEach(() => {
 });
 
 describe("SongDocsToolbar", () => {
-	test("the Chart tab: Chords / Engraving with the count, the spelling and the key", () => {
+	test("the Chart tab: one chart, the spelling and the key, no Chords / Engraving choice", () => {
 		setup();
-		expect(groups()).toEqual(["Chart mode"]);
-		expect(screen.getByRole("radio", { name: "Chords" })).toHaveAttribute("aria-checked", "true");
-		expect(screen.getByRole("radio", { name: "Engraving (2)" })).toBeInTheDocument();
+		expect(groups()).toEqual([]);
+		expect(screen.queryByRole("radio", { name: /Engraving/ })).toBeNull();
 		expect(screen.getByTitle("Chord spelling")).toBeInTheDocument();
+		expect(screen.getByLabelText(/^Key: /)).toBeInTheDocument();
 	});
 
 	test("the lyrics, read: no toolbar", () => {

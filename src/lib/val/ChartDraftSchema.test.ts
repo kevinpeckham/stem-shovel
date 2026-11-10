@@ -52,6 +52,18 @@ describe("ChartSaveSchema", () => {
 		});
 		expect(ok(ChartSaveSchema, { id, markdown: "x".repeat(200_001) })).toBe(false);
 	});
+	it("takes an optional source: a kind of the three and an ISO time", () => {
+		const at = "2026-11-10T12:00:00.000Z";
+		const source = { kind: "file", id, name: "Lead sheet.pdf", at };
+		expect(v.parse(ChartSaveSchema, { id, markdown: "| C |", source }).source).toEqual(source);
+		expect(ok(ChartSaveSchema, { id, markdown: "| C |", source: { kind: "stems", at } })).toBe(
+			true,
+		);
+		expect(ok(ChartSaveSchema, { id, markdown: "| C |", source: { kind: "ai", at } })).toBe(false);
+		expect(ok(ChartSaveSchema, { id, markdown: "| C |", source: { kind: "stems", at: "x" } })).toBe(
+			false,
+		);
+	});
 });
 
 describe("ChartDraftAnswerSchema", () => {

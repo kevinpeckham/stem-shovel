@@ -31,7 +31,6 @@ function setup({
 	>,
 	ai = true,
 	canEdit = true,
-	notationCount = 0,
 	draftBusy = false,
 } = {}) {
 	const chordDraft = {
@@ -50,7 +49,6 @@ function setup({
 		signedIn: () => true,
 		canEdit: () => canEdit,
 		aiAvailable: () => ai,
-		notationCount: () => notationCount,
 		chordDraft: () => chordDraft as never,
 		engineStatus: () => "ready",
 		hasGrid: () => true,
@@ -163,25 +161,22 @@ describe("SongDocs", () => {
 		expect(d.chordDialect).toBe("names");
 	});
 
-	test("setChartMode switches between text and notation, and the notation menu offers its upload", async () => {
-		const store = stubStorage();
-		const { d } = setup();
-		expect(d.chartMode).toBe("text");
-		await d.setChartMode("notation");
-		expect(d.chartMode).toBe("notation");
-		expect(d.notationShown).toBe(true);
-		expect(store.get("stemshovel.song.chart-mode")).toBe("notation");
-		expect(ids(d.menuItems)).toEqual(["upload-notation"]);
-		await d.setChartMode("text");
-		expect(d.chartMode).toBe("text");
-		expect(d.notationShown).toBe(false);
+	test("the chart is one document: no notation mode, its tab plain, its menu the chart's", () => {
+		const { d } = setup({ docs: { chart: null, lyrics: null, notes: null } });
+		d.panel = "chart";
+		expect(ids(d.menuItems)).toEqual(["mono", "history", "ai", "draft", "generate"]);
+		expect(d).not.toHaveProperty("chartMode");
 	});
 
-	test("the chart opens on notation when there is no chart text but there is notation", () => {
-		const { d } = setup({ docs: { chart: null, lyrics: null, notes: null }, notationCount: 2 });
-		expect(d.chartMode).toBe("notation");
-		expect(d.tabLabel("chart")).toBe("Chart (2)");
-		expect(d.tabLabel("lyrics")).toBe("Lyrics");
+	test("showChart brings a minimized panel back on the Chart tab", async () => {
+		stubStorage();
+		const { d } = setup({ docs: { chart: null, lyrics: "<p>l</p>", notes: null } });
+		await d.setMode("floating");
+		await d.setMode("minimised");
+		expect(d.panel).toBe("lyrics");
+		await d.showChart();
+		expect(d.mode).toBe("floating");
+		expect(d.panel).toBe("chart");
 	});
 
 	test("switching documents closes an open editor first", async () => {

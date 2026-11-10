@@ -1,7 +1,6 @@
-import { tick, type ComponentProps } from "svelte";
+import type { ComponentProps } from "svelte";
 import type ContextMenu from "#lib/components/ContextMenu.svelte";
 import type SongDocPanel from "#lib/components/SongDocPanel.svelte";
-import type SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
 import { saveDoc } from "#lib/remote/songs.remote.js";
 import { ChartKeyChoice } from "#lib/state/chartKey.svelte.js";
 import { ChordDialectChoice, type ChordDialect } from "#lib/state/chordDialect.svelte.js";
@@ -33,11 +32,9 @@ export const DOC_VIEWS = [
 
 /** Docked in its column, floating from lg, or minimized to the action row's button (the Docs panel and the player alike). */
 export type PanelMode = "docked" | "floating" | "minimised";
-type ChartMode = "text" | "notation";
 type MenuItems = NonNullable<ComponentProps<typeof ContextMenu>["items"]>;
 
 const DOCS_MODE_KEY = "stemshovel.song.docs-mode";
-const CHART_MODE_KEY = "stemshovel.song.chart-mode";
 const NOTES_MINE_KEY = "stemshovel.song.notes-mine";
 
 /** What the Docs panel reads of the song (the page's data). */
@@ -70,8 +67,6 @@ export interface SongDocsOptions {
 	signedIn: () => boolean;
 	canEdit: () => boolean;
 	aiAvailable: () => boolean;
-	/** The ready notation files (MusicXML and PDFs marked as notation). */
-	notationCount: () => number;
 	/** Detect chords and the AI's chart draft, for the ⋯ menu's draft and generate items. */
 	chordDraft: () => Pick<
 		SongChordDraft,
@@ -88,10 +83,10 @@ export interface SongDocsOptions {
 /**
  * The song page's Docs panel (chart, lyrics, notes): which document shows,
  * whether it is open for editing and in which pane, monospace per kind, the
- * Chart tab's Text / Notation mode, the Notes tab's Project / Mine, the
- * panel's docked/floating/minimized mode, and its ⋯ menu. The editor and the
- * notation panel bind onto `editor` and `notation`. Choices are remembered
- * per browser; `load()` reads them once mounted.
+ * Notes tab's Project / Mine, the panel's docked/floating/minimized mode,
+ * and its ⋯ menu. The editor binds onto `editor`. The Chart tab is the
+ * song's one chart; its score files live in the Attachments panel. Choices
+ * are remembered per browser; `load()` reads them once mounted.
  */
 export class SongDocs {
 	/** The document shown. */
@@ -103,12 +98,9 @@ export class SongDocs {
 	/** Monospace or regular text per document kind, this browser's choice (docMonoPreference). */
 	mono = $state({ ...DEFAULT_DOC_MONO });
 	mode = $state<PanelMode>("docked");
-	/** The Chart tab's mode as picked; until then, notation when there is no chart text but there is notation. */
-	chartChoice = $state<ChartMode | null>(null);
 	/** Mine picked on the Notes tab. */
 	notesChoice = $state(false);
 	editor: SongDocPanel | null = null;
-	notation: SongNotationPanel | null = null;
 	/** The Chords view's spelling, this browser's choice (shared with the home page's demo). */
 	#spelling = new ChordDialectChoice();
 	/** The Chords view's key (a viewing choice: the chart text stays as written), this browser's choice per song. */
@@ -131,12 +123,6 @@ export class SongDocs {
 	get saving() {
 		return !!saveDoc.pending;
 	}
-	get chartMode(): ChartMode {
-		return (
-			this.chartChoice ??
-			(!this.#opts.docs().chart && this.#opts.notationCount() > 0 ? "notation" : "text")
-		);
-	}
 	/** The Key menu's state: the chart drawn transposed, a viewing choice. */
 	get chartKey(): ChartKeyChoice {
 		return this.#key;
@@ -144,9 +130,6 @@ export class SongDocs {
 	/** The renderer's `numerals` for the chosen spelling, null for chord names. */
 	get numerals(): "nashville" | "roman" | null {
 		return this.#spelling.numerals;
-	}
-	get notationShown() {
-		return this.panel === "chart" && this.chartMode === "notation";
 	}
 	/** Signed in, a note of one's own exists to show, empty until the first save. */
 	get canHaveNote() {
@@ -172,13 +155,6 @@ export class SongDocs {
 		];
 	}
 
-	/** A tab's label with its count, as the player's tabs: the Chart's uploads, or 1 for chart text with none. */
-	tabLabel(kind: SongDocKind) {
-		const count =
-			kind === "chart" ? this.#opts.notationCount() || (this.#opts.docs().chart ? 1 : 0) : 0;
-		return count ? `${DOC_LABELS[kind]} (${count})` : DOC_LABELS[kind];
-	}
-
 	/** Read this browser's choices (from onMount). */
 	load() {
 		this.mono = loadDocMono();
@@ -187,8 +163,6 @@ export class SongDocs {
 		try {
 			const mode = localStorage.getItem(DOCS_MODE_KEY);
 			if (mode === "docked" || mode === "floating" || mode === "minimised") this.mode = mode;
-			const cm = localStorage.getItem(CHART_MODE_KEY);
-			if (cm === "text" || cm === "notation") this.chartChoice = cm;
 			this.notesChoice = localStorage.getItem(NOTES_MINE_KEY) === "1";
 		} catch {
 			// Private mode: docked.
@@ -222,11 +196,10 @@ export class SongDocs {
 		void this.setMode(this.mode === "minimised" ? this.#restore : "minimised");
 	}
 
-	async setChartMode(mode: ChartMode) {
-		if (mode === this.chartMode) return;
-		await this.closeEditor();
-		this.chartChoice = mode;
-		remember(CHART_MODE_KEY, mode);
+	/** The panel back and on the Chart tab: where "Use as chart" puts its draft card. */
+	async showChart() {
+		if (this.mode === "minimised") await this.setMode(this.#restore);
+		await this.show("chart");
 	}
 
 	/** The Chords view's spelling, this browser's choice. */
@@ -261,45 +234,9 @@ export class SongDocs {
 		saveDocMono(this.mono);
 	}
 
-	/** The panel back, the Chart tab in notation mode, mounted: the notation panel. */
-	async #showNotation() {
-		if (this.mode === "minimised") await this.setMode(this.#restore);
-		await this.show("chart");
-		await this.setChartMode("notation");
-		await tick();
-		return this.notation;
-	}
-	/** The notation picker, from the Uploads menu. */
-	async pickNotation() {
-		(await this.#showNotation())?.pick();
-	}
-	/** Files the Attachments panel hands over as notation. */
-	async uploadNotation(files: File[]) {
-		await (await this.#showNotation())?.upload(files);
-	}
-	/** A score's chart read opened for correction: the Chart tab's notation view, then that read. */
-	async showRead(fileId: string) {
-		this.panel = "chart";
-		this.chartChoice = "notation";
-		await tick();
-		void this.notation?.showRead(fileId);
-	}
-
-	/** The ⋯ menu: monospace for a document, its history, the chart's AI draft, the notation's upload; a placeholder when empty, so the toolbar never shifts. */
+	/** The ⋯ menu: monospace for a document, its history, the chart's AI draft. */
 	get menuItems(): MenuItems {
 		const o = this.#opts;
-		if (this.notationShown)
-			return o.canEdit()
-				? [
-						{
-							id: "upload-notation",
-							label: "Upload Notation",
-							iconClass: "i-ph-music-notes-simple",
-							title: "MusicXML or PDF: one or more files",
-							action: () => this.notation?.pick(),
-						},
-					]
-				: [{ id: "nothing", kind: "notice", notice: "Nothing to do here yet" }];
 		const doc = this.doc;
 		const items: MenuItems = [
 			{

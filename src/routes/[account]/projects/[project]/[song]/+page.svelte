@@ -13,7 +13,7 @@
 	import SongCommentCard from "#lib/components/SongCommentCard.svelte";
 	import { SongComments } from "#lib/state/songComments.svelte.js";
 	import { SongDownloads } from "#lib/state/songDownloads.svelte.js";
-	import { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
+	import { SongChordDraft, type ScoreChart } from "#lib/state/songChordDraft.svelte.js";
 	import SongPlayerTabs from "#lib/components/SongPlayerTabs.svelte";
 	import SongPlayerStatus from "#lib/components/SongPlayerStatus.svelte";
 	import SongEmptyPlayer from "#lib/components/SongEmptyPlayer.svelte";
@@ -40,6 +40,7 @@
 	import PlayerTips from "#lib/components/PlayerTips.svelte";
 	import { STAGE_LABEL, STAGE_PHASE } from "#lib/constants/songStages.js";
 	import { songStage } from "#lib/utils/songStage.js";
+	import { chartDefaults } from "#lib/utils/chartDefaults.js";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
 	import StemMenu from "#lib/components/StemMenu.svelte";
 	import StemVersionOffer from "#lib/components/StemVersionOffer.svelte";
@@ -279,11 +280,23 @@
 
 	/** The song has a chart the AI can read with the mix: a score (MusicXML, or a PDF or image marked as notation) or its own chord chart document (docs/audio-engine.md, "The score as the AI's chart", "The chord chart as the AI's chart"). */
 	let hasScore = $derived(notationCount > 0 || !!data.docs.chart);
-	/** The chart read opened for correction (docs/audio-engine.md, "The chart read is stored"): the Chart tab's notation view, then the first score's read. */
+	/** The chart read opened for correction (docs/audio-engine.md, "The chart read is stored"): the Attachments panel's scores, then the first score's read. */
 	async function reviewRead() {
 		const file = notationPdfs[0];
 		if (!file) return;
-		await docs.showRead(file.id);
+		await attachments?.reviewRead(file.id);
+	}
+	/** The chart's source file has since been removed: its line says so and offers no Read again. */
+	let chartSourceGone = $derived.by(() => {
+		const source = data.song.chartSource;
+		if (!source?.id) return false;
+		const list = source.kind === "notation" ? data.song.notation : data.song.files;
+		return !list.some((f) => f.id === source.id && f.status === "ready");
+	});
+	/** "Use as chart" in the Attachments panel: the draft card, on the Chart tab, never a direct save. */
+	function useAsChart(score: ScoreChart) {
+		chordDraft.fromScore(score);
+		void docs.showChart();
 	}
 
 	// The MIDI badge toggles a piano roll in place of the row's waveform; files
@@ -312,7 +325,7 @@
 		},
 		hasSections: () => data.song.sections.length > 0,
 	});
-	/** The Docs panel: the document shown, its editor, the Chart's Text / Notation, the Notes' Mine, the panel's mode and ⋯ menu. */
+	/** The Docs panel: the document shown, its editor, the Notes' Mine, the panel's mode and ⋯ menu. */
 	const docs = new SongDocs({
 		song: () => data.song,
 		docs: () => data.docs,
@@ -320,7 +333,6 @@
 		signedIn: () => !!data.user,
 		canEdit: () => data.canEdit,
 		aiAvailable: () => data.aiAvailable,
-		notationCount: () => notationCount,
 		chordDraft: () => chordDraft,
 		engineStatus: () => playerEngine?.status ?? null,
 		hasGrid: () => !!posCtx.grid,
@@ -740,7 +752,7 @@
 			onuploaded={stemActions.offer}
 			onpickmix={() => void mixUploads.pick()}
 			onpickfiles={() => void attachments?.pick()}
-			onpicknotation={() => void docs.pickNotation()}
+			onpicknotation={() => void attachments?.pickNotation()}
 			onshowdemos={() => layout.show("demos")}
 			onresetmix={() => player?.resetMix()}
 		/>
@@ -765,19 +777,16 @@
 			docsHtml={data.docs}
 			canEdit={data.canEdit}
 			aiAvailable={data.aiAvailable}
-			{notationPdfs}
-			{notationCount}
 			busy={chordDraft.draftBusy || !!chordDraft.chordBusy || !!chordDraft.progress}
-			onGenerate={() => void chordDraft.generateChart()}
+			onGenerate={data.manifest.stems.length > 0
+				? () => void chordDraft.generateChart()
+				: undefined}
 			progress={chordDraft.progress}
 			oncancel={chordDraft.cancelDraft}
 			hasDraft={!!chordDraft.draft}
-			oncheck={() => void check.askAiWithScore()}
-			onchart={(score) => {
-				chordDraft.fromScore(score);
-				// The draft card sits above the chart's text: show that view, where the Engraving view was.
-				void docs.setChartMode("text");
-			}}
+			onimport={() => void attachments?.importScore()}
+			onreadagain={(source) => void attachments?.readAgain(source)}
+			sourceGone={chartSourceGone}
 			above={draftInPanel}
 		/>
 		<DocHistoryPanel
@@ -812,16 +821,12 @@
 		songId={data.song.id}
 		songTitle={data.song.title}
 		files={data.song.files}
-		scores={data.song.notation}
+		notation={data.song.notation}
 		canEdit={data.canEdit}
-		onnotation={async (files) => {
-			await docs.uploadNotation(files);
-		}}
-		onchart={(score) => {
-			chordDraft.fromScore(score);
-			// The draft card sits above the chart's text: show that view, where the Engraving view was.
-			void docs.setChartMode("text");
-		}}
+		aiAvailable={data.aiAvailable && !data.song.noAi && !data.song.project.noAi}
+		oncheck={() => void check.askAiWithScore()}
+		chartDefaults={chartDefaults(data.song.changes)}
+		onchart={useAsChart}
 	/>
 	<SongAmpPanel
 		amp={songAmp}

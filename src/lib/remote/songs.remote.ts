@@ -601,11 +601,12 @@ function canonicalDraft(markdown: string): string {
  * Saves a drafted chart as the song's chart, canonical where it parses;
  * refuses to overwrite content unless `replace`. The draft's timing map is
  * kept beside it when it checks clean against the stored text, and its
- * confidence when that fits the map.
+ * confidence when that fits the map. `source` (a score file or the stems)
+ * becomes the chart's source line.
  */
 export const saveChartDraft = command(
 	ChartSaveSchema,
-	async ({ id, markdown, replace, timing, confidence }) => {
+	async ({ id, markdown, replace, timing, confidence, source }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		const { accountId } = await memberOf(locals, accountOfSong, id);
@@ -613,7 +614,7 @@ export const saveChartDraft = command(
 		if (!song) error(404, "Song not found");
 		if (song.chartMarkdown.trim() && !replace) error(409, "The song already has a chart");
 		const stored = canonicalDraft(markdown);
-		const result = await saveSongDoc(accountId, user.id, id, "chart", stored);
+		const result = await saveSongDoc(accountId, user.id, id, "chart", stored, { source });
 		if (!result.ok) error(400, result.error);
 		if (timing !== undefined) {
 			const { map } = checkTimingMap(timing, { text: stored.replace(/\r\n/g, "\n") });

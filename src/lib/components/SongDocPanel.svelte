@@ -32,6 +32,8 @@
 		editing?: boolean;
 		/** Rendered above the document, e.g. an AI draft. */
 		above?: Snippet;
+		/** An empty document in place of "Write it.", handed the call that opens the editor (the chart's three ways to fill it). */
+		empty?: Snippet<[() => void]>;
 		/** The editor pane to show while editing; the page's panel menu sets it. */
 		view?: "rendered" | "markdown";
 		/** Monospace in every view (chord grids line up); the page's panel menu toggles it. */
@@ -59,6 +61,7 @@
 		canEdit,
 		editing = $bindable(false),
 		above,
+		empty = writeIt,
 		view = "rendered",
 		mono = false,
 		onlocalsave,
@@ -73,6 +76,9 @@
 	/** The chart readout's text: the editor's as it is typed (`markdownCurrent` is state), else the saved text. */
 	let readoutText = $derived(editing ? (editor?.markdownCurrent ?? markdown) : markdown);
 	let readoutDefaults = $derived(kind === "chart" ? chartDefaults : undefined);
+	let readBox = $derived(
+		`h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 ${mono ? "font-mono" : ""}`,
+	);
 	/** The version the editor works from: the prop's, until a save here moves it on (a writable derived: a new prop value wins again). */
 	let savedVersion = $derived(version);
 	let confirmEmpty = $state(false);
@@ -172,6 +178,14 @@
 	{/if}
 {/snippet}
 
+{#snippet writeIt(write: () => void)}
+	<p>
+		No {kind === "mynotes" ? "notes of your own" : kind} yet.{#if canEdit}
+			<button class="ml-1 link" type="button" onclick={write}>Write it.</button>
+		{/if}
+	</p>
+{/snippet}
+
 <!-- The document fills the panel; the chart readout, when there is one, takes its own row under it. -->
 <div class="grid h-full min-h-full grid-rows-[minmax(0,1fr)_auto]">
 	{#if editing && canEdit && onlocalsave}
@@ -239,11 +253,7 @@
 			{@render badge("Edit mode")}
 		</div>
 	{:else if html}
-		<article
-			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 {mono
-				? 'font-mono'
-				: ''}"
-		>
+		<article class={readBox}>
 			{@render above?.()}
 			{#if kind === "chart"}
 				<ChartHtml {html} {markdown} {numerals} text={chartText} paper={chartPaper} />
@@ -253,19 +263,9 @@
 			{/if}
 		</article>
 	{:else}
-		<div
-			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 {mono
-				? 'font-mono'
-				: ''}"
-		>
+		<div class={readBox}>
 			{@render above?.()}
-			<p>
-				No {kind === "mynotes" ? "notes of your own" : kind} yet.{#if canEdit}
-					<button class="ml-1 link-dim" type="button" onclick={() => (editing = true)}
-						>Write it.</button
-					>
-				{/if}
-			</p>
+			{@render empty(() => (editing = true))}
 		</div>
 	{/if}
 	<ChartReadout markdown={readoutText} defaults={readoutDefaults} />

@@ -26,9 +26,9 @@
 	 * discussion, text, MIDI, anything else, each a tile with a ⋯ menu (open,
 	 * download, edit, a Notation switch for a PDF or image, Use as demo for
 	 * audio, remove) and a Share menu (the permanent link, a mention for the
-	 * notes, email). Audio plays in the tile. The scores (MusicXML on the
-	 * Chart tab) are listed here too, so the tab is the song's whole
-	 * inventory. The page owns the lists and reloads them after a change.
+	 * notes, email). Audio plays in the tile. The project's library lists its
+	 * scores here too; the song's lists them apart (`scoresApart`). The page
+	 * owns the lists and reloads them after a change.
 	 */
 	export interface PanelFile {
 		id: string;
@@ -42,13 +42,13 @@
 		thumbnailUrl: string | null;
 		shareCode: string;
 		status: string;
-		/** A score: shown on the Chart tab's notation view as well. */
+		/** A score: listed with the song's scores, to view engraved or use as the chart. */
 		isNotation: boolean;
 		/** The song it belongs to, null for a project-level file (the project view says which). */
 		songId?: string | null;
 		song?: { id: string; title: string; slug: string } | null;
 	}
-	/** A MusicXML file (the Chart tab's), listed here as a score. */
+	/** A MusicXML file, listed here as a score (the project's library). */
 	export interface PanelScore {
 		id: string;
 		title: string;
@@ -72,8 +72,10 @@
 		songs?: { id: string; title: string; slug: string }[];
 		/** Links a tile to its song (the project view). */
 		songHref?: (song: { slug: string }) => string;
-		/** A MusicXML file dropped here goes to the Chart tab's flow (the song view). */
+		/** A MusicXML file dropped here goes to the scores' upload (the song view). */
 		onnotation?: (files: File[]) => Promise<void>;
+		/** Files marked as notation are left to the Scores section above (the song view). */
+		scoresApart?: boolean;
 		/** "Chart from MIDI": a MIDI file's chart for the page's draft card (the song view). */
 		onchart?: OnMidiChart;
 	}
@@ -88,11 +90,13 @@
 		songHref,
 		onnotation,
 		onchart,
+		scoresApart = false,
 	}: Props = $props();
 	/** The project view lists across songs: tiles name their song and can move. */
 	let projectView = $derived(!songId && !!projectId);
 
-	let ready = $derived(files.filter((f) => f.status === "ready" && f.url));
+	const listed = (f: PanelFile) => f.status === "ready" && f.url && !(scoresApart && f.isNotation);
+	let ready = $derived(files.filter(listed));
 	let readyScores = $derived(scores.filter((s) => s.status === "ready"));
 	type Filter = "all" | "scores" | FileKind;
 	let filter = $state<Filter>("all");
@@ -130,7 +134,7 @@
 		const all = [...(input.files ?? [])];
 		input.value = "";
 		if (all.length === 0) return;
-		// MusicXML belongs to the Chart tab's flow.
+		// MusicXML belongs to the scores' upload.
 		const xml = all.filter((f) => notationFormatOf(f.name) && !/\.xml$/i.test(f.name));
 		const picked = all.filter((f) => !xml.includes(f));
 		if (xml.length && onnotation) void onnotation(xml);
@@ -138,9 +142,7 @@
 		if (picked.length > room)
 			notify(
 				`A song can have at most ${MAX_FILES_PER_SONG} attachments; the first ${room} were taken`,
-				{
-					kind: "error",
-				},
+				{ kind: "error" },
 			);
 		const taken = picked.slice(0, room);
 		if (taken.length === 0) return;
@@ -206,7 +208,7 @@
 			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
-	/** A PDF or image marked as notation (or not): it joins or leaves the Chart tab's notation view. */
+	/** A PDF or image marked as notation (or not): it joins or leaves the song's scores. */
 	async function setNotation(f: PanelFile, on: boolean) {
 		try {
 			await updateFile({ id: f.id, title: f.title, description: f.description, isNotation: on });
@@ -313,8 +315,8 @@
 	{/if}
 	{#if ready.length === 0 && readyScores.length === 0 && jobs.length === 0}
 		<p class="opacity-70 text-14px">
-			No attachments yet.{#if canEdit}{" "}Upload a chart, a photo, a scrap of audio for the band to
-				hear, a text file, a MIDI file{projectView
+			No {scoresApart ? "other " : ""}attachments yet.{#if canEdit}{" "}Upload a chart, a photo, a
+				scrap of audio for the band to hear, a text file, a MIDI file{projectView
 					? ", for the project or to attach to a song later"
 					: ""}.{/if}
 		</p>
@@ -325,7 +327,7 @@
 		>
 			{#if filter === "all" || filter === "scores"}
 				{#each readyScores as s (s.id)}
-					<!-- A MusicXML score lives on the Chart tab; listed here so the inventory is whole. -->
+					<!-- A MusicXML score, listed in the project's library so the inventory is whole. -->
 					<li
 						class="rounded-md border border-white/15 bg-black/20 p-2 grid gap-2 content-start"
 						aria-label={nameOf(s)}
@@ -344,9 +346,7 @@
 									>{s.song.title}</a
 								>
 							{/if}
-							<p class="text-11px opacity-60 truncate">
-								{formatBytes(s.sizeBytes)} · score{projectView ? "" : ", on the Chart tab"}
-							</p>
+							<p class="text-11px opacity-60 truncate">{formatBytes(s.sizeBytes)} · score</p>
 						</div>
 						<div class="flex items-center justify-between gap-1">
 							<a
@@ -549,7 +549,7 @@
 										id: "notation",
 										label: "Notation",
 										iconClass: f.isNotation ? "i-ph-check" : "i-ph-check invisible",
-										title: "A score: shown on the Chart tab's notation view as well",
+										title: "A score: listed with the song's scores, to use as the chart",
 										condition:
 											canEdit &&
 											(f.kind === "pdf" || f.kind === "image") &&
@@ -680,7 +680,7 @@
 		<div class="flex justify-end mt-auto pt-2">
 			<label
 				class="button button-sm cursor-pointer {full ? 'opacity-50 pointer-events-none' : ''}"
-				title="PDFs, images, audio, text, MIDI; MusicXML goes to the Chart tab"
+				title="PDFs, images, audio, text, MIDI; MusicXML goes to the scores"
 			>
 				<span class="i-ph-paperclip" aria-hidden="true"></span>
 				{busy ? "Uploading…" : "Upload attachments"}

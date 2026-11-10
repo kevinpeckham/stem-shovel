@@ -151,6 +151,21 @@ describe("saveSongDoc", () => {
 		expect(callsTo("insert", "song_doc_version")).toEqual([]);
 		expect(callsTo("update", "song")).toEqual([]);
 	});
+	test("a chart saved with a source keeps it; a hand edit clears it; the same text from a source moves it on", async () => {
+		const first = { kind: "stems" as const, at: "2026-11-10T12:00:00.000Z" };
+		const again = { kind: "stems" as const, at: "2026-11-11T12:00:00.000Z" };
+		reset({ song: [song("sg1", { chartSource: null })] });
+		await saveSongDoc("a1", "u1", "sg1", "chart", "| C |", { source: first });
+		expect(row("song", "sg1")?.chartSource).toEqual(first);
+		await saveSongDoc("a1", "u1", "sg1", "chart", "| C |", { source: again });
+		expect(row("song", "sg1")?.chartSource).toEqual(again);
+		await saveSongDoc("a1", "u1", "sg1", "chart", "| C |");
+		expect(row("song", "sg1")?.chartSource).toEqual(again);
+		await saveSongDoc("a1", "u1", "sg1", "chart", "| C | G |");
+		expect(row("song", "sg1")?.chartSource).toBeNull();
+		await saveSongDoc("a1", "u1", "sg1", "notes", "x", { source: first });
+		expect(row("song", "sg1")?.chartSource).toBeNull();
+	});
 	test("emptying a long document needs confirmation", async () => {
 		reset({ song: [song("sg1", { lyricsMarkdown: LONG, lyricsHash: "h", lyricsVersion: 1 })] });
 		expect(await saveSongDoc("a1", "u1", "sg1", "lyrics", "  ")).toMatchObject({

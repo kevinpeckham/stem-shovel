@@ -32,6 +32,7 @@ import { notify } from "#lib/state/notifications.svelte.js";
 import { alignmentFeaturesKey } from "#lib/utils/alignmentFeaturesKey.js";
 import { chartDraftOfScore } from "#lib/utils/chartDraftOfScore.js";
 import { chartlessGridUse } from "#lib/utils/chartlessGridUse.js";
+import { chartSourceOfDraft } from "#lib/utils/chartSourceOfDraft.js";
 import { chordminiBarChords } from "#lib/utils/chordminiBarChords.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
@@ -51,17 +52,21 @@ export interface ScoreDiagnostic {
 }
 
 /**
- * "Chart from score" (`chartFromScore`, the notation tile's ⋯ menu): the
- * imported chart and the tile's name as `source`; for a score without chord
- * symbols an empty chart and the parts it could be charted from, and once
- * one is, its name.
+ * "Use as chart" on a score in the Attachments panel (`chartFromScore` for
+ * MusicXML, the model's read for a PDF or image) and "Chart from MIDI": the
+ * chart and the file's name as `source`; for a score without chord symbols
+ * an empty chart and the parts it could be charted from, and once one is,
+ * its name. `id` and `kind` name the file the chart's source line points
+ * at (`notation` a MusicXML row, `file` an attachment).
  */
 export interface ScoreChart {
 	chart: string;
 	chartHtml: string;
 	diagnostics: ScoreDiagnostic[];
 	source: string;
-	notationId: string;
+	notationId?: string;
+	id?: string;
+	kind?: "notation" | "file";
 	parts: string[];
 	partName?: string;
 }
@@ -84,6 +89,8 @@ export type ChartDraft = ChartDraftAnswer & {
 	notationId?: string;
 	parts?: string[];
 	partName?: string;
+	/** The file a score's chart came from, for the chart's source once saved (`chartSourceOfDraft`). */
+	scoreFile?: { kind: "notation" | "file"; id: string };
 };
 
 /** What the page supplies: functions, since each follows the page's data and the player. */
@@ -235,17 +242,21 @@ export class SongChordDraft {
 	/** A score's chart (the Docs panel's `onchart`) shown in the draft card, in place of any draft. */
 	fromScore = (score: ScoreChart) => {
 		this.chordError = null;
-		this.draft = chartDraftOfScore(score, score.source);
+		const { id, kind } = score;
+		this.draft = {
+			...chartDraftOfScore(score, score.source),
+			...(id && kind ? { scoreFile: { kind, id } } : {}),
+		};
 	};
 
 	/** The card's part button for a score without chord symbols: that part's notes charted, in place of the draft. */
 	chartPart = async (part: string) => {
-		const { notationId, scoreName = "" } = this.draft ?? {};
+		const { notationId, scoreName = "", scoreFile } = this.draft ?? {};
 		if (!notationId || this.partBusy) return;
 		this.partBusy = true;
 		try {
 			const r = await chartFromScore({ id: notationId, part });
-			this.draft = chartDraftOfScore({ ...r, notationId }, scoreName);
+			this.draft = { ...chartDraftOfScore({ ...r, notationId }, scoreName), scoreFile };
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {
@@ -390,6 +401,7 @@ export class SongChordDraft {
 					markdown: draft.chart,
 					// The run starts only on an empty chart.
 					replace: false,
+					source: chartSourceOfDraft(draft, new Date().toISOString()),
 					...(draft.timing
 						? { timing: draft.timing, confidence: draft.confidence ?? undefined }
 						: {}),

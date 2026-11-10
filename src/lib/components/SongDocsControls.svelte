@@ -51,17 +51,17 @@
 	</button>
 {/snippet}
 
-<!-- The Docs panel's header: the documents as a dropdown on a phone and tabs from sm up, Edit / Done (or the notation's upload), the ⋯ menu, and the pop-out / dock button from lg. -->
+<!-- The Docs panel's header: the documents as a dropdown on a phone and tabs from sm up, Edit / Done, the ⋯ menu, and the pop-out / dock button from lg. -->
 <!-- A dropdown on a phone, the segmented control from sm up. -->
 <ContextMenu
 	ariaLabel="Document"
 	buttonBaseClasses="button button-xs sm:hidden"
 	iconClass="i-ph-caret-down"
-	label={docs.tabLabel(docs.panel)}
+	label={DOC_LABELS[docs.panel]}
 	position="bottom left"
 	items={DOC_KINDS.map((kind) => ({
 		id: kind,
-		label: docs.tabLabel(kind),
+		label: DOC_LABELS[kind],
 		iconClass: docs.panel === kind ? "i-ph-check" : "i-ph-check invisible",
 		action: () => docs.show(kind),
 	}))}
@@ -81,24 +81,12 @@
 				: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} inline-flex items-center min-h-7 {edge(
 				index,
 			)}"
-			onclick={() => docs.show(kind)}>{docs.tabLabel(kind)}</button
+			onclick={() => docs.show(kind)}>{DOC_LABELS[kind]}</button
 		>
 	{/each}
 </div>
 <div class="flex items-stretch gap-2 {canEdit || docs.notesMine ? '' : 'hidden'}">
-	{#if docs.notationShown}
-		<button
-			class="button button-xs flex items-center"
-			type="button"
-			title="Upload notation: MusicXML files"
-			aria-label="Upload notation"
-			onclick={() => docs.notation?.pick()}
-		>
-			<span class="i-ph-plus"></span>
-		</button>
-	{:else}
-		{@render editButton()}
-	{/if}
+	{@render editButton()}
 	<ContextMenu
 		ariaLabel="{DOC_LABELS[docs.panel]} menu"
 		title="More"

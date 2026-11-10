@@ -3,13 +3,14 @@ import { createRawSnippet, flushSync } from "svelte";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 /**
- * The Docs panel over a real SongDocs: the document editor or the notation
- * panel by tab and mode. Both are stand-ins that keep their props; the panel
- * is the real FloatingPanel.
+ * The Docs panel over a real SongDocs: the document editor by tab, the
+ * chart's source line, and the empty chart's three ways to fill it. The
+ * editor is a stand-in that keeps its props; the panel is the real
+ * FloatingPanel.
  */
 const h = vi.hoisted(() => ({
 	doc: null as Record<string, unknown> | null,
-	notation: null as Record<string, unknown> | null,
+	write: vi.fn(),
 }));
 vi.mock("#lib/remote/songs.remote.js", () => ({ saveDoc: { pending: 0 } }));
 vi.mock("#lib/components/SongDocPanel.svelte", () => ({
@@ -17,13 +18,13 @@ vi.mock("#lib/components/SongDocPanel.svelte", () => ({
 		h.doc = props;
 		// What the panel renders above the document, rendered here too.
 		(props.above as ((anchor: unknown) => void) | undefined)?.(anchor);
+		// An empty document's own content, handed the call that opens the editor.
+		if (!props.html)
+			(props.empty as ((anchor: unknown, write: () => () => void) => void) | undefined)?.(
+				anchor,
+				() => h.write,
+			);
 		return { close: async () => {} };
-	},
-}));
-vi.mock("#lib/components/SongNotationPanel.svelte", () => ({
-	default: (_anchor: unknown, props: Record<string, unknown>) => {
-		h.notation = props;
-		return { pick: () => {} };
 	},
 }));
 
@@ -38,18 +39,19 @@ function setup({
 	docsHtml = html as Record<"chart" | "lyrics" | "notes", string>,
 	canEdit = true,
 	progress = null as string | null,
+	chartSource = null as Record<string, unknown> | null,
+	sourceGone = false,
 } = {}) {
 	h.doc = null;
-	h.notation = null;
+	h.write.mockClear();
 	vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
 	const song = {
 		id: "song1",
-		title: "Letter Lands",
-		notation: [],
 		changes: [{ kind: "tempo", start: 0, value: "120" }],
 		chartMarkdown: "| C |",
 		noAi,
 		project: { noAi: false },
+		chartSource: chartSource as never,
 	};
 	const docs = new SongDocs({
 		song: () => ({
@@ -65,16 +67,16 @@ function setup({
 		signedIn: () => true,
 		canEdit: () => true,
 		aiAvailable: () => true,
-		notationCount: () => 0,
 		chordDraft: () => ({ draftBusy: false, chordBusy: null }) as never,
 		engineStatus: () => null,
 		hasGrid: () => false,
 		onhistory: () => {},
 	});
 	docs.panel = "chart";
-	const oncheck = vi.fn();
 	const onGenerate = vi.fn();
 	const oncancel = vi.fn();
+	const onimport = vi.fn();
+	const onreadagain = vi.fn();
 	render(SongDocsPanel, {
 		docs,
 		song,
@@ -84,13 +86,13 @@ function setup({
 		progress,
 		oncancel,
 		aiAvailable: true,
-		notationPdfs: [],
-		notationCount: 0,
 		busy: false,
-		oncheck,
+		onimport,
+		onreadagain,
+		sourceGone,
 		above,
 	});
-	return { docs, oncheck, onGenerate, oncancel };
+	return { docs, onGenerate, oncancel, onimport, onreadagain };
 }
 
 afterEach(() => {
@@ -100,7 +102,9 @@ afterEach(() => {
 describe("SongDocsPanel", () => {
 	test("the chart: its editor with the draft above, the defaults and the key's text", () => {
 		setup();
-		expect(screen.getByRole("tab", { name: "Chart (1)" })).toHaveAttribute("aria-selected", "true");
+		expect(screen.getByRole("tab", { name: "Chart" })).toHaveAttribute("aria-selected", "true");
+		// One chart: no Chords / Engraving choice.
+		expect(screen.queryByRole("radiogroup", { name: "Chart mode" })).toBeNull();
 		expect(h.doc).toMatchObject({
 			songId: "song1",
 			kind: "chart",
@@ -113,24 +117,31 @@ describe("SongDocsPanel", () => {
 		});
 		expect(h.doc?.above).toBeTypeOf("function");
 		expect(screen.getByText("draft")).toBeInTheDocument();
-		expect(screen.queryByRole("button", { name: "Generate chart from the stems" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Generate from the stems" })).toBeNull();
+		expect(screen.queryByText(/^From |^Generated from/)).toBeNull();
 	});
 
-	test("an empty chart offers Generate chart from the stems to an editor", async () => {
-		const { onGenerate } = setup({ docsHtml: { ...html, chart: "" } });
-		await fireEvent.click(screen.getByRole("button", { name: "Generate chart from the stems" }));
+	test("an empty chart: Write it, Generate from the stems and Import from a score", async () => {
+		const { onGenerate, onimport } = setup({ docsHtml: { ...html, chart: "" } });
+		expect(h.doc?.empty).toBeTypeOf("function");
+		await fireEvent.click(screen.getByRole("button", { name: "Write it" }));
+		expect(h.write).toHaveBeenCalledOnce();
+		await fireEvent.click(screen.getByRole("button", { name: "Generate from the stems" }));
 		expect(onGenerate).toHaveBeenCalledOnce();
+		await fireEvent.click(screen.getByRole("button", { name: "Import from a score" }));
+		expect(onimport).toHaveBeenCalledOnce();
 	});
 
-	test("no offer to a viewer", () => {
-		setup({ docsHtml: { ...html, chart: "" }, canEdit: false });
-		expect(screen.queryByRole("button", { name: "Generate chart from the stems" })).toBeNull();
+	test("no Generate when the AI is off for the song", () => {
+		setup({ docsHtml: { ...html, chart: "" }, noAi: true });
+		expect(screen.queryByRole("button", { name: "Generate from the stems" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Import from a score" })).toBeInTheDocument();
 	});
 
 	test("while it runs: the step and Cancel", async () => {
 		const { oncancel } = setup({ docsHtml: { ...html, chart: "" }, progress: "Saving…" });
 		expect(screen.getByRole("status")).toHaveTextContent("Saving…");
-		expect(screen.queryByRole("button", { name: "Generate chart from the stems" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Generate from the stems" })).toBeNull();
 		await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 		expect(oncancel).toHaveBeenCalledOnce();
 	});
@@ -151,16 +162,24 @@ describe("SongDocsPanel", () => {
 		expect(h.doc).toMatchObject({ kind: "mynotes", label: "My notes", canEdit: true });
 	});
 
-	test("the Chart's engraving: the notation panel, the AI off when the song turns it off", async () => {
-		const { docs, oncheck } = setup({ noAi: true });
-		await docs.setChartMode("notation");
-		flushSync();
-		expect(h.notation).toMatchObject({
-			songId: "song1",
-			songTitle: "Letter Lands",
-			aiAvailable: false,
-			oncheck,
-		});
-		expect(screen.getByLabelText("Upload notation")).toBeInTheDocument();
+	test("a chart from a score: the line names it and Read again uses it once more", async () => {
+		const source = { kind: "notation", id: "n1", name: "Lead sheet", at: "2026-11-10T12:00:00Z" };
+		const { onreadagain } = setup({ chartSource: source });
+		expect(screen.getByText(/^From Lead sheet, read Nov 10, 2026/)).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole("button", { name: "Read again" }));
+		expect(onreadagain).toHaveBeenCalledWith(source);
+	});
+
+	test("the file gone: the line says so, with no Read again", () => {
+		const source = { kind: "file", id: "f1", name: "Scan", at: "2026-11-10T12:00:00Z" };
+		setup({ chartSource: source, sourceGone: true });
+		expect(screen.getByText(/the file is gone/)).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Read again" })).toBeNull();
+	});
+
+	test("a chart from the stems: the line, no Read again", () => {
+		setup({ chartSource: { kind: "stems", at: "2026-11-10T12:00:00Z" } });
+		expect(screen.getByText("Generated from the stems on Nov 10, 2026")).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Read again" })).toBeNull();
 	});
 });

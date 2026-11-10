@@ -22,6 +22,7 @@ vi.mock("#lib/remote/songs.remote.js", () => ({
 }));
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify: h.notify }));
 vi.mock("#lib/components/ChartHtml.svelte", () => ({ default: () => {} }));
+vi.mock("#lib/components/ChartPreview.svelte", () => ({ default: () => {} }));
 
 const { default: SongDraftCard } = await import("./SongDraftCard.svelte");
 const { default: SongDraftInPanel } = await import("./SongDraftInPanel.svelte");
@@ -55,6 +56,7 @@ const scoreDraft = () => ({
 	chartHtml: "<p>chart</p>",
 	source: "score" as const,
 	scoreName: "Lead sheet",
+	scoreFile: { kind: "notation" as const, id: "score-1" },
 	diagnostics: [
 		{ level: "error" as const, message: "The piano part's notes were left out." },
 		{ level: "warning" as const, message: "A rhythm snapped in measure 2." },
@@ -157,6 +159,8 @@ describe("SongDraftCard", () => {
 			id: "song1",
 			markdown: "## Verse\n| D5 | A5 |",
 			replace: true,
+			// The AI's draft is from the stems: the chart's source line says so.
+			source: { kind: "stems", at: expect.any(String) },
 		});
 		expect(h.notify).toHaveBeenCalledWith("Chart saved from the draft");
 	});
@@ -237,7 +241,15 @@ describe("SongDraftCard with a score's chart", () => {
 			id: "song1",
 			markdown: "key: C\n| C | G |",
 			replace: false,
+			source: { kind: "notation", id: "score-1", name: "Lead sheet", at: expect.any(String) },
 		});
+	});
+
+	test("Use as chart on a song with a chart lands here: Save as chart asks before replacing", async () => {
+		setup({ value: scoreDraft(), hasChart: true, confirmed: false });
+		await fireEvent.click(screen.getByRole("button", { name: "Save as chart" }));
+		expect(confirm).toHaveBeenCalledWith("Replace the song's chart with the drafted one?");
+		expect(h.saveChartDraft).not.toHaveBeenCalled();
 	});
 
 	test("an AI draft has no diagnostics list", () => {
@@ -289,6 +301,7 @@ describe("SongDraftCard with a chart built from the detected chords", () => {
 			id: "song1",
 			markdown: "## Verse\n| D5 | A5 |",
 			replace: false,
+			source: { kind: "stems", at: expect.any(String) },
 			timing,
 			confidence,
 		});

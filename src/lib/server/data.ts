@@ -146,6 +146,7 @@ import {
 	type SongDocKind,
 	type SongDocSaveKind,
 } from "#lib/val/SongDocKindSchema.js";
+import type { ChartSource } from "#lib/val/ChartSourceSchema.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
 import type { SongSection } from "#lib/val/SongSectionSchema.js";
 import type { MemberRole } from "#lib/val/MemberRoleSchema.js";
@@ -8846,6 +8847,9 @@ export function docVersion(
  * Saves a song document. Mirrors replicator's blog save: the markdown's hash
  * gates whether a new version row is written (a no-op save stays on the
  * current version), and only the most recent DOC_VERSIONS_TO_KEEP are kept.
+ * A chart saved with `source` (a draft from a score file or the stems)
+ * remembers it; a chart change without one (a hand edit, a restore) clears
+ * it, so the chart is the band's own (`song.chartSource`).
  */
 export async function saveSongDoc(
 	accountId: string,
@@ -8853,7 +8857,7 @@ export async function saveSongDoc(
 	songId: string,
 	kind: SongDocKind,
 	markdown: string,
-	opts: { confirmEmpty?: boolean } = {},
+	opts: { confirmEmpty?: boolean; source?: ChartSource } = {},
 ): Promise<SaveDocResult> {
 	const cols = DOC_COLUMNS[kind];
 	const existing = await db.query.song.findFirst({
@@ -8878,7 +8882,12 @@ export async function saveSongDoc(
 	}
 
 	const contentHash = await hashMarkdown(next);
-	if (contentHash === currentHash) return { ok: true, version: currentVersion, changed: false };
+	if (contentHash === currentHash) {
+		// The same chart read again from its source: the line moves on, the text stays.
+		if (kind === "chart" && opts.source)
+			await db.update(song).set({ chartSource: opts.source }).where(eq(song.id, songId));
+		return { ok: true, version: currentVersion, changed: false };
+	}
 
 	const versionNumber = currentVersion + 1;
 	await writeDocVersion({
@@ -8902,6 +8911,7 @@ export async function saveSongDoc(
 			[cols.hash]: contentHash,
 			[cols.version]: versionNumber,
 			...(staleTiming ? { chartTiming: null, chartConfidence: null, useChartTiming: false } : {}),
+			...(kind === "chart" ? { chartSource: opts.source ?? null } : {}),
 		})
 		.where(eq(song.id, songId));
 	return { ok: true, version: versionNumber, changed: true };

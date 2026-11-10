@@ -4,11 +4,10 @@
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
 	import SongDocsControls from "#lib/components/SongDocsControls.svelte";
 	import SongDocsToolbar from "#lib/components/SongDocsToolbar.svelte";
-	import type { PanelFile } from "#lib/components/SongFilesPanel.svelte";
-	import SongNotationPanel, { type PanelNotation } from "#lib/components/SongNotationPanel.svelte";
 	import { DOC_HINTS, DOC_LABELS, type SongDocs } from "#lib/state/songDocs.svelte.js";
-	import type { ScoreChart } from "#lib/state/songChordDraft.svelte.js";
 	import { chartDefaults } from "#lib/utils/chartDefaults.js";
+	import { chartSourceText } from "#lib/utils/chartSourceText.js";
+	import type { ChartSource } from "#lib/val/ChartSourceSchema.js";
 	import type { SongDocKind } from "#lib/val/SongDocKindSchema.js";
 
 	interface Props {
@@ -16,10 +15,10 @@
 		/** What the panel reads of the song (the page's `data.song`). */
 		song: {
 			id: string;
-			title: string;
-			notation: PanelNotation[];
 			changes: Parameters<typeof chartDefaults>[0];
 			chartMarkdown: string;
+			/** Where the chart came from (a score file or the stems), null for the band's own. */
+			chartSource: ChartSource | null;
 			noAi: boolean;
 			project: { noAi: boolean };
 		};
@@ -28,19 +27,11 @@
 		canEdit: boolean;
 		/** The AI is configured (the page's `data.aiAvailable`); the song and its project may still turn it off. */
 		aiAvailable: boolean;
-		/** The song's PDFs marked as notation. */
-		notationPdfs: PanelFile[];
-		/** The ready notation files (MusicXML and PDFs marked as notation). */
-		notationCount: number;
 		/** The AI draft or chord detection running: the ⋯ button spins. */
 		busy: boolean;
-		/** "Check with the AI" from a score (the song check). */
-		oncheck: () => void;
 		/** Rendered above the chart: the detection's error and the AI's draft card. */
 		above: Snippet | undefined;
-		/** "Chart from score" on a MusicXML tile: the imported chart for the draft card (the page's `chordDraft.fromScore`). */
-		onchart?: (draft: ScoreChart) => void;
-		/** "Generate chart from the stems" on an empty chart (the page's `chordDraft.generateChart`); no offer without it. */
+		/** "Generate from the stems" on an empty chart (the page's `chordDraft.generateChart`); no offer without it. */
 		onGenerate?: () => void;
 		/** The generation's current step (the page's `chordDraft.progress`), null when it is not running. */
 		progress?: string | null;
@@ -48,6 +39,12 @@
 		oncancel?: () => void;
 		/** A draft card is showing: no offer to generate meanwhile. */
 		hasDraft?: boolean;
+		/** "Import from a score" on an empty chart: the Attachments panel's scores, or the notation upload. */
+		onimport?: () => void;
+		/** "Read again" on the source line: Use as chart once more on the chart's file. */
+		onreadagain?: (source: ChartSource) => void;
+		/** The chart's source file has since been removed. */
+		sourceGone?: boolean;
 	}
 	let {
 		docs,
@@ -55,43 +52,69 @@
 		docsHtml,
 		canEdit,
 		aiAvailable,
-		notationPdfs,
-		notationCount,
 		busy,
-		oncheck,
 		above,
-		onchart = () => {},
 		onGenerate,
 		progress = null,
 		oncancel = () => {},
 		hasDraft = false,
+		onimport,
+		onreadagain,
+		sourceGone = false,
 	}: Props = $props();
 
 	let aiOn = $derived(aiAvailable && !song.noAi && !song.project.noAi);
-	let offerGenerate = $derived(
-		!!onGenerate && !docsHtml.chart && canEdit && aiOn && !hasDraft && !progress,
+	let offerGenerate = $derived(!!onGenerate && aiOn && !hasDraft && !progress);
+	/** The source line's file to read again: an editor's, while the file is there. */
+	let readAgain = $derived(
+		song.chartSource?.kind !== "stems" && canEdit && !sourceGone ? onreadagain : undefined,
 	);
 </script>
 
-<!-- Above the chart: the generation's progress or, on an empty chart, the offer to generate one; then the page's draft card. -->
+<!-- Above the chart: the generation's progress, where the chart came from, then the page's draft card. -->
 {#snippet chartAbove()}
 	{#if progress}
 		<p class="mb-4 text-sm" role="status">
 			{progress}
 			<button class="ml-2 link" type="button" onclick={oncancel}>Cancel</button>
 		</p>
-	{:else if offerGenerate}
-		<div class="mb-4 text-sm">
-			<p>
-				Generate a chart from the stems: the tempo, the chords, the sections and the bar lines,
-				saved to the song.
-			</p>
-			<button class="mt-2 button button-sm" type="button" disabled={busy} onclick={onGenerate}
-				>Generate chart from the stems</button
-			>
-		</div>
+	{/if}
+	{#if song.chartSource && docsHtml.chart}
+		{@const source = song.chartSource}
+		<p class="mb-4 text-sm text-dim">
+			{chartSourceText(source, sourceGone)}{#if readAgain}<button
+					class="ml-2 link"
+					type="button"
+					onclick={() => readAgain(source)}>Read again</button
+				>{/if}
+		</p>
 	{/if}
 	{@render above?.()}
+{/snippet}
+
+<!-- An editor's empty chart: the three ways to fill it. -->
+{#snippet emptyChart(write: () => void)}
+	<p>No chart yet.</p>
+	<div class="mt-2 flex flex-wrap gap-2">
+		<button class="button button-sm" type="button" onclick={write}>Write it</button>
+		{#if offerGenerate}
+			<button
+				class="button button-sm"
+				type="button"
+				disabled={busy}
+				title="The tempo, the chords, the sections and the bar lines, saved to the song"
+				onclick={onGenerate}>Generate from the stems</button
+			>
+		{/if}
+		{#if onimport}
+			<button
+				class="button button-sm"
+				type="button"
+				title="Use a MusicXML, PDF or image score from the attachments as the chart"
+				onclick={onimport}>Import from a score</button
+			>
+		{/if}
+	</div>
 {/snippet}
 
 <FloatingPanel
@@ -107,22 +130,8 @@
 	{#snippet controls()}
 		<SongDocsControls {docs} {canEdit} {docsHtml} {busy} />
 	{/snippet}
-	<SongDocsToolbar {docs} {notationCount} chartMarkdown={song.chartMarkdown} />
-	{#if docs.notationShown}
-		<!-- The notation files (docs/uploads-and-blob.md, "Notation"): MusicXML engraved in the browser. -->
-		<SongNotationPanel
-			bind:this={docs.notation}
-			songId={song.id}
-			songTitle={song.title}
-			notation={song.notation}
-			pdfs={notationPdfs}
-			{canEdit}
-			aiAvailable={aiOn}
-			{oncheck}
-			{onchart}
-			chartDefaults={chartDefaults(song.changes)}
-		/>
-	{:else if docs.notesMine}
+	<SongDocsToolbar {docs} chartMarkdown={song.chartMarkdown} />
+	{#if docs.notesMine}
 		<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->
 		{#key `mynotes:${docs.myNote.version}`}
 			<SongDocPanel
@@ -156,6 +165,7 @@
 				view={docs.view}
 				mono={docs.mono[docs.doc]}
 				above={docs.panel === "chart" ? chartAbove : undefined}
+				empty={docs.panel === "chart" && canEdit ? emptyChart : undefined}
 				chartDefaults={chartDefaults(song.changes)}
 				numerals={docs.numerals}
 				chartText={docs.chartKey.text(song.chartMarkdown)}

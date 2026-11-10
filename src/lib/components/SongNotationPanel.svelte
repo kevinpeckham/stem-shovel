@@ -3,7 +3,7 @@
 	import { refreshAll } from "$app/navigation";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
-	import ChartReadout from "#lib/components/ChartReadout.svelte";
+	import ScoreReadPanel from "#lib/components/ScoreReadPanel.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import {
 		MAX_NOTATION_PER_SONG,
@@ -16,13 +16,10 @@
 	import { deleteNotation, updateNotation } from "#lib/remote/notation.remote.js";
 	import {
 		chartFromScore,
-		clearChartReadOfFile,
 		deleteFile,
 		readChartOfFile,
-		saveChartReadOfFile,
 		updateFile,
 	} from "#lib/remote/files.remote.js";
-	import { chartReadIssues } from "#lib/utils/chartReadIssues.js";
 	import type { PanelFile } from "#lib/components/SongFilesPanel.svelte";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import type { ScoreChart } from "#lib/state/songChordDraft.svelte.js";
@@ -42,16 +39,17 @@
 	import type { Attachment } from "svelte/attachments";
 
 	/**
-	 * The notation files attached to a song (docs/uploads-and-blob.md,
-	 * "Notation"), the Chart tab's notation mode (Kevin): MusicXML, as
-	 * Dorico and the rest export it, compressed or not, and the song's PDFs
-	 * marked as notation (uploaded here, or flagged on the PDFs tab). Tiles
-	 * as the PDFs', with the first page Verovio drew at upload time, a ⋯
-	 * menu (open, download, the rendered PDF, edit, remove) and a Share
-	 * menu; a tile's page opens the score in a panel, every page engraved
-	 * for the panel's width by Verovio in a worker (the engine loads only
-	 * then), a PDF in the browser's reader. The page owns the lists and
-	 * reloads them after a change.
+	 * The song's score files (docs/uploads-and-blob.md, "Notation"), the
+	 * Scores section of the Attachments panel: MusicXML, as Dorico and the
+	 * rest export it, compressed or not, and the song's PDFs and images
+	 * marked as notation. The song has one chart; a score is a way to fill
+	 * it, so each tile offers Use as chart (the draft card shows the result,
+	 * never a direct save). Tiles with the first page Verovio drew at upload
+	 * time, a ⋯ menu (open, download, the rendered PDF, edit, what the AI
+	 * read, remove) and a Share menu; a tile's page opens the score in a
+	 * panel, every page engraved for the panel's width by Verovio in a
+	 * worker (the engine loads only then), a PDF in the browser's reader.
+	 * The page owns the lists and reloads them after a change.
 	 */
 	export interface PanelNotation {
 		id: string;
@@ -84,7 +82,7 @@
 		oncheck?: () => void;
 		/** The song's tempo and meter at 0:00 (`chartDefaults`), for the readout under the read: how many bars it plays and how long. */
 		chartDefaults?: { tempo: number | null; meter: string | null };
-		/** "Chart from score": a MusicXML file's chord symbols, keys and sections as a chart, for the page's draft card. */
+		/** "Use as chart": a MusicXML file's import, or a PDF or image's read, for the page's draft card. */
 		onchart?: (draft: ScoreChart) => void;
 	}
 	let {
@@ -99,97 +97,53 @@
 		onchart,
 	}: Props = $props();
 
-	// ── Chart from score: a MusicXML file read into a barmark chart on the server (files.remote.ts `chartFromScore`), shown in the draft card ──
-	/** The notation row being charted; its menu item is disabled meanwhile. */
+	// ── Use as chart: a MusicXML file imported on the server (files.remote.ts `chartFromScore`), or a PDF or image's read (`readChartOfFile`, the stored read or the model's), shown in the draft card ──
+	/** The file being charted; its button is disabled meanwhile. */
 	let charting = $state<string | null>(null);
-	async function chartOf(t: Tile) {
-		if (t.kind !== "xml" || charting) return;
+	/** A tile's chart for the draft card; `text` is the read as it stands in the read's editor. */
+	async function chartOf(t: Tile, text?: string) {
+		if (charting) return;
 		const name = nameOf(t);
 		charting = t.row.id;
 		try {
-			const r = await chartFromScore({ id: t.row.id });
+			const r = await scoreChartOf(t, text);
 			// No chord symbols but parts of notes: the draft card offers the parts instead of a notice.
-			if (!r.chart.trim() && r.parts.length === 0) {
-				const why = r.diagnostics.find((d) => d.level === "error")?.message;
-				notify(`Nothing to chart in ${name}${why ? `: ${why}` : ""}`, { kind: "error" });
-				return;
-			}
-			onchart?.({ ...r, source: name, notationId: t.row.id });
+			if (!r.chart.trim() && r.parts.length === 0) return nothingIn(name, r.diagnostics);
+			onchart?.({ ...r, source: name });
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {
 			charting = null;
 		}
 	}
-	/** The ⋯ menu's "Chart from score": an editor's, on a MusicXML tile. */
-	const chartItem = (t: Tile) => ({
-		id: "chart",
-		label: "Chart from score",
-		iconClass: "i-ph-text-columns",
-		title:
-			"Read this score's chord symbols, keys and sections into a chart you can save as the song's",
-		condition: canEdit && t.kind === "xml",
-		disabled: charting !== null,
-		action: () => chartOf(t),
-	});
-
-	// ── What the AI read (docs/audio-engine.md, "The chart read is stored"): a PDF or image score as a barmark chart, shown for correction (with barmark's errors as the member types) before it anchors the song-check ──
-	interface Reading {
-		file: PanelFile;
-		text: string;
-		/** The text as stored; `text` differs while an edit is unsaved. */
-		stored: string;
-		edited: boolean;
-		busy: boolean;
-		error: string | null;
+	/** A tile's chart: a MusicXML file imported on the server, a PDF or image's read (as it stands in the read's editor, or the stored or the model's). */
+	async function scoreChartOf(t: Tile, text?: string): Promise<Omit<ScoreChart, "source">> {
+		const id = t.row.id;
+		if (t.kind === "xml") return { ...(await chartFromScore({ id })), notationId: id };
+		const chart = text ?? (await readChartOfFile({ id })).text;
+		return { chart, chartHtml: "", diagnostics: [], parts: [], id, kind: "file" };
 	}
-	let reading = $state<Reading | null>(null);
-	let readWarnings = $derived(reading ? chartReadIssues(reading.text) : []);
-	let readDirty = $derived(!!reading && reading.text !== reading.stored);
+	/** Nothing to chart: said, with the import's first error. */
+	function nothingIn(name: string, diagnostics: ScoreChart["diagnostics"]) {
+		const why = diagnostics.find((d) => d.level === "error")?.message;
+		notify(`Nothing to chart in ${name}${why ? `: ${why}` : ""}`, { kind: "error" });
+	}
+	/** A tile offers Use as chart to an editor: MusicXML always, a PDF or image when the AI may read it. */
+	const chartable = (t: Tile) => canEdit && (t.kind === "xml" || aiAvailable);
+	/** Use as chart on a file by its kind and id (the chart's source line's Read again); false when it is not here any more. */
+	export function useAsChart(kind: "notation" | "file", id: string): boolean {
+		const t = ready.find((x) => x.row.id === id && (x.kind === "xml") === (kind === "notation"));
+		if (!t) return false;
+		void chartOf(t);
+		return true;
+	}
+
+	/** The read of a PDF or image score (ScoreReadPanel). */
+	let readPanel = $state<ScoreReadPanel | null>(null);
 	/** Open the read of a score file (the ⋯ menu, or the page's card when a check's read looked wrong). */
 	export async function showRead(fileId: string) {
 		const file = pdfs.find((p) => p.id === fileId);
-		if (!file) return;
-		reading = { file, text: "", stored: "", edited: false, busy: true, error: null };
-		try {
-			const r = await readChartOfFile({ id: fileId });
-			if (reading?.file.id !== fileId) return;
-			reading = { ...reading, text: r.text, stored: r.text, edited: r.edited, busy: false };
-			if (r.fromModel)
-				notify(`The AI read ${nameOf({ kind: "pdf", row: file })}`, { kind: "info" });
-		} catch (e) {
-			if (reading?.file.id !== fileId) return;
-			reading = { ...reading, busy: false, error: errorMessage(e) };
-		}
-	}
-	async function saveRead() {
-		if (!reading || reading.busy) return;
-		const id = reading.file.id;
-		reading = { ...reading, busy: true, error: null };
-		try {
-			const r = await saveChartReadOfFile({ id, text: reading.text });
-			if (reading?.file.id !== id) return;
-			reading = { ...reading, text: r.text, stored: r.text, edited: true, busy: false };
-			notify("Your corrected read is saved; the AI checks the song against it from now on");
-		} catch (e) {
-			if (reading?.file.id !== id) return;
-			reading = { ...reading, busy: false, error: errorMessage(e) };
-		}
-	}
-	/** The stored read gone, the model reads the file again (a correction is lost; the button says so). */
-	async function readAgain() {
-		if (!reading || reading.busy) return;
-		if (reading.edited && !confirm("Drop your corrected read and let the AI read the file again?"))
-			return;
-		const id = reading.file.id;
-		reading = { ...reading, busy: true, error: null };
-		try {
-			await clearChartReadOfFile({ id });
-			await showRead(id);
-		} catch (e) {
-			if (reading?.file.id !== id) return;
-			reading = { ...reading, busy: false, error: errorMessage(e) };
-		}
+		if (file) await readPanel?.show(file);
 	}
 
 	let ready = $derived<Tile[]>([
@@ -426,7 +380,30 @@
 	};
 </script>
 
-<section class="flex flex-col gap-3 h-full" aria-label="Engraving">
+<section class="flex flex-col gap-3" aria-label="Scores">
+	<div class="flex items-center justify-between gap-2">
+		<h3 class="font-600 text-14px">Scores</h3>
+		{#if canEdit}
+			<label
+				class="button button-xs cursor-pointer {full ? 'opacity-50 pointer-events-none' : ''}"
+				title="MusicXML (.mxl or .musicxml, up to {formatBytes(
+					NOTATION_MAX_BYTES,
+				)} each) or a PDF of the score (up to {formatBytes(FILE_MAX_BYTES.pdf)})"
+			>
+				<span class="i-ph-music-notes-simple" aria-hidden="true"></span>
+				{busy ? "Uploading…" : "Upload notation"}
+				<input
+					class="sr-only"
+					type="file"
+					accept={ACCEPT}
+					multiple
+					bind:this={picker}
+					disabled={full}
+					onchange={(e) => uploadPicked(e.currentTarget)}
+				/>
+			</label>
+		{/if}
+	</div>
 	{#if jobs.length > 0}
 		<ul class="grid gap-1 text-13px" aria-label="Notation uploads">
 			{#each jobs as job (job.name)}
@@ -443,21 +420,18 @@
 		</ul>
 	{/if}
 	{#if ready.length === 0 && jobs.length === 0}
-		<!-- Short, and kept clear of the Text / Notation toggle beside it; the how goes in the tip (Kevin). -->
+		<!-- Short; the how goes in the tip (Kevin). -->
 		<p class="flex max-w-xs items-center gap-1.5 opacity-70 text-14px">
 			{#if canEdit}
 				<InfoTip
 					label="How to add notation"
-					text="Upload MusicXML (.mxl or .musicxml, as Dorico, MuseScore and Sibelius export it) and the score is engraved here, or a PDF of the score."
+					text="Upload MusicXML (.mxl or .musicxml, as Dorico, MuseScore and Sibelius export it) and the score is engraved here, or a PDF of the score; Use as chart makes it the song's chart."
 				/>
 			{/if}
-			No notation yet.
+			No scores yet.
 		</p>
 	{:else}
-		<ul
-			class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(150px,1fr))]"
-			aria-label="Notation list"
-		>
+		<ul class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(150px,1fr))]" aria-label="Score list">
 			{#each ready as t (t.row.id)}
 				{@const n = t.row}
 				<li
@@ -542,6 +516,15 @@
 								{[formatBytes(n.sizeBytes), kindLabel(t)].join(" · ")}
 							</p>
 						</div>
+						{#if chartable(t)}
+							<button
+								class="button button-xs w-full justify-center"
+								type="button"
+								disabled={charting !== null}
+								title="Read this score into a chart on the draft card, to save as the song's"
+								onclick={() => chartOf(t)}>{charting === n.id ? "Reading…" : "Use as chart"}</button
+							>
+						{/if}
 						<div class="flex items-center justify-between gap-1">
 							<ContextMenu
 								ariaLabel="Actions for {nameOf(t)}"
@@ -590,12 +573,11 @@
 										condition: canEdit && aiAvailable && t.kind === "pdf",
 										action: () => (t.kind === "pdf" ? void showRead(t.row.id) : undefined),
 									},
-									chartItem(t),
 									{
 										id: "unmark",
 										label: "Not notation",
 										iconClass: "i-ph-file",
-										title: "A plain PDF: off this view, still on the PDFs tab",
+										title: "A plain attachment again: off the scores, still in the attachments",
 										condition: canEdit && t.kind === "pdf",
 										action: () => (t.kind === "pdf" ? unmark(t.row) : undefined),
 									},
@@ -714,111 +696,11 @@
 			{/if}
 		</div>
 	</FloatingPanel>
-	<!-- What the AI read: the barmark chart in an editor, what looks wrong and barmark's errors in amber (utils/chartReadIssues.ts), saved as the read the song-check uses. Under it the readout the chart editor has (ChartReadout): the bars it plays, its sections and its length at the song's tempo, the quickest check of a read against the recording. -->
-	<FloatingPanel
-		open={reading !== null}
-		title={reading ? `What the AI read of ${nameOf({ kind: "pdf", row: reading.file })}` : ""}
-		storageKey="stemshovel.song.chart-read"
-		width={720}
-		height={640}
-		onminimise={() => (reading = null)}
-	>
-		{#snippet controls()}
-			{#if reading}
-				<button
-					class="button button-xs"
-					type="button"
-					disabled={reading.busy || !readDirty}
-					title="Keep this text as the chart the AI checks the song against"
-					onclick={saveRead}
-				>
-					<span class="i-ph-floppy-disk" aria-hidden="true"></span>
-					Save
-				</button>
-				<button
-					class="button button-xs"
-					type="button"
-					disabled={reading.busy}
-					title={reading.edited
-						? "Drop the corrected read and let the AI read the file again"
-						: "Let the AI read the file again"}
-					onclick={readAgain}
-				>
-					<span class="i-ph-arrow-clockwise" aria-hidden="true"></span>
-					Read again
-				</button>
-				{#if oncheck}
-					<button
-						class="button button-xs"
-						type="button"
-						disabled={reading.busy || readDirty}
-						title={readDirty
-							? "Save the read first"
-							: "Ask the AI to check the song's key, tempo and meter against this read"}
-						onclick={() => {
-							reading = null;
-							oncheck?.();
-						}}
-					>
-						<span class="i-ph-sparkle" aria-hidden="true"></span>
-						Check the song
-					</button>
-				{/if}
-			{/if}
-		{/snippet}
-		<div class="min-h-full flex flex-col gap-2 p-2" aria-live="polite">
-			{#if reading?.busy && !reading.text}
-				<p class="p-2 text-14px opacity-60">Reading the chart…</p>
-			{:else if reading}
-				<p class="text-12px opacity-70">
-					A chart in the band's notation (barmark), one bar per measure, as the AI read the file{reading.edited
-						? "; corrected by the band"
-						: ""}. Fix a wrong key, chord or bar here and save: it becomes the read the song-check
-					uses, not the file.
-				</p>
-				{#if readWarnings.length > 0}
-					<ul class="text-13px text-amber-300 grid gap-1" role="alert">
-						{#each readWarnings as w (w)}
-							<li>
-								<span class="i-ph-warning align-text-bottom" aria-hidden="true"></span>
-								{w}
-							</li>
-						{/each}
-					</ul>
-				{/if}
-				{#if reading.error}
-					<p class="text-13px text-red-400" role="alert">{reading.error}</p>
-				{/if}
-				<textarea
-					class="field font-mono text-12px leading-snug flex-1 min-h-320px w-full resize-y"
-					spellcheck="false"
-					aria-label="What the AI read, one bar per measure"
-					disabled={reading.busy}
-					bind:value={reading.text}></textarea>
-				<ChartReadout markdown={reading.text} defaults={chartDefaults} warnings={false} />
-			{/if}
-		</div>
-	</FloatingPanel>
-	{#if canEdit}
-		<div class="flex justify-end mt-auto pt-2">
-			<label
-				class="button button-sm cursor-pointer {full ? 'opacity-50 pointer-events-none' : ''}"
-				title="MusicXML (.mxl or .musicxml, up to {formatBytes(
-					NOTATION_MAX_BYTES,
-				)} each) or a PDF of the score (up to {formatBytes(FILE_MAX_BYTES.pdf)})"
-			>
-				<span class="i-ph-music-notes-simple" aria-hidden="true"></span>
-				{busy ? "Uploading…" : "Upload Notation"}
-				<input
-					class="sr-only"
-					type="file"
-					accept={ACCEPT}
-					multiple
-					bind:this={picker}
-					disabled={full}
-					onchange={(e) => uploadPicked(e.currentTarget)}
-				/>
-			</label>
-		</div>
-	{/if}
+	<ScoreReadPanel
+		bind:this={readPanel}
+		{chartDefaults}
+		{oncheck}
+		using={charting !== null}
+		onuse={(file, text) => chartOf({ kind: "pdf", row: file }, text)}
+	/>
 </section>
