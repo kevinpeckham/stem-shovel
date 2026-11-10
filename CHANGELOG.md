@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A super admin's acting work is hidden from the account's Activity, and removable.** The Activity list is derived from rows, so `accountActivity` now carries each event's actor (`byId`) and marks it `acting` when the actor is a super admin with no real membership in the account (`actingActors`; songs, projects and session recordings now read their `createdBy` / `uploadedBy` too). Members' dashboards drop acting events; the acting view (`/dashboard?account=<slug>`) keeps them, tagged "Yours, hidden from the band", with Remove: `removeActivityItem` (super admins only; the row must be in an account they act in and be their own, 404 otherwise) deletes the underlying stem, demo, mix, recording, chat message, comment, song or document version (`deleteSongDocVersion`, the document's text stays) through the normal delete functions, audited like every acting use; a project is refused until archived on its page. `DashboardPinButton.svelte` split out of the list. docs/security.md.
+
 ### Fixed
 
 - **A chart with its own rehearsal marks is not lettered twice.** The grid, the score and the documentation PDF letter sections automatically (`rehearsalLetters`), so a chart that writes `@A`, `@B` marks of its own, as a score read does when the score prints boxed letters, showed each letter twice: on the heading and in the bar (Kevin's "I Just Wanna Be—Yours"). `chartRehearsalLetters` turns the automatic letters off when the parse holds a bar with a `rehearsal` mark; a chart without marks is lettered as before.

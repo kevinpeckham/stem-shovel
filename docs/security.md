@@ -34,7 +34,20 @@ What protects what, and where each rule lives. The first security pass ran on
   `/dashboard?account=<slug>` (the admin accounts page links there): the
   dashboard narrows to that one account under a notice, the view is
   logged like any acting use, and the person's own "since your last
-  visit" marker does not move. `/dashboard?user=<id>` (linked from the
+  visit" marker does not move. What a super admin does inside an account
+  they do not belong to stays out of that account's Activity list
+  (2026-11-10): `accountActivity` marks an event `acting` when its actor
+  is a super admin with no real membership there (`actingActors`), the
+  members' dashboards drop those events, and only the acting view
+  (`?account=<slug>`) shows them, tagged "Yours, hidden from the band"
+  with a Remove link. `removeActivityItem` (dashboard.remote.ts) lets a
+  super admin delete the thing an acting event of their own refers to (a
+  stem, demo, mix, recording, chat message, comment, song, or one version
+  of a document; a project is archived and deleted from its page): super
+  admins only, the row must be in an account they are acting in and
+  authored by them, 404 otherwise, and the removal goes through the
+  normal delete functions and the acting audit line like any other use.
+  `/dashboard?user=<id>` (linked from the
   admin user page) shows another user's dashboard as they see it, super
   admins only: built from that user's own memberships, pins and inbox,
   with the pin buttons hidden and their seen marker untouched; each view
