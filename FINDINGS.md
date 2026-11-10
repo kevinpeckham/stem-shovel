@@ -3244,3 +3244,22 @@ everyone, since 2026-10-28. Commands and forms may read it. Fix: a
 `shareCodesFrom(url | null, cookies)`: inside a query the cookie set on
 the visit with the share link stands in for the URL. Found by the same
 headless pass; the dev server's log named the line.
+
+## No tracker follows a free tempo well enough to chart it alone (2026-11-10)
+
+stem-bench Study 39 ran eight downbeat systems over 48 Winterreise
+performances with annotated bars (the free-tempo proxy until Kevin's
+demos arrive) and three steadily drifting 78s. Two opposite failures:
+Beat This with its minimal peak-picking follows the rubato (the big
+model finds 86 percent of the annotated downbeats within 70 ms) but
+places a half bar on 14 of 48 and a strict bar on 6; every Dynamic
+Bayesian Network, Beat This's own included, holds a bar length (24 of
+48 strict) and loses the beats under it (recall 0.54, madmom 0.37 to
+0.45 across four transition penalties). On steady drift madmom is best
+by a wide margin, as on full-band material. No system is chartable
+(recall ≥ 0.8 at the bar or the half bar) on more than 11 of 48, so the
+bench adopted no free-tempo tracker; the app's free-tempo path waits
+for the draft-format study (two chords a bar) on Beat This's bars and
+for real demos. The small Beat This model loses 0.16 of recall on the
+1933 recording where the big one loses 0.03: on poor audio the model
+size matters more than the postprocessor.
