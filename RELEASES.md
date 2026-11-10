@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.258.0] - 2026-11-10
+
 ### Fixed
 
 - **"The score couldn't be drawn" now says why.** The Chart tab names the line the score engraver cannot read, so you can fix it in the text.

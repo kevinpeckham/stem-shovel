@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.258.0] - 2026-11-10
+
 ### Fixed
 
 - **"The score couldn't be drawn" now says why, and a chart read from a PDF shows the PDF as its score.** `<barmark-score>` engraves by exporting the chart to MusicXML, which refuses any chart whose barmark text has an error (or no bars), and the element then shows only the bare note, logging the reason to the console (Kevin, on a chart the AI read from an uploaded PDF). `chartScoreRefusal` runs the same export on the server (`songView`: `song.chartScoreNote`) and the Chart tab says "The score can't be drawn: Line N: …. Fix it in the text and the score follows." And when the chart's source is a PDF or image still among the song's files (`song.chartScoreFile`), the band's approved chart is that file: the server draws the plain grid and `ChartScoreFile.svelte` adds its own Grid / Score switch whose Score shows the file's pages (an iframe for a PDF, an image otherwise) with its name and an open-in-new-tab link, no engraving. Charts from MusicXML or the stems keep the package element.
