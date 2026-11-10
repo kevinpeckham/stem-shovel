@@ -126,6 +126,7 @@ than tuning the ladder. The ×2 sweep is still worth measuring for the
 detector that remains in the scan offer, and part 2 will carry it.
 
 Two cautions from Study 38 for the app's automatic mode:
+
 - On drumless acoustic guitar (36 GuitarSet excerpts) Beat This's
   downbeats beat madmom's (bar strict 86 vs 61 percent, F 0.97 vs
   0.69); on free-tempo voice and piano madmom's DBN does not follow the
