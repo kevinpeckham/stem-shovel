@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **A score read lays its bars out four to a row.** The read chose its own line breaks (eight bars, then six, then two), and the grid draws one row per line, so rows came out ragged; the score's systems are no guide (one to three bars each). The read prompt now asks for four measures a line, as a lead sheet, breaking sooner only for a section, a change, a repeat or an ending, and `reflowChartRows` (`src/lib/utils/`) regroups a longer bar line into rows of four, last in `readChartOfScore`'s repair chain, stored reads too: `|:` stays on the first row and `:|` on the last, an ending stays one line (barmark reads no continuation of one), a rehearsal mark or direction goes with the bar after it, and the result is kept only when it parses to the same bars with no new error. A chart's own text is still the author's: a line break there is a row break (Kevin's "Caught You Thinking").
+
 ## [0.259.3] - 2026-11-10
 
 ### Fixed

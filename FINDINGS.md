@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## barmark: a row is a line of text, a repeat may span lines, an ending may not (2026-11-10)
+
+`@barmark/render` draws one row per bar line of the chart text, however many bars it holds, and within a section aligns the rows in shared columns, the widest cell setting its column for every row (a four-chord bar in column two stretches every column-two slash). So row length is an authoring choice, and a model reading a score picks arbitrary breaks unless told. Reflowing by splitting a bar line is allowed across a repeat (`|: A | B | C | D |` then `| E | F :|` parses) but not across an ending: `|1 G | A | B | C |` followed by `| D :|` gives ":| has no |: before it in this section" and "an ending follows the bars of a |: … :| repeat". A repeat whose endings follow must not close with `:|` before `|1` either ("an ending follows the bars of a |: … :| repeat"). `reflowChartRows` (`src/lib/utils/`) keeps a split only when the parse gives the same bars and errors. From Kevin's "Caught You Thinking" score.
+
 ## barmark's repeats and endings are line-shaped: `|:` opens a line, `:|` closes one, an ending is a line (2026-11-10)
 
 `parseChart` refuses `| @A |: A | / | D |1 / :|` three ways: "an ending starts its own bar line" (`|1`), "|: must open a bar line and :| must close one", and then a cascade ("/ has nothing before it to hold", "an ending follows the bars of a |: … :| repeat") on the next line. A "bar line" in barmark's diagnostics is a line of text. The accepted shape is `| @A |` (or `|: @A | A |`, the mark as the repeat's first cell), `|: A | / | D |`, `|1 / :|`, `|2 / | A |`, each on its own line; `|1 / :|2 / |` is refused too. A model reading a score writes the repeat as the engraving shows it, on one line, so `repairRepeatLines` (`src/lib/utils/`) splits by diagnostic. `bars` from `parseChart` are played bars (a repeated bar appears once per pass, its `rehearsal` on each); `written` carries the score's measure number. From Kevin's "Not OK Without You" score.

@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **A chart read from a score lays out four bars to a row**, as a lead sheet does. Read again reflows a chart already read.
+
 ## [0.259.3] - 2026-11-10
 
 ### Fixed
