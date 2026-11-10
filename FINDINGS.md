@@ -7,6 +7,49 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Study 36b: on 261 modern songs the detector's bar is right one time in three, an off-the-shelf tracker three times in four, and the detector's own 6/8 call is its largest error (2026-11-10)
+
+The bench's Study 36b (stem-bench REPORT.md, registration
+docs/BRIEF-STUDY36B.md there) ran this repo's v0.200 detector port and
+two open trackers (Beat This!, madmom) over the whole Josh Woodward
+catalog, 261 songs with the artist's declared tempo and meter and 244
+paired instrumental mixes, at zero model spend. Bar period strict
+within 4 percent / folded at an octave / meter right: detector 36 / 67
+/ 69 percent; Beat This 70 / 90 / 85; madmom 66 / 89 / 85. On 4/4
+straight songs the trackers are at 73 to 76 strict against the
+detector's 38.
+
+Three things to act on.
+
+1. The detector names 6/8 on 63 of 223 4/4 songs (28 percent), 56 of
+them straight, every one because `subdivision` read 3, and 59 of those
+63 bars come out at no metrical fold of the truth at all. This is the
+peaceful-dreams confound (Study 11b, mirror-138 in 11c) at catalog
+scale: the sub-beat test fires on straight running eighths and the
+ladder builds a bar the song does not have. The instrumental mixes
+show it is not the voice (42 of 208 there). The meter label needs a
+second witness before it is allowed to triple the bar; until then,
+treat a subdivision-3 read on a song whose beat autocorrelation is
+duple as 4/4.
+
+2. The tempo-confidence refusal does not separate right from wrong on
+261 songs (strict-right median 0.762, wrong median 0.685; at 0.84, 12
+right and 11 wrong pass). Study 35's "do not ship it" stands.
+
+3. When a tracker's bar disagrees with the declared one, it is a half
+bar (finer grid) three and a half times more often than a double bar,
+and the half readings sit on songs declared around 72 bpm, the double
+ones around 212. A chart built on the finer grid can be merged into
+the coarser one without losing a chord, so an automatic grid should
+prefer the shorter bar when two candidates fold into each other.
+
+Compound meter is unsolved for every system here (strict 8 to 35
+percent on the 37 songs in 6/8); the voice is not what trips anything
+(Beat This fixes 10 failures and breaks 11 passes when the vocal is
+removed). Nothing else to change yet; Studies 37 and 38 (bench) take
+the harmonic-rhythm witness and the automatic re-draft on a tracker's
+bar.
+
 ## Study 36: the field's downbeat trackers find the bar the detector cannot, and madmom's bar earns the automatic-mode re-draft (2026-11-10)
 
 The bench's Study 36 (stem-bench REPORT.md, registration
