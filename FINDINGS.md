@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## barmark's chord grammar: alterations in one parenthesis, comma-separated (2026-11-10)
+
+barmark reads `G(omit5)`, `G(no5)`, `D6(omit5,add9)`, `D6(no5)(add9)`, `Gadd9(omit3)`, `F#(b5,omit3)`, `F#dim(no3)` and `C7(#9,b13)`, and refuses `Gomit5`, `Gno5` ("cannot read"), `D6(omit5add9)` ("is not a tone a parenthesis can add"), `D6(no5add9)` ("a chord leaves out only its 3rd or 5th"), `Gadd9omit3` and `F#b5(omit3)` ("cannot read b5(no3)": the altered fifth must sit inside the parenthesis). Notation programs (Dorico, Finale) print alterations stacked one after another with no separator, and a model reading such a score transcribes them run together. `repairChordSpellings` (`src/lib/utils/`) respells an unreadable token the three ways and keeps the first that parses. Probed 2026-11-10 against barmark 0.22 with `parseChart`, from Kevin's "Hard to (For)get" score.
+
 ## Study 37: chord changes cannot pick the bar's octave, and a chart drafted at half the bar loses nothing (2026-11-10)
 
 The bench's Study 37 (stem-bench REPORT.md, registration

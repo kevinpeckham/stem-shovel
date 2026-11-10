@@ -10,6 +10,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **A score's stacked chord spellings read as barmark reads them.** A notation program prints alterations one after another (D6 add9 omit5, G add9 omit3, F#b5 omit3), which the score read wrote as `D6(omit5add9)`, `Gadd9omit3` and `F#b5(omit3)`; barmark reads none of them, so the grid showed those lines as raw text with a squiggle and the score refused. `repairChordSpellings` (`src/lib/utils/`) respells only a chord barmark reports unreadable, in three tries each tested with `parseChart`: items inside a parenthesis separated by commas, a bare omit or no given a parenthesis of its own, an altered fifth moved inside the parenthesis. `readChartOfScore` runs it after `repairLeadingHolds` on fresh and stored reads, so Read again repairs a chart already read, and the read prompt now spells alterations that way to begin with (Kevin's "Hard to (For)get").
+
+### Fixed
+
 - **The draft card and the editor preview follow the rehearsal-letter rule too.** `ChartPreview.svelte` (the live `<barmark-chart>` the draft card and the chart editor draw) set `rehearsal-letters` unconditionally, so a score read with its own marks still showed each letter twice there after v0.259.0; the attribute now follows `chartRehearsalLetters`.
 
 ## [0.259.1] - 2026-11-10

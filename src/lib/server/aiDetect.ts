@@ -4,6 +4,7 @@ import { createGateway } from "@ai-sdk/gateway";
 import { chartStatedAnswer } from "#lib/utils/chartStatedAnswer.js";
 import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
 import { barmarkChartPlays } from "#lib/utils/barmarkChartPlays.js";
+import { repairChordSpellings } from "#lib/utils/repairChordSpellings.js";
 import { repairLeadingHolds } from "#lib/utils/repairLeadingHolds.js";
 import { parseChart } from "barmark";
 import { settingsChartDisagreement } from "#lib/utils/settingsChartDisagreement.js";
@@ -138,6 +139,9 @@ const readPart = (text: string): ScorePart => ({ text, barmark: barmarkChartPlay
 /** The read stored on a score file, when there is one. */
 const storedRead = (score: Pick<ScoreFileForAi, "chartRead">) => score.chartRead?.trim() ?? "";
 
+/** A read with its known slips repaired: holds before any chord as N.C., stacked chord spellings as barmark reads them. */
+const repairRead = (text: string) => repairChordSpellings(repairLeadingHolds(text));
+
 /**
  * A score's read for a member to see before any check (docs/audio-engine.md,
  * "The chart read is stored"): the stored read when there is one
@@ -148,13 +152,13 @@ export async function readChartOfScore(
 	score: Pick<ScoreFileForAi, "fileId" | "url" | "filename" | "chartRead">,
 	who: AiAsker,
 ): Promise<{ text: string; fromModel: boolean }> {
-	// A read that holds a chord before any is named (the prompt once asked for / in every chordless measure) is repaired on the way out, stored reads too.
-	const stored = repairLeadingHolds(storedRead(score));
+	// A read's known slips (holds before any chord, stacked chord spellings) are repaired on the way out, stored reads too.
+	const stored = repairRead(storedRead(score));
 	if (stored) return { text: stored, fromModel: false };
 	const res = await readBlob(score.url);
 	if (!res.ok) throw new Error("The score could not be fetched");
 	const bytes = new Uint8Array(await res.arrayBuffer());
-	const text = repairLeadingHolds(
+	const text = repairRead(
 		await readChartWithAi(score, bytes, FILE_CONTENT_TYPE_OF(score.filename), who),
 	);
 	await saveChartRead(who.accountId, score.fileId, text, false);
@@ -181,7 +185,7 @@ key: <key>, time: <time signature>, tempo: <bpm>
 Rules:
 - The "part:" line names the part you read (barmark 0.13.0: a directive, once, before the first bar). The directives line: "key:" from the key signature, as barmark spells a key: the tonic with b or # for a flat or sharp, and m for minor ("F", "Bb", "Eb", "F#", "Dm", "C#m"). Prefer the major key for a signature unless the chords plainly sit in the relative minor; a text such as "Key: F Major" in the score confirms it. "time:" the time signature ("4/4", "3/4", "6/8"); "tempo:" the beats per minute of a metronome mark. State only what the score shows: leave out any of the three it does not show.
 - Every measure of the score is written once, in order, as one cell between pipes: | F | C7 | Bbmaj7/F | Gm7 C7 |. Count every measure in every system on every page (the small numbers at the start of a system are measure numbers: use them to keep count), so the bars' numbers match the score's measure numbers.
-- In a cell, the measure's chord symbols in the order they occur, separated by spaces, as written (Fmaj9, Bbmaj7/F, Cm7), with b and # for flats and sharps. A measure with no chord symbol keeps the harmony before it: write / alone in its cell; but before any chord symbol has been written (a melody-only opening), there is nothing to hold, so write N.C. in each such cell. A measure with the repeat-measure sign is %. N.C. where the score says N.C.
+- In a cell, the measure's chord symbols in the order they occur, separated by spaces, as written (Fmaj9, Bbmaj7/F, Cm7), with b and # for flats and sharps. Alterations a score stacks (add9, omit5, no3, sus4, b5, #9) go in one parenthesis after the quality, separated by commas: D6(add9,omit5), G(omit5), F#(b5,omit3), C7(#9,b13); never run together and never bare after the root. A measure with no chord symbol keeps the harmony before it: write / alone in its cell; but before any chord symbol has been written (a melody-only opening), there is nothing to hold, so write N.C. in each such cell. A measure with the repeat-measure sign is %. N.C. where the score says N.C.
 - Repeats: a bar line that begins a repeat starts with |: (start a new line at that measure), and the line where the repeat ends closes with :| . Endings are bar lines of their own after the repeated bars: |1 G | G7 :| for a first ending (it closes with :|), |2 G | C | for a second, |1-3 ... :| for one ending on several passes.
 - Directions are cells of their own between bars, where the score prints them: Segno, Coda, To Coda, Fine, D.C., D.C. al Fine, D.C. al Coda, D.S., D.S. al Fine, D.S. al Coda. For example: | Segno | C | F | To Coda | G | C | D.S. al Coda |
 - A rehearsal letter or number is a cell of its own just before its measure, letters and digits after @: | @A | F | C |.

@@ -6,6 +6,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ### Fixed
 
+- **Chord symbols with stacked alterations** (D6 add9 omit5, F#b5 omit3) in a score now read into the chart cleanly. Read again fixes a chart already read.
+
+### Fixed
+
 - **No doubled rehearsal letters on the draft card and in the editor preview** either.
 
 ## [0.259.1] - 2026-11-10
