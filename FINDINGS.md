@@ -31,6 +31,50 @@ The score read was cached in Redis for a month under a hash of the file's URL, o
 
 barmark reads `G(omit5)`, `G(no5)`, `D6(omit5,add9)`, `D6(no5)(add9)`, `Gadd9(omit3)`, `F#(b5,omit3)`, `F#dim(no3)` and `C7(#9,b13)`, and refuses `Gomit5`, `Gno5` ("cannot read"), `D6(omit5add9)` ("is not a tone a parenthesis can add"), `D6(no5add9)` ("a chord leaves out only its 3rd or 5th"), `Gadd9omit3` and `F#b5(omit3)` ("cannot read b5(no3)": the altered fifth must sit inside the parenthesis). Notation programs (Dorico, Finale) print alterations stacked one after another with no separator, and a model reading such a score transcribes them run together. `repairChordSpellings` (`src/lib/utils/`) respells an unreadable token the three ways and keeps the first that parses. Probed 2026-11-10 against barmark 0.22 with `parseChart`, from Kevin's "Hard to (For)get" score.
 
+## Study 38: a visitor who types nothing gets a chart as good as one who types the artist's tempo, and free tempo is where the next work is (2026-11-10)
+
+The bench's Study 38 (stem-bench REPORT.md, registration
+docs/BRIEF-STUDY38.md there) drafted charts with no visitor input at
+all: madmom's downbeats as the bar lines, its median beat as the tempo,
+its beats per bar as the meter, the v0.200 key. 106 drafts, $3.84.
+
+1. Modern songs: all ten Josh Woodward slots with artist-chart truth
+land within two roots of the declared-grid draft or above it, eight of
+ten good, none confidently wrong. The two 6/8 songs that Study 35
+charted three bars long per bar come out 24/26 and 40/42 with no meter
+typed, because madmom's three-beat bar at the dotted quarter is the
+bar. Specification for automatic mode, now backed by data: tracker's
+bar as read, shorter bar preferred when two fold, no tempo-confidence
+refusal (retired; Studies 35 and 36b showed it does not separate right
+from wrong), no harmonic-rhythm correction (Study 37).
+
+2. Solo acoustic guitar (GuitarSet, steady tempo, 36 excerpts): drafts
+on madmom's bars average 96 percent roots against 99 on the annotated
+bars; 24 of 32 good. The remaining cost is the chord reader's
+qualities (86 to 89 percent; sevenths the sheet does not name), not
+the bar. On this drumless audio Beat This's downbeats beat madmom's
+(F 0.97 against 0.69; bar strict 86 against 61 percent), the reverse
+of the full-band result.
+
+3. Free tempo (Winterreise, voice and piano, 24 songs): every draft
+confidently wrong, roots 41 percent against the chord sequence and 67
+against the per-bar truth. Two causes, both structural: madmom's DBN
+does not follow rubato (downbeat F 0.39; Beat This 0.68), and the
+material changes chord 1.5 times per bar, so a one-chord-per-bar chart
+is bounded near 50 percent before any error. For Kevin's acoustic-demo
+target this means (a) the automatic grid on free-tempo material should
+come from Beat This's downbeats, not madmom's, pending Study 39, and
+(b) the draft format needs a two-chords-per-bar slot before free-tempo
+charts can be graded fairly or shipped.
+
+4. Five of 72 guitar drafts came back from the gateway as empty or
+cut-off text; on retry three were empty again with finish reason
+`content-filter`, so the gateway's safety filter stops the chart draft
+on three particular acoustic excerpts, reproducibly, on an input of
+note lists and chord hints. The pipeline labels these refused. The app
+should treat a content-filter stop on a draft as a visible, retryable
+outcome rather than a silent empty chart, and log the finish reason.
+
 ## Study 37: chord changes cannot pick the bar's octave, and a chart drafted at half the bar loses nothing (2026-11-10)
 
 The bench's Study 37 (stem-bench REPORT.md, registration
