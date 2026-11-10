@@ -137,3 +137,80 @@ Two cautions from Study 38 for the app's automatic mode:
   reason `content-filter`, three of them reproducibly. The draft call
   should log `finishReason` and surface a retryable outcome rather than
   save an empty chart.
+
+## Bench reply, part 2 (2026-11-10, stem-bench Study 40, $0): the sweeps
+
+Registered as Study 40 (stem-bench docs/BRIEF-STUDY40.md, results
+there and in REPORT.md). One feature extraction per regular mix of the
+261 songs; a probe copied from analysis200.ts exposes the pulse lag
+before the re-pick and the autocorrelation at every lag the tests read,
+pinned to the detector's own bpm and meter on 261 of 261 songs. Grading
+as Study 36b (bar = beats-of-the-meter × 60 / bpm against the declared
+bar, two dotted quarters in 6/8; strict 4 %, folded, meter class).
+Baseline: strict 95, folded 176, meter 180; 6/8 named on 63 songs not
+in 6/8 and 21 of the 37 that are.
+
+**Ask A1, duple-bar witness.** Fold used: a dropped 6/8 falls back to
+the straight meter at the detector's FIRST pulse (before the super-beat
+re-pick), with its own 3/4-or-4/4 lean. c = ac(1.5L) + ac(3L),
+d = ac(2L) + ac(4L), L the kept beat lag.
+
+| r | strict | folded | meter | false 6/8 | true 6/8 | right→wrong | wrong→right |
+|---|---|---|---|---|---|---|---|
+| 0.80 | 109 | 195 | 192 | 19 | 4 | 3 | 17 |
+| 1.00 | 114 | 201 | 214 | 10 | 4 | 0 | 19 |
+| 1.15 | 112 | 201 | 216 | 3 | 1 | 2 | 19 |
+| 1.30 | 112 | 200 | 217 | 2 | 1 | 2 | 19 |
+| never 6/8 | 112 | 200 | 217 | 0 | 0 | 2 | 19 |
+
+The witness does not separate true 6/8 from false: at every r the true
+calls fall faster than the false ones. It still pays, because the 6/8
+call protects nothing: when the detector names 6/8 on a true 6/8 song
+its bar is strict on 2 of 21 (Study 36b), so every 6/8 call, true or
+false, is a wrong bar, and dropping them all is within two songs of the
+best cell on every count. Recommendation for `detectMeter` while the
+detector stays in the scan offer: do not emit 6/8 from `subdivision`
+alone. Either gate it with the duple-bar witness at r = 1.00 (strict
+95 → 114, folded 176 → 201, meter 180 → 214, zero songs made wrong) or
+remove the 6/8 emission (112 / 200 / 217, two made wrong). Cite Study
+40; constant `DUPLE_BAR_RATIO = 1.0` if the gate is kept. This is the
+same conclusion Study 38 reached from the other side: with madmom's
+bars as read, both 6/8 songs charted good with no meter label at all.
+
+**Ask A2, the sub-beat thresholds.** No cell of the 60 (COMPOUND_MARGIN
+1.15 to 1.60 × TRIPLET_SHARE 0.55 to 0.80) separates the populations.
+At 1.15 × 0.80: false 52, true 15. Best by meter, 1.50 × 0.80: false
+45, true 13, strict 100. Sub-beat test off, super-beat kept: false 22,
+true 10, strict 100. The 56 straight songs are a different test, not a
+threshold away; the sub-beat autocorrelation reads running eighths and
+running triplets alike on a log-compressed flux envelope, as the
+comment above `COMPOUND_MARGIN` already suspected.
+
+**Ask B, the finer bar.** Net negative at every s on the detector's own
+tempo:
+
+| s | ×2 taken | made right | made wrong | strict (baseline 95) |
+|---|---|---|---|---|
+| 0.60 | 147 | 27 | 71 | 51 |
+| 0.80 | 78 | 14 | 41 | 68 |
+| 0.85 | 67 | 12 | 34 | 73 |
+| 1.00 | 27 | 2 | 17 | 80 |
+
+The ×2 rung's strength does not mark the half-bar readings, and bpm
+does not either: the 37 songs ×2 would fix have detected tempos 70 to
+149 (median 89.5) and the 95 strict-right songs 80 to 170 (median 119).
+A cap at 90 fixes 19 and endangers 13; at 100, 29 and 29. Do not ship
+the rule on the detector. The 36b observation it came from was about
+the TRACKERS' half bars, which are merge-safe because a tracker's beat
+is the beat; the detector's ×2 rung is the wrong octave as often as the
+right one. The bench's recommendation stands as in part 1: on
+full-band material take a tracker's bar as read (Study 38), and keep
+the detector's ladder only for the scan offer, without the 6/8 call.
+
+Predictions registered for Study 40: two right (no sub-beat cell
+separates; the best A1 cell raises strict by ≥ 10), two wrong (a
+witness keeping ≥ 15 true 6/8 at ≤ 10 false; a net-positive ×2
+threshold), one wrong by two points (78 % of fixable songs under 100
+bpm). Disclosed: two feature extractions failed the probe's pin (the
+meter lean was read on the detrended envelope at the unrounded tempo)
+and were discarded; the numbers above are from the pinned extraction.
