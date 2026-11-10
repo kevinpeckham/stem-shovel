@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A score's repeats and endings read onto lines of their own.** The score read wrote `| @A |: A | / | Dmaj9 |1 / :|` and `|2 / | A |` for a verse that opens on a repeat and closes on endings; barmark wants `|:` to open a line, `:|` to close one and each ending on a line of its own, so both lines showed as raw text and the chorus's repeat the same. `repairRepeatLines` (`src/lib/utils/`) splits the lines barmark reports, driven by its diagnostics (an ending after a `:|` keeps the `:|` whole and gets a pipe of its own), first in `readChartOfScore`'s repair chain, stored reads too. The read prompt now says a repeat start and each ending begin a new line of text and a rehearsal mark at a repeat's first measure goes inside it (`|: @A | F |`), and that `tempo:` counts the meter's beat (the dotted quarter in 6/8: a mark of ♪ = 120 is `tempo: 40`), barmark's convention (Kevin's "Not OK Without You").
+
 ## [0.259.2] - 2026-11-10
 
 ### Fixed

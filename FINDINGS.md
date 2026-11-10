@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## barmark's repeats and endings are line-shaped: `|:` opens a line, `:|` closes one, an ending is a line (2026-11-10)
+
+`parseChart` refuses `| @A |: A | / | D |1 / :|` three ways: "an ending starts its own bar line" (`|1`), "|: must open a bar line and :| must close one", and then a cascade ("/ has nothing before it to hold", "an ending follows the bars of a |: … :| repeat") on the next line. A "bar line" in barmark's diagnostics is a line of text. The accepted shape is `| @A |` (or `|: @A | A |`, the mark as the repeat's first cell), `|: A | / | D |`, `|1 / :|`, `|2 / | A |`, each on its own line; `|1 / :|2 / |` is refused too. A model reading a score writes the repeat as the engraving shows it, on one line, so `repairRepeatLines` (`src/lib/utils/`) splits by diagnostic. `bars` from `parseChart` are played bars (a repeated bar appears once per pass, its `rehearsal` on each); `written` carries the score's measure number. From Kevin's "Not OK Without You" score.
+
 ## barmark's chord grammar: alterations in one parenthesis, comma-separated (2026-11-10)
 
 barmark reads `G(omit5)`, `G(no5)`, `D6(omit5,add9)`, `D6(no5)(add9)`, `Gadd9(omit3)`, `F#(b5,omit3)`, `F#dim(no3)` and `C7(#9,b13)`, and refuses `Gomit5`, `Gno5` ("cannot read"), `D6(omit5add9)` ("is not a tone a parenthesis can add"), `D6(no5add9)` ("a chord leaves out only its 3rd or 5th"), `Gadd9omit3` and `F#b5(omit3)` ("cannot read b5(no3)": the altered fifth must sit inside the parenthesis). Notation programs (Dorico, Finale) print alterations stacked one after another with no separator, and a model reading such a score transcribes them run together. `repairChordSpellings` (`src/lib/utils/`) respells an unreadable token the three ways and keeps the first that parses. Probed 2026-11-10 against barmark 0.22 with `parseChart`, from Kevin's "Hard to (For)get" score.

@@ -6,6 +6,7 @@ import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
 import { barmarkChartPlays } from "#lib/utils/barmarkChartPlays.js";
 import { repairChordSpellings } from "#lib/utils/repairChordSpellings.js";
 import { repairLeadingHolds } from "#lib/utils/repairLeadingHolds.js";
+import { repairRepeatLines } from "#lib/utils/repairRepeatLines.js";
 import { parseChart } from "barmark";
 import { settingsChartDisagreement } from "#lib/utils/settingsChartDisagreement.js";
 import { generateText } from "ai";
@@ -139,8 +140,9 @@ const readPart = (text: string): ScorePart => ({ text, barmark: barmarkChartPlay
 /** The read stored on a score file, when there is one. */
 const storedRead = (score: Pick<ScoreFileForAi, "chartRead">) => score.chartRead?.trim() ?? "";
 
-/** A read with its known slips repaired: holds before any chord as N.C., stacked chord spellings as barmark reads them. */
-const repairRead = (text: string) => repairChordSpellings(repairLeadingHolds(text));
+/** A read with its known slips repaired: repeats and endings on lines of their own, holds before any chord as N.C., stacked chord spellings as barmark reads them. */
+const repairRead = (text: string) =>
+	repairChordSpellings(repairLeadingHolds(repairRepeatLines(text)));
 
 /**
  * A score's read for a member to see before any check (docs/audio-engine.md,
@@ -183,10 +185,10 @@ key: <key>, time: <time signature>, tempo: <bpm>
 <the bars, one bar line per system of the score>
 
 Rules:
-- The "part:" line names the part you read (barmark 0.13.0: a directive, once, before the first bar). The directives line: "key:" from the key signature, as barmark spells a key: the tonic with b or # for a flat or sharp, and m for minor ("F", "Bb", "Eb", "F#", "Dm", "C#m"). Prefer the major key for a signature unless the chords plainly sit in the relative minor; a text such as "Key: F Major" in the score confirms it. "time:" the time signature ("4/4", "3/4", "6/8"); "tempo:" the beats per minute of a metronome mark. State only what the score shows: leave out any of the three it does not show.
+- The "part:" line names the part you read (barmark 0.13.0: a directive, once, before the first bar). The directives line: "key:" from the key signature, as barmark spells a key: the tonic with b or # for a flat or sharp, and m for minor ("F", "Bb", "Eb", "F#", "Dm", "C#m"). Prefer the major key for a signature unless the chords plainly sit in the relative minor; a text such as "Key: F Major" in the score confirms it. "time:" the time signature ("4/4", "3/4", "6/8"); "tempo:" the beats per minute of a metronome mark, counted in the meter's beat: the quarter in 4/4, 3/4 and 2/4, the dotted quarter in 6/8, 9/8 and 12/8 (a 6/8 mark of ♪ = 120 is tempo: 40). State only what the score shows: leave out any of the three it does not show.
 - Every measure of the score is written once, in order, as one cell between pipes: | F | C7 | Bbmaj7/F | Gm7 C7 |. Count every measure in every system on every page (the small numbers at the start of a system are measure numbers: use them to keep count), so the bars' numbers match the score's measure numbers.
 - In a cell, the measure's chord symbols in the order they occur, separated by spaces, as written (Fmaj9, Bbmaj7/F, Cm7), with b and # for flats and sharps. Alterations a score stacks (add9, omit5, no3, sus4, b5, #9) go in one parenthesis after the quality, separated by commas: D6(add9,omit5), G(omit5), F#(b5,omit3), C7(#9,b13); never run together and never bare after the root. A measure with no chord symbol keeps the harmony before it: write / alone in its cell; but before any chord symbol has been written (a melody-only opening), there is nothing to hold, so write N.C. in each such cell. A measure with the repeat-measure sign is %. N.C. where the score says N.C.
-- Repeats: a bar line that begins a repeat starts with |: (start a new line at that measure), and the line where the repeat ends closes with :| . Endings are bar lines of their own after the repeated bars: |1 G | G7 :| for a first ending (it closes with :|), |2 G | C | for a second, |1-3 ... :| for one ending on several passes.
+- Repeats: the measure that begins a repeat starts a new line of text, and that line begins with |: ; the line where the repeat ends closes with :| and nothing follows on it. Each ending is a line of text of its own after the repeated bars: a line |1 G | G7 :| for a first ending (it closes with :|), a line |2 G | C | for a second, |1-3 ... :| for one ending on several passes. Never put |: or an ending in the middle of a line. A rehearsal mark at a repeat's first measure goes inside the repeat as its first cell: |: @A | F | C |.
 - Directions are cells of their own between bars, where the score prints them: Segno, Coda, To Coda, Fine, D.C., D.C. al Fine, D.C. al Coda, D.S., D.S. al Fine, D.S. al Coda. For example: | Segno | C | F | To Coda | G | C | D.S. al Coda |
 - A rehearsal letter or number is a cell of its own just before its measure, letters and digits after @: | @A | F | C |.
 - A section name printed in the score (Intro, Verse, Chorus, Bridge, Solo, Outro) is a heading line above its bars, ## Verse, and its first measure starts a new line. A repeat opens and closes within one section: write no heading between a |: and its :|.
