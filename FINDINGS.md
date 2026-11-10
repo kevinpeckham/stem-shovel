@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## barmark's slots divide a bar evenly; `/` holds a beat and `_` joins two chords in one (2026-11-10)
+
+`| Db7 C7 Bm7 |` in 4/4 is a warning, "3 slots divide 4 beats unevenly", and plays in thirds; the grammar places chords by slots that divide the bar evenly: `| Db7 / / C7 |` holds Db7 three beats, `| Db7 / / C7_Bm7 |` puts two chords in the last beat (a group, grammar 2.2, dotted as `C._D`), and eight slots write eighths (`| Db7 / / / / / C7 Bm7 |`). Slots count the meter's beat: 4/4 takes 2, 4 or 8, 3/4 takes 3 (two is uneven), 6/8 takes 2 or 6 (three is uneven). `(C7 Bm7)`, `[C7 Bm7]`, `_` alone and `.` alone are errors. A model reading a score writes the chord symbols in order with no beats unless told, so the read prompt spells the slot rule out. From Kevin's "2FA (To Feel Alive)" score.
+
 ## barmark: a row is a line of text, a repeat may span lines, an ending may not (2026-11-10)
 
 `@barmark/render` draws one row per bar line of the chart text, however many bars it holds, and within a section aligns the rows in shared columns, the widest cell setting its column for every row (a four-chord bar in column two stretches every column-two slash). So row length is an authoring choice, and a model reading a score picks arbitrary breaks unless told. Reflowing by splitting a bar line is allowed across a repeat (`|: A | B | C | D |` then `| E | F :|` parses) but not across an ending: `|1 G | A | B | C |` followed by `| D :|` gives ":| has no |: before it in this section" and "an ending follows the bars of a |: … :| repeat". A repeat whose endings follow must not close with `:|` before `|1` either ("an ending follows the bars of a |: … :| repeat"). `reflowChartRows` (`src/lib/utils/`) keeps a split only when the parse gives the same bars and errors. From Kevin's "Caught You Thinking" score.

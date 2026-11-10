@@ -8,34 +8,69 @@ const DIRECTION =
 /** A cell that is not a bar: a rehearsal mark or a direction, drawn before the bar it belongs to. */
 const isBar = (cell: string) => !cell.startsWith("@") && !DIRECTION.test(cell);
 
+type BarLine = { open: string; cells: string[]; close: string };
+
 /** A bar line's opening (`|:`, an ending `|1 `, or `|`), its cells and its closing (`:|` or `|`). */
-function cells(line: string): { open: string; cells: string[]; close: string } | null {
+function barLine(line: string): BarLine | null {
 	const m = /^(\|:|\|\d+(?:[-,]\d+)*(?=\s)|\|)([\s\S]*?)(:\||\|)\s*$/.exec(line.trim());
 	if (!m) return null;
 	return { open: m[1]!, cells: m[2]!.split("|").map((c) => c.trim()), close: m[3]! };
 }
 
-/** The line's cells regrouped into rows of at most `max` bars, a mark or direction staying with the bar after it. */
-function splitLine(line: string, max: number): string[] {
-	const parsed = cells(line);
-	// An ending is one line however long: barmark reads no continuation of it.
-	if (!parsed || /^\|\d/.test(parsed.open)) return [line];
-	const rows: string[][] = [[]];
+/** Whether a line can join the run before it: it opens with a plain `|`, not an ending. */
+const joins = (bar: BarLine) => bar.open === "|";
+/** Whether the run may go on after this line: it closes with a plain `|`. */
+const continues = (bar: BarLine) => bar.close === "|";
+
+/** The run's cells regrouped into rows of at most `max` bars, a mark or direction staying with the bar after it. */
+function rows(run: BarLine[], max: number): string[] {
+	const groups: string[][] = [[]];
 	let bars = 0;
-	for (const cell of parsed.cells) {
+	for (const cell of run.flatMap((b) => b.cells)) {
 		if (bars === max) {
-			rows.push([]);
+			groups.push([]);
 			bars = 0;
 		}
-		rows.at(-1)!.push(cell);
+		groups.at(-1)!.push(cell);
 		if (isBar(cell)) bars++;
 	}
-	if (rows.length === 1) return [line];
-	return rows.map((row, i) => {
-		const open = i === 0 ? parsed.open : "|";
-		const close = i === rows.length - 1 ? parsed.close : "|";
+	return groups.map((row, i) => {
+		const open = i === 0 ? run[0]!.open : "|";
+		const close = i === groups.length - 1 ? run.at(-1)!.close : "|";
 		return `${open} ${row.join(" | ")} ${close}`;
 	});
+}
+
+/**
+ * The text's bar lines gathered into runs a reflow may regroup: consecutive
+ * bar lines where every line after the first opens with a plain `|` and
+ * every line before the last closes with one. An ending is a run of its
+ * own and is left alone (barmark reads no continuation of one).
+ */
+function reflow(lines: string[], max: number): string[] {
+	const out: string[] = [];
+	let run: BarLine[] = [];
+	const flush = () => {
+		if (run.length === 0) return;
+		const ending = /^\|\d/.test(run[0]!.open);
+		out.push(
+			...(ending ? run.map((b) => `${b.open} ${b.cells.join(" | ")} ${b.close}`) : rows(run, max)),
+		);
+		run = [];
+	};
+	for (const line of lines) {
+		const bar = /^\s*\|/.test(line) ? barLine(line) : null;
+		if (!bar) {
+			flush();
+			out.push(line);
+			continue;
+		}
+		if (run.length > 0 && (!joins(bar) || !continues(run.at(-1)!))) flush();
+		run.push(bar);
+		if (/^\|\d/.test(bar.open)) flush();
+	}
+	flush();
+	return out;
 }
 
 const errorsOf = (text: string) =>
@@ -46,19 +81,20 @@ const errorsOf = (text: string) =>
 		.join("\n");
 
 /**
- * A chart's bar lines reflowed to at most `max` bars a row (four, the lead
- * sheet's), splitting a longer line at bar boundaries. A repeat may span
- * rows, so `|:` stays on the first row and `:|` on the last; an ending
- * stays one line, however long; a rehearsal mark or direction goes with
- * the bar after it. Headings, directives, lyrics and text lines are left alone.
- * The result is kept only when it parses to the same bars with no new
- * error; otherwise the text comes back as it was. Pure.
+ * A chart's bar lines reflowed to `max` bars a row (four, the lead sheet's):
+ * a longer line is split at bar boundaries and consecutive short lines are
+ * joined, within a run of plain bar lines. A repeat may span rows, so `|:`
+ * stays on the first row and `:|` on the last, and no row is joined across
+ * them; an ending stays one line, however long; a rehearsal mark or
+ * direction goes with the bar after it. Headings, directives, lyrics and
+ * text lines are left alone and end a run. The result is kept only when it
+ * parses to the same bars with no new error; otherwise the text comes back
+ * as it was. Pure.
  */
 export function reflowChartRows(text: string, max = CHART_ROW_BARS): string {
 	const lines = text.split("\n");
-	const out = lines.flatMap((line) => (/^\s*\|/.test(line) ? splitLine(line, max) : [line]));
-	if (out.length === lines.length) return text;
-	const next = out.join("\n");
+	const next = reflow(lines, max).join("\n");
+	if (next === text) return text;
 	const before = parseChart(text);
 	const after = parseChart(next);
 	const same =

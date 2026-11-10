@@ -27,7 +27,14 @@ describe("reflowChartRows", () => {
 		);
 	});
 
-	test("rows of four or fewer, headings, directives and lyrics are untouched", () => {
+	test("short rows join into fours within a run of plain bar lines; a heading or a directive ends the run, a repeat gathers to its :| and no further", () => {
+		const read = `${head}## Verse\n| @A | Bbm7 | / | / | / |\n| Ebm7 |\n| / | Bbm7 | / |\n## Chorus\n| @C | Bb | / |\n| / | / | Ebm7 |\nkey: Db\n| B7/Gb | Bbm7 |\n|: Db7 | Fm7 |\n| Cb7 :|\n| Gb7 |`;
+		expect(reflowChartRows(read)).toBe(
+			`${head}## Verse\n| @A | Bbm7 | / | / | / |\n| Ebm7 | / | Bbm7 | / |\n## Chorus\n| @C | Bb | / | / | / |\n| Ebm7 |\nkey: Db\n| B7/Gb | Bbm7 |\n|: Db7 | Fm7 | Cb7 :|\n| Gb7 |`,
+		);
+	});
+
+	test("rows of four, headings, directives and lyrics are untouched", () => {
 		const clean = `${head}## Verse\n| C | F | G | C |\nkey: F\n| F | Bb |\nlyrics 1: Caught you thinking`;
 		expect(reflowChartRows(clean)).toBe(clean);
 	});

@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **A chart read from a score keeps each chord's place in the bar**, so a chord held for three beats followed by two quick ones plays as the score has it. Read again updates a chart already read, and its rows come out four bars wide.
+
 ## [0.259.4] - 2026-11-10
 
 ### Changed
