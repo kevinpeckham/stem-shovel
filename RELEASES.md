@@ -4,6 +4,14 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **See a chord chart as a full score.** The chart on a song's Chart tab has a Grid / Score switch: Score draws it as an engraved lead sheet, with slash notation, chord symbols, section names, tempo and bar numbers. The first switch takes a few seconds while the engraver loads.
+
+### Changed
+
+- **A pickup bar is bar 0.** Charts that open with a pickup now number it 0 and the first full bar 1, as notation does, in the grid, the score, the bar readouts and the exported MusicXML.
+
 ## [0.256.0] - 2026-11-09
 
 ### Changed

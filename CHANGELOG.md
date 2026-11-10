@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The chord chart as a full score: a Grid / Score switch on the song's chart.** `@barmark/score` 0.2.0 (new dependency; Verovio 6.4.1) draws the song's chart as the same grid as before plus a Grid / Score switch, in one declarative shadow root (`renderScoreChartHtml` in `server/chartHtml.ts`, used by `songView` and `renderDocHtml`); `ChartHtml.svelte` imports the element module after its re-parse so the switch works, and hands numerals and a transposed text to whichever element it holds. Score engraves the chart with Verovio in the package's Web Worker on the first switch (about 3 s on Letter Lands including the 7 MB load; one worker a page), as a lead sheet: slash notation, chord symbols, section headings, tempo and bar numbers, a pickup numbered 0. Drafts, history revisions, score reads and the set-list show page stay the plain grid. A chart too large to engrave is refused with "The score couldn't be drawn" rather than attempted (`MAX_SCORE_COST`, `MAX_XML_LENGTH`).
+
+### Technical
+
+- **barmark 0.22.0, @barmark/render 0.18.0, @barmark/sync 0.3.0, @barmark/musicxml 0.8.0 and @barmark/midi 0.3.0** (exact pins, bumped together as always; `db:chart-check` on dev and staging read every stored chart clean at 0.22). A chart's pickup is now written bar 0 and the first full bar 1 (grammar 2.4; `ChartParse.pickup`, `opensWithPickup`), which the readouts and a typed bar follow through `BarGrid.written` with no change of their own (the pickup half of stem-shovel issue #16; tests added); `BuildDiagnostic.bar` and `importMidi`'s diagnostics number bars the same way; timing maps, hashes and confidence records still key on the play position, so nothing stored changes. A parse costs the written chart plus the played bars, not their product. `exportMusicXml` gained `maxLength`: `chartMusicXml` passes `MUSICXML_MAX_LENGTH` (20 million characters, `constants/notationFormats.ts`), so a short chart with repeats written out gigabytes long is refused in the download route and the documentation zip instead of built. Verovio 6.4.1.
+
 ## [0.256.0] - 2026-11-09
 
 ### Changed

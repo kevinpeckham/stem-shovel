@@ -1030,6 +1030,28 @@ song seen reading and then waiting again is shown as "did not read" (the
 job released its claim). The job reports nothing finer than claim and
 done, so a song's bar is empty, pulsing or full.
 
+## The chart as a score
+
+Since 2026-11-10 the song's own chart is drawn by `@barmark/score`
+(`renderScoreChartHtml`, `src/lib/server/chartHtml.ts`): the same grid
+`@barmark/render` drew, with a Grid / Score switch, in one declarative
+shadow root, so the grid shows before any script runs. `ChartHtml.svelte`
+imports the element module after its re-parse (the switch is inert until
+the element upgrades; the import registers the element without loading
+Verovio), and Score engraves the chart with Verovio in the package's own
+Web Worker on the first switch, one worker a page: the chart exported to
+MusicXML by `@barmark/musicxml` and laid out as a lead sheet. The app's
+own Verovio worker (`workers/notation.worker.ts`) still draws uploaded
+score files; the two engines are the same version and load separately.
+Every other chart the app draws (drafts, history revisions, a score's
+read, the set-list show page) stays the plain grid of `renderChartHtml`.
+A chart too large to engrave (`MAX_SCORE_COST`, `MAX_XML_LENGTH`) is
+refused by the package with "The score couldn't be drawn", not attempted;
+the app's own MusicXML export passes `MUSICXML_MAX_LENGTH` for the same
+reason. The Chart panel's Chords / Engraving split, which this doubles
+(the Engraving view shows uploaded score files), is the redesign that
+follows (`song.chart_source`, 2026-11-10).
+
 ## Charts and barmark releases
 
 While barmark is 0.x, a minor release may change the grammar, and two of
@@ -1125,8 +1147,10 @@ chart existed.
   reads a typed bar as a written number (the first pass of a repeated bar).
   Lookups, seeks, section starts and everything stored stay on `index`.
   The draft card's section line maps the draft's own chart the same way.
-  When barmark numbers a pickup bar 0 (0.22), the readouts follow with the
-  bump; the Studio ruler is the Studio's own grid and is not a chart's.
+  Since barmark 0.22 (bumped 2026-11-10) a chart's pickup is written bar 0
+  (grammar 2.4) and the first full bar 1, so a readout on the pickup says
+  "0 | 1" and a typed `0|1` seeks to it; the Studio ruler is the Studio's
+  own grid and is not a chart's.
 - **An aligned map is gated on its fit** (`utils/alignmentFit.ts`). On
   Letter Lands (music from 0:00, 132 bpm, a 1.82 s bar) the alignment put
   bar 1 at 8.06 s with half-length bars at the head and ended 15 s early,
