@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.259.2] - 2026-11-10
+
 ### Fixed
 
 - **A score's stacked chord spellings read as barmark reads them.** A notation program prints alterations one after another (D6 add9 omit5, G add9 omit3, F#b5 omit3), which the score read wrote as `D6(omit5add9)`, `Gadd9omit3` and `F#b5(omit3)`; barmark reads none of them, so the grid showed those lines as raw text with a squiggle and the score refused. `repairChordSpellings` (`src/lib/utils/`) respells only a chord barmark reports unreadable, in three tries each tested with `parseChart`: items inside a parenthesis separated by commas, a bare omit or no given a parenthesis of its own, an altered fifth moved inside the parenthesis. `readChartOfScore` runs it after `repairLeadingHolds` on fresh and stored reads, so Read again repairs a chart already read, and the read prompt now spells alterations that way to begin with (Kevin's "Hard to (For)get").

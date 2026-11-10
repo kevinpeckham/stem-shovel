@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.259.2] - 2026-11-10
+
 ### Fixed
 
 - **Chord symbols with stacked alterations** (D6 add9 omit5, F#b5 omit3) in a score now read into the chart cleanly. Read again fixes a chart already read.
