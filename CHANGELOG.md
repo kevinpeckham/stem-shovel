@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.259.1] - 2026-11-10
+
 ### Changed
 
 - **A chart read from a PDF or image opens on the Score view.** `ChartScoreFile.svelte` starts on Score, the uploaded file being the band's source of truth; Grid, the read, is a click away (Kevin).
