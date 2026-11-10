@@ -14,30 +14,30 @@ docs/BRIEF-STUDY37.md there) tested the two ways of closing the gap
 between a tracker's 70 percent strict bar and its 90 percent folded bar.
 
 1. A harmonic-rhythm period witness (score candidate bars by how often
-chord changes fall on bar lines and how rarely inside them) is net
-negative on every base system: on Beat This's 223 songs in 4/4 it fixes
-1 folded reading and breaks 30 correct ones. ChordMini's segments carry
-60 to 124 changes per song, mostly inside-the-bar flicker, so any
-stability term votes for the shorter bar. Do not build this witness
-into the grid; the existing per-bar chord vote (Study 31's w4) is a
-phase witness and stays, but the period is not readable from chords.
+   chord changes fall on bar lines and how rarely inside them) is net
+   negative on every base system: on Beat This's 223 songs in 4/4 it fixes
+   1 folded reading and breaks 30 correct ones. ChordMini's segments carry
+   60 to 124 changes per song, mostly inside-the-bar flicker, so any
+   stability term votes for the shorter bar. Do not build this witness
+   into the grid; the existing per-bar chord vote (Study 31's w4) is a
+   phase witness and stays, but the period is not readable from chords.
 
 2. Drafting at half the declared bar, the trackers' common error, costs
-nothing: let-it-in, same-boat and im-letting-go at twice the declared
-bpm grade 20/21, 16/18 and 33/33 roots against 18/21, 15/18 and 28/33
-at the declared bar, and two drafts cross into the good class. Merging
-identical neighbours brings the chart to 98, 56 and 51 bars against the
-declared-grid drafts of 120, 74 and 58, because the merge also collapses
-the song's own repeats. So the automatic grid should take the tracker's
-bar as read, prefer the shorter candidate when two fold into each
-other, and present the merged progression; the metrical octave needs no
-detector.
+   nothing: let-it-in, same-boat and im-letting-go at twice the declared
+   bpm grade 20/21, 16/18 and 33/33 roots against 18/21, 15/18 and 28/33
+   at the declared bar, and two drafts cross into the good class. Merging
+   identical neighbours brings the chart to 98, 56 and 51 bars against the
+   declared-grid drafts of 120, 74 and 58, because the merge also collapses
+   the song's own repeats. So the automatic grid should take the tracker's
+   bar as read, prefer the shorter candidate when two fold into each
+   other, and present the merged progression; the metrical octave needs no
+   detector.
 
 3. The Study 35 compound-meter units fix is confirmed where it costs
-money: gravity and my-favorite-regret drafted at the adapter's true 6/8
-bar grade 23/26 and 40/42 roots against 16/26 and 26/42 at the misread
-bar. Which songs are in 6/8 is still unsolved for every system (Study
-36b), but once the meter is known the chart is right.
+   money: gravity and my-favorite-regret drafted at the adapter's true 6/8
+   bar grade 23/26 and 40/42 roots against 16/26 and 26/42 at the misread
+   bar. Which songs are in 6/8 is still unsolved for every system (Study
+   36b), but once the meter is known the chart is right.
 
 ## Study 36b: on 261 modern songs the detector's bar is right one time in three, an off-the-shelf tracker three times in four, and the detector's own 6/8 call is its largest error (2026-11-10)
 

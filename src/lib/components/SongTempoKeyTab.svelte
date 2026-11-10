@@ -361,7 +361,8 @@
 {#snippet rowsEditor()}
 	<div class="mt-3 grid gap-2">
 		{#each changes.rows as row, i (i)}
-			<!-- Two lines on a phone (time + kind, value + remove), one from sm up. -->
+			{@const units = changes.unitLabels(row)}
+			<!-- Two lines on a phone (time + kind, value + unit + remove), one from sm up. -->
 			<div
 				class="mb-2 grid grid-cols-[6rem_1fr_auto] items-center gap-2 sm:mb-0 sm:grid-cols-[6rem_9rem_1fr_auto]"
 			>
@@ -380,14 +381,24 @@
 						<option value={kind}>{SONG_CHANGE_LABELS[kind]}</option>
 					{/each}
 				</select>
-				<input
-					class="field col-span-2 font-mono text-sm sm:col-span-1"
-					placeholder={row.kind === "tempo" ? "120" : row.kind === "key" ? "F#m" : "4/4"}
-					list={row.kind === "meter" ? "time-signatures" : undefined}
-					autocomplete="off"
-					bind:value={row.value}
-					aria-label="Value"
-				/>
+				<div class="col-span-2 flex gap-2 sm:col-span-1">
+					<input
+						class="field min-w-0 flex-1 font-mono text-sm"
+						placeholder={row.kind === "tempo" ? "120" : row.kind === "key" ? "F#m" : "4/4"}
+						list={row.kind === "meter" ? "time-signatures" : undefined}
+						autocomplete="off"
+						bind:value={row.value}
+						aria-label="Value"
+					/>
+					{#if units}<select
+							class="field w-auto flex-none text-sm"
+							bind:value={row.unit}
+							aria-label="Tempo unit"
+						>
+							<option value="bottom">{units.bottom}</option>
+							<option value="dotted">{units.dotted}</option>
+						</select>{/if}
+				</div>
 				<button
 					class="link-dim text-xs justify-self-start"
 					type="button"
@@ -396,6 +407,7 @@
 			</div>
 		{/each}
 	</div>
+	{#if changes.unitHint}<p class="mt-1 text-sm text-dim">{changes.unitHint}</p>{/if}
 	<datalist id="time-signatures">
 		{#each ["4/4", "3/4", "6/8", "2/4", "5/4", "7/8", "12/8"] as ts (ts)}
 			<option value={ts}></option>

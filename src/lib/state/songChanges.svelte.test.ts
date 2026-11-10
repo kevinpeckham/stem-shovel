@@ -31,7 +31,14 @@ describe("SongChanges", () => {
 		expect(sc.mode).toBe("timecode");
 		sc.reset();
 		expect(sc.rows).toEqual([
-			{ time: "00:00:00.00", shown: "00:00:00.00", seconds: 0, kind: "tempo", value: "120" },
+			{
+				time: "00:00:00.00",
+				shown: "00:00:00.00",
+				seconds: 0,
+				kind: "tempo",
+				value: "120",
+				unit: "bottom",
+			},
 		]);
 		expect(POSITION_PLACEHOLDER[sc.mode]).toBe("00:00:00.00");
 	});
@@ -106,5 +113,79 @@ describe("SongChanges", () => {
 		await sc.save();
 		expect(sc.error).toBe("Turso said no");
 		expect(onsaved).not.toHaveBeenCalled();
+	});
+
+	test("in a compound meter a tempo row offers its units; the meter row wins a tie at 0:00", () => {
+		const { sc } = make([
+			{ kind: "tempo", start: 0, value: "120" },
+			{ kind: "meter", start: 0, value: "6/8" },
+			{ kind: "tempo", start: 30, value: "100" },
+			{ kind: "meter", start: 20, value: "4/4" },
+		]);
+		sc.reset();
+		expect(sc.unitLabels(sc.rows[0]!)).toEqual({
+			bottom: "eighth notes",
+			dotted: "dotted quarters",
+		});
+		expect(sc.unitLabels(sc.rows[1]!)).toBeNull();
+		expect(sc.unitLabels(sc.rows[2]!)).toBeNull();
+		expect(sc.unitHint).toBe(
+			"In 6/8 the tempo counts eighth notes: 120 is 40 dotted quarters a minute. Pick the unit you count in.",
+		);
+		sc.rows[1]!.value = "6/16";
+		expect(sc.unitHint).toMatch(
+			/^In 6\/16 the tempo counts sixteenth notes: 120 is 40 dotted eighths/,
+		);
+		sc.rows[1]!.value = "3/4";
+		expect(sc.unitHint).toBeNull();
+		expect(sc.unitLabels(sc.rows[0]!)).toBeNull();
+	});
+
+	test("save converts a dotted tempo to the bottom note, exactly; a simple meter ignores the unit", async () => {
+		const { sc } = make([
+			{ kind: "tempo", start: 0, value: "40" },
+			{ kind: "meter", start: 0, value: "6/8" },
+			{ kind: "tempo", start: 60, value: "40.5" },
+			{ kind: "tempo", start: 70, value: "40.1" },
+		]);
+		sc.reset();
+		for (const row of sc.rows) row.unit = "dotted";
+		await sc.save();
+		expect(saveChanges).toHaveBeenLastCalledWith({
+			id: "song1",
+			changes: [
+				{ kind: "tempo", start: 0, value: "120" },
+				{ kind: "meter", start: 0, value: "6/8" },
+				{ kind: "tempo", start: 60, value: "121.5" },
+				{ kind: "tempo", start: 70, value: "120.3" },
+			],
+		});
+
+		sc.reset();
+		sc.rows[1]!.value = "4/4";
+		sc.rows[0]!.unit = "dotted";
+		await sc.save();
+		expect(saveChanges.mock.lastCall?.[0].changes[0]).toEqual({
+			kind: "tempo",
+			start: 0,
+			value: "40",
+		});
+	});
+
+	test("a dotted tempo is checked as typed, then as converted", async () => {
+		const { sc } = make([
+			{ kind: "tempo", start: 0, value: "fast" },
+			{ kind: "meter", start: 0, value: "6/8" },
+		]);
+		sc.reset();
+		sc.rows[0]!.unit = "dotted";
+		await sc.save();
+		expect(sc.error).toMatch(/^Tempo at 00:00:00\.00: Tempo is a number/);
+		sc.rows[0]!.value = "150";
+		await sc.save();
+		expect(sc.error).toBe(
+			"Tempo at 00:00:00.00: 150 dotted quarters is 450. Tempo is a number between 20 and 400 bpm.",
+		);
+		expect(saveChanges).not.toHaveBeenCalled();
 	});
 });

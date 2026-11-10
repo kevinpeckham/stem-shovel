@@ -216,4 +216,30 @@ describe("SongTempoKeyTab", () => {
 		expect(onstartset).toHaveBeenCalledOnce();
 		expect(changes.rows[0]!.value).toBe("120");
 	});
+
+	test("a tempo row under a compound meter offers its unit, with the hint under the rows", async () => {
+		const { changes, props } = setup();
+		render(SongTempoKeyTab, { props });
+		expect(screen.queryByLabelText("Tempo unit")).toBeNull();
+		changes.rows.push({
+			time: "00:00:00.00",
+			shown: "",
+			seconds: null,
+			kind: "meter",
+			value: "6/8",
+		});
+		await vi.waitFor(() => expect(screen.getByLabelText("Tempo unit")).toBeTruthy());
+		const unit = screen.getByLabelText<HTMLSelectElement>("Tempo unit");
+		expect([...unit.options].map((o) => o.text)).toEqual(["eighth notes", "dotted quarters"]);
+		expect(
+			screen.getByText(
+				"In 6/8 the tempo counts eighth notes: 120 is 40 dotted quarters a minute. Pick the unit you count in.",
+			),
+		).toBeTruthy();
+		await fireEvent.change(unit, { target: { value: "dotted" } });
+		expect(changes.rows[0]!.unit).toBe("dotted");
+		changes.rows[1]!.value = "4/4";
+		await vi.waitFor(() => expect(screen.queryByLabelText("Tempo unit")).toBeNull());
+		expect(screen.queryByText(/the tempo counts/)).toBeNull();
+	});
 });
