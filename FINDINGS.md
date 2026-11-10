@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A read cached by its input alone outlives the prompt that made it (2026-11-10)
+
+The score read was cached in Redis for a month under a hash of the file's URL, on the reasoning that the file never changes under its URL (Blob pathnames are never reused). True of the file, not of the read: three prompt fixes in one day were invisible through the cache, since "Read again" cleared the stored row and then got the cached answer back, and only the prompt-independent repairs (`repairRead`, applied on the way out) appeared to work. A cache of model output keys on everything that shapes the output: the input and the prompt (and the model name, when it is not in the prompt). `chartCacheKey` now hashes the URL with `CHART_READ_SYSTEM`. From Kevin's "2FA (To Feel Alive)" still warning after v0.259.5.
+
 ## barmark's slots divide a bar evenly; `/` holds a beat and `_` joins two chords in one (2026-11-10)
 
 `| Db7 C7 Bm7 |` in 4/4 is a warning, "3 slots divide 4 beats unevenly", and plays in thirds; the grammar places chords by slots that divide the bar evenly: `| Db7 / / C7 |` holds Db7 three beats, `| Db7 / / C7_Bm7 |` puts two chords in the last beat (a group, grammar 2.2, dotted as `C._D`), and eight slots write eighths (`| Db7 / / / / / C7 Bm7 |`). Slots count the meter's beat: 4/4 takes 2, 4 or 8, 3/4 takes 3 (two is uneven), 6/8 takes 2 or 6 (three is uneven). `(C7 Bm7)`, `[C7 Bm7]`, `_` alone and `.` alone are errors. A model reading a score writes the chord symbols in order with no beats unless told, so the read prompt spells the slot rule out. From Kevin's "2FA (To Feel Alive)" score.

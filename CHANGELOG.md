@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Read again reads again.** `readChartWithAi` cached a file's read in Redis for a month by its URL alone, so after a prompt fix Read again cleared the stored read and was served the old read back; v0.259.5's beat-slot rule never reached the model (Kevin's "2FA (To Feel Alive)" still warned "3 slots divide 4 beats unevenly"). The cache key (`chart3:`) now hashes the URL with the read prompt, so a prompt change reads afresh. The earlier repairs (`repairRead`) were not affected, since they run on the way out.
+- **Measures that divide unevenly are read once more as beat slots.** When barmark warns that a read's slots divide the beats unevenly, `rereadUnevenBars` shows the model those lines in a second turn (the score, its first answer, the ask) and takes the second answer only when it parses to as many bars, fewer uneven lines and no more errors (`betterRead`); logged as `chart-read-beats`. `scoreMessage`, `cachedRead` and `cacheRead` split out of the read.
+
 ## [0.259.5] - 2026-11-10
 
 ### Fixed

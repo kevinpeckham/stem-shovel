@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Read again on a score now reads it again** instead of returning the earlier read, and a measure whose chords do not fall evenly is looked at a second time so each chord keeps its beat.
+
 ## [0.259.5] - 2026-11-10
 
 ### Fixed

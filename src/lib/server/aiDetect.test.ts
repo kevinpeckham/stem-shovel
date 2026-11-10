@@ -149,7 +149,38 @@ describe("readChartWithAi", () => {
 		);
 	});
 
-	it("caches under a new prefix, so a summary cached in the old form is never served", () => {
-		expect(chartCacheKey(score.url)).toMatch(/^chart2:[0-9a-f]{32}$/);
+	it("caches under a prefix and the prompt, so a read cached before a prompt change is never served", () => {
+		expect(chartCacheKey(score.url)).toMatch(/^chart3:[0-9a-f]{32}$/);
+	});
+
+	it("measures that divide unevenly are read once more as beat slots; the second answer replaces the first when it is better", async () => {
+		const first = "# Song\nkey: Bbm, time: 4/4\n| Db7 C7 Bm7 | Bbm7 |";
+		const second = "# Song\nkey: Bbm, time: 4/4\n| Db7 / / C7_Bm7 | Bbm7 |";
+		generate
+			.mockResolvedValueOnce({ text: first, usage: {} } as never)
+			.mockResolvedValueOnce({ text: second, usage: {} } as never);
+		await expect(read()).resolves.toBe(second);
+		expect(generate).toHaveBeenCalledTimes(2);
+		const again = generate.mock.calls[1]![0] as { messages: { role: string; content: unknown }[] };
+		expect(again.messages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+		expect(again.messages[2]!.content).toContain("Line 3: | Db7 C7 Bm7 | Bbm7 |");
+		expect(log).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: "chart-read-beats", error: null }),
+		);
+	});
+
+	it("a second read that is no better is dropped, and the first kept", async () => {
+		const first = "# Song\nkey: Bbm, time: 4/4\n| Db7 C7 Bm7 | Bbm7 |";
+		generate.mockResolvedValueOnce({ text: first, usage: {} } as never).mockResolvedValueOnce({
+			text: "# Song\nkey: Bbm, time: 4/4\n| Db7 C7 Bm7 |",
+			usage: {},
+		} as never);
+		await expect(read()).resolves.toBe(first);
+		expect(log).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: "chart-read-beats",
+				error: "The second read was no better; the first is kept",
+			}),
+		);
 	});
 });

@@ -10,7 +10,7 @@ import { reflowChartRows } from "#lib/utils/reflowChartRows.js";
 import { repairRepeatLines } from "#lib/utils/repairRepeatLines.js";
 import { parseChart } from "barmark";
 import { settingsChartDisagreement } from "#lib/utils/settingsChartDisagreement.js";
-import { generateText } from "ai";
+import { generateText, type ModelMessage } from "ai";
 import {
 	type BarNotesInput,
 	type ChartDraftAnswer,
@@ -168,9 +168,15 @@ export async function readChartOfScore(
 	return { text, fromModel: true };
 }
 
-/** Where Redis keeps a file's read, by its URL (a second-level cache under the stored read); `chart2:` since the reads are barmark, so no summary cached before is served. */
+/**
+ * Where Redis keeps a file's read, by its URL and the read prompt (a
+ * second-level cache under the stored read): a change to the prompt reads
+ * the file afresh, so Read again after a prompt fix is a new read, not the
+ * old one served back (the beat-slot rule of 2026-11-10 was defeated that
+ * way by a month-long cache keyed on the URL alone).
+ */
 export const chartCacheKey = (url: string) =>
-	`chart2:${createHash("sha256").update(url).digest("hex").slice(0, 32)}`;
+	`chart3:${createHash("sha256").update(`${url}\n${CHART_READ_SYSTEM}`).digest("hex").slice(0, 32)}`;
 
 /**
  * What `readChartWithAi` asks for: the score as a barmark chart (barmark
@@ -200,6 +206,129 @@ Rules:
 /** A read chart stays cached this long; the file never changes under its URL (Blob pathnames are never reused). */
 const CHART_CACHE_SECONDS = 30 * 24 * 3600;
 
+/** The score as the model's first message: the file (an image as an image) and the ask. */
+const scoreMessage = (
+	score: { filename: string },
+	bytes: Uint8Array,
+	mediaType: string,
+): ModelMessage => ({
+	role: "user",
+	content: [
+		mediaType.startsWith("image/")
+			? { type: "image", image: bytes, mediaType }
+			: { type: "file", data: bytes, mediaType, filename: score.filename },
+		{ type: "text", text: "Write this chart out as instructed." },
+	],
+});
+
+/** The read cached for this key, or null; the cache is a convenience, so a Redis fault reads again. */
+async function cachedRead(cacheKey: string): Promise<string | null> {
+	if (!redisConfigured()) return null;
+	try {
+		const [hit] = await redisPipeline([["GET", cacheKey]]);
+		return typeof hit === "string" && hit ? hit : null;
+	} catch {
+		return null;
+	}
+}
+
+/** The read kept under its key for a month; cached next time, or not. */
+async function cacheRead(cacheKey: string, text: string): Promise<void> {
+	if (!redisConfigured()) return;
+	try {
+		await redisPipeline([["SET", cacheKey, text, "EX", CHART_CACHE_SECONDS]]);
+	} catch {
+		// cached next time, or not
+	}
+}
+
+const UNEVEN = /slots divide \d+ beats unevenly/;
+
+/** The lines barmark warns divide their beats unevenly: `Line N: <text>`, for the model to look at again. */
+function unevenLines(parse: ReturnType<typeof parseChart>, text: string): string[] {
+	const lines = text.split("\n");
+	const seen = new Set<number>();
+	const out: string[] = [];
+	for (const d of parse.diagnostics) {
+		if (!UNEVEN.test(d.message) || seen.has(d.line)) continue;
+		seen.add(d.line);
+		const line = lines[d.line - 1];
+		if (line !== undefined) out.push(`Line ${d.line}: ${line.trim()}`);
+	}
+	return out;
+}
+
+const errorCount = (parse: ReturnType<typeof parseChart>) =>
+	parse.diagnostics.filter((d) => d.severity === "error").length;
+
+/** Whether a second read replaces the first: as many bars, fewer uneven lines, no more errors. */
+function betterRead(first: string, second: string, unevenBefore: number): boolean {
+	const before = parseChart(first);
+	const after = parseChart(second);
+	return (
+		after.bars.length >= before.bars.length &&
+		unevenLines(after, second).length < unevenBefore &&
+		errorCount(after) <= errorCount(before)
+	);
+}
+
+/**
+ * The read asked for once more, with the lines whose measures divide
+ * unevenly named, so the model looks at those measures' rhythm and writes
+ * them as beat slots; the second answer replaces the first only when it
+ * is better (`betterRead`). Logged as `chart-read-beats`.
+ */
+async function rereadUnevenBars(
+	gateway: ReturnType<typeof createGateway>,
+	system: string,
+	score: { url: string; filename: string },
+	bytes: Uint8Array,
+	mediaType: string,
+	first: string,
+	uneven: string[],
+	who: { userId: string; songId: string },
+): Promise<string | null> {
+	const ask = `In these lines the chord symbols do not divide the measure evenly, so they will play in equal shares, which the score does not show:\n${uneven.join("\n")}\nLook at where in each of those measures the chords sound and write the whole chart again, exactly as before except that each of those measures is written as its beat slots: one slot per beat, / when the chord before it still sounds, two chords within one beat joined by _. Change nothing else.`;
+	const started = Date.now();
+	const log = {
+		kind: "chart-read-beats",
+		model: DRAFT_MODEL,
+		userId: who.userId,
+		songId: who.songId,
+		prompt: `SYSTEM:\n${system}\n\nUSER (with ${score.filename})\n\nASSISTANT:\n${first}\n\nUSER:\n${ask}`,
+	};
+	const result = await generateText({
+		model: gateway(DRAFT_MODEL),
+		system,
+		messages: [
+			scoreMessage(score, bytes, mediaType),
+			{ role: "assistant", content: first },
+			{ role: "user", content: ask },
+		],
+		providerOptions: { anthropic: { thinking: { type: "adaptive" }, effort: "low" } },
+	}).catch(async (e: unknown) => {
+		await logAiRequest({
+			...log,
+			error: e instanceof Error ? e.message : String(e),
+			durationMs: Date.now() - started,
+		});
+		return null;
+	});
+	if (result === null) return null;
+	const text = result.text.trim();
+	const better = betterRead(first, text, uneven.length);
+	await logAiRequest({
+		...log,
+		response: text,
+		parsed: { bars: parseChart(text).bars.length, errors: errorCount(parseChart(text)) },
+		error: better ? null : "The second read was no better; the first is kept",
+		durationMs: Date.now() - started,
+		inputTokens: result.usage?.inputTokens ?? null,
+		outputTokens: result.usage?.outputTokens ?? null,
+	});
+	return better ? text : null;
+}
+
 /**
  * A PDF or image of a chart as a barmark chart (docs/audio-engine.md, "The
  * score as the AI's chart"; the band's own charts are barmark too): a text
@@ -220,14 +349,8 @@ export async function readChartWithAi(
 ): Promise<string> {
 	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
 	const cacheKey = chartCacheKey(score.url);
-	if (redisConfigured()) {
-		try {
-			const [hit] = await redisPipeline([["GET", cacheKey]]);
-			if (typeof hit === "string" && hit) return hit;
-		} catch {
-			// the cache is a convenience: read the chart again
-		}
-	}
+	const cached = await cachedRead(cacheKey);
+	if (cached !== null) return cached;
 	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
 	const system = CHART_READ_SYSTEM;
 	const started = Date.now();
@@ -244,17 +367,7 @@ export async function readChartWithAi(
 		const result = await generateText({
 			model: gateway(DRAFT_MODEL),
 			system,
-			messages: [
-				{
-					role: "user",
-					content: [
-						mediaType.startsWith("image/")
-							? { type: "image" as const, image: bytes, mediaType }
-							: { type: "file" as const, data: bytes, mediaType, filename: score.filename },
-						{ type: "text", text: "Write this chart out as instructed." },
-					],
-				},
-			],
+			messages: [scoreMessage(score, bytes, mediaType)],
 			providerOptions: { anthropic: { thinking: { type: "adaptive" }, effort: "low" } },
 		});
 		text = result.text.trim();
@@ -267,7 +380,7 @@ export async function readChartWithAi(
 		});
 		throw e;
 	}
-	const parse = parseChart(text);
+	let parse = parseChart(text);
 	const error = parse.bars.length > 0 ? null : "The model did not write the chart out";
 	await logAiRequest({
 		...log,
@@ -284,13 +397,25 @@ export async function readChartWithAi(
 		outputTokens: usage.outputTokens ?? null,
 	});
 	if (error) throw new Error(error);
-	if (redisConfigured()) {
-		try {
-			await redisPipeline([["SET", cacheKey, text, "EX", CHART_CACHE_SECONDS]]);
-		} catch {
-			// cached next time, or not
+	// A read whose measures do not divide evenly is asked once more for those measures as beat slots.
+	const uneven = unevenLines(parse, text);
+	if (uneven.length > 0) {
+		const again = await rereadUnevenBars(
+			gateway,
+			system,
+			score,
+			bytes,
+			mediaType,
+			text,
+			uneven,
+			who,
+		);
+		if (again !== null) {
+			text = again;
+			parse = parseChart(text);
 		}
 	}
+	await cacheRead(cacheKey, text);
 	return text;
 }
 
