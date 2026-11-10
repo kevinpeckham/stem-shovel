@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.259.3] - 2026-11-10
+
 ### Fixed
 
 - **Repeats with first and second endings** in an uploaded score now read into the chart cleanly. Read again fixes a chart already read.

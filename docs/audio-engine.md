@@ -1120,6 +1120,26 @@ Kevin's machine, like `db:status`). The packages pin each other exactly
 since a caret range would not reach a minor), so they are bumped
 together, with exact pins in package.json.
 
+### Workarounds awaiting barmark releases (2026-11-10)
+
+The app carries these in place of behavior barmark has agreed to take on
+(GitHub issue kevinpeckham/stem-shovel #16, the barmark session's reply
+of 2026-11-10). When the named release lands and its bump passes
+`db:chart-check`, retire the app side as listed; each has a test beside
+it that says what it does, which goes with it.
+
+| App code                                                                                                                          | What it does                                                                        | Waits for                                                                                                                                                                                                   | Then                                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chartRehearsalLetters` (`src/lib/utils/`), applied in `chartHtml.ts` (both renderers), `chartToPdf.ts` and `ChartPreview.svelte` | No automatic section letters once any bar carries a `rehearsal` mark                | `@barmark/render` minor with the rule inside `rehearsalLetters` (score picks it up)                                                                                                                         | Pass the option plain again and delete the util and its three call sites                                                                                              |
+| `chartScoreRefusal` (`src/lib/utils/`), `SongDocsPanel.svelte`'s `scoreNote`, `songView.ts`'s `chartScoreNote`                    | Re-runs `exportMusicXml` on the server to show why the score refused                | `@barmark/score` minor with the `scoreerror` event (`detail.reason`, bubbles, composed)                                                                                                                     | Listen for the event in `ChartHtml.svelte` and show its reason; delete the util and the server-side note                                                              |
+| `repairChordSpellings` (`src/lib/utils/`), in `aiDetect.ts`'s `repairRead`                                                        | Respells `D6(omit5add9)`, `Gadd9omit3`, `F#b5(omit3)` the way barmark reads them    | `barmark` minor that reads the first two with a warning and a suggestion; `F#b5(omit3)` stays an error with the suggestion `F#(b5,omit3)`                                                                   | Drop the first two candidates; keep the altered-fifth respelling for stored reads, or apply barmark's `suggestion` from the diagnostic instead of the app's own guess |
+| `repairLeadingHolds`, `repairRepeatLines` (`src/lib/utils/`), in `repairRead`                                                     | A `/` before any chord as `N.C.`; repeats and endings split onto lines of their own | Nothing planned: both are the model's slips against rules barmark keeps. Stored reads from before the prompt fixes still need them                                                                          | Keep; revisit if barmark ever reads an inline ending with a suggestion                                                                                                |
+| `tempoUnitLabels`, the Tempo unit select (`SongTempoKeyTab.svelte`)                                                               | The band picks the unit they count a compound meter in                              | Nothing: the app's eighth-note convention and barmark's dotted-quarter `tempo:` are converted at both edges (`songChartTempo`, `chartBuild`, `barmarkChartBars`); a `@barmark/render` patch draws ♩. in 6/8 | Keep                                                                                                                                                                  |
+
+Also coming from barmark, needing no app change: PR #250 keeps a bar
+whose chord is unreadable (as unknown harmony with its text, still an
+error) instead of dropping its line.
+
 ## The chart built from the detections (2026-11-07)
 
 `@barmark/sync` (barmark's companion package, 0.1.0; its design is
