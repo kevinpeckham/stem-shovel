@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { chartRehearsalLetters } from "#lib/utils/chartRehearsalLetters.js";
 	import { onMount } from "svelte";
 
 	/**
 	 * A live barmark preview of chart text, for the editor (barmark.dev's
 	 * ChartRender.svelte): a `<barmark-chart>` drawn the way the saved chart
-	 * is (`renderChartHtml`: dark, rehearsal letters, the `barmark-look`
+	 * is (`renderChartHtml`: dark, rehearsal letters unless the chart writes
+	 * its own marks, the `barmark-look`
 	 * palette), fed through the element's `text` property and spelled with
 	 * `numerals` when the Chords view asks for numbers. The element module
 	 * is browser-only, so it loads on mount. Up to LONG characters it redraws
@@ -29,6 +31,7 @@
 	let chart = $state<ChartElement>();
 	let ready = $state(false);
 	const tooLong = $derived(text.length > MAX);
+	const letters = $derived(!tooLong && chartRehearsalLetters(text));
 
 	onMount(() => {
 		let live = true;
@@ -69,6 +72,7 @@
 			stops at {MAX.toLocaleString("en-US")}).
 		</p>
 	{:else}
-		<barmark-chart bind:this={chart} theme="dark" rehearsal-letters></barmark-chart>
+		<barmark-chart bind:this={chart} theme="dark" rehearsal-letters={letters ? "" : undefined}
+		></barmark-chart>
 	{/if}
 </div>

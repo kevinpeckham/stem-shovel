@@ -28,6 +28,11 @@ describe("ChartPreview", () => {
 		expect(screen.getByRole("region", { name: "Preview" })).toBe(wrapper);
 	});
 
+	test("a chart that writes its own rehearsal marks is not lettered again", async () => {
+		const { container } = render(ChartPreview, { text: "## Verse\n| @A | D |" });
+		expect(chartOf(container)?.hasAttribute("rehearsal-letters")).toBe(false);
+	});
+
 	test("paper sets the wrapper's --barmark-paper for the renderer's background; unset by default", async () => {
 		const { container, rerender } = render(ChartPreview, { text: "| D |", paper: "transparent" });
 		const wrapper = chartOf(container)?.parentElement as HTMLElement;

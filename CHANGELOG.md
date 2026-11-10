@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The draft card and the editor preview follow the rehearsal-letter rule too.** `ChartPreview.svelte` (the live `<barmark-chart>` the draft card and the chart editor draw) set `rehearsal-letters` unconditionally, so a score read with its own marks still showed each letter twice there after v0.259.0; the attribute now follows `chartRehearsalLetters`.
+
 ## [0.259.1] - 2026-11-10
 
 ### Changed

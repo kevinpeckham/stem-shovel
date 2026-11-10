@@ -4,6 +4,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **No doubled rehearsal letters on the draft card and in the editor preview** either.
+
 ## [0.259.1] - 2026-11-10
 
 ### Changed
