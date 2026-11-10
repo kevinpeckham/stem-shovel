@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A score read's rehearsal marks stand in cells of their own.** The read wrote the mark with its bar, `|: @A G | / |` and `| @B "Play 3 times" C |`, which barmark refuses ("a rehearsal mark is a cell of its own", "words go on a bar, not on a rehearsal mark"), so every such line showed as raw text and the chart's own marks went unseen (the automatic letters then came back). `repairRehearsalCells` (`src/lib/utils/`) gives the mark its pipes, driven by those diagnostics, first in `readChartOfScore`'s repair chain; the read prompt now says never `| @A F |`, and that a repeat marked to play a number of times closes `:| x3` rather than with quoted words (Kevin's "You Get What You Want, Then You Don't Want It").
+
 ## [0.259.6] - 2026-11-10
 
 ### Fixed

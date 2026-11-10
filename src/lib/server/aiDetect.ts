@@ -6,6 +6,7 @@ import { chartReadWarnings } from "#lib/utils/chartReadWarnings.js";
 import { barmarkChartPlays } from "#lib/utils/barmarkChartPlays.js";
 import { repairChordSpellings } from "#lib/utils/repairChordSpellings.js";
 import { repairLeadingHolds } from "#lib/utils/repairLeadingHolds.js";
+import { repairRehearsalCells } from "#lib/utils/repairRehearsalCells.js";
 import { reflowChartRows } from "#lib/utils/reflowChartRows.js";
 import { repairRepeatLines } from "#lib/utils/repairRepeatLines.js";
 import { parseChart } from "barmark";
@@ -141,9 +142,11 @@ const readPart = (text: string): ScorePart => ({ text, barmark: barmarkChartPlay
 /** The read stored on a score file, when there is one. */
 const storedRead = (score: Pick<ScoreFileForAi, "chartRead">) => score.chartRead?.trim() ?? "";
 
-/** A read with its known slips repaired: repeats and endings on lines of their own, holds before any chord as N.C., stacked chord spellings as barmark reads them, then four bars to a row. */
+/** A read with its known slips repaired: rehearsal marks in cells of their own, repeats and endings on lines of their own, holds before any chord as N.C., stacked chord spellings as barmark reads them, then four bars to a row. */
 const repairRead = (text: string) =>
-	reflowChartRows(repairChordSpellings(repairLeadingHolds(repairRepeatLines(text))));
+	reflowChartRows(
+		repairChordSpellings(repairLeadingHolds(repairRepeatLines(repairRehearsalCells(text)))),
+	);
 
 /**
  * A score's read for a member to see before any check (docs/audio-engine.md,
@@ -195,9 +198,9 @@ Rules:
 - The "part:" line names the part you read (barmark 0.13.0: a directive, once, before the first bar). The directives line: "key:" from the key signature, as barmark spells a key: the tonic with b or # for a flat or sharp, and m for minor ("F", "Bb", "Eb", "F#", "Dm", "C#m"). Prefer the major key for a signature unless the chords plainly sit in the relative minor; a text such as "Key: F Major" in the score confirms it. "time:" the time signature ("4/4", "3/4", "6/8"); "tempo:" the beats per minute of a metronome mark, counted in the meter's beat: the quarter in 4/4, 3/4 and 2/4, the dotted quarter in 6/8, 9/8 and 12/8 (a 6/8 mark of ♪ = 120 is tempo: 40). State only what the score shows: leave out any of the three it does not show.
 - Every measure of the score is written once, in order, as one cell between pipes: | F | C7 | Bbmaj7/F | Gm7 C7 |. Four measures to a line, as a lead sheet lays them out, whatever the score's systems hold; a line ends sooner only where the next measure starts a section, a key, time or tempo change, a repeat or an ending, and a repeat longer than four measures continues on the next line. Count every measure in every system on every page (the small numbers at the start of a system are measure numbers: use them to keep count), so the bars' numbers match the score's measure numbers.
 - In a cell, the measure's chord symbols in the order they occur, separated by spaces, as written (Fmaj9, Bbmaj7/F, Cm7), with b and # for flats and sharps. The symbols divide the measure evenly, so write a measure as its beats when its chords do not: one slot per beat (four in 4/4, three in 3/4, two dotted quarters in 6/8), the chord that sounds on that beat, or / when the chord before it still sounds, and two chords within one beat joined by _. A measure of one chord is that chord alone, | Bbm7 |; chords on beats 1 and 3 are | Bb7 Eb11 |; a chord held three beats then another is | Db7 / / C7 |; a chord held three beats then two on the last beat is | Db7 / / C7_Bm7 |; six chords on eighths across beats 1 to 3 are | Db7_Fm7 B7_Ebm7 A7_C#m7 / |. Never write three or five symbols in a 4/4 measure without the / slots that place them. Alterations a score stacks (add9, omit5, no3, sus4, b5, #9) go in one parenthesis after the quality, separated by commas: D6(add9,omit5), G(omit5), F#(b5,omit3), C7(#9,b13); never run together and never bare after the root. A measure with no chord symbol keeps the harmony before it: write / alone in its cell; but before any chord symbol has been written (a melody-only opening), there is nothing to hold, so write N.C. in each such cell. A measure with the repeat-measure sign is %. N.C. where the score says N.C.
-- Repeats: the measure that begins a repeat starts a new line of text, and that line begins with |: ; the line where the repeat ends closes with :| and nothing follows on it. Each ending is a line of text of its own after the repeated bars: a line |1 G | G7 :| for a first ending (it closes with :|), a line |2 G | C | for a second, |1-3 ... :| for one ending on several passes. Never put |: or an ending in the middle of a line. A rehearsal mark at a repeat's first measure goes inside the repeat as its first cell: |: @A | F | C |.
+- Repeats: the measure that begins a repeat starts a new line of text, and that line begins with |: ; the line where the repeat ends closes with :| and nothing follows on it. Each ending is a line of text of its own after the repeated bars: a line |1 G | G7 :| for a first ending (it closes with :|), a line |2 G | C | for a second, |1-3 ... :| for one ending on several passes. A repeat marked to play a number of times with no endings closes with the count after :| : |: C | F :| x3 (not quoted words). Never put |: or an ending in the middle of a line. A rehearsal mark at a repeat's first measure goes inside the repeat as its first cell: |: @A | F | C |.
 - Directions are cells of their own between bars, where the score prints them: Segno, Coda, To Coda, Fine, D.C., D.C. al Fine, D.C. al Coda, D.S., D.S. al Fine, D.S. al Coda. For example: | Segno | C | F | To Coda | G | C | D.S. al Coda |
-- A rehearsal letter or number is a cell of its own just before its measure, letters and digits after @: | @A | F | C |.
+- A rehearsal letter or number is a cell of its own just before its measure, letters and digits after @, with pipes on both sides and never a chord or words in the same cell: | @A | F | C |, and inside a repeat |: @A | F | C |; never | @A F |.
 - A section name printed in the score (Intro, Verse, Chorus, Bridge, Solo, Outro) is a heading line above its bars, ## Verse, and its first measure starts a new line. A repeat opens and closes within one section: write no heading between a |: and its :|.
 - Other text printed on a measure (rit., solo, a cue) goes in double quotes in that measure's cell, before its chords: | "rit." F C |. Lyrics are not text: leave them out.
 - A key, time or tempo change is a directive line of its own just before the bar line that starts with the measure it applies to (start a new line there): key: Ab or time: 3/4 or tempo: 96.

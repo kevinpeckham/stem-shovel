@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## barmark's diagnostics carry a `suggestion` worth using; `/_Em` and `:| x3` are grammar (2026-11-10)
+
+`| @A G |` is refused with the suggestion `| @A | G |`, and `| @B "words" C |` with "words go on a bar, not on a rehearsal mark"; a hold as the first member of a group, `F /_Em`, is valid (Em on the and of the beat); a repeat played several times closes `:| x3` (`:|3`, `(3x)` and `"3x"` are errors). A model reading a score fuses the mark with its bar even when the prompt shows the right shape, so the read prompt now says never `| @A F |` and `repairRehearsalCells` fixes it by diagnostic. From Kevin's "You Get What You Want, Then You Don't Want It" score.
+
 ## A read cached by its input alone outlives the prompt that made it (2026-11-10)
 
 The score read was cached in Redis for a month under a hash of the file's URL, on the reasoning that the file never changes under its URL (Blob pathnames are never reused). True of the file, not of the read: three prompt fixes in one day were invisible through the cache, since "Read again" cleared the stored row and then got the cached answer back, and only the prompt-independent repairs (`repairRead`, applied on the way out) appeared to work. A cache of model output keys on everything that shapes the output: the input and the prompt (and the model name, when it is not in the prompt). `chartCacheKey` now hashes the URL with `CHART_READ_SYSTEM`. From Kevin's "2FA (To Feel Alive)" still warning after v0.259.5.
