@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.259.7] - 2026-11-10
+
 ### Fixed
 
 - **Rehearsal letters in a chart read from a score** now land in their own box before the bar, so the whole chart draws.
