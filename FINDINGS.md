@@ -7,6 +7,45 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Study 36: the field's downbeat trackers find the bar the detector cannot, and madmom's bar earns the automatic-mode re-draft (2026-11-10)
+
+The bench's Study 36 (stem-bench REPORT.md, registration
+docs/BRIEF-STUDY36.md there) ran Beat This! (final and small
+checkpoints), madmom's RNN+DBN downbeat tracker and this repo's own
+v0.200 detector port, at zero model spend, over the 23 recordings the
+program has bar-level truth for. Three readings matter here.
+
+First, on the ten Josh Woodward songs the detector gets the bar period
+strict on 3, folded at an octave on 7; madmom gets 7 strict, 10 folded;
+Beat This 6 to 7 strict, 8 to 9 folded. On the three jazz 78s every
+neural tracker reads the bar the detector halves (livery 1.46 s against
+2.71; dippermouth 1.28 against 2.56) and madmom places downbeats within
+70 ms on 66 to 96 percent of bars, with bar counts 114/114, 52/53 and
+126/125, which is Study 34's tempo-following result without any declared
+tempo supplied. The registered decision rule picked madmom's bar for
+Study 38's automatic re-draft; no Beat This variant qualified (one
+clean failure on a straight 240-bpm 4/4 song by the small model, a
+half-bar downbeat phase on dippermouth by all three variants).
+
+Second, 6/8 in automatic mode: the detector gets gravity's bar EXACTLY
+(eighth pulse 145.9, subdivision 3, bar 2.466 against 2.5), so Study
+35's confidently-wrong draft on that song was the declared-tempo units
+disease alone and the input adapter remains the whole fix there. The
+trackers are worse on compound meter than this repo is: Beat This has
+no compound class and reads both 6/8 songs as three-beat bars; madmom
+with a 6 class names them but then hears sixes in 4/4 jazz. If a
+tracker ever replaces the detector for the bar, keep the detector's
+subdivision read for the meter label.
+
+Third, what a tracker costs: 27 to 47 s per song for Beat This final
+on 16 CPU threads, 32 to 40 s for madmom's RNN, and the 8 MB small
+checkpoint is NOT reliably faster on CPU because the mel front end
+dominates. A browser port would need WebGPU (onnxruntime-web) to be
+interactive; that measurement is Study 38's. Nothing to change in the
+app yet; the Study 35 adapter ask stands. Study 36b (261-song census
+against the artist's declared tempo and meter, paired instrumental
+mixes) is running; its numbers arrive in a day.
+
 ## Study 35: a visitor typing the artist's own 6/8 tempo gets a chart three bars long per bar, and the holds cannot see it (2026-11-09)
 
 The bench's Study 35 (stem-bench REPORT.md, registration
