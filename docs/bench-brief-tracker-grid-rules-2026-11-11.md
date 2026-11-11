@@ -112,7 +112,7 @@ better at any threshold. Study 38's 68 madmom drafts all have share 1.0
 says nothing on a DBN tracker. Is 0.6 defensible? Not as a predictor of
 a wrong bar (it removes more right readings than wrong). The registered
 criterion (catch half the wrong bars at least cost) lands on 0.7, which
-the bench reports and does not like: 57 removed, 40 right. Labelled
+the bench reports and does not like: 57 removed, 40 right. Labeled
 judgment: the rule's real job is to keep a reading like mop heart (0.30)
 off the chart, and **0.4** does that at the least cost: 12 census
 readings removed (5 wrong, 7 right), one draft (01_SS2-88-F, which

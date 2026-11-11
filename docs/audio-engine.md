@@ -1420,13 +1420,18 @@ beat tracker, not an even grid laid from the song's declared tempo.
   beats. A tracker that fails stores empty beats and the chords still
   store; the draft then keeps the declared grid.
 - **The draft's grid** (`utils/trackerBarGrid.ts`): every downbeat a bar
-  line as read (Study 41, Ask B), with two rules of ours on top, both
-  from the five dev recordings and both for the bench to measure.
+  line as read (Study 41, Ask B), with two rules of ours on top, from
+  the five dev recordings and then measured by stem-bench Study 44.
   Adjacent half bars are joined: the tracker read one song's intro as
-  fifteen two-beat bars, which a chart would draw as fifteen bars of 4/4.
-  And a reading whose bars do not settle on one count of beats (under
-  60% at the usual count) is not used: a 3/4 at 224 bpm came back as bars
-  of 2 to 6 beats in no pattern. The meter is Study 41's label (modal
+  fifteen two-beat bars, which a chart would draw as fifteen bars of 4/4
+  (Study 44: four drafts on the joined grid graded identically to the
+  bars as read, with fewer bars; and a 6/8 song read half in threes stays
+  on the tracker only when joined). And a reading whose bars do not
+  settle on one count of beats (under 40% at the usual count) is not
+  used: a 3/4 at 224 bpm came back as bars of 2 to 6 beats in no
+  pattern. The share keeps a reading with no bar off the chart; it does
+  not predict a wrong bar (Study 44: at 0.6 it removed more right
+  readings than wrong, so 0.4). The meter is Study 41's label (modal
   beats per bar: 6 is 6/8, 3 is 3/4, else 4/4); the tempo is the grid's
   own, derived by `@barmark/sync`.
 - **The build** (`buildChartFromDetections`, `draftChart`): on the

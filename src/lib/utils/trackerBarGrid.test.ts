@@ -89,15 +89,16 @@ describe("trackerBarGrid", () => {
 		expect(trackerBarGrid(reading([4, 2, 2, 4, 4, 4, 2, 5]))?.barSeconds).toBe(2);
 	});
 
-	it("null when fewer than 60% of the bars hold the usual count", () => {
+	it("null when fewer than 40% of the bars hold the usual count", () => {
 		// 3/4 by the mode, but bars of 2 to 6 beats in no pattern: 3 of 9 steady.
 		expect(trackerBarGrid(reading([3, 3, 3, 2, 4, 5, 2, 4, 5]))).toBeNull();
-		// Just under: 5 of 9.
-		expect(trackerBarGrid(reading([3, 3, 3, 3, 3, 4, 2, 5, 6]))).toBeNull();
+		// Just under: 3 of 8.
+		expect(trackerBarGrid(reading([3, 3, 3, 2, 4, 5, 2, 4]))).toBeNull();
 	});
 
-	it("a grid when the steady share reaches 60%", () => {
-		// Exactly 6 of 10, and 7 of 11.
+	it("a grid when the steady share reaches 40%", () => {
+		// Exactly 4 of 10, and 6 of 10.
+		expect(trackerBarGrid(reading([3, 3, 3, 3, 2, 4, 5, 2, 4, 5]))?.meter).toBe("3/4");
 		expect(trackerBarGrid(reading([3, 3, 3, 3, 3, 3, 4, 2, 5, 6]))?.meter).toBe("3/4");
 		const over = trackerBarGrid(reading([3, 3, 3, 3, 3, 3, 3, 4, 2, 5, 6]));
 		expect(over?.meter).toBe("3/4");
@@ -105,7 +106,7 @@ describe("trackerBarGrid", () => {
 	});
 
 	it("the steady share counts the bars after half bars are joined", () => {
-		// As read, 5 of 9 bars hold four beats (under 60%); joined, all 7 do.
+		// As read, 5 of 9 bars hold four beats; joined, all 7 do.
 		expect(trackerBarGrid(reading([2, 2, 4, 4, 4, 4, 4, 2, 2]))?.bars).toEqual([
 			0, 2, 4, 6, 8, 10, 12, 14,
 		]);

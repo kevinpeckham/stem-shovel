@@ -18,8 +18,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   chords, with the tracker's meter and the grid's own tempo, in place of
   an even grid from the declared tempo (docs/audio-engine.md, "The
   tracker's bars"). Adjacent half bars are joined, and a reading whose
-  bars do not settle on one beat count is not used (`trackerBarGrid`);
-  both are ours, for the bench to measure. Saved charts, the song's
+  bars do not settle on one beat count (under 40% at the usual count) is
+  not used (`trackerBarGrid`); both rules are ours, measured by stem-bench
+  Study 44, which kept the joining and set the share. Saved charts, the song's
   settings and the player's count are untouched.
 - **A draft says when the recording and the song's tempo disagree.**
   When the tracker's meter or bar length (beyond 4%) is not what the

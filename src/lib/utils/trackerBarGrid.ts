@@ -5,13 +5,16 @@ import { beatThisGrid } from "./beatThisGrid.js";
 const MIN_BARS = 4;
 /**
  * The least share of the bars that must hold the usual count of beats for
- * the tracker's reading to stand as the song's bars. Provisional, from the
- * five dev recordings (2026-11-11): the four it read well had 0.78 to 0.96
- * of their bars at the usual count once half bars were joined; the one it
- * did not (a 3/4 at 224 bpm, bars of 2 to 6 beats in no pattern) had 0.30.
- * Below it the draft keeps the declared grid. A bench study sets it.
+ * the tracker's reading to stand as the song's bars; below it the draft
+ * keeps the declared grid. Its job is to keep a reading with no bar at all
+ * off the chart (a 3/4 at 224 bpm read as bars of 2 to 6 beats in no
+ * pattern, share 0.30), not to predict a wrong bar, which the share does
+ * not do: stem-bench Study 44 found 0.6 removed more right readings than
+ * wrong ones (two sound drafts among them, at 0.54 and 0.35) and set 0.4
+ * as the least cost, 12 of 261 census readings removed and every good
+ * 6/8 draft kept.
  */
-const MIN_STEADY_SHARE = 0.6;
+const MIN_STEADY_SHARE = 0.4;
 /** What is left after the last downbeat is a closing bar when it is at least this share of the usual bar; a shorter tail is left off the grid. */
 const MIN_CLOSING_SHARE = 0.5;
 
