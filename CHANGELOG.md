@@ -61,6 +61,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - The help page "Charts, lyrics and notes" mentions the columns control:
   production owes `db:update-docs charts-lyrics-and-notes`.
 
+### Fixed
+
+- **The bar count no longer skips a bar at a meter change.** A change's
+  time is stored to a tenth of a millisecond, and a segment that came out a
+  hair long (sixteen 5/4 bars at 180 bpm measuring 80.0001 beats) was
+  rounded up to seventeen, so every bar after it read one too high.
+  `barAt` and `secondsAtBar` (`src/lib/audio/measures.ts`) now count a
+  segment's bars with the beat slack the playhead already had.
+
 ## [0.259.8] - 2026-11-10
 
 ### Changed

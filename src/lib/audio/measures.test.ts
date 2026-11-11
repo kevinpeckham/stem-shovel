@@ -106,6 +106,36 @@ describe("barAt", () => {
 	});
 });
 
+describe("meter changes stored to a tenth of a millisecond", () => {
+	// A real song: 180 bpm from 2 s, 5/4 and 3/4 alternating, the changes on bar lines whose
+	// seconds repeat (35.333…, 160.666…) and are stored rounded.
+	const grid = barGrid(
+		[
+			{ kind: "meter", start: 0, value: "5/4" },
+			{ kind: "tempo", start: 0, value: "180" },
+			{ kind: "meter", start: 35.3333, value: "3/4" },
+			{ kind: "meter", start: 51.3333, value: "5/4" },
+			{ kind: "meter", start: 78, value: "3/4" },
+			{ kind: "meter", start: 134, value: "5/4" },
+			{ kind: "meter", start: 160.6667, value: "3/4" },
+		] as SongChange[],
+		2,
+	)!;
+
+	test("the count never skips a bar at a change whose time rounded up", () => {
+		const bars = [35.2, 35.4, 51.2, 51.4, 77.9, 78.1, 133.9, 134.1, 160.5, 160.7].map(
+			(t) => barAt(grid, t).bar,
+		);
+		expect(bars).toEqual([20, 21, 36, 37, 52, 53, 108, 109, 124, 125]);
+	});
+
+	test("seeking by bar agrees with the count", () => {
+		expect(secondsAtBar(grid, 53)).toBeCloseTo(78, 3);
+		expect(secondsAtBar(grid, 125)).toBeCloseTo(160.6667, 3);
+		expect(barAt(grid, secondsAtBar(grid, 126)).bar).toBe(126);
+	});
+});
+
 describe("nextBeatAt", () => {
 	const grid = {
 		tempos: [{ start: 0, bpm: 120 }],

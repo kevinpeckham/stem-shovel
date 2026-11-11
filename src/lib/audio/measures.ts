@@ -128,6 +128,22 @@ export function tempoSteadyAcross(grid: BarGrid, from: number, to: number): bool
 /** Beats of slack when a time sits on a beat line (a tenth of a millisecond at 400 bpm is 0.0007 of a beat). */
 const BEAT_SLACK = 1e-3;
 
+/**
+ * The bars a meter segment holds, a part bar at its end counted whole (a
+ * change mid-bar starts a new bar). The same slack as a playhead on a beat
+ * line: a change stored at 160.6667 for 160.6666… makes sixteen 5/4 bars at
+ * 180 bpm measure 80.0001 beats, which must stay sixteen bars, not seventeen.
+ */
+function barsInSegment(
+	grid: BarGrid,
+	from: number,
+	to: number,
+	meter: BarGrid["meters"][number],
+): number {
+	const beats = beatsBetween(grid, from, to) / beatLength(meter);
+	return Math.ceil((beats - BEAT_SLACK) / meter.beatsPerBar);
+}
+
 export interface BarPosition {
 	bar: number; // 1 at startAt; 0, -1, … before it
 	beat: number; // 1 … beatsPerBar
@@ -148,7 +164,7 @@ export function barAt(grid: BarGrid, seconds: number): BarPosition {
 	let bpb = meter.beatsPerBar;
 	for (const m of segs) {
 		if (seconds < m.start) break;
-		bar += Math.ceil(beatsBetween(grid, segStart, m.start) / beatLength(meter) / bpb - 1e-9);
+		bar += barsInSegment(grid, segStart, m.start, meter);
 		segStart = m.start;
 		meter = m;
 		bpb = m.beatsPerBar;
@@ -280,9 +296,7 @@ export function secondsAtBar(grid: BarGrid, bar: number, beat = 1, fraction = 0)
 	let meter = valueAt(grid.meters, grid.startAt);
 	let bpb = meter.beatsPerBar;
 	for (const m of segs) {
-		const barsIn = Math.ceil(
-			beatsBetween(grid, segStart, m.start) / beatLength(meter) / bpb - 1e-9,
-		);
+		const barsIn = barsInSegment(grid, segStart, m.start, meter);
 		if (bar < segBar + barsIn) break;
 		segBar += barsIn;
 		segStart = m.start;

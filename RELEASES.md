@@ -23,6 +23,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
   line. When the Score view cannot draw a chart, the reason now appears as a
   notification with the way to fix it.
 
+### Fixed
+
+- **The bar counter no longer skips a bar at a time-signature change.** In
+  a song that switches meter, the count could jump by two at a change (125
+  to 127, say) and stay one bar ahead from there.
+
 ## [0.259.8] - 2026-11-10
 
 ### Changed
