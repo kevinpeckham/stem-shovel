@@ -36,7 +36,7 @@ Paired against production on the same bars: on ten guitar takes,
 qualities up on 6 and down on 1, roots down on none, the one confidently
 wrong draft on your tracker's bars turned good with its half-diminished
 named; the half-diminished spelled in 7 of 12 drafts where production
-spelled it in none; good drafts 3 of 10 → 5 of 12. On the ten Woodward
+spelled it in 3 of 10; good drafts 3 of 10 → 5 of 12. On the ten Woodward
 songs: no class changed, eight good before and after, one root count
 50 → 48, one quality count up by one. The rock clause was not carrying
 the rock charts. What the new clause did not fix: power chords on thin
