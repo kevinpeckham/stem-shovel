@@ -89,11 +89,12 @@ describe("accountStorageBytes", () => {
 	test("sums every table of user files, counting uploads in flight, not failed rows nor another account's", async () => {
 		const mine = (sizeBytes: number, status = "ready") => ({ accountId: "a1", sizeBytes, status });
 		reset({
+			// Each stem its own file; a file arrangements share counts once (data.arrangements.test.ts).
 			stem: [
-				mine(1),
-				mine(2, "uploading"),
-				mine(1000, "failed"),
-				{ ...mine(1000), accountId: "a2" },
+				{ ...mine(1), pathname: "f1" },
+				{ ...mine(2, "uploading"), pathname: "f2" },
+				{ ...mine(1000, "failed"), pathname: "f3" },
+				{ ...mine(1000), accountId: "a2", pathname: "f4" },
 			],
 			demo: [mine(10)],
 			songMix: [mine(20), mine(7, "failed")],
@@ -191,7 +192,11 @@ describe("accountUsage", () => {
 			accountMember: [member("m1", "u1", "owner"), member("m2", "u2")],
 			project: [{ accountId: "a1" }, { accountId: "a1" }, { accountId: "a2" }],
 			song: [{ accountId: "a1" }],
-			stem: [ready(1), ready(2), ready(100, "uploading")],
+			stem: [
+				{ ...ready(1), pathname: "f1" },
+				{ ...ready(2), pathname: "f2" },
+				{ ...ready(100, "uploading"), pathname: "f3" },
+			],
 			recording: [ready(10)],
 			recordingStem: [ready(100)],
 			studioSource: [ready(1_000)],

@@ -5,7 +5,8 @@ import { describe, expect, test } from "vite-plus/test";
 /**
  * Guard for docs/arrangements.md, "Every read says which stems it wants": a
  * read of the `stem` table, or a song's `stems` relation, must either take
- * `mainStems` (the song's stems mean Main) or carry the `// every arrangement:`
+ * `mainStems` (the song's stems mean Main) or `stemsOf(…)` (one named
+ * arrangement's, Main's when null), or carry the `// every arrangement:`
  * marker (housekeeping over every row). A read by one stem's id needs neither.
  */
 const MARKER = "// every arrangement:";
@@ -41,7 +42,8 @@ function statement(lines: string[], at: number): string {
 	return [commentsAbove(lines, start), ...lines.slice(start, end + 1)].join("\n");
 }
 
-const marked = (text: string) => text.includes("mainStems") || text.includes(MARKER);
+const marked = (text: string) =>
+	text.includes("mainStems") || text.includes("stemsOf(") || text.includes(MARKER);
 const lineOf = (src: string, index: number) => src.slice(0, index).split("\n").length;
 
 /**
@@ -99,6 +101,12 @@ describe("unmarkedStemReads", () => {
 			"\twith: { stems: { where: eq(recordingStem.status, 'ready') } },",
 			"});",
 			"const h = await db.query.song.findMany({ with: { stems: true } });",
+			"const i = await db.query.stem.findMany({",
+			"\twhere: and(eq(stem.songId, songId), stemsOf(arrangementId)),",
+			"});",
+			"const j = await db.query.song.findFirst({",
+			"\twith: { stems: { where: stemsOf(null), columns: { id: true } } },",
+			"});",
 		].join("\n");
 		expect(unmarkedStemReads(src)).toEqual([2, 7, 20]);
 	});

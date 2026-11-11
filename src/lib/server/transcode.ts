@@ -25,6 +25,7 @@ import {
 	replaceRecordingSource,
 	replaceStudioSourceFile,
 	studioSourceForTranscode,
+	unsharedStemBlobs,
 } from "#lib/server/data.js";
 import { accessOfUrl } from "#lib/utils/blobAccess.js";
 import { createPcm16Peaks } from "#lib/utils/pcm16Peaks.js";
@@ -242,10 +243,16 @@ function transcodeStem(stemId: string): Job<string | null> {
 		const pathname = playbackPathname(claim.pathname);
 		const store = yield* BlobStore;
 		const blob = yield* store.put(pathname, bytes, "audio/mp4", accessOfUrl(claim.url));
-		yield* (yield* Db).call("stem-playback:finish", () =>
+		const db = yield* Db;
+		yield* db.call("stem-playback:finish", () =>
 			finishPlayback(stemId, { url: blob.url, pathname, bytes: bytes.byteLength }),
 		);
-		if (claim.playbackUrl) yield* store.delete([claim.playbackUrl]);
+		// The old rendition goes unless another arrangement's copy of the stem still plays it (docs/arrangements.md).
+		const old = claim.playbackUrl;
+		const gone = old
+			? yield* db.call("stem-playback:unshared", () => unsharedStemBlobs([old]))
+			: [];
+		if (gone.length > 0) yield* store.delete(gone);
 		return claim.songId;
 	}).pipe(Effect.scoped, Effect.withSpan("transcode.stem", { attributes: { stemId } }));
 }

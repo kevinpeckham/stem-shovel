@@ -151,9 +151,9 @@ describe("systemOverview", () => {
 				{ id: "s3", accountId: "a2" },
 			],
 			stem: [
-				{ id: "st1", accountId: "a1", status: "ready", sizeBytes: 100 },
-				{ id: "st2", accountId: "a1", status: "ready", sizeBytes: 50 },
-				{ id: "st3", accountId: "a1", status: "uploading", sizeBytes: 999 },
+				{ id: "st1", accountId: "a1", status: "ready", sizeBytes: 100, pathname: "st1" },
+				{ id: "st2", accountId: "a1", status: "ready", sizeBytes: 50, pathname: "st2" },
+				{ id: "st3", accountId: "a1", status: "uploading", sizeBytes: 999, pathname: "st3" },
 			],
 			session: [
 				{

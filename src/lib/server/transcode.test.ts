@@ -20,6 +20,7 @@ const h = vi.hoisted(() => ({
 		claimPlayback: vi.fn(),
 		finishPlayback: vi.fn(),
 		failPlayback: vi.fn(),
+		unsharedStemBlobs: vi.fn(async (urls: string[]) => urls),
 		claimDemoPlayback: vi.fn(),
 		finishDemoPlayback: vi.fn(),
 		failDemoPlayback: vi.fn(),
@@ -177,6 +178,8 @@ beforeEach(() => {
 	h.fs.written.clear();
 	h.ffmpegPath = "/opt/ffmpeg";
 	h.answer.mockReturnValue({ stderr: "" });
+	// No other arrangement shares a file unless a test says so.
+	h.data.unsharedStemBlobs.mockImplementation(async (urls: string[]) => urls);
 	h.blob.playbackPathname.mockImplementation(
 		(p: string) => p.replace(/\.[a-z0-9]+$/i, "") + ".play-x.m4a",
 	);
@@ -249,6 +252,15 @@ describe("renderStems", () => {
 		expect(h.blob.deleteBlobs).toHaveBeenCalledWith([
 			`${PRIVATE}/accounts/a/songs/s/stem1.play-old.m4a`,
 		]);
+	});
+	it("keeps the old rendition while another arrangement's copy of the stem still plays it", async () => {
+		const old = `${PUBLIC}/accounts/a/songs/s/stem1.play-old.m4a`;
+		h.data.claimPlayback.mockResolvedValue(stemClaim({ playbackUrl: old }));
+		h.data.unsharedStemBlobs.mockResolvedValue([]);
+		await renderStems(["stem-1"]);
+		expect(h.data.unsharedStemBlobs).toHaveBeenCalledWith([old]);
+		expect(h.data.finishPlayback).toHaveBeenCalled();
+		expect(h.blob.deleteBlobs).not.toHaveBeenCalled();
 	});
 	it("renders stems one at a time and refreshes each song once", async () => {
 		h.data.claimPlayback

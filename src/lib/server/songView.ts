@@ -58,7 +58,8 @@ function chartScoreFileOf(
  * What a page needs to play, read and download a song: the song with file
  * URLs the browser may fetch, the player manifest, the comments and the
  * rendered documents. The song page and the home page's demos share it.
- * Missing renditions are rendered after the response as a backstop.
+ * Missing renditions are rendered after the response as a backstop, for
+ * the stems loaded (Main's, or the alternate the page asked for).
  */
 export async function songView(song: SongRow) {
 	schedulePlayback(stemsWantingPlayback(song.stems));
@@ -89,6 +90,10 @@ export async function songView(song: SongRow) {
 			chartScoreFile: scoreFile,
 			/** How the chart sizes its columns (`row` per row, `shared` down a section): drawn here, and the ⋯ menu's switch. */
 			chartColumns,
+			/** The song's alternate arrangements (docs/arrangements.md), for the switcher; Main is the song itself. */
+			arrangements: song.arrangements,
+			/** The arrangement whose stems `stems` holds: an alternate's id, or null for Main. */
+			arrangementId: song.arrangementId,
 		},
 		manifest,
 		comments,

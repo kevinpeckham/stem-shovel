@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { STEM_TINT_IDS } from "../constants/stemTints";
 import { FADER_MAX } from "../constants/fader";
+import { ArrangementRefSchema } from "./ArrangementSchema";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { SlugSchema } from "./SlugSchema";
@@ -67,7 +68,7 @@ export const SongCreateSchema = v.object({ projectId: NanoIdSchema, title: NameS
 /** Form boundary for deleting a song, a stem or a demo by id. */
 export const IdSchema = v.object({ id: NanoIdSchema });
 
-/** The default mix a member saves: a fader per stem, 0..FADER_MAX like the player's. */
+/** The default mix a member saves: a fader per stem, 0..FADER_MAX like the player's, of one arrangement (Main when `arrangementId` is null or absent). */
 export const DefaultMixSchema = v.object({
 	id: NanoIdSchema,
 	gains: v.pipe(
@@ -77,11 +78,14 @@ export const DefaultMixSchema = v.object({
 				gain: v.pipe(v.number(), v.minValue(0), v.maxValue(FADER_MAX)),
 				/** -1 (left) to 1 (right); center when absent. */
 				pan: v.optional(v.pipe(v.number(), v.minValue(-1), v.maxValue(1)), 0),
+				/** Saved off (left out of the rendered mix); unchanged when absent. */
+				muted: v.optional(v.boolean()),
 			}),
 		),
 		v.minLength(1),
 		v.maxLength(64),
 	),
+	arrangementId: ArrangementRefSchema,
 });
 
 /** Several stems at once (the "Replace Stems" batch removes the ones without a new file). */

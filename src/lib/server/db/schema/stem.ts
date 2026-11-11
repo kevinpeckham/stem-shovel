@@ -40,11 +40,18 @@ export const stem = table(
 		gain: t.real("gain").notNull().default(1),
 		/** The default mix's pan for this stem, -1 (left) to 1 (right); the player's knob starts here (docs/stem-engine.md, "Pan"). */
 		pan: t.real("pan").notNull().default(0),
+		/** The default mix's mute for this stem: saved off in an arrangement without deleting it; left out of the rendered mix. */
+		muted: t.integer("muted", { mode: "boolean" }).notNull().default(false),
 		/** The row's tint in the player, an id from constants/stemTints.ts, or null for none; shared with the song. */
 		tint: t.text("tint"),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
-		pathname: t.text("pathname").notNull().unique(),
+		/**
+		 * Not unique since arrangements (docs/arrangements.md): a stem copied
+		 * into another arrangement shares its file, so several rows name one
+		 * blob, and a blob goes only when the last row naming it does.
+		 */
+		pathname: t.text("pathname").notNull(),
 		filename: t.text("filename").notNull(),
 		contentType: t.text("content_type").notNull(),
 		sizeBytes: t.integer("size_bytes").notNull(),
@@ -79,5 +86,6 @@ export const stem = table(
 		t.index("stem_song_sort_idx").on(table.songId, table.sortOrder),
 		t.index("stem_account_idx").on(table.accountId),
 		t.index("stem_arrangement_idx").on(table.arrangementId),
+		t.index("stem_pathname_idx").on(table.pathname),
 	],
 );

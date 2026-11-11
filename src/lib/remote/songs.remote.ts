@@ -349,12 +349,14 @@ export const setStemTint = command(StemTintSetSchema, async ({ id, tint }) => {
 	return row;
 });
 
-/** The rows in a new order, dragged in the player (editors); the order is the song's, for everyone. */
-export const reorderStems = command(StemOrderSchema, async ({ songId, ids }) => {
+/** The rows in a new order, dragged in the player (editors); the order is the arrangement's (Main's when `arrangementId` is null), for everyone. */
+export const reorderStems = command(StemOrderSchema, async ({ songId, ids, arrangementId }) => {
 	const { locals } = getRequestEvent();
 	const m = await memberOf(locals, accountOfSong, songId);
 	if (!isEditor(m.role)) error(404, "Song not found");
-	return { ids: await reorder(m.accountId, songId, ids) };
+	const ordered = await reorder(m.accountId, songId, ids, arrangementId);
+	if (!ordered) error(404, "Arrangement not found");
+	return { ids: ordered };
 });
 
 /** Asks the AI Gateway model to read the song's score beside its rendered mix and place its keys, time signature and tempo marks (members; a few per hour). */
@@ -776,12 +778,16 @@ export const setSongStage = form(SongStageSetSchema, async ({ id, stage }) => {
 	return { stage: stage || null };
 });
 
-/** Saves the faders as the song's default mix for every listener (members); the original mixdown re-renders. */
-export const saveDefaultMix = command(DefaultMixSchema, async ({ id, gains }) => {
+/**
+ * Saves the faders (and mutes) as one arrangement's default mix for every
+ * listener (members; Main's when `arrangementId` is null); Main's original
+ * mixdown re-renders. An alternate has no rendered mix yet (phase 3).
+ */
+export const saveDefaultMix = command(DefaultMixSchema, async ({ id, gains, arrangementId }) => {
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfSong, id);
-	if (!(await setDefaultMix(accountId, id, gains))) error(404, "Song not found");
-	scheduleMix([id]);
+	if (!(await setDefaultMix(accountId, id, gains, arrangementId))) error(404, "Song not found");
+	if (arrangementId === null) scheduleMix([id]);
 	return { saved: gains.length };
 });
 

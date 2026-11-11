@@ -138,7 +138,7 @@ describe("reserveStemReplacement", () => {
 		});
 		const row = await reserveStemReplacement("a1", "st1", file);
 		expect(row?.pathname).toBe("accounts/a1/songs/s1/st1-v8.wav");
-		expect(blob.deleteBlobs).toHaveBeenCalledWith(["https://blob/st1.wav", ""]);
+		expect(blob.deleteBlobs).toHaveBeenCalledWith(["https://blob/st1.wav"]);
 	});
 	test("another account's stem is null and keeps its files", async () => {
 		reset({ song: [s1], stem: [ready("st1")] });

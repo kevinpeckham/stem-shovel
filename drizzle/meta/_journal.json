@@ -855,6 +855,13 @@
       "when": 1794416102801,
       "tag": "0121_red_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "6",
+      "when": 1794419659093,
+      "tag": "0122_whole_thena",
+      "breakpoints": true
     }
   ]
 }

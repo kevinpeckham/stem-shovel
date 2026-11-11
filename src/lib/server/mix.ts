@@ -53,36 +53,43 @@ function originalMixKey(song: Pick<Mixable, "stems">) {
 	return mixKeyOf(song.stems);
 }
 
+/** The stems the original mix plays: a stem saved muted (docs/arrangements.md) is left out. */
+function audible<S extends { muted?: boolean | null }>(stems: S[]): S[] {
+	return stems.filter((s) => !s.muted);
+}
+
 /** The stem fields the key depends on; any row shape with them will do. */
 export type MixKeyStem = Pick<
 	Mixable["stems"][number],
 	"id" | "playbackStatus" | "playbackUrl" | "url" | "gain"
-> & { pan?: number | null };
+> & { pan?: number | null; muted?: boolean | null };
 
-/** The files and the default mix's gains: a saved mix renders a fresh original. */
+/** The files and the default mix's gains and mutes: a saved mix renders a fresh original. */
 export function mixKeyOf(stems: MixKeyStem[]) {
-	// A pan of 0 adds nothing, so a song whose stems are all centered keeps the key it had before pans.
-	const parts = stems
+	// A pan of 0 adds nothing, so a song whose stems are all centered keeps the key it had before pans;
+	// a muted stem is not in the mix, so muting one changes the key and unmuting it restores it.
+	const parts = audible(stems)
 		.map((s) => `${s.id}:${playbackOrSource(s)}:${s.gain ?? 1}${s.pan ? `:${s.pan}` : ""}`)
 		.sort();
 	return createHash("sha1").update(parts.join("\n")).digest("hex").slice(0, 16);
 }
 
-/** The original mix is the song's default mix: every ready stem at its saved fader. */
+/** The original mix is the song's default mix: every ready stem not saved muted, at its saved fader. */
 function originalMixRequest(song: Mixable): MixRequest {
 	return {
-		stems: song.stems.map((s) => ({ id: s.id, gain: s.gain ?? 1, pan: s.pan ?? 0 })),
+		stems: audible(song.stems).map((s) => ({ id: s.id, gain: s.gain ?? 1, pan: s.pan ?? 0 })),
 		master: 1,
 	};
 }
 
 /** True when a custom request is just the original (so the cache can serve it). */
 export function isOriginal(song: Mixable, req: MixRequest) {
+	const stems = audible(song.stems);
 	return (
 		req.master === 1 &&
-		req.stems.length === song.stems.length &&
+		req.stems.length === stems.length &&
 		req.stems.every((s) => {
-			const t = song.stems.find((t) => t.id === s.id);
+			const t = stems.find((t) => t.id === s.id);
 			return !!t && Math.abs(s.gain - (t.gain ?? 1)) < 1e-6;
 		})
 	);
@@ -260,7 +267,7 @@ export function ensureOriginalMixEffect(
 	return Effect.gen(function* () {
 		const db = yield* Db;
 		const song = yield* db.songForMix(songId);
-		if (!song || song.stems.length === 0) return;
+		if (!song || audible(song.stems).length === 0) return;
 		if (song.stems.some((s) => s.playbackStatus === null || s.playbackStatus === "pending")) return;
 		const key = originalMixKey(song);
 		if (song.mixUrl && song.mixKey === key) return;

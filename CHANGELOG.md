@@ -8,6 +8,23 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The project page no longer re-posts a mix job for a song with a
+  panned stem.** `getProject` did not select `pan`, so the page's mix key
+  never matched the rendered one and every visit scheduled a render that
+  found nothing to do.
+
+### Technical
+
+- **Arrangements, phase 2, the server half** (docs/arrangements.md; no UI
+  yet, so nothing visible). Migration 0122: `stem.pathname` not unique,
+  `stem.muted`, `song_arrangement.note`. Arrangement create (copying the
+  source's stems as rows that share its files), update, delete and
+  reorder; the song page, uploads, reorder and the default mix take an
+  arrangement; a shared file is deleted only when its last row goes and
+  counted once in storage; a muted stem is left out of the rendered mix.
+
 ## [0.262.1] - 2026-11-11
 
 ### Changed

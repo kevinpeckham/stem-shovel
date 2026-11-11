@@ -29,6 +29,8 @@ export const songArrangement = table(
 		/** "Acoustic", "Sam's ideas"; unique within the song by the app, not the database. */
 		name: t.text("name").notNull(),
 		sortOrder: t.integer("sort_order").notNull().default(0),
+		/** What the arrangement is for, in a line ("no drums, capo 2"); shown under its name. */
+		note: t.text("note").notNull().default(""),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},

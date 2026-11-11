@@ -170,6 +170,7 @@ const {
 	practiceLocation,
 	contact,
 	eventSet,
+	songArrangement,
 } = schema;
 
 /**
@@ -248,6 +249,14 @@ export async function accountOfCredit(creditId: string) {
 export async function accountOfStem(stemId: string) {
 	const row = await db.query.stem.findFirst({
 		where: eq(stem.id, stemId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+/** An alternate arrangement of a song (docs/arrangements.md): its song's rules apply, restriction included (PROJECT_OF). */
+export async function accountOfArrangement(arrangementId: string) {
+	const row = await db.query.songArrangement.findFirst({
+		where: eq(songArrangement.id, arrangementId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;
@@ -593,6 +602,16 @@ const PROJECT_OF = new Map<
 					with: { song: { columns: { projectId: true } } },
 				})
 			)?.song.projectId ?? null,
+	],
+	[
+		accountOfArrangement,
+		async (id) =>
+			(
+				await db.query.songArrangement.findFirst({
+					where: eq(songArrangement.id, id),
+					with: { song: { columns: { projectId: true } } },
+				})
+			)?.song?.projectId ?? null,
 	],
 	[
 		accountOfDemo,

@@ -337,7 +337,8 @@ export async function putBlob(
 
 /** Deletes blobs by URL from whichever store each is in; ignores empty lists and blobs already gone. */
 export async function deleteBlobs(urls: string[]): Promise<void> {
-	const real = urls.filter((u) => u.startsWith("https://"));
+	// Once each: a song's or an account's rows can name one file several times (an arrangement's copy shares its file, docs/arrangements.md).
+	const real = [...new Set(urls.filter((u) => u.startsWith("https://")))];
 	for (const access of ["public", "private"] as const) {
 		const mine = real.filter((u) => accessOfUrl(u) === access);
 		if (mine.length > 0) await del(mine, blobAuth(access));

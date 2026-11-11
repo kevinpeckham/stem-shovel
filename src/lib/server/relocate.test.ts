@@ -16,7 +16,8 @@ vi.mock("#lib/server/blob.js", () => ({
 	songIdOfPathname: vi.fn(),
 }));
 
-const { accessOfSongId } = await import("./relocate");
+const { accessOfSongId, relocateSongFiles } = await import("./relocate");
+const { moveBlob } = await import("#lib/server/blob.js");
 
 describe("accessOfSongId", () => {
 	test("private when the song or its project is, public otherwise, null for no song", async () => {
@@ -39,5 +40,29 @@ describe("accessOfSongId", () => {
 	test("a song whose project row is gone is as private as the song says", async () => {
 		fake.reset({ song: [{ id: "s4", projectId: "gone", isPrivate: false }] });
 		expect(await accessOfSongId("s4")).toBe("public");
+	});
+});
+
+describe("relocateSongFiles", () => {
+	test("a file two arrangements' rows share moves once, and both rows take its new URL", async () => {
+		const pub = (p: string) => `https://x.public.blob.vercel-storage.com/${p}`;
+		const shared = { url: pub("s1/a.wav"), playbackUrl: pub("s1/a.play.m4a"), midiUrl: null };
+		fake.reset({
+			song: [{ id: "s1", projectId: "p1", isPrivate: true, mixUrl: null }],
+			project: [{ id: "p1", isPrivate: false }],
+			stem: [
+				{ id: "m1", songId: "s1", arrangementId: null, ...shared },
+				{ id: "c1", songId: "s1", arrangementId: "arr1", ...shared },
+			],
+		});
+		vi.mocked(moveBlob).mockImplementation(async (url) =>
+			url.replace(".public.", ".private.").replace(".wav", ".m1.wav"),
+		);
+		expect(await relocateSongFiles("s1")).toBe(2);
+		expect(moveBlob).toHaveBeenCalledTimes(2);
+		const rows = fake.rows("stem");
+		expect(rows[0].url).toBe(rows[1].url);
+		expect(rows[0].playbackUrl).toBe(rows[1].playbackUrl);
+		expect(rows[0].url).toMatch(/\.private\./);
 	});
 });

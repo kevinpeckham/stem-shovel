@@ -121,6 +121,12 @@ import { PlaybackEqSchema, type PlaybackEqSettings } from "#lib/val/PlaybackEqSc
 import { normalizePlaybackEq } from "#lib/utils/normalizePlaybackEq.js";
 import { dayFitsSession, shiftDay } from "#lib/utils/isoDay.js";
 import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
+import {
+	ARRANGEMENT_NAME_MAX,
+	ARRANGEMENT_NOTE_MAX,
+	MAX_ARRANGEMENTS,
+} from "#lib/constants/arrangements.js";
+import type { ArrangementSource } from "#lib/val/ArrangementSchema.js";
 import { slugify } from "#lib/utils/slugify.js";
 import {
 	isOverridableKit,
@@ -288,6 +294,7 @@ const {
 	accountVenue,
 	practiceLocation,
 	contact,
+	songArrangement,
 } = schema;
 
 /**
@@ -298,6 +305,63 @@ const {
  * stem id needs neither.
  */
 export const mainStems = isNull(stem.arrangementId);
+
+/** One arrangement's stems: Main's (`mainStems`) when null, else the alternate's rows. */
+export function stemsOf(arrangementId: string | null): SQL {
+	return arrangementId === null ? mainStems : eq(stem.arrangementId, arrangementId);
+}
+
+/**
+ * The stem files the rows matching `where` name, each once with its size,
+ * however many rows share it (an arrangement's copy shares its file,
+ * docs/arrangements.md): storage counts a file once.
+ */
+function distinctStemFiles(where: SQL | undefined) {
+	// every arrangement: a file is counted once across every arrangement's rows.
+	return db
+		.select({
+			accountId: stem.accountId,
+			pathname: stem.pathname,
+			bytes: sql<number | null>`max(${stem.sizeBytes})`,
+		})
+		.from(stem)
+		.where(where)
+		.groupBy(stem.accountId, stem.pathname);
+}
+
+/** Bytes of a list of files from `distinctStemFiles`. */
+const bytesOfFiles = (files: { bytes: number | null }[]) =>
+	files.reduce((n, f) => n + Number(f.bytes ?? 0), 0);
+
+/**
+ * The urls among `urls` that no stem row names any more, as its file, its
+ * rendition or its MIDI file: an arrangement's copy shares its files
+ * (docs/arrangements.md), so a blob goes only with the last row naming it.
+ * Ask after the row change.
+ */
+export async function unsharedStemBlobs(urls: (string | null | undefined)[]): Promise<string[]> {
+	const wanted = [...new Set(urls.filter((u): u is string => !!u))];
+	if (wanted.length === 0) return [];
+	// every arrangement: any row of any arrangement may still name the file.
+	const named = await db
+		.select({ url: stem.url, playbackUrl: stem.playbackUrl, midiUrl: stem.midiUrl })
+		.from(stem)
+		.where(
+			or(
+				inArray(stem.url, wanted),
+				inArray(stem.playbackUrl, wanted),
+				inArray(stem.midiUrl, wanted),
+			),
+		);
+	const still = new Set(named.flatMap((r) => [r.url, r.playbackUrl, r.midiUrl]));
+	return wanted.filter((u) => !still.has(u));
+}
+
+/** Deletes the files among `urls` that no stem row names any more (`unsharedStemBlobs`). */
+async function deleteUnsharedStemBlobs(urls: (string | null | undefined)[]) {
+	const gone = await unsharedStemBlobs(urls);
+	if (gone.length > 0) await deleteBlobs(gone);
+}
 
 // ---- account (org) --------------------------------------------------------
 
@@ -363,11 +427,10 @@ export async function accountLimitsOf(accountId: string) {
  * line) and not failed ones. Renditions and mixes are derived, not counted.
  */
 export async function accountStorageBytes(accountId: string) {
-	// every arrangement: storage counts each arrangement's rows.
-	const [stems] = await db
-		.select({ bytes: sql<number | null>`sum(${stem.sizeBytes})` })
-		.from(stem)
-		.where(and(eq(stem.accountId, accountId), ne(stem.status, "failed")));
+	// every arrangement: storage counts each file once, however many arrangements share it.
+	const stemFiles = await distinctStemFiles(
+		and(eq(stem.accountId, accountId), ne(stem.status, "failed")),
+	);
 	const [demos] = await db
 		.select({ bytes: sql<number | null>`sum(${demo.sizeBytes})` })
 		.from(demo)
@@ -421,7 +484,7 @@ export async function accountStorageBytes(accountId: string) {
 		.from(sessionRecording)
 		.where(and(eq(sessionRecording.accountId, accountId), ne(sessionRecording.status, "failed")));
 	return (
-		(stems.bytes ?? 0) +
+		bytesOfFiles(stemFiles) +
 		(demos.bytes ?? 0) +
 		(sessions.bytes ?? 0) +
 		(songMixes.bytes ?? 0) +
@@ -479,11 +542,10 @@ export async function accountUsage(accountId: string) {
 		.select({ n: sql<number>`count(*)` })
 		.from(song)
 		.where(eq(song.accountId, accountId));
-	// every arrangement: storage usage counts each arrangement's rows.
-	const [stems] = await db
-		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${stem.sizeBytes})` })
-		.from(stem)
-		.where(and(eq(stem.accountId, accountId), eq(stem.status, "ready")));
+	// every arrangement: storage usage counts each file once, however many arrangements share it.
+	const stemFiles = await distinctStemFiles(
+		and(eq(stem.accountId, accountId), eq(stem.status, "ready")),
+	);
 	const [recordings] = await db
 		.select({
 			n: sql<number>`count(*)`,
@@ -515,13 +577,14 @@ export async function accountUsage(accountId: string) {
 	return {
 		projects: projects.n,
 		songs: songs.n,
-		stems: stems.n,
+		/** Stem files: a file an arrangement's copy shares counts once. */
+		stems: stemFiles.length,
 		recordings: recordings.n,
 		demos: demos.n,
 		mixes: songMixes.n,
 		/** Stems, demos, mixes (docs/mixes.md), takes and Studio sources that are ready; renditions and the stems' bounce are not counted. */
 		bytes:
-			(stems.bytes ?? 0) +
+			bytesOfFiles(stemFiles) +
 			((recordings.bytes ?? 0) + (takeStems.bytes ?? 0) + (studioSources.bytes ?? 0)) +
 			(demos.bytes ?? 0) +
 			(songMixes.bytes ?? 0),
@@ -652,6 +715,7 @@ export function getProject(accountId: string, slug: string) {
 				with: {
 					stems: {
 						where: mainStems,
+						// Every field mixKeyOf reads (src/lib/server/mix.ts), so the backstop's key matches the render's.
 						columns: {
 							id: true,
 							status: true,
@@ -659,6 +723,8 @@ export function getProject(accountId: string, slug: string) {
 							playbackStatus: true,
 							playbackUrl: true,
 							gain: true,
+							pan: true,
+							muted: true,
 						},
 					},
 					demos: {
@@ -808,7 +874,18 @@ export async function updateSong(
 	return { ok: true, song: row };
 }
 
-export async function getSong(accountId: string, projectSlug: string, songSlug: string) {
+/**
+ * The song page's song: its files, documents and credits, the stems of one
+ * arrangement (Main when `arrangementId` is null), and the song's alternates.
+ * An `arrangementId` that is not the song's serves Main; `arrangementId` on
+ * the answer is the one served, so the page can redirect.
+ */
+export async function getSong(
+	accountId: string,
+	projectSlug: string,
+	songSlug: string,
+	arrangementId: string | null = null,
+) {
 	const proj = await db.query.project.findFirst({
 		where: and(eq(project.accountId, accountId), eq(project.slug, projectSlug)),
 		columns: { id: true, name: true, slug: true, isPrivate: true, isRestricted: true, noAi: true },
@@ -817,7 +894,7 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 	const row = await db.query.song.findFirst({
 		where: and(eq(song.projectId, proj.id), eq(song.slug, songSlug)),
 		with: {
-			stems: { where: mainStems, orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
+			stems: { where: stemsOf(arrangementId), orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
 			demos: { orderBy: [asc(demo.createdAt)] },
 			mixes: {
 				orderBy: [asc(songMix.version)],
@@ -831,7 +908,17 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 			},
 		},
 	});
-	return row ? { ...row, project: proj } : null;
+	if (!row) return null;
+	const arrangements = await listArrangements(accountId, row.id);
+	const served = arrangements.some((a) => a.id === arrangementId) ? arrangementId : null;
+	const stems =
+		served === arrangementId
+			? row.stems
+			: await db.query.stem.findMany({
+					where: and(eq(stem.accountId, accountId), eq(stem.songId, row.id), mainStems),
+					orderBy: [asc(stem.sortOrder), asc(stem.createdAt)],
+				});
+	return { ...row, stems, arrangements, arrangementId: served, project: proj };
 }
 
 // ---- artists and credits (src/lib/remote/songs.remote.ts) ----------------
@@ -1249,21 +1336,24 @@ export interface NewStemFile {
 /**
  * Step 1 of an upload: reserve a row in `uploading` state and hand back the
  * pathname the browser must upload to. The URL is unknown until the blob
- * exists, so it is "" for now. Returns null for an unknown song and "full"
- * when the song already has MAX_STEMS_PER_SONG stems (counting in-flight ones).
+ * exists, so it is "" for now. Returns null for an unknown song (or an
+ * arrangement that is not the song's) and "full" when the arrangement
+ * already has MAX_STEMS_PER_SONG stems (counting in-flight ones). The stem
+ * joins `arrangementId`'s stems, Main's when null.
  */
 export async function createStem(
 	accountId: string,
 	userId: string,
 	songId: string,
 	file: NewStemFile,
+	arrangementId: string | null = null,
 ) {
 	const owner = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
 		columns: { id: true },
-		with: { stems: { where: mainStems, columns: { sortOrder: true, status: true } } },
+		with: { stems: { where: stemsOf(arrangementId), columns: { sortOrder: true, status: true } } },
 	});
-	if (!owner) return null;
+	if (!owner || !(await isArrangementOfSong(accountId, songId, arrangementId))) return null;
 	// The ceiling counts what is on the song or on its way, not uploads that failed (Kevin: active stems only).
 	if (owner.stems.filter((s) => s.status !== "failed").length >= MAX_STEMS_PER_SONG) return "full";
 	const sortOrder = owner.stems.reduce((m, s) => Math.max(m, s.sortOrder + 1), 0);
@@ -1274,6 +1364,7 @@ export async function createStem(
 			id,
 			accountId,
 			songId,
+			arrangementId,
 			label: labelFromFilename(file.filename),
 			sortOrder,
 			status: "uploading",
@@ -1291,8 +1382,8 @@ export async function createStem(
 /**
  * "Upload new version": keep the row (id, label, order) but point it at a
  * fresh pathname and put it back into `uploading`. The old blob is deleted
- * now; if the upload then fails the stem shows as not ready and can be
- * replaced again or removed.
+ * now, unless another arrangement's copy still names it; if the upload then
+ * fails the stem shows as not ready and can be replaced again or removed.
  */
 export async function reserveStemReplacement(accountId: string, stemId: string, file: NewStemFile) {
 	const existing = await db.query.stem.findFirst({
@@ -1307,7 +1398,6 @@ export async function reserveStemReplacement(accountId: string, stemId: string, 
 		file.filename,
 		Number(version) + 1,
 	);
-	await deleteBlobs([existing.url, existing.playbackUrl ?? ""]);
 	const [row] = await db
 		.update(stem)
 		.set({
@@ -1324,6 +1414,7 @@ export async function reserveStemReplacement(accountId: string, stemId: string, 
 		})
 		.where(eq(stem.id, stemId))
 		.returning();
+	await deleteUnsharedStemBlobs([existing.url, existing.playbackUrl]);
 	await refreshSongDuration(existing.songId);
 	return row;
 }
@@ -1375,15 +1466,18 @@ async function stemsChanged(songId: string) {
 /**
  * The song's default mix: one fader per stem, saved by a member for every
  * listener. The cached original mixdown follows it (its key includes the
- * gains), so the project playlist and the MP3 change too.
+ * gains), so the project playlist and the MP3 change too. One arrangement's
+ * stems (Main's when `arrangementId` is null); a `muted` left out stays.
  */
 export async function setDefaultMix(
 	accountId: string,
 	songId: string,
-	gains: { id: string; gain: number; pan?: number }[],
+	gains: { id: string; gain: number; pan?: number; muted?: boolean }[],
+	arrangementId: string | null = null,
 ) {
+	if (!(await isArrangementOfSong(accountId, songId, arrangementId))) return false;
 	const owned = await db.query.stem.findMany({
-		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId), mainStems),
+		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId), stemsOf(arrangementId)),
 		columns: { id: true },
 	});
 	const ids = new Set(owned.map((s) => s.id));
@@ -1392,7 +1486,7 @@ export async function setDefaultMix(
 	for (const g of wanted) {
 		await db
 			.update(stem)
-			.set({ gain: g.gain, pan: g.pan ?? 0 })
+			.set({ gain: g.gain, pan: g.pan ?? 0, ...(g.muted === undefined ? {} : { muted: g.muted }) })
 			.where(eq(stem.id, g.id));
 	}
 	await stemsChanged(songId);
@@ -1458,10 +1552,20 @@ export async function reorderSongs(accountId: string, projectId: string, ids: st
 	return ordered.map((row) => row.id);
 }
 
-/** The song's stems in the given order, top first; ids from other songs are ignored, stems left out keep their place after the named ones. */
-export async function reorderStems(accountId: string, songId: string, ids: string[]) {
+/**
+ * One arrangement's stems (Main's when `arrangementId` is null) in the given
+ * order, top first; ids from elsewhere are ignored, stems left out keep their
+ * place after the named ones. Null when the arrangement is not the song's.
+ */
+export async function reorderStems(
+	accountId: string,
+	songId: string,
+	ids: string[],
+	arrangementId: string | null = null,
+) {
+	if (!(await isArrangementOfSong(accountId, songId, arrangementId))) return null;
 	const rows = await db.query.stem.findMany({
-		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId), mainStems),
+		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId), stemsOf(arrangementId)),
 		columns: { id: true, sortOrder: true },
 		orderBy: [asc(stem.sortOrder), asc(stem.createdAt)],
 	});
@@ -1491,9 +1595,299 @@ export async function deleteStem(accountId: string, stemId: string) {
 			songId: stem.songId,
 		});
 	if (!row) return null;
-	await deleteBlobs([row.url, row.playbackUrl ?? "", row.midiUrl ?? ""]);
+	// Another arrangement's copy of the stem keeps its files.
+	await deleteUnsharedStemBlobs([row.url, row.playbackUrl, row.midiUrl]);
 	await stemsChanged(row.songId);
 	return { songId: row.songId };
+}
+
+// ---- arrangements (docs/arrangements.md) ------------------------------------
+
+/** A refusal an arrangement form shows on one of its fields. */
+export type ArrangementFailure = { ok: false; field: "name" | "note" | "from"; error: string };
+
+const refuse = (field: ArrangementFailure["field"], error: string): ArrangementFailure => ({
+	ok: false,
+	field,
+	error,
+});
+
+/** One of the song's alternates, or null when the id is not one of its. */
+export async function arrangementOfSong(accountId: string, songId: string, arrangementId: string) {
+	const row = await db.query.songArrangement.findFirst({
+		where: and(
+			eq(songArrangement.accountId, accountId),
+			eq(songArrangement.songId, songId),
+			eq(songArrangement.id, arrangementId),
+		),
+	});
+	return row ?? null;
+}
+
+/** Whether `arrangementId` is one of the song's alternates; null, Main, always is. */
+async function isArrangementOfSong(
+	accountId: string,
+	songId: string,
+	arrangementId: string | null,
+) {
+	if (arrangementId === null) return true;
+	return (await arrangementOfSong(accountId, songId, arrangementId)) !== null;
+}
+
+/** The song's alternates in the switcher's order, each with who made it and how many ready stems it holds. */
+export async function listArrangements(accountId: string, songId: string) {
+	const rows = await db.query.songArrangement.findMany({
+		where: and(eq(songArrangement.accountId, accountId), eq(songArrangement.songId, songId)),
+		orderBy: [asc(songArrangement.sortOrder), asc(songArrangement.createdAt)],
+		columns: { id: true, name: true, note: true, sortOrder: true, createdAt: true },
+		with: { creator: { columns: { id: true, name: true } } },
+	});
+	if (rows.length === 0) return [];
+	// every arrangement: each alternate's ready stems, counted per arrangement.
+	const counts = await db
+		.select({ arrangementId: stem.arrangementId, n: sql<number>`count(*)` })
+		.from(stem)
+		.where(
+			and(
+				eq(stem.accountId, accountId),
+				eq(stem.songId, songId),
+				eq(stem.status, "ready"),
+				isNotNull(stem.arrangementId),
+			),
+		)
+		.groupBy(stem.arrangementId);
+	const countOf = new Map(counts.map((c) => [c.arrangementId, Number(c.n)]));
+	return rows.map(({ creator, ...a }) => ({
+		...a,
+		creator: creator ?? null,
+		stemCount: countOf.get(a.id) ?? 0,
+	}));
+}
+
+/** A name or a note too long, or a blank name; null when both are fine (an absent one is). */
+function arrangementFieldRefusal(name?: string, note?: string): ArrangementFailure | null {
+	if (name !== undefined && !name) return refuse("name", "Give the arrangement a name.");
+	if (name !== undefined && name.length > ARRANGEMENT_NAME_MAX)
+		return refuse("name", `Keep the name under ${ARRANGEMENT_NAME_MAX} characters.`);
+	if (note !== undefined && note.length > ARRANGEMENT_NOTE_MAX)
+		return refuse("note", `Keep the note under ${ARRANGEMENT_NOTE_MAX} characters.`);
+	return null;
+}
+
+/** "Main", or the name of another of the song's alternates (ignoring case); null when `name` is free. */
+async function arrangementNameRefusal(
+	accountId: string,
+	songId: string,
+	name: string,
+	except: string | null,
+): Promise<ArrangementFailure | null> {
+	if (name.toLowerCase() === "main")
+		return refuse("name", "Main is the song's own arrangement; choose another name.");
+	const clash = await db.query.songArrangement.findFirst({
+		where: and(
+			eq(songArrangement.accountId, accountId),
+			eq(songArrangement.songId, songId),
+			sql`lower(${songArrangement.name}) = lower(${name})`,
+		),
+		columns: { id: true },
+	});
+	if (!clash || clash.id === except) return null;
+	return refuse("name", `This song already has an arrangement called "${name}".`);
+}
+
+/** MAX_ARRANGEMENTS alternates already, or null when there is room for another. */
+async function arrangementRoomRefusal(accountId: string, songId: string) {
+	const [row] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(songArrangement)
+		.where(and(eq(songArrangement.accountId, accountId), eq(songArrangement.songId, songId)));
+	if (Number(row?.n ?? 0) < MAX_ARRANGEMENTS) return null;
+	return refuse("name", `A song can have at most ${MAX_ARRANGEMENTS} arrangements besides Main.`);
+}
+
+/** The stems a new arrangement copies: Main's (null), an alternate's id, none ("empty"), or undefined for an id that is not the song's. */
+async function arrangementSourceOf(accountId: string, songId: string, from: ArrangementSource) {
+	if (from === "main") return null;
+	if (from === "empty") return "empty" as const;
+	return (await arrangementOfSong(accountId, songId, from)) ? from : undefined;
+}
+
+/**
+ * A ready stem copied into another arrangement: a new row naming the same
+ * file, its rendition when that is ready (else the copy renders its own) and
+ * its MIDI file when one has landed, with the stem's place and mix.
+ */
+function stemCopy(s: typeof stem.$inferSelect, arrangementId: string) {
+	const rendition =
+		s.playbackStatus === "ready"
+			? {
+					playbackStatus: s.playbackStatus,
+					playbackUrl: s.playbackUrl,
+					playbackPathname: s.playbackPathname,
+					playbackBytes: s.playbackBytes,
+				}
+			: NO_PLAYBACK;
+	const midi = s.midiUrl
+		? {
+				midiUrl: s.midiUrl,
+				midiPathname: s.midiPathname,
+				midiFilename: s.midiFilename,
+				midiSizeBytes: s.midiSizeBytes,
+			}
+		: { midiUrl: null, midiPathname: null, midiFilename: null, midiSizeBytes: null };
+	return {
+		accountId: s.accountId,
+		songId: s.songId,
+		arrangementId,
+		label: s.label,
+		sortOrder: s.sortOrder,
+		gain: s.gain,
+		pan: s.pan,
+		muted: s.muted,
+		tint: s.tint,
+		status: "ready" as const,
+		url: s.url,
+		pathname: s.pathname,
+		filename: s.filename,
+		contentType: s.contentType,
+		sizeBytes: s.sizeBytes,
+		durationSeconds: s.durationSeconds,
+		channels: s.channels,
+		sampleRate: s.sampleRate,
+		peaks: s.peaks,
+		...rendition,
+		...midi,
+		uploadedBy: s.uploadedBy,
+	};
+}
+
+/** Copies one arrangement's ready stems (Main's when `from` is null) into another. */
+async function copyArrangementStems(
+	accountId: string,
+	songId: string,
+	from: string | null,
+	to: string,
+) {
+	const rows = await db.query.stem.findMany({
+		where: and(
+			eq(stem.accountId, accountId),
+			eq(stem.songId, songId),
+			stemsOf(from),
+			eq(stem.status, "ready"),
+		),
+		orderBy: [asc(stem.sortOrder), asc(stem.createdAt)],
+	});
+	if (rows.length > 0) await db.insert(stem).values(rows.map((r) => stemCopy(r, to)));
+}
+
+/**
+ * A new alternate of the song, last in its order (docs/arrangements.md): a
+ * copy of Main's ready stems (`from` "main"), of another alternate's (its
+ * id), or nothing ("empty"). A copy shares its source's files. Refused on a
+ * field for a blank, long or taken name (Main's included), a long note, a
+ * song already holding MAX_ARRANGEMENTS, or a source that is not the song's;
+ * null for a song that is not the account's.
+ */
+export async function createArrangement(
+	accountId: string,
+	userId: string,
+	songId: string,
+	input: { name: string; note?: string; from: ArrangementSource },
+): Promise<{ ok: true; id: string } | ArrangementFailure | null> {
+	const owner = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!owner) return null;
+	const name = input.name.trim();
+	const note = (input.note ?? "").trim();
+	const refused =
+		arrangementFieldRefusal(name, note) ??
+		(await arrangementNameRefusal(accountId, songId, name, null)) ??
+		(await arrangementRoomRefusal(accountId, songId));
+	if (refused) return refused;
+	const source = await arrangementSourceOf(accountId, songId, input.from);
+	if (source === undefined) return refuse("from", "That arrangement is not this song's.");
+	const [last] = await db
+		.select({ last: sql<number | null>`max(${songArrangement.sortOrder})` })
+		.from(songArrangement)
+		.where(and(eq(songArrangement.accountId, accountId), eq(songArrangement.songId, songId)));
+	const [row] = await db
+		.insert(songArrangement)
+		.values({ accountId, songId, name, note, sortOrder: (last?.last ?? -1) + 1, createdBy: userId })
+		.returning({ id: songArrangement.id });
+	if (source !== "empty") await copyArrangementStems(accountId, songId, source, row.id);
+	return { ok: true, id: row.id };
+}
+
+/** Renames an alternate and/or rewrites its note (a field left out stays), by the rules `createArrangement` applies; null when it is not the account's. */
+export async function updateArrangement(
+	accountId: string,
+	arrangementId: string,
+	input: { name?: string; note?: string },
+): Promise<{ ok: true; id: string; songId: string } | ArrangementFailure | null> {
+	const existing = await db.query.songArrangement.findFirst({
+		where: and(eq(songArrangement.accountId, accountId), eq(songArrangement.id, arrangementId)),
+		columns: { id: true, songId: true },
+	});
+	if (!existing) return null;
+	const name = input.name?.trim();
+	const note = input.note?.trim();
+	const refused =
+		arrangementFieldRefusal(name, note) ??
+		(name === undefined
+			? null
+			: await arrangementNameRefusal(accountId, existing.songId, name, arrangementId));
+	if (refused) return refused;
+	const patch = {
+		...(name === undefined ? {} : { name }),
+		...(note === undefined ? {} : { note }),
+	};
+	if (Object.keys(patch).length > 0)
+		await db
+			.update(songArrangement)
+			.set(patch)
+			.where(and(eq(songArrangement.accountId, accountId), eq(songArrangement.id, arrangementId)));
+	return { ok: true, id: arrangementId, songId: existing.songId };
+}
+
+/**
+ * Deletes an alternate with its stem rows; a file goes with them unless
+ * another arrangement still names it. Null when it is not the account's.
+ */
+export async function deleteArrangement(accountId: string, arrangementId: string) {
+	const row = await db.query.songArrangement.findFirst({
+		where: and(eq(songArrangement.accountId, accountId), eq(songArrangement.id, arrangementId)),
+		columns: { id: true, songId: true },
+	});
+	if (!row) return null;
+	const gone = await db
+		.delete(stem)
+		.where(and(eq(stem.accountId, accountId), eq(stem.arrangementId, arrangementId)))
+		.returning({ url: stem.url, playbackUrl: stem.playbackUrl, midiUrl: stem.midiUrl });
+	await db
+		.delete(songArrangement)
+		.where(and(eq(songArrangement.accountId, accountId), eq(songArrangement.id, arrangementId)));
+	await deleteUnsharedStemBlobs(gone.flatMap((s) => [s.url, s.playbackUrl, s.midiUrl]));
+	return { songId: row.songId };
+}
+
+/** The song's alternates in the given order, first first; ids from elsewhere are ignored, ones left out keep their place after the named ones. */
+export async function reorderArrangements(accountId: string, songId: string, ids: string[]) {
+	const rows = await db.query.songArrangement.findMany({
+		where: and(eq(songArrangement.accountId, accountId), eq(songArrangement.songId, songId)),
+		columns: { id: true, sortOrder: true },
+		orderBy: [asc(songArrangement.sortOrder), asc(songArrangement.createdAt)],
+	});
+	const ordered = reorderById(rows, ids);
+	for (const [i, row] of ordered.entries()) {
+		if (row.sortOrder === i) continue;
+		await db
+			.update(songArrangement)
+			.set({ sortOrder: i })
+			.where(and(eq(songArrangement.accountId, accountId), eq(songArrangement.id, row.id)));
+	}
+	return ordered.map((row) => row.id);
 }
 
 // ---- song sections ----------------------------------------------------------
@@ -2527,14 +2921,12 @@ export async function systemOverview() {
 		.select({ accountId: song.accountId, songs: sql<number>`count(*)` })
 		.from(song)
 		.groupBy(song.accountId);
-	// every arrangement: the admin's storage totals count each arrangement's rows.
-	const storage = await db
-		.select({ accountId: stem.accountId, bytes: sql<number | null>`sum(${stem.sizeBytes})` })
-		.from(stem)
-		.where(eq(stem.status, "ready"))
-		.groupBy(stem.accountId);
+	// every arrangement: the admin's storage totals count each file once, however many arrangements share it.
+	const stemFiles = await distinctStemFiles(eq(stem.status, "ready"));
 	const songsOf = new Map(counts.map((c) => [c.accountId, c.songs]));
-	const bytesOf = new Map(storage.map((b) => [b.accountId, b.bytes ?? 0]));
+	const bytesOf = new Map<string, number>();
+	for (const f of stemFiles)
+		bytesOf.set(f.accountId, (bytesOf.get(f.accountId) ?? 0) + Number(f.bytes ?? 0));
 	const users = await db.query.user.findMany({
 		orderBy: [asc(schema.user.name)],
 		columns: {
@@ -4265,7 +4657,7 @@ export async function markStemMidiReady(accountId: string, stemId: string, url: 
 	});
 	if (!before) return null;
 	await db.update(stem).set({ midiUrl: url }).where(eq(stem.id, stemId));
-	if (before.midiUrl && before.midiUrl !== url) await deleteBlobs([before.midiUrl]);
+	if (before.midiUrl && before.midiUrl !== url) await deleteUnsharedStemBlobs([before.midiUrl]);
 	return { stemId };
 }
 
@@ -4277,7 +4669,7 @@ export async function recordStemMidiUrl(pathname: string, url: string) {
 	});
 	if (!row || row.midiUrl === url) return;
 	await db.update(stem).set({ midiUrl: url }).where(eq(stem.id, row.id));
-	if (row.midiUrl) await deleteBlobs([row.midiUrl]);
+	if (row.midiUrl) await deleteUnsharedStemBlobs([row.midiUrl]);
 }
 
 export async function removeStemMidi(accountId: string, stemId: string) {
@@ -4290,7 +4682,7 @@ export async function removeStemMidi(accountId: string, stemId: string) {
 		.update(stem)
 		.set({ midiUrl: null, midiPathname: null, midiFilename: null, midiSizeBytes: null })
 		.where(eq(stem.id, stemId));
-	if (before.midiUrl) await deleteBlobs([before.midiUrl]);
+	if (before.midiUrl) await deleteUnsharedStemBlobs([before.midiUrl]);
 	return true;
 }
 
@@ -8753,6 +9145,7 @@ export async function songForMix(songId: string) {
 					playbackUrl: true,
 					gain: true,
 					pan: true,
+					muted: true,
 				},
 				orderBy: [asc(stem.sortOrder)],
 			},
@@ -8809,12 +9202,14 @@ export function songsWantingMix(
 			playbackStatus: PlaybackStatus | null;
 			playbackUrl: string | null;
 			gain: number;
+			muted?: boolean | null;
 		}[];
 	}[],
 	keyOf: (stems: (typeof songs)[number]["stems"]) => string,
 ) {
+	// A song whose ready stems are all saved muted has nothing to render (ensureOriginalMix skips it).
 	return songs
-		.filter((s) => s.stems.some((st) => st.status === "ready" && st.url))
+		.filter((s) => s.stems.some((st) => st.status === "ready" && st.url && !st.muted))
 		.filter(
 			(s) =>
 				!s.mixUrl || s.mixKey !== keyOf(s.stems.filter((st) => st.status === "ready" && st.url)),

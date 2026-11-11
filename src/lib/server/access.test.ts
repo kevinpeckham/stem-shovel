@@ -219,6 +219,7 @@ describe("accountOf* lookups", () => {
 			project: [{ id: "p1", accountId: "a1" }],
 			song: [{ id: "s1", accountId: "a1", projectId: "p1" }],
 			stem: [{ id: "st1", accountId: "a1", songId: "s1" }],
+			songArrangement: [{ id: "arr1", accountId: "a1", songId: "s1" }],
 			demo: [{ id: "d1", accountId: "a1", songId: "s1" }],
 			idea: [{ id: "i1", accountId: "a1" }],
 			recording: [{ id: "r1", accountId: "a1" }],
@@ -241,6 +242,7 @@ describe("accountOf* lookups", () => {
 			[access.accountOfProject, "p1"],
 			[access.accountOfSong, "s1"],
 			[access.accountOfStem, "st1"],
+			[access.accountOfArrangement, "arr1"],
 			[access.accountOfDemo, "d1"],
 			[access.accountOfIdea, "i1"],
 			[access.accountOfRecording, "r1"],
@@ -353,6 +355,7 @@ describe("memberOf", () => {
 			project: [{ id: "p1", accountId: "a1" }],
 			song: [{ id: "s1", accountId: "a1", projectId: "p1" }],
 			stem: [{ id: "st1", accountId: "a1", songId: "s1" }],
+			songArrangement: [{ id: "arr1", accountId: "a1", songId: "s1" }],
 			idea: [{ id: "i1", accountId: "a1" }],
 			chatAttachment: [
 				{ id: "ca1", accountId: "a1", songId: "s1", pathname: "accounts/a1/chat/ca1.png" },
@@ -437,6 +440,32 @@ describe("memberOf", () => {
 			membership("member"),
 		);
 		expect(data.projectRestricted).not.toHaveBeenCalled();
+	});
+	test("an arrangement takes its song's rules: the song's project restricts it, a viewer never edits it", async () => {
+		expect(await access.memberOf(locals("member"), access.accountOfArrangement, "arr1")).toEqual(
+			membership("member"),
+		);
+		expect(
+			await statusOf(() => access.memberOf(locals("viewer"), access.accountOfArrangement, "arr1")),
+		).toBe(404);
+		expect(
+			await statusOf(() => access.memberOf(locals(null), access.accountOfArrangement, "arr1")),
+		).toBe(404);
+		expect(
+			await statusOf(() => access.memberOf(signedOut, access.accountOfArrangement, "arr1")),
+		).toBe(401);
+		data.projectRestricted.mockResolvedValue(true);
+		expect(
+			await statusOf(() => access.memberOf(locals("member"), access.accountOfArrangement, "arr1")),
+		).toBe(404);
+		expect(data.projectRestricted).toHaveBeenCalledWith("p1");
+		data.projectRoleOf.mockResolvedValue("member");
+		expect(await access.memberOf(locals("member"), access.accountOfArrangement, "arr1")).toEqual(
+			membership("member"),
+		);
+		expect(await access.memberOf(locals("admin"), access.accountOfArrangement, "arr1")).toEqual(
+			membership("admin"),
+		);
 	});
 	test("an outsider added to the project as a viewer passes with `viewers` as a viewer of the account, never as an editor", async () => {
 		data.projectRoleOf.mockResolvedValue("viewer");

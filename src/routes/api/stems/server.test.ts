@@ -96,11 +96,37 @@ describe("POST /api/stems", () => {
 	it("an editor reserves the stem (type from the extension) and learns where to upload", async () => {
 		const res = await post();
 		expect(await res.json()).toEqual({ stemId: STEM, pathname: row.pathname, access: "public" });
-		expect(data.createStem).toHaveBeenCalledWith(ACCOUNT, USER, SONG, {
-			filename: "Bass.WAV",
-			contentType: "audio/wav",
-			sizeBytes: 1_000_000,
-		});
+		expect(data.createStem).toHaveBeenCalledWith(
+			ACCOUNT,
+			USER,
+			SONG,
+			{ filename: "Bass.WAV", contentType: "audio/wav", sizeBytes: 1_000_000 },
+			null,
+		);
+	});
+	it("an arrangementId puts the stem in that arrangement; null is Main", async () => {
+		const ARRANGEMENT = fakeId("arr-one");
+		await post({ ...body, arrangementId: ARRANGEMENT });
+		expect(data.createStem).toHaveBeenLastCalledWith(
+			ACCOUNT,
+			USER,
+			SONG,
+			expect.anything(),
+			ARRANGEMENT,
+		);
+		await post({ ...body, arrangementId: null });
+		expect(data.createStem).toHaveBeenLastCalledWith(ACCOUNT, USER, SONG, expect.anything(), null);
+	});
+	it("400 for an arrangementId that is not an id, before anything is reserved", async () => {
+		for (const arrangementId of [42, "", "not an id!"])
+			await expect(post({ ...body, arrangementId })).rejects.toMatchObject(httpError(400));
+		expect(data.createStem).not.toHaveBeenCalled();
+	});
+	it("404 for an arrangement that is not the song's (the data layer finds none)", async () => {
+		data.createStem.mockResolvedValue(null);
+		await expect(post({ ...body, arrangementId: fakeId("arr-other") })).rejects.toMatchObject(
+			httpError(404),
+		);
 	});
 	it("an admin passes without the project lookup", async () => {
 		const res = await callRoute(POST, asAdminOf(ACCOUNT), jsonPost("/", body));

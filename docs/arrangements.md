@@ -31,6 +31,36 @@ Asked for by users; designed with Kevin on 2026-11-11.
   blobs, deleting a song) takes every row. A read by stem id needs no
   filter. A new query on `stem` picks one of the three on purpose.
 
+## Phase 2, the server (2026-11-11)
+
+- **Migration 0122**: `stem.pathname` is no longer unique, `stem.muted`
+  (the default mix's saved mute), `song_arrangement.note`.
+- **Data** (`src/lib/server/data.ts`, "arrangements"): `stemsOf(id)` is
+  the condition for one arrangement's stems (`mainStems` for null);
+  `listArrangements`, `createArrangement` (from Main, empty, or another
+  alternate; at most `MAX_ARRANGEMENTS`, a name not "Main" and not
+  taken), `updateArrangement`, `deleteArrangement`,
+  `reorderArrangements`. `getSong`, `createStem`, `reorderStems` and
+  `setDefaultMix` take an arrangement; the jobs and the derived reads
+  stay on Main until phase 3.
+- **A copy shares what is finished.** A copied stem takes the source's
+  rendition only when it is ready and its MIDI only when it has landed;
+  a rendition or MIDI still in flight belongs to the row that started
+  it, and the copy renders its own.
+- **Shared files.** `unsharedStemBlobs(urls)` answers which files no stem
+  row names any more; a stem delete, a replacement, a MIDI change, a
+  rendition re-render (`transcode.ts`) and an arrangement delete ask it
+  before deleting a blob. `deleteBlobs` drops duplicate URLs, which
+  covers the whole-song and whole-account deletes, and
+  `relocateSongFiles` moves a shared file once. Storage and the stem
+  count on the settings page count a file once (distinct pathname).
+- **Mutes.** A muted stem is left out of the rendered original mix and of
+  its key (`mixKeyOf`), on Main as well; a custom mix may still name one.
+- **The page.** `?arrangement=<id>` on the song page serves that
+  arrangement's stems (`song.arrangementId`, `song.arrangements`); an id
+  the song does not have redirects to Main. Uploads take `arrangementId`
+  in the reserve body. Remote functions: `arrangements.remote.ts`.
+
 ## Decisions (Kevin, 2026-11-11)
 
 1. The chart, tempo, key and sections are the song's and shared by its

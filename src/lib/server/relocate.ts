@@ -47,15 +47,26 @@ export async function accessOfPathname(pathname: string): Promise<BlobAccess> {
  * its file lands. Safe to run again: files already in place are skipped.
  * Runs in the background after a privacy change (src/lib/remote/share.remote.ts).
  */
+/**
+ * Moves a file into `to` once: a file several rows name (an arrangement's
+ * copy shares its stem's, docs/arrangements.md) moves on its first row and
+ * the others take its new URL. `count` is how many files moved.
+ */
+function mover(to: BlobAccess) {
+	const moves = new Map<string, Promise<string>>();
+	const move = async (url: string | null) => {
+		if (!url || accessOfUrl(url) === to) return url;
+		const landed = moves.get(url) ?? moveBlob(url, to);
+		moves.set(url, landed);
+		return landed;
+	};
+	return { move, count: () => moves.size };
+}
+
 export async function relocateSongFiles(songId: string): Promise<number> {
 	const to = await accessOfSongId(songId);
 	if (!to) return 0;
-	let moved = 0;
-	const move = async (url: string | null) => {
-		if (!url || accessOfUrl(url) === to) return url;
-		moved += 1;
-		return moveBlob(url, to);
-	};
+	const { move, count } = mover(to);
 	// every arrangement: every row's files move with the song.
 	const stems = await db.query.stem.findMany({ where: eq(stem.songId, songId) });
 	for (const s of stems) {
@@ -111,7 +122,7 @@ export async function relocateSongFiles(songId: string): Promise<number> {
 		const mixUrl = await move(s.mixUrl);
 		if (mixUrl !== s.mixUrl) await db.update(song).set({ mixUrl }).where(eq(song.id, songId));
 	}
-	return moved;
+	return count();
 }
 
 /** Every song of a project and the project's own attachments (songId null), after the project's privacy changed. */

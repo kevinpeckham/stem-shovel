@@ -238,7 +238,7 @@ describe("editor-gated functions", () => {
 			input: { songId: SONG, ids: [STEM] },
 			arrange: () => data.reorderStems.mockResolvedValue([STEM]),
 			dataFn: "reorderStems",
-			args: [ACCOUNT, SONG, [STEM]],
+			args: [ACCOUNT, SONG, [STEM], null],
 			outcome: { ids: [STEM] },
 		},
 		{
@@ -416,7 +416,7 @@ describe("editor-gated functions", () => {
 			input: { id: SONG, gains: [{ id: STEM, gain: 0.5 }] },
 			arrange: () => data.setDefaultMix.mockResolvedValue(true),
 			dataFn: "setDefaultMix",
-			args: [ACCOUNT, SONG, [{ id: STEM, gain: 0.5, pan: 0 }]],
+			args: [ACCOUNT, SONG, [{ id: STEM, gain: 0.5, pan: 0 }], null],
 			outcome: { saved: 1 },
 		},
 		{
@@ -552,6 +552,22 @@ describe("saveDoc stores a chart without the editor's escapes", () => {
 });
 
 describe("side effects of the editor-gated functions", () => {
+	it("reorderStems and saveDefaultMix act on the named arrangement; an alternate's mix renders nothing yet", async () => {
+		asEditorOf(ACCOUNT);
+		const ARR = fakeId("arr-one");
+		data.reorderStems.mockResolvedValue([STEM]);
+		await call(songs.reorderStems, { songId: SONG, ids: [STEM], arrangementId: ARR });
+		expect(data.reorderStems).toHaveBeenCalledWith(ACCOUNT, SONG, [STEM], ARR);
+		data.setDefaultMix.mockResolvedValue(true);
+		const gains = [{ id: STEM, gain: 1, muted: true }];
+		await call(songs.saveDefaultMix, { id: SONG, gains, arrangementId: ARR });
+		expect(data.setDefaultMix).toHaveBeenCalledWith(ACCOUNT, SONG, [{ ...gains[0], pan: 0 }], ARR);
+		expect(jobs.scheduleMix).not.toHaveBeenCalled();
+		data.reorderStems.mockResolvedValue(null);
+		await expect(
+			call(songs.reorderStems, { songId: SONG, ids: [STEM], arrangementId: ARR }),
+		).rejects.toMatchObject(httpError(404));
+	});
 	it("deleteStem and saveDefaultMix re-render the mix in the jobs function", async () => {
 		asEditorOf(ACCOUNT);
 		data.deleteStem.mockResolvedValue({ songId: SONG });

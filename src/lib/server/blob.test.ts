@@ -22,6 +22,7 @@ vi.mock("@vercel/blob", () => ({
 const {
 	blobAuth,
 	chatAttachmentPathname,
+	deleteBlobs,
 	eventFilePathname,
 	fileThumbnailPathname,
 	isChatAttachmentPathname,
@@ -41,6 +42,15 @@ const PUBLIC_HOST = host(ENV.BLOB_STORE_ID, "public");
 const PRIVATE_HOST = host(ENV.BLOB_PRIVATE_STORE_ID ?? "store_QNJAGy8fZsu7uY10", "private");
 
 describe("blob helpers", () => {
+	test("deleteBlobs names a file once, however many rows shared it, and skips blanks", async () => {
+		const { del } = await import("@vercel/blob");
+		const url = `https://${PUBLIC_HOST}/accounts/a/songs/s/stem.wav`;
+		await deleteBlobs([url, "", url, `https://${PUBLIC_HOST}/accounts/a/songs/s/other.wav`]);
+		expect(vi.mocked(del)).toHaveBeenCalledWith(
+			[url, `https://${PUBLIC_HOST}/accounts/a/songs/s/other.wav`],
+			expect.anything(),
+		);
+	});
 	test("tokens lose stray quotes and whitespace", () => {
 		expect(blobAuth("private").token).toBe("priv");
 		expect(blobAuth("public").token).toBe("pub");

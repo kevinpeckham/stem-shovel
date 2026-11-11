@@ -162,8 +162,15 @@ beforeEach(() =>
 			{ id: B, plan: "free", isFounder: true, storageLimitBytes: null },
 		],
 		stem: [
-			{ id: "st1", accountId: A, songId: "s2", status: "ready", sizeBytes: 1000 },
-			{ id: "st2", accountId: A, songId: "s3", status: "uploading", sizeBytes: 500 },
+			{ id: "st1", accountId: A, songId: "s2", status: "ready", sizeBytes: 1000, pathname: "st1" },
+			{
+				id: "st2",
+				accountId: A,
+				songId: "s3",
+				status: "uploading",
+				sizeBytes: 500,
+				pathname: "st2",
+			},
 		],
 		songMix: [
 			{ id: "mx1", accountId: A, songId: "s2", status: "ready" },

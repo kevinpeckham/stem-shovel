@@ -34,16 +34,33 @@ export const config: Config = { maxDuration: 300 };
  * recovery).
  */
 function scheduleBackstops(
-	song: { id: string } & Parameters<typeof songWantsNotes>[0] &
+	song: { id: string; arrangementId: string | null } & Parameters<typeof songWantsNotes>[0] &
 		Parameters<typeof songWantsChords>[0],
 ) {
+	// The notes and chord reads are Main's (docs/arrangements.md, phase 3): an alternate's stems would never match their keys.
+	if (song.arrangementId !== null) return;
 	if (songWantsNotes(song, mixKeyOf)) scheduleNotes([song.id]);
 	if (songWantsChords(song)) scheduleChords([song.id]);
 }
 
+/** `?arrangement=<id>` plays one of the song's alternates (docs/arrangements.md); null, Main, without it. */
+const arrangementOf = (url: URL) => url.searchParams.get("arrangement") || null;
+
+/**
+ * An arrangement the song does not have (deleted, or another song's) goes to
+ * the same address on Main; asked once the visitor may see the song.
+ */
+function onMainUnlessServed(url: URL, served: string | null) {
+	const asked = arrangementOf(url);
+	if (!asked || asked === served) return;
+	const main = new URL(url);
+	main.searchParams.delete("arrangement");
+	redirect(307, `${main.pathname}${main.search}${main.hash}`);
+}
+
 export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	const { account, who, shareGrants } = await parent();
-	const song = await getSong(account.id, params.project, params.song);
+	const song = await getSong(account.id, params.project, params.song, arrangementOf(url));
 	if (!song) {
 		// An address the project or the song used to have redirects to the current one (src/lib/server/slugAlias.ts).
 		const to = await renamedProjectPath(url, account.id, params.project, params.song);
@@ -53,6 +70,7 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	if (!canViewSong(song, who, shareGrants)) {
 		error(403, "This song is private. Sign in as a member, or open the link you were given.");
 	}
+	onMainUnlessServed(url, song.arrangementId);
 	// The project's own answer (a restricted project narrows the account's).
 	const canEdit = canEditProject(song.project, who);
 	const noAi = song.noAi || song.project.noAi;

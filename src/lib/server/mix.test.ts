@@ -139,6 +139,32 @@ describe("isOriginal", () => {
 	});
 });
 
+describe("a stem saved muted", () => {
+	const muted = {
+		...song,
+		stems: [song.stems[0], { ...song.stems[1], muted: true }],
+	} as unknown as Mixable;
+	test("is left out of the original mix, and the original is the rest", () => {
+		expect(parseMixRequest(muted, new URLSearchParams())).toEqual({
+			stems: [{ id: "stemA", gain: 1, pan: 0 }],
+			master: 1,
+		});
+		expect(isOriginal(muted, { stems: [{ id: "stemA", gain: 1 }], master: 1 })).toBe(true);
+	});
+	test("can still be named in a custom mix", () => {
+		expect(parseMixRequest(muted, new URLSearchParams("stems=stemB:1"))).toEqual({
+			stems: [{ id: "stemB", gain: 1, pan: 0 }],
+			master: 1,
+		});
+	});
+	test("changes the mix key; unmuting restores it; a muted flag of false changes nothing", () => {
+		const open = mixKeyOf(song.stems);
+		expect(mixKeyOf(muted.stems)).not.toBe(open);
+		expect(mixKeyOf(muted.stems)).toBe(mixKeyOf([song.stems[0]]));
+		expect(mixKeyOf(song.stems.map((s) => ({ ...s, muted: false })))).toBe(open);
+	});
+});
+
 describe("mixKeyOf", () => {
 	test("depends on which file each stem plays from, in any order", () => {
 		const a = mixKeyOf(song.stems);
