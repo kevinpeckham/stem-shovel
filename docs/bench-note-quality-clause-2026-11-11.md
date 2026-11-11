@@ -63,7 +63,6 @@ bench's drafts ran with "No example charts yet"). The next gap on
 acoustic material is the hint's missing half-diminished, which is a
 ChordMini vocabulary matter the bench can measure on request.
 
-
 ## Correction (2026-11-11, same day)
 
 Above, the bench wrote that ChordMini's vocabulary has no half-diminished.
