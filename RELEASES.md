@@ -4,6 +4,13 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.263.1] - 2026-11-11
+
+### Changed
+
+- **Upload reliability.** Work behind the scenes to spot and smooth over
+  uploads that a connection drops.
+
 ## [0.263.0] - 2026-11-11
 
 ### Added

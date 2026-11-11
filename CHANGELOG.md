@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.263.1] - 2026-11-11
+
 ### Added
 
 - **Dropped uploads are reported to Sentry.** A transfer the network
