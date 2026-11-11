@@ -6,11 +6,11 @@
       "name": "stem-player",
       "dependencies": {
         "@ai-sdk/gateway": "^4.0.127",
-        "@barmark/midi": "0.3.0",
-        "@barmark/musicxml": "0.8.0",
-        "@barmark/render": "0.18.0",
-        "@barmark/score": "0.2.0",
-        "@barmark/sync": "0.3.0",
+        "@barmark/midi": "0.3.2",
+        "@barmark/musicxml": "0.9.0",
+        "@barmark/render": "0.19.0",
+        "@barmark/score": "0.5.0",
+        "@barmark/sync": "0.4.1",
         "@better-auth/passkey": "^1.7.14",
         "@kevinpeckham/barkdown": "0.1.1",
         "@kevinpeckham/woof-editor": "0.3.0",
@@ -24,7 +24,7 @@
         "@vercel/blob": "2.8.2",
         "@vercel/speed-insights": "^2.0.0",
         "ai": "^7.0.154",
-        "barmark": "0.22.0",
+        "barmark": "0.23.1",
         "better-auth": "^1.7.14",
         "client-zip": "^2.5.1",
         "drizzle-orm": "0.45.4",
@@ -117,15 +117,15 @@
 
     "@babel/types": ["@babel/types@7.29.11", "", { "dependencies": { "@babel/helper-string-parser": "^7.29.11", "@babel/helper-validator-identifier": "^7.29.7" } }, "sha512-WCsemW40Cpc6gouC1SrY6PBaZ+oLRlEVY9XBvZBI7il/HyUrb2nJ505wE1MHEFyDZNnrWDEuy4jL50WVHfTTSQ=="],
 
-    "@barmark/midi": ["@barmark/midi@0.3.0", "", { "dependencies": { "@barmark/sync": "^0.3.0", "barmark": "^0.22.0" } }, "sha512-wcPF0fvmJOE9lVwDiIQjy1i3/qdLcPN5n5g2lwrsXwX0uCwxuTj3toP82D5qDAddoezF0DVWtZDUzMn7XFmiXQ=="],
+    "@barmark/midi": ["@barmark/midi@0.3.2", "", { "dependencies": { "@barmark/sync": "^0.4.1", "barmark": "^0.23.0" } }, "sha512-CWmY+RuR2kr9MJRyQZyn3gqQbB6FhoQ5qowvnd2sGet9r2NczKTwOLYntfmNhznXte3sMhMmMa4Zr/BHE2vQag=="],
 
-    "@barmark/musicxml": ["@barmark/musicxml@0.8.0", "", { "dependencies": { "barmark": "^0.22.0", "fast-xml-parser": "5.12.0" } }, "sha512-7MHKU2ZnDPLZ6+Xhix96XrT5rU7WEBd+Nei9g4fzLKaPvuN4Vfk9R8PMIuOAX7SSnQoCmqan+LtN+CBMrXJpYA=="],
+    "@barmark/musicxml": ["@barmark/musicxml@0.9.0", "", { "dependencies": { "barmark": "^0.23.0", "fast-xml-parser": "5.12.0" } }, "sha512-mVKS5IFVdvJoH9ODXhiBMWibKciV3MBvUH7HmvMFNmCR2FmvaeAi2MxLnIz2ALEE8KtbHD6DiQESkyJYpX/AGQ=="],
 
-    "@barmark/render": ["@barmark/render@0.18.0", "", { "dependencies": { "barmark": "^0.22.0" } }, "sha512-0ntv4/0Iutw4DsxqrZ81bK5kERaVJmPWmxU8KlrPHuHA44Ya/p0YDYoL386Xrp//lWw6EY/w/NEGVlFyh5riDA=="],
+    "@barmark/render": ["@barmark/render@0.19.0", "", { "dependencies": { "barmark": "^0.23.0" } }, "sha512-YQFloy/k/xnF6zUvJFpp1w1mZup8wxHlja4hanbHx0+AciNMnnS9uegFJxiolaAHUmhlpx6vO9zRfjptwzF9cA=="],
 
-    "@barmark/score": ["@barmark/score@0.2.0", "", { "dependencies": { "@barmark/musicxml": "^0.8.0", "@barmark/render": "^0.18.0", "barmark": "^0.22.0", "verovio": "^6.4.1" } }, "sha512-6mAa3CvMCjY7yqKOPqm62i7zy0oN/OE8XpSJcXfKbJrMcjB5Ldhd6J5Nyt9Gc1Occ/pZJj5mJ0hIBugrvk018w=="],
+    "@barmark/score": ["@barmark/score@0.5.0", "", { "dependencies": { "@barmark/musicxml": "^0.9.0", "@barmark/render": "^0.19.0", "barmark": "^0.23.0", "verovio": "6.4.1" } }, "sha512-rL1LTslAbyKmRWAIT+PDSM4wfZKZiiCOTl5JtXU64agwVLd5R+xa8ltka17xabov7fh4KzrwY3wDOs48Bi4w3w=="],
 
-    "@barmark/sync": ["@barmark/sync@0.3.0", "", { "dependencies": { "barmark": "^0.22.0" } }, "sha512-C67jRtiZZLMDlmFy23ImxkKsNeefintbe1qB/j2ev265qeI0E+KsUIhXaVjpfXsxNR7g8Dnm44u12v6ZyW+56A=="],
+    "@barmark/sync": ["@barmark/sync@0.4.1", "", { "dependencies": { "barmark": "^0.23.0" } }, "sha512-nnpaWip8XxbqT/JbrqCSyZh7ckbbJy2WxY7TBBHEHaI3TSiossrNUfYvIYIUFgiAzfcc0IXlo7ClV9XdwX7V6w=="],
 
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@1.0.2", "", {}, "sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA=="],
 
@@ -1011,7 +1011,7 @@
 
     "balanced-match": ["balanced-match@4.0.4", "", {}, "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA=="],
 
-    "barmark": ["barmark@0.22.0", "", {}, "sha512-1gk/aAUHbkr5tYO3SdPj+HG8EossusYxOyqQLdZWhIOde2m8xdiU+X3r36FRHOJdyoPM3oOcgxdLSqUpm23rkA=="],
+    "barmark": ["barmark@0.23.1", "", {}, "sha512-N1mqAGv4DOZ4//zRM1KlqoE7ttpQRCx0vzTMYnIXvSg0Z1DRkdXbtVMB+Yg8OLuC0ZPZhyyukKYI0mKgZ+nsUA=="],
 
     "base64-js": ["base64-js@0.0.8", "", {}, "sha512-3XSA2cR/h/73EzlXXdU6YNycmYI7+kicTxks4eJg2g39biHR84slg2+des+p7iHYhbRg/udIS4TD53WabcOUkw=="],
 

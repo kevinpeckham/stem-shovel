@@ -1126,37 +1126,76 @@ Kevin's machine, like `db:status`). The packages pin each other exactly
 since a caret range would not reach a minor), so they are bumped
 together, with exact pins in package.json.
 
-### Workarounds awaiting barmark releases (2026-11-10)
+### The 0.23 bump and what it retired (2026-11-11)
 
-The app carries these in place of behavior barmark has agreed to take on
-(GitHub issue kevinpeckham/stem-shovel #16, the barmark session's reply
-of 2026-11-10). When the named release lands and its bump passes
-`db:chart-check`, retire the app side as listed; each has a test beside
-it that says what it does, which goes with it.
+barmark 0.23.1, `@barmark/render` 0.19.0, `@barmark/score` 0.5.0,
+`@barmark/sync` 0.4.1, `@barmark/musicxml` 0.9.0 and `@barmark/midi`
+0.3.2, released on 2026-11-10 against the asks on GitHub issue #16;
+`db:chart-check` read every chart on dev and staging clean before the
+bump landed. Three grammar changes and what they retired in the app:
 
-| App code                                                                                                                          | What it does                                                                                                                | Waits for                                                                                                                                                                                                                                                  | Then                                                                                                                                                                               |
-| --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `chartRehearsalLetters` (`src/lib/utils/`), applied in `chartHtml.ts` (both renderers), `chartToPdf.ts` and `ChartPreview.svelte` | No automatic section letters once any bar carries a `rehearsal` mark                                                        | `@barmark/render` minor with the rule inside `rehearsalLetters` (score picks it up)                                                                                                                                                                        | Pass the option plain again and delete the util and its three call sites                                                                                                           |
-| `chartScoreRefusal` (`src/lib/utils/`), `SongDocsPanel.svelte`'s `scoreNote`, `songView.ts`'s `chartScoreNote`                    | Re-runs `exportMusicXml` on the server to show why the score refused                                                        | `@barmark/score` minor with the `scoreerror` event (`detail.reason`, bubbles, composed)                                                                                                                                                                    | Listen for the event in `ChartHtml.svelte` and show its reason; delete the util and the server-side note                                                                           |
-| `repairChordSpellings` (`src/lib/utils/`), in `aiDetect.ts`'s `repairRead`                                                        | Respells `D6(omit5add9)`, `Gadd9omit3`, `F#b5(omit3)` the way barmark reads them                                            | `barmark` minor with PR #255: the first two parse with a warning whose `suggestion` adds the separators; `F#b5(omit3)` stays an error suggesting `F#(b5,omit3)`; `Gb5(omit3)` and `G#5(omit3)` are errors with no suggestion (each could be a power chord) | Drop the first two candidates; for the altered fifth apply the diagnostic's `suggestion` instead of the app's guess, which would turn an ambiguous `Gb5(omit3)` into `G(b5,omit3)` |
-| `repairRehearsalCells` (`src/lib/utils/`), first in `repairRead`                                                                  | A rehearsal mark fused with its bar (`\| @A G \|`) given a cell of its own, by barmark's diagnostic and suggestion          | Nothing planned: the grammar is right. A lenient parse with a suggestion was floated on #16 (item 7), not asked for                                                                                                                                        | Keep; retire only if barmark accepts the fused shape                                                                                                                               |
-| `repairLeadingHolds`, `repairRepeatLines` (`src/lib/utils/`), in `repairRead`                                                     | A `/` before any chord as `N.C.`; repeats and endings split onto lines of their own                                         | Nothing planned: both are the model's slips against rules barmark keeps (inline repeats with a suggestion are on barmark's backlog). Stored reads from before the prompt fixes still need them                                                             | Keep                                                                                                                                                                               |
-| `reflowChartRows` (`src/lib/utils/`), last in `repairRead`                                                                        | A read's bar lines regrouped four to a row; an ending line is left whole because barmark reads no continuation of an ending | `barmark` minor with endings across lines: an ending not closed by `:                                                                                                                                                                                      | `on its line continues through the plain`\|`lines after it, to its`:                                                                                                               | `or the next`\|N` | Drop the ending skip in `splitLine`, so a long ending reflows too; the guard (same bars, same errors) stays |
-| `tempoUnitLabels`, the Tempo unit select (`SongTempoKeyTab.svelte`)                                                               | The band picks the unit they count a compound meter in                                                                      | Nothing: the app's eighth-note convention and barmark's dotted-quarter `tempo:` are converted at both edges (`songChartTempo`, `chartBuild`, `barmarkChartBars`); a `@barmark/render` patch draws ♩. in 6/8                                                | Keep                                                                                                                                                                               |
+- **An unreadable chord keeps its bar** as unknown harmony (`check` still
+  reports the error). A line with a structural error (a `:|` with no
+  `|:`, a fused rehearsal mark) is still left out. So `barmarkChartPlays`
+  is true for `| Xq7 |`, `barmarkChartBars` keeps the bar with no chord
+  and the error as a warning line, the AI read's log counts the bar, and
+  `reflowChartRows` reflows such a line with the rest; the PDF already
+  drew an unknown slot.
+- **Stacked spellings read with a warning and a `suggestion`**
+  (`D6(omit5add9)` → `D6(omit5,add9)`, `Gadd9omit3` → `Gadd9(omit3)`);
+  the altered fifth stays an error with a suggestion (`F#b5(omit3)` →
+  `F#(b5,omit3)`); `Gb5(omit3)` and `G#5(omit3)` get none (each could be
+  a power chord). `repairChordSpellings` now applies barmark's own
+  `suggestion` to the token it names, errors and warnings alike, and
+  guesses nothing; a suggestion that rewrites a cell (a rehearsal mark
+  with words, barmark 0.23.1's ask 7) is not a spelling and is left to
+  `repairRehearsalCells`.
+- **An ending before the last continues across lines until its `:|`**
+  (`|1 G | A | B | C |` then `| D :|`). `reflowChartRows` dropped its
+  ending skip: a run that opens with an ending reflows when it closes
+  with `:|`, while the last ending (closing `|`) stays as written, since
+  a plain row after it is not its continuation.
 
-Also coming from barmark, needing no app change: PR #250 keeps a bar
-whose chord is unreadable (as unknown harmony with its text, still an
-error) instead of dropping its line, and `@barmark/render` draws ♩. for a
-compound meter's tempo (PR #251, merged with the letter rule and the
-`scoreerror` event). One decision for Kevin rather than a retirement:
-the render minor adds `columns: "shared" | "row"` (`"shared"`, today's
-aligned bar lines, stays the default; `"row"` sizes each row's cells on
-its own, so one busy bar no longer stretches its column across the
-section). If the app wants `"row"`, `renderChartHtml`, `renderScoreChartHtml`
-and `ChartPreview.svelte` pass it, and the PDF (`chartToPdf.ts`) follows
-whatever `layoutChart` does with it. Status on 2026-11-10: #250 and #251
-merged, #255 in review; the barmark minor carries 1, 6 and #250, then
-render, score and the CLI, named on #16 when published.
+Retired outright:
+
+- `chartRehearsalLetters` and its three call sites: `@barmark/render`
+  0.19 draws no automatic letters once any bar carries its own mark, so
+  `renderChartHtml`, `renderScoreChartHtml`, `chartToPdf` and
+  `ChartPreview.svelte` pass `rehearsalLetters: true` plainly.
+- `chartScoreRefusal`, `songView`'s `chartScoreNote` and the Docs panel's
+  note: `@barmark/score` 0.4 fires `scoreerror` (bubbles, composed,
+  `detail.reason`) when the score cannot be drawn, after it shows the
+  grid again; `ChartHtml.svelte` listens on its wrapper (`onscoreerror`,
+  declared for svelte/elements in src/app.d.ts) and shows the reason as
+  an error notification with the way out.
+
+Kept, as the table said: `repairRehearsalCells`, `repairLeadingHolds`,
+`repairRepeatLines` (stored reads from before the prompt fixes still
+need them; the fused-mark lenient read is on barmark's list only if real
+examples keep arriving) and `tempoUnitLabels`.
+
+New with the bump:
+
+- **The engraver.** `renderScoreChartHtml` writes `verovio-url`,
+  `verovio-integrity` and `verovio-wasm-integrity` on the `<barmark-score>`
+  opening tag from the package's `ENGRAVER_*` constants: `@barmark/engraver`
+  0.1.1 from jsDelivr, barmark's build of the same Verovio 6.4.1 at about
+  3 MB where stock is about 7 MB, both files checked against their SRI
+  digests by the worker, with a fall-back to the package's own copy on a
+  mismatch (a console warning names the reason). Verified in the browser
+  on dev: the worker fetched the module and the `.wasm` from jsDelivr
+  (200, 200) and the score drew; the package's 26 KB toolkit wrapper
+  loads as before, the 7 MB engine never. The worker is a same-origin
+  module worker with no CSP of its own, so the page's CSP (vite.config.ts)
+  needed no change. `renderScoreHtml` has no option for these attributes
+  yet (an ask for #16).
+- **Columns.** `columns: "shared" | "row"` (`"shared"` the default) is a
+  per-song setting, `song.chart_columns` (migration 0119,
+  `ChartColumnsSchema`): the Chart panel's ⋯ menu offers "Size columns
+  per row" to editors, `renderScoreChartHtml`/`renderChartHtml` and the
+  set list's show page draw the song's chart with it, and the editor's
+  `ChartPreview` carries it as the element's attribute. The PDF already
+  sizes a section's bars equally, so it is untouched.
 
 ## The chart built from the detections (2026-11-07)
 
@@ -1236,7 +1275,7 @@ chart existed.
   reads a typed bar as a written number (the first pass of a repeated bar).
   Lookups, seeks, section starts and everything stored stay on `index`.
   The draft card's section line maps the draft's own chart the same way.
-  Since barmark 0.22 (bumped 2026-11-10) a chart's pickup is written bar 0
+  Since barmark 0.22 (bumped 2026-11-10; 0.23.1 on 2026-11-11) a chart's pickup is written bar 0
   (grammar 2.4) and the first full bar 1, so a readout on the pickup says
   "0 | 1" and a typed `0|1` seeks to it; the Studio ruler is the Studio's
   own grid and is not a chart's.

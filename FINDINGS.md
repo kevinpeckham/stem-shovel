@@ -7,6 +7,43 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A same-origin module worker fetches a CDN script the page's CSP would refuse (2026-11-11)
+
+`@barmark/score`'s worker loads `@barmark/engraver` from jsDelivr
+(`verovio-url`), fetches it, and imports it from a `blob:` URL. The
+app's page CSP (vite.config.ts) allows neither jsDelivr in `connect-src`
+nor `blob:` in `script-src`, yet the load works unchanged: a dedicated
+worker created from a same-origin URL is governed by the CSP delivered
+with its own response, not the document's (only `blob:` and `data:`
+workers inherit the owner's), and the worker's JavaScript is served by
+Vite or Vercel's CDN with no CSP header (`securityHeaders.ts` carries
+none; the CSP is SvelteKit's, on pages). So the engraver's attributes
+on `<barmark-score>` were enough. Verified in headless Chromium on dev:
+both files 200 from jsDelivr, the score drawn. A worker served with a
+CSP of its own would need the CDN in `connect-src` and `blob:` in
+`script-src`, as the package README says.
+
+## Svelte's element typings refuse a custom event attribute until declared (2026-11-11)
+
+`onscoreerror={fn}` on a `<div>` (the composed `scoreerror` event from
+`@barmark/score` bubbling up to the wrapper) type-checks only once
+`svelte/elements`' `HTMLAttributes<T>` is augmented in src/app.d.ts
+with the attribute; the runtime attaches any `on*` attribute as a
+listener regardless. The augmentation is the documented route
+(ChartHtml.svelte); a `fallow` or Oxlint rule does not mind it.
+
+## barmark 0.23: an unreadable chord keeps its bar, so "plays" changed meaning (2026-11-11)
+
+Until 0.22 a line with an unreadable chord was left out of
+`parseChart().bars`, so `| Xq7 |` had no bar and did not "play"; since
+0.23 the bar is kept with an unknown-harmony slot and the error stands.
+Four app tests and `reflowChartRows` had assumed the dropped line
+(`barmarkChartPlays`, `barmarkChartBars`'s null contract, the AI read's
+bar count, the PDF's error-line fixture); a structural error (a `:|`
+with no `|:`, a fused rehearsal mark) still drops its line, which is
+what an error-line fixture must use now. `chartToPdf` already drew an
+`unknown` slot, from the render package's model.
+
 ## A duple-bar autocorrelation witness cannot keep a true 6/8 (2026-11-10)
 
 The second witness the app asked the bench to sweep before a 6/8 call

@@ -28,9 +28,14 @@ describe("ChartPreview", () => {
 		expect(screen.getByRole("region", { name: "Preview" })).toBe(wrapper);
 	});
 
-	test("a chart that writes its own rehearsal marks is not lettered again", async () => {
-		const { container } = render(ChartPreview, { text: "## Verse\n| @A | D |" });
-		expect(chartOf(container)?.hasAttribute("rehearsal-letters")).toBe(false);
+	test("columns row draws each row's bars on their own, as the saved chart does; no attribute otherwise", async () => {
+		const { container, rerender } = render(ChartPreview, { text: "| D |", columns: "row" });
+		expect(chartOf(container)?.getAttribute("columns")).toBe("row");
+		await rerender({ columns: "shared" });
+		await tick();
+		expect(chartOf(container)?.hasAttribute("columns")).toBe(false);
+		const plain = render(ChartPreview, { text: "| D |" });
+		expect(chartOf(plain.container)?.hasAttribute("columns")).toBe(false);
 	});
 
 	test("paper sets the wrapper's --barmark-paper for the renderer's background; unset by default", async () => {

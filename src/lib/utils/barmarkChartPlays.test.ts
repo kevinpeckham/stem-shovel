@@ -9,7 +9,10 @@ describe("barmarkChartPlays", () => {
 	it("the old measure lines, prose and an empty text do not", () => {
 		expect(barmarkChartPlays("m1 key F major 4/4: F\nm2: C")).toBe(false);
 		expect(barmarkChartPlays("Title: Song\nkey: F")).toBe(false);
-		expect(barmarkChartPlays("| Xq7 |")).toBe(false);
 		expect(barmarkChartPlays("")).toBe(false);
+	});
+
+	it("a bar whose chord barmark cannot read still plays, as unknown harmony (barmark 0.23)", () => {
+		expect(barmarkChartPlays("| Xq7 |")).toBe(true);
 	});
 });

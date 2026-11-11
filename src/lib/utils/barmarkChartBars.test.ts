@@ -205,7 +205,11 @@ describe("barmarkChartBars: tempo, meter, key and the null contracts", () => {
 	it("is null when no bar plays", () => {
 		expect(barmarkChartBars("", SONG)).toBeNull();
 		expect(barmarkChartBars("Just some words.", SONG)).toBeNull();
-		expect(barmarkChartBars("| riff | D |", SONG)).toBeNull();
+	});
+	it("a bar whose chord barmark cannot read is kept with no chord, the error as a warning line (barmark 0.23)", () => {
+		const read = barmarkChartBars("| riff | D |", SONG)!;
+		expect(read.bars.map((b) => b.chords)).toEqual([[], ["D"]]);
+		expect(read.warnings.some((w) => w.includes("riff"))).toBe(true);
 	});
 	it("writes every diagnostic as a warning line, errors and warnings, with a suggestion", () => {
 		const read = barmarkChartBars("meter: 3/4\n| D | A |\n| E | 2x\n| D | A", SONG)!;

@@ -44,17 +44,22 @@ function rows(run: BarLine[], max: number): string[] {
 /**
  * The text's bar lines gathered into runs a reflow may regroup: consecutive
  * bar lines where every line after the first opens with a plain `|` and
- * every line before the last closes with one. An ending is a run of its
- * own and is left alone (barmark reads no continuation of one).
+ * every line before the last closes with one. A run that opens with an
+ * ending reflows only when it closes the repeat (`:|`): barmark 0.23 reads
+ * an ending before the last across lines until its `:|`, while the last
+ * ending ends at its line, so a plain row after it is not its continuation
+ * and the run is left as written.
  */
 function reflow(lines: string[], max: number): string[] {
 	const out: string[] = [];
 	let run: BarLine[] = [];
 	const flush = () => {
 		if (run.length === 0) return;
-		const ending = /^\|\d/.test(run[0]!.open);
+		const lastEnding = /^\|\d/.test(run[0]!.open) && run.at(-1)!.close !== ":|";
 		out.push(
-			...(ending ? run.map((b) => `${b.open} ${b.cells.join(" | ")} ${b.close}`) : rows(run, max)),
+			...(lastEnding
+				? run.map((b) => `${b.open} ${b.cells.join(" | ")} ${b.close}`)
+				: rows(run, max)),
 		);
 		run = [];
 	};
@@ -67,7 +72,6 @@ function reflow(lines: string[], max: number): string[] {
 		}
 		if (run.length > 0 && (!joins(bar) || !continues(run.at(-1)!))) flush();
 		run.push(bar);
-		if (/^\|\d/.test(bar.open)) flush();
 	}
 	flush();
 	return out;
@@ -85,8 +89,10 @@ const errorsOf = (text: string) =>
  * a longer line is split at bar boundaries and consecutive short lines are
  * joined, within a run of plain bar lines. A repeat may span rows, so `|:`
  * stays on the first row and `:|` on the last, and no row is joined across
- * them; an ending stays one line, however long; a rehearsal mark or
- * direction goes with the bar after it. Headings, directives, lyrics and
+ * them; an ending before the last reflows the same way, `|1` on its first
+ * row and `:|` on its last (barmark 0.23 reads it across lines), while the
+ * last ending stays one line; a rehearsal mark or direction goes with the
+ * bar after it. Headings, directives, lyrics and
  * text lines are left alone and end a run. The result is kept only when it
  * parses to the same bars with no new error; otherwise the text comes back
  * as it was. Pure.

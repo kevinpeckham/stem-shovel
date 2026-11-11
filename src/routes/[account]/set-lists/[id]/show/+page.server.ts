@@ -2,10 +2,16 @@ import { setListPage, setListSongDocs } from "#lib/server/data.js";
 import { renderChartHtml } from "#lib/server/chartHtml.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import { canViewSetList, canViewSong } from "#lib/server/viewAccess.js";
+import type { ChartColumns } from "#lib/val/ChartColumnsSchema.js";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-type SongDocs = { id: string; chartMarkdown: string; lyricsMarkdown: string };
+type SongDocs = {
+	id: string;
+	chartMarkdown: string;
+	chartColumns: ChartColumns | null;
+	lyricsMarkdown: string;
+};
 
 /** A document rendered, null when it is empty. */
 const rendered = (markdown: string, render: (markdown: string) => string) =>
@@ -19,7 +25,10 @@ function rowDocs(doc: SongDocs | undefined) {
 		songId: doc.id,
 		/** The chart text the show view's spelling and Key menus redraw from. */
 		chartMarkdown: doc.chartMarkdown || null,
-		chartHtml: rendered(doc.chartMarkdown, renderChartHtml),
+		// Drawn with the song's own column sizing, as on its page.
+		chartHtml: rendered(doc.chartMarkdown, (md) =>
+			renderChartHtml(md, { columns: doc.chartColumns ?? "shared" }),
+		),
 		lyricsHtml: rendered(doc.lyricsMarkdown, renderMarkdown),
 	};
 }

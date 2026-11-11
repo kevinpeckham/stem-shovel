@@ -11,14 +11,17 @@ describe("reflowChartRows", () => {
 		);
 	});
 
-	test("a repeat spans the rows it needs: |: on the first, :| on the last; an ending stays one line", () => {
+	test("a repeat spans the rows it needs: |: on the first, :| on the last; a first ending reflows to its :| (barmark 0.23), the last ending stays one line", () => {
 		expect(reflowChartRows(`${head}|: A | B | C | D | E | F :|`)).toBe(
 			`${head}|: A | B | C | D |\n| E | F :|`,
 		);
-		const endings = `${head}|: A | B | C | D | E | F |\n|1 G | A | B | C | D :|\n|2 G |`;
+		const endings = `${head}|: A | B | C | D | E | F |\n|1 G | A | B | C | D :|\n|2 G | A | B | C | D |\n| E | F |`;
 		expect(reflowChartRows(endings)).toBe(
-			`${head}|: A | B | C | D |\n| E | F |\n|1 G | A | B | C | D :|\n|2 G |`,
+			`${head}|: A | B | C | D |\n| E | F |\n|1 G | A | B | C |\n| D :|\n|2 G | A | B | C | D |\n| E | F |`,
 		);
+		// Short first-ending rows join up to the :| too.
+		const split = `${head}|: A | B |\n|1 G | A |\n| B | C |\n| D :|\n|2 G |`;
+		expect(reflowChartRows(split)).toBe(`${head}|: A | B |\n|1 G | A | B | C |\n| D :|\n|2 G |`);
 	});
 
 	test("a direction goes with the bar after it and does not count as a bar", () => {
@@ -39,8 +42,14 @@ describe("reflowChartRows", () => {
 		expect(reflowChartRows(clean)).toBe(clean);
 	});
 
-	test("a line barmark cannot read is left as it is, so a split never hides an error", () => {
+	test("a line with an unreadable chord reflows with the others, its error kept (barmark 0.23 keeps the bar)", () => {
 		const broken = `${head}| C | F | G | C | Hmaj9 | F | G | C |`;
-		expect(reflowChartRows(broken)).toBe(broken);
+		expect(reflowChartRows(broken)).toBe(`${head}| C | F | G | C |\n| Hmaj9 | F | G | C |`);
+	});
+
+	test("the result is kept only when it plays the same bars with the same errors", () => {
+		// A last ending followed by a plain row: joining them would move the row into the ending, so the run is left as written.
+		const tail = `${head}|: A | B |\n|1 C :|\n|2 D |\n| E | F |`;
+		expect(reflowChartRows(tail)).toBe(tail);
 	});
 });

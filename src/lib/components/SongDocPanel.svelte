@@ -6,6 +6,7 @@
 	import MarkdownDocEditor from "#lib/components/MarkdownDocEditor.svelte";
 	import { saveDoc } from "#lib/remote/songs.remote.js";
 	import type { ChartScoreFile as ScoreFile } from "#lib/server/songView.js";
+	import type { ChartColumns } from "#lib/val/ChartColumnsSchema.js";
 	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
 	import { refreshAll } from "$app/navigation";
@@ -52,6 +53,8 @@
 		chartPaper?: string | null;
 		/** The PDF or image the chart was read from: the chart's Score view shows it (`ChartScoreFile`). */
 		scoreFile?: ScoreFile | null;
+		/** How the chart sizes its columns: the editor's preview draws it the way the saved chart is drawn. */
+		chartColumns?: ChartColumns;
 	}
 
 	let {
@@ -74,6 +77,7 @@
 		chartText = null,
 		chartPaper = null,
 		scoreFile = null,
+		chartColumns,
 	}: Props = $props();
 
 	const fields = saveDoc.fields;
@@ -178,6 +182,7 @@
 				label="Chart preview"
 				{numerals}
 				paper={chartPaper}
+				columns={chartColumns}
 			/>
 		</div>
 	{/if}

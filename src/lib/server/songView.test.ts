@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import "../../../tests/helpers/fakeServerModules";
 import { data, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
 
+// A chart drawn with columns per row says so, so a test sees the song's choice reach the renderer.
+const perRow = (o?: { columns?: string }) => (o?.columns === "row" ? " [row]" : "");
 vi.mock("#lib/server/chartHtml.js", () => ({
-	renderScoreChartHtml: (md: string) => `score:${md}`,
-	renderChartHtml: (md: string) => `grid:${md}`,
+	renderScoreChartHtml: (md: string, o?: { columns?: string }) => `score:${md}${perRow(o)}`,
+	renderChartHtml: (md: string, o?: { columns?: string }) => `grid:${md}${perRow(o)}`,
 }));
 const { songView } = await import("./songView");
 
@@ -44,6 +46,27 @@ describe("songView", () => {
 		expect((await songView(row())).song.chartSource).toBeNull();
 	});
 
+	it("draws the chart with the song's columns, shared when it has none", async () => {
+		const view = await songView(row({ chartColumns: "row" }));
+		expect(view.docs.chart).toBe("score:| C | [row]");
+		expect(view.song.chartColumns).toBe("row");
+		const plain = await songView(row({ chartColumns: null }));
+		expect(plain.docs.chart).toBe("score:| C |");
+		expect(plain.song.chartColumns).toBe("shared");
+	});
+
+	it("a chart read from a PDF keeps the song's columns on its plain grid", async () => {
+		const pdf = { id: "f1", kind: "pdf", url: "u", title: "", filename: "a.pdf", status: "ready" };
+		const view = await songView(
+			row({
+				chartSource: { kind: "file", id: "f1", at: "2026-11-10T12:00:00.000Z" },
+				files: [pdf],
+				chartColumns: "row",
+			}),
+		);
+		expect(view.docs.chart).toBe("grid:| C | [row]");
+	});
+
 	describe("the chart's score", () => {
 		const at = "2026-11-10T12:00:00.000Z";
 		const pdf = {
@@ -65,7 +88,6 @@ describe("songView", () => {
 				url: "https://blob/f1.pdf",
 				name: "Lead sheet.pdf",
 			});
-			expect(view.song.chartScoreNote).toBeNull();
 		});
 		it("an image counts; its title names it", async () => {
 			const image = { ...pdf, kind: "image", title: "Page 1" };
@@ -86,12 +108,6 @@ describe("songView", () => {
 				expect(view.docs.chart).toBe("score:| C |");
 				expect(view.song.chartScoreFile).toBeNull();
 			}
-		});
-		it("an engraved chart that cannot be drawn says why", async () => {
-			expect((await songView(row({ chartMarkdown: "| C | Qz7 |" }))).song.chartScoreNote).toBe(
-				"Line 1: Qz7: a chord starts with a root A–G",
-			);
-			expect((await songView(row())).song.chartScoreNote).toBeNull();
 		});
 	});
 });

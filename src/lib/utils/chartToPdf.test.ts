@@ -174,9 +174,10 @@ describe("chartToPdfPages", () => {
 	});
 
 	test("an error line draws its source in Courier and its message under it", () => {
-		const { texts } = draw("## A\n| C | (C |\n| F |");
+		// A structural error (a :| with no |:) is still an error line; an unreadable chord keeps its bar since barmark 0.23.
+		const { texts } = draw("## A\n| C | F |\n| G | A :|");
 		const source = texts.find((t) => t.font === "Courier");
-		expect(source).toMatchObject({ str: "| C | (C |", color: "#b00020" });
+		expect(source).toMatchObject({ str: "| G | A :|", color: "#b00020" });
 		const message = texts.find((t) => t.font === "Helvetica" && t.color === "#b00020");
 		expect(message?.y).toBeGreaterThan(source!.y);
 	});

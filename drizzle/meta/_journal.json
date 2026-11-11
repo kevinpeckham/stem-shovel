@@ -834,6 +834,13 @@
       "when": 1794270519170,
       "tag": "0118_military_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "6",
+      "when": 1794357951355,
+      "tag": "0119_pink_strong_guy",
+      "breakpoints": true
     }
   ]
 }

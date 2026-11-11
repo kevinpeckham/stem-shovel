@@ -8,6 +8,54 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Size columns per row.** The chart grid aligns bar lines down each section,
+  so one busy bar widens its column in every row. The Chart panel's ⋯ menu
+  now offers editors "Size columns per row" (`@barmark/render` 0.19's
+  `columns: "row"`), saved with the song (`song.chart_columns`, migration
+  0119, `ChartColumnsSchema`, the `setChartColumns` command) and drawn by
+  the song's chart, the set list's show page and the editor's preview; the
+  PDF already sizes a section's bars equally. Off by default, as before.
+- **The lighter engraver.** The Score view loads `@barmark/engraver`, barmark's
+  build of the same Verovio 6.4.1 at about 3 MB where stock is about 7 MB,
+  from jsDelivr with both files' SRI digests on the `<barmark-score>`
+  element (`renderScoreChartHtml`); a digest mismatch falls back to the
+  package's own copy with a warning.
+
+### Changed
+
+- **barmark 0.23.1, @barmark/render 0.19.0, @barmark/score 0.5.0,
+  @barmark/sync 0.4.1, @barmark/musicxml 0.9.0, @barmark/midi 0.3.2.** The
+  releases against the asks on issue #16 (docs/audio-engine.md "The 0.23
+  bump and what it retired"). An unreadable chord now keeps its bar as
+  unknown harmony (the error stands); stacked spellings read with a warning
+  and a suggestion; an ending before the last continues across lines to its
+  `:|`; the "words on a rehearsal mark" error suggests the mark's own cell.
+  `db:chart-check` read every chart on dev and staging clean first.
+- **When the score cannot be drawn, the reason is a notification.**
+  `@barmark/score` 0.4 fires `scoreerror` with barmark's sentence after it
+  shows the grid again; `ChartHtml.svelte` shows it as an error notification
+  with the way out, in place of the server-side note under the chart.
+- **Score reads take barmark's own respelling.** `repairChordSpellings`
+  applies the `suggestion` barmark attaches to a chord it reports and
+  guesses nothing itself; `reflowChartRows` reflows a first ending to its
+  `:|` and a line with an unreadable chord with the rest.
+
+### Removed
+
+- `chartRehearsalLetters` (render 0.19 leaves automatic letters off a chart
+  with its own marks), `chartScoreRefusal` with `songView`'s `chartScoreNote`
+  and the Docs panel's note, and the first two candidates of
+  `repairChordSpellings`; their tests with them.
+
+### Technical
+
+- Migration 0119 adds `song.chart_columns` (nullable text; null is "shared").
+- `src/app.d.ts` declares `onscoreerror` on `svelte/elements`' HTML attributes.
+- The help page "Charts, lyrics and notes" mentions the columns control:
+  production owes `db:update-docs charts-lyrics-and-notes`.
+
 ## [0.259.8] - 2026-11-10
 
 ### Changed

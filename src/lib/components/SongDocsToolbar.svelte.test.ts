@@ -19,6 +19,7 @@ function setup({ panel = "chart" as Kind, editing = false, signedIn = true } = {
 			chartVersion: 1,
 			lyricsVersion: 0,
 			notesVersion: 0,
+			chartColumns: "shared",
 		}),
 		docs: () => ({ chart: "<p>chart</p>", lyrics: "", notes: "" }),
 		myNote: () => null,
@@ -29,6 +30,7 @@ function setup({ panel = "chart" as Kind, editing = false, signedIn = true } = {
 		engineStatus: () => null,
 		hasGrid: () => false,
 		onhistory: () => {},
+		onsaved: async () => {},
 	});
 	docs.panel = panel;
 	docs.editing = editing;

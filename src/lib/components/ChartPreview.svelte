@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { chartRehearsalLetters } from "#lib/utils/chartRehearsalLetters.js";
 	import { onMount } from "svelte";
+	import type { ChartColumns } from "#lib/val/ChartColumnsSchema.js";
 
 	/**
 	 * A live barmark preview of chart text, for the editor (barmark.dev's
 	 * ChartRender.svelte): a `<barmark-chart>` drawn the way the saved chart
-	 * is (`renderChartHtml`: dark, rehearsal letters unless the chart writes
-	 * its own marks, the `barmark-look`
+	 * is (`renderChartHtml`: dark, rehearsal letters, the `barmark-look`
 	 * palette), fed through the element's `text` property and spelled with
 	 * `numerals` when the Chords view asks for numbers. The element module
 	 * is browser-only, so it loads on mount. Up to LONG characters it redraws
@@ -20,8 +19,10 @@
 		numerals?: "nashville" | "roman" | null;
 		/** The chart's background in place of the look's translucent paper (`--barmark-paper`). */
 		paper?: string | null;
+		/** The song's column sizing (`song.chartColumns`): `row` is the element's `columns` attribute, as the saved chart carries it. */
+		columns?: ChartColumns;
 	}
-	let { text, label, numerals = null, paper = null }: Props = $props();
+	let { text, label, numerals = null, paper = null, columns }: Props = $props();
 
 	const LONG = 10_000;
 	const MAX = 50_000;
@@ -31,7 +32,6 @@
 	let chart = $state<ChartElement>();
 	let ready = $state(false);
 	const tooLong = $derived(text.length > MAX);
-	const letters = $derived(!tooLong && chartRehearsalLetters(text));
 
 	onMount(() => {
 		let live = true;
@@ -72,7 +72,11 @@
 			stops at {MAX.toLocaleString("en-US")}).
 		</p>
 	{:else}
-		<barmark-chart bind:this={chart} theme="dark" rehearsal-letters={letters ? "" : undefined}
+		<barmark-chart
+			bind:this={chart}
+			theme="dark"
+			rehearsal-letters
+			columns={columns === "row" ? "row" : undefined}
 		></barmark-chart>
 	{/if}
 </div>

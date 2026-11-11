@@ -29,6 +29,7 @@ const {
 	saveUserDoc,
 	saveUserNote,
 	setChartTiming,
+	setSongChartColumns,
 	setUseChartTiming,
 	setProjectNoAi,
 	setSongStage,
@@ -272,6 +273,16 @@ describe("the chart's timing map follows the chart text", () => {
 		expect(row("song", "sg2")?.useChartTiming).toBeUndefined();
 		expect(await setUseChartTiming("a1", "sg1", false)).toBe(true);
 		expect(row("song", "sg1")?.useChartTiming).toBe(false);
+	});
+
+	test("setSongChartColumns stores row, and shared as null, scoped by the account", async () => {
+		reset({ song: [song("sg1"), song("sg2", { accountId: "a2" })] });
+		expect(await setSongChartColumns("a1", "sg1", "row")).toBe(true);
+		expect(row("song", "sg1")?.chartColumns).toBe("row");
+		expect(await setSongChartColumns("a1", "sg2", "row")).toBe(false);
+		expect(row("song", "sg2")?.chartColumns).toBeUndefined();
+		expect(await setSongChartColumns("a1", "sg1", "shared")).toBe(true);
+		expect(row("song", "sg1")?.chartColumns).toBeNull();
 	});
 });
 

@@ -34,3 +34,16 @@ declare global {
 }
 
 export {};
+
+/**
+ * `@barmark/score`'s `scoreerror` (bubbles, composed) as an attribute on any
+ * element above a `<barmark-score>`: svelte/elements knows the standard
+ * events alone, so the custom one is declared here (ChartHtml.svelte).
+ */
+declare module "svelte/elements" {
+	interface HTMLAttributes<T> {
+		onscoreerror?: (
+			event: CustomEvent<{ reason?: string }> & { currentTarget: EventTarget & T },
+		) => void;
+	}
+}

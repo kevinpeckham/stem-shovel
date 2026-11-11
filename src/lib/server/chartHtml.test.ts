@@ -32,7 +32,9 @@ describe("renderDocHtml", () => {
 	});
 	it("draws the song's chart as <barmark-score>: the grid and the Grid / Score switch in a declarative shadow root", () => {
 		const html = renderDocHtml("chart", "## Verse\n| D | A |");
-		expect(html).toMatch(/^<barmark-score theme="dark" rehearsal-letters>/);
+		expect(html).toMatch(
+			/^<barmark-score verovio-url="https:\/\/cdn\.jsdelivr\.net\/npm\/@barmark\/engraver@[\d.]+\/dist\/verovio-module\.mjs" verovio-integrity="sha384-[^"]+" verovio-wasm-integrity="sha384-[^"]+" theme="dark" rehearsal-letters>/,
+		);
 		expect(html).toContain('<template shadowrootmode="open">');
 		expect(html).toContain('role="radiogroup"');
 		expect(html).toContain('data-view="score"');
@@ -49,5 +51,25 @@ describe("renderScoreChartHtml", () => {
 		const html = renderChartHtml("## Verse\n| D | A |");
 		expect(html).toMatch(/^<barmark-chart /);
 		expect(html).not.toContain('role="radiogroup"');
+	});
+});
+
+describe("columns", () => {
+	const chart = "## Verse\n| D | A |\n| G | D A G Bm |";
+	it('row puts columns="row" on <barmark-chart>', () => {
+		expect(renderChartHtml(chart, { columns: "row" })).toMatch(
+			/^<barmark-chart [^>]*columns="row"/,
+		);
+	});
+	it('row puts columns="row" on <barmark-score>, beside the engraver\'s attributes', () => {
+		const html = renderScoreChartHtml(chart, { columns: "row" });
+		expect(html).toMatch(/^<barmark-score verovio-url="[^"]+"[^>]*columns="row"/);
+		expect(html).toMatch(/^<barmark-score [^>]*verovio-wasm-integrity="sha384-[^"]+"/);
+	});
+	it("shared, or no option, draws exactly what it drew before", () => {
+		expect(renderChartHtml(chart, { columns: "shared" })).toBe(renderChartHtml(chart));
+		expect(renderScoreChartHtml(chart, { columns: "shared" })).toBe(renderScoreChartHtml(chart));
+		expect(renderChartHtml(chart)).not.toMatch(/^<barmark-chart [^>]*columns=/);
+		expect(renderScoreChartHtml(chart)).not.toMatch(/^<barmark-score [^>]*columns=/);
 	});
 });

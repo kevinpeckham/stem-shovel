@@ -6,6 +6,7 @@ import { DraftStoppedError, draftStopNotice } from "#lib/utils/draftStopped.js";
 import { chartHash, checkTimingMap } from "@barmark/sync";
 import { SongChangesSaveSchema } from "#lib/val/SongChangeSchema.js";
 import { ChartlessGridUseSchema } from "#lib/val/ChartlessGridUseSchema.js";
+import { ChartColumnsChangeSchema } from "#lib/val/ChartColumnsChangeSchema.js";
 import { SongSectionsSaveSchema } from "#lib/val/SongSectionSchema.js";
 import { ShareSongSchema } from "#lib/val/ShareSongSchema.js";
 import { StemOrderSchema } from "#lib/val/StemOrderSchema.js";
@@ -48,6 +49,7 @@ import {
 	setChartTiming,
 	setSongStartAndTempo,
 	setUseChartTiming,
+	setSongChartColumns,
 	songNotesFor,
 	songSlugs,
 	updateSong as update,
@@ -672,6 +674,18 @@ export const setChartTimingUse = command(ChartTimingUseSchema, async ({ id, use 
 	const { accountId } = await memberOf(locals, accountOfSong, id);
 	if (!(await setUseChartTiming(accountId, id, use))) error(404, "Song not found");
 	return { use };
+});
+
+/**
+ * How the song's chart sizes its columns: `row` lets each row size its own
+ * bars, `shared` (the default) lines bar lines up down a section
+ * (`song.chartColumns`; members).
+ */
+export const setChartColumns = command(ChartColumnsChangeSchema, async ({ id, columns }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	if (!(await setSongChartColumns(accountId, id, columns))) error(404, "Song not found");
+	return { columns };
 });
 
 /**

@@ -12,6 +12,8 @@ vi.mock("@barmark/score/element", () => {
 	loaded.score = true;
 	return {};
 });
+const notify = vi.hoisted(() => vi.fn());
+vi.mock("#lib/state/notifications.svelte.js", () => ({ notify }));
 const { default: ChartHtml } = await import("./ChartHtml.svelte");
 
 type ChartElement = HTMLElement & { text?: string | null; numerals?: string | null };
@@ -27,6 +29,7 @@ const SCORE = '<barmark-score><template shadowrootmode="open"><p>D</p></template
 
 afterEach(() => {
 	Reflect.deleteProperty(HTMLElement.prototype, "setHTMLUnsafe");
+	notify.mockClear();
 });
 
 describe("ChartHtml", () => {
@@ -154,5 +157,25 @@ describe("ChartHtml", () => {
 		expect(loaded.score).toBe(true);
 		expect(score.numerals).toBe("nashville");
 		expect(score.text).toBe("key: D\n| D | A |");
+	});
+});
+
+// Last: it loads the score module, which the flags above remember.
+describe("ChartHtml when the score cannot be drawn", () => {
+	test("the element's scoreerror becomes an error notification with the reason and the way out", async () => {
+		const { container } = render(ChartHtml, { html: SCORE });
+		await settle();
+		const score = container.querySelector("barmark-score")!;
+		score.dispatchEvent(
+			new CustomEvent("scoreerror", {
+				bubbles: true,
+				composed: true,
+				detail: { reason: "Line 2: Qz7: a chord starts with a root A–G." },
+			}),
+		);
+		expect(notify).toHaveBeenCalledWith(
+			"The score can't be drawn: Line 2: Qz7: a chord starts with a root A–G. Fix it in the text and the score follows.",
+			{ kind: "error" },
+		);
 	});
 });

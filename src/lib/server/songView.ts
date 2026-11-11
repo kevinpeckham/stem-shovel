@@ -20,7 +20,6 @@ import {
 	schedulePlayback,
 	scheduleStemMetadata,
 } from "#lib/server/jobs.js";
-import { chartScoreRefusal } from "#lib/utils/chartScoreRefusal.js";
 
 export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
 
@@ -78,6 +77,7 @@ export async function songView(song: SongRow) {
 		listDemoComments(song.id),
 	]);
 	const scoreFile = chartScoreFileOf(song.chartSource, presented.files);
+	const chartColumns = song.chartColumns ?? "shared";
 	return {
 		// The mixes (docs/mixes.md) carry their notes rendered, as the documents are.
 		song: {
@@ -87,8 +87,8 @@ export async function songView(song: SongRow) {
 			chartSource: song.chartSource ?? null,
 			/** The PDF or image the chart was read from, still attached: the Score view shows it, and the chart is the plain grid. */
 			chartScoreFile: scoreFile,
-			/** Why the Score view cannot engrave the chart (`chartScoreRefusal`), null when it can or shows the file instead. */
-			chartScoreNote: scoreFile ? null : chartScoreRefusal(song.chartMarkdown),
+			/** How the chart sizes its columns (`row` per row, `shared` down a section): drawn here, and the ⋯ menu's switch. */
+			chartColumns,
 		},
 		manifest,
 		comments,
@@ -99,8 +99,8 @@ export async function songView(song: SongRow) {
 		docs: {
 			// A chart read from a PDF or image is the plain grid: the Chart tab's own switch shows the file as its score.
 			chart: scoreFile
-				? renderChartHtml(song.chartMarkdown)
-				: renderScoreChartHtml(song.chartMarkdown),
+				? renderChartHtml(song.chartMarkdown, { columns: chartColumns })
+				: renderScoreChartHtml(song.chartMarkdown, { columns: chartColumns }),
 			lyrics: renderMarkdown(song.lyricsMarkdown),
 			notes: renderMarkdown(song.notesMarkdown),
 		},

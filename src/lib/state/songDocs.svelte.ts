@@ -1,11 +1,14 @@
 import type { ComponentProps } from "svelte";
 import type ContextMenu from "#lib/components/ContextMenu.svelte";
 import type SongDocPanel from "#lib/components/SongDocPanel.svelte";
-import { saveDoc } from "#lib/remote/songs.remote.js";
+import { saveDoc, setChartColumns } from "#lib/remote/songs.remote.js";
 import { ChartKeyChoice } from "#lib/state/chartKey.svelte.js";
 import { ChordDialectChoice, type ChordDialect } from "#lib/state/chordDialect.svelte.js";
+import { notify } from "#lib/state/notifications.svelte.js";
 import type { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 import { DEFAULT_DOC_MONO, loadDocMono, saveDocMono } from "#lib/utils/docMonoPreference.js";
+import { errorMessage } from "#lib/utils/errorMessage.js";
+import type { ChartColumns } from "#lib/val/ChartColumnsSchema.js";
 import type { SongDocKind, SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
 
 // Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
@@ -46,6 +49,8 @@ export interface DocsSong {
 	chartVersion: number;
 	lyricsVersion: number;
 	notesVersion: number;
+	/** How the chart sizes its columns, the ⋯ menu's "Size columns per row". */
+	chartColumns: ChartColumns;
 }
 
 /** The history panel's subject for a document (the page's DocHistoryPanel). */
@@ -78,6 +83,8 @@ export interface SongDocsOptions {
 	hasGrid: () => boolean;
 	/** The ⋯ menu's History: the page's history panel opens on the document. */
 	onhistory: (target: DocHistoryTarget) => void;
+	/** After the chart's column sizing is saved: the page's data again (refreshAll), so the server-drawn chart redraws. */
+	onsaved: () => Promise<void>;
 }
 
 /**
@@ -234,7 +241,25 @@ export class SongDocs {
 		saveDocMono(this.mono);
 	}
 
-	/** The ⋯ menu: monospace for a document, its history, the chart's AI draft. */
+	/**
+	 * The chart's column sizing switched and saved for the band (`row` or
+	 * `shared`), then the page's data again: the chart is drawn on the server.
+	 */
+	async toggleChartColumns() {
+		const o = this.#opts;
+		const song = o.song();
+		try {
+			await setChartColumns({
+				id: song.id,
+				columns: song.chartColumns === "row" ? "shared" : "row",
+			});
+			await o.onsaved();
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		}
+	}
+
+	/** The ⋯ menu: monospace for a document, its history, the chart's column sizing and AI draft. */
 	get menuItems(): MenuItems {
 		const o = this.#opts;
 		const doc = this.doc;
@@ -264,6 +289,14 @@ export class SongDocs {
 				},
 			},
 		];
+		if (this.panel === "chart" && o.canEdit())
+			items.push({
+				id: "columns",
+				label: "Size columns per row",
+				iconClass: o.song().chartColumns === "row" ? "i-ph-check" : "i-ph-check invisible",
+				title: "Each row sizes its own bars, so one busy bar does not widen the whole section",
+				action: () => void this.toggleChartColumns(),
+			});
 		if (this.panel === "chart" && o.aiAvailable()) items.push(...this.#draftItems());
 		return items;
 	}

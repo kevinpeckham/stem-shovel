@@ -364,6 +364,15 @@ describe("editor-gated functions", () => {
 			outcome: { use: true },
 		},
 		{
+			name: "setChartColumns",
+			fn: songs.setChartColumns,
+			input: { id: SONG, columns: "row" },
+			arrange: () => data.setSongChartColumns.mockResolvedValue(true),
+			dataFn: "setSongChartColumns",
+			args: [ACCOUNT, SONG, "row"],
+			outcome: { columns: "row" },
+		},
+		{
 			name: "useChartlessGrid",
 			fn: songs.useChartlessGrid,
 			input: { id: SONG, startAt: 0.5, bpm: 132 },
@@ -1045,6 +1054,19 @@ describe("useChartlessGrid", () => {
 			call(songs.useChartlessGrid, { id: SONG, startAt: -1, bpm: 120 }),
 		).rejects.toThrow();
 		expect(data.setSongStartAndTempo).not.toHaveBeenCalled();
+	});
+});
+
+describe("setChartColumns", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("404 when the song is gone; the columns must be shared or row", async () => {
+		data.setSongChartColumns.mockResolvedValue(false);
+		await expect(
+			call(songs.setChartColumns, { id: SONG, columns: "shared" }),
+		).rejects.toMatchObject(httpError(404));
+		data.setSongChartColumns.mockClear();
+		await expect(call(songs.setChartColumns, { id: SONG, columns: "bar" })).rejects.toThrow();
+		expect(data.setSongChartColumns).not.toHaveBeenCalled();
 	});
 });
 

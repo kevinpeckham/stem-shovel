@@ -132,12 +132,12 @@ describe("readChartWithAi", () => {
 		expect(system).not.toMatch(/\bm<number>/);
 	});
 
-	it("a chart barmark plays passes, logged with its bar and error counts (a line with an error plays nothing)", async () => {
+	it("a chart barmark plays passes, logged with its bar and error counts (an unreadable chord keeps its bar since barmark 0.23)", async () => {
 		const text = "# Song\nPart: Piano\nkey: F, tempo: 120\n| F | C | Xq7 |\n| Bb | F |";
 		answers(`${text}\n`);
 		await expect(read()).resolves.toBe(text);
 		expect(log).toHaveBeenCalledWith(
-			expect.objectContaining({ kind: "chart-read", parsed: { bars: 2, errors: 1 }, error: null }),
+			expect.objectContaining({ kind: "chart-read", parsed: { bars: 5, errors: 1 }, error: null }),
 		);
 	});
 

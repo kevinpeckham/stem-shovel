@@ -14,6 +14,7 @@ import { sessionDisplayName } from "#lib/utils/sessionName.js";
 import { accountShareLinkOf, type AccountShareLink } from "#lib/utils/accountShareLinkOf.js";
 import { songChangesToStudio } from "#lib/utils/studioChanges.js";
 import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
+import type { ChartColumns } from "#lib/val/ChartColumnsSchema.js";
 import { flagProfanity } from "#lib/utils/profanity.js";
 import type { ArtistKind } from "#lib/val/ArtistKindSchema.js";
 import type { ImageKind } from "#lib/val/ImageSchema.js";
@@ -4107,6 +4108,23 @@ export async function setUseChartTiming(accountId: string, songId: string, use: 
 	const rows = await db
 		.update(song)
 		.set({ useChartTiming: use })
+		.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
+		.returning({ id: song.id });
+	return rows.length > 0;
+}
+
+/**
+ * How the song's chart sizes its columns (`song.chartColumns`): `shared` is
+ * stored as null, the default; false when the song is not this account's.
+ */
+export async function setSongChartColumns(
+	accountId: string,
+	songId: string,
+	columns: ChartColumns,
+) {
+	const rows = await db
+		.update(song)
+		.set({ chartColumns: columns === "shared" ? null : columns })
 		.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
 		.returning({ id: song.id });
 	return rows.length > 0;
@@ -11377,12 +11395,15 @@ export async function duplicateSetList(accountId: string, id: string, createdBy:
 	return copy;
 }
 
-/** The chart and lyrics of the account's songs among `songIds`, for a set list's show view (which decides who may read them). */
+/**
+ * The chart (with how it sizes its columns) and lyrics of the account's songs
+ * among `songIds`, for a set list's show view (which decides who may read them).
+ */
 export async function setListSongDocs(accountId: string, songIds: string[]) {
 	if (songIds.length === 0) return [];
 	return db.query.song.findMany({
 		where: and(eq(song.accountId, accountId), inArray(song.id, songIds)),
-		columns: { id: true, chartMarkdown: true, lyricsMarkdown: true },
+		columns: { id: true, chartMarkdown: true, chartColumns: true, lyricsMarkdown: true },
 	});
 }
 

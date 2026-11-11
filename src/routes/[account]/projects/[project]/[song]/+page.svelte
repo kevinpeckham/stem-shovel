@@ -337,6 +337,7 @@
 		engineStatus: () => playerEngine?.status ?? null,
 		hasGrid: () => !!posCtx.grid,
 		onhistory: (target) => history.open(target),
+		onsaved: refreshAll,
 	});
 	/** Scan stems, the uploader's detection and the AI's song check (the Tempo & key tab). */
 	const check = new SongCheck({

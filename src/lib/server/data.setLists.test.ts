@@ -592,17 +592,17 @@ describe("duplicateSetList", () => {
 });
 
 describe("setListSongDocs", () => {
-	test("the chart and lyrics of the account's songs asked for", async () => {
+	test("the chart, its columns and the lyrics of the account's songs asked for", async () => {
 		reset({
 			project: [project("p1", A), project("p9", B)],
 			song: [
-				song("s1", A, "p1", { chartMarkdown: "| C |", lyricsMarkdown: "la" }),
+				song("s1", A, "p1", { chartMarkdown: "| C |", chartColumns: "row", lyricsMarkdown: "la" }),
 				song("s2", A, "p1"),
 				song("s9", B, "p9", { chartMarkdown: "theirs" }),
 			],
 		});
 		expect(await setListSongDocs(A, ["s1", "s9"])).toEqual([
-			{ id: "s1", chartMarkdown: "| C |", lyricsMarkdown: "la" },
+			{ id: "s1", chartMarkdown: "| C |", chartColumns: "row", lyricsMarkdown: "la" },
 		]);
 		expect(await setListSongDocs(A, [])).toEqual([]);
 	});

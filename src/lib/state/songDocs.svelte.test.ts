@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-vi.mock("#lib/remote/songs.remote.js", () => ({ saveDoc: { pending: 0 } }));
+const remote = vi.hoisted(() => ({ setChartColumns: vi.fn(async (_input: unknown) => ({})) }));
+const notify = vi.hoisted(() => vi.fn());
+vi.mock("#lib/remote/songs.remote.js", () => ({ saveDoc: { pending: 0 }, ...remote }));
+vi.mock("#lib/state/notifications.svelte.js", () => ({ notify }));
 
 const { SongDocs } = await import("./songDocs.svelte.js");
 
@@ -22,6 +25,7 @@ const song = {
 	chartVersion: 2,
 	lyricsVersion: 0,
 	notesVersion: 0,
+	chartColumns: "shared" as "shared" | "row",
 };
 
 function setup({
@@ -32,6 +36,7 @@ function setup({
 	ai = true,
 	canEdit = true,
 	draftBusy = false,
+	chartColumns = "shared" as "shared" | "row",
 } = {}) {
 	const chordDraft = {
 		draftBusy,
@@ -42,8 +47,9 @@ function setup({
 		generateChart: vi.fn(async () => {}),
 	};
 	const onhistory = vi.fn();
+	const onsaved = vi.fn(async () => {});
 	const d = new SongDocs({
-		song: () => song,
+		song: () => ({ ...song, chartColumns }),
 		docs: () => docs,
 		myNote: () => null,
 		signedIn: () => true,
@@ -53,8 +59,9 @@ function setup({
 		engineStatus: () => "ready",
 		hasGrid: () => true,
 		onhistory,
+		onsaved,
 	});
-	return { d, chordDraft, onhistory };
+	return { d, chordDraft, onhistory, onsaved };
 }
 
 type Item = { id?: string; action?: () => unknown };
@@ -64,6 +71,8 @@ const run = (items: Item[], id: string) => items.find((i) => i.id === id)?.actio
 
 beforeEach(() => {
 	vi.unstubAllGlobals();
+	remote.setChartColumns.mockReset().mockResolvedValue({});
+	notify.mockReset();
 });
 
 describe("SongDocs", () => {
@@ -92,7 +101,7 @@ describe("SongDocs", () => {
 
 	test("the ⋯ menu lists the shown document's items, the chart's draft only when the AI is available", async () => {
 		const { d, chordDraft, onhistory } = setup();
-		expect(ids(d.menuItems)).toEqual(["mono", "history", "ai", "draft"]);
+		expect(ids(d.menuItems)).toEqual(["mono", "history", "columns", "ai", "draft"]);
 		run(d.menuItems, "draft");
 		expect(chordDraft.draftFromPanel).toHaveBeenCalled();
 		run(d.menuItems, "history");
@@ -103,10 +112,11 @@ describe("SongDocs", () => {
 			label: "the chart",
 			current: "| C | G |",
 		});
-		expect(ids(setup({ ai: false }).d.menuItems)).toEqual(["mono", "history"]);
+		expect(ids(setup({ ai: false }).d.menuItems)).toEqual(["mono", "history", "columns"]);
 		expect(ids(setup({ draftBusy: true }).d.menuItems)).toEqual([
 			"mono",
 			"history",
+			"columns",
 			"ai",
 			"busy",
 			"cancel",
@@ -115,10 +125,52 @@ describe("SongDocs", () => {
 		expect(ids(d.menuItems)).toEqual(["mono", "history"]);
 	});
 
+	test("Size columns per row: the chart's, to an editor only, checked when the chart sizes per row", async () => {
+		const { d, onsaved } = setup();
+		const item = () =>
+			d.menuItems.find((i: { id?: string }) => i.id === "columns") as {
+				label: string;
+				iconClass: string;
+			};
+		expect(item()).toMatchObject({
+			label: "Size columns per row",
+			iconClass: "i-ph-check invisible",
+		});
+		await d.toggleChartColumns();
+		expect(remote.setChartColumns).toHaveBeenCalledWith({ id: "song1", columns: "row" });
+		expect(onsaved).toHaveBeenCalled();
+		const row = setup({ chartColumns: "row" });
+		expect(row.d.menuItems).toContainEqual(
+			expect.objectContaining({ id: "columns", iconClass: "i-ph-check" }),
+		);
+		await row.d.toggleChartColumns();
+		expect(remote.setChartColumns).toHaveBeenLastCalledWith({ id: "song1", columns: "shared" });
+		expect(ids(setup({ canEdit: false }).d.menuItems)).not.toContain("columns");
+		await d.show("lyrics");
+		expect(ids(d.menuItems)).not.toContain("columns");
+	});
+
+	test("a failed column save is an error notification, and the page is not refreshed", async () => {
+		const { d, onsaved } = setup();
+		remote.setChartColumns.mockRejectedValue(new Error("Song not found"));
+		run(d.menuItems, "columns");
+		await vi.waitFor(() =>
+			expect(notify).toHaveBeenCalledWith("Song not found", { kind: "error" }),
+		);
+		expect(onsaved).not.toHaveBeenCalled();
+	});
+
 	test("Generate chart from the stems is offered only on an empty chart", () => {
 		const empty = setup({ docs: { chart: null, lyrics: null, notes: null } });
 		empty.d.panel = "chart";
-		expect(ids(empty.d.menuItems)).toEqual(["mono", "history", "ai", "draft", "generate"]);
+		expect(ids(empty.d.menuItems)).toEqual([
+			"mono",
+			"history",
+			"columns",
+			"ai",
+			"draft",
+			"generate",
+		]);
 		run(empty.d.menuItems, "generate");
 		expect(empty.chordDraft.generateChart).toHaveBeenCalled();
 		expect(ids(setup().d.menuItems)).not.toContain("generate");
@@ -164,7 +216,7 @@ describe("SongDocs", () => {
 	test("the chart is one document: no notation mode, its tab plain, its menu the chart's", () => {
 		const { d } = setup({ docs: { chart: null, lyrics: null, notes: null } });
 		d.panel = "chart";
-		expect(ids(d.menuItems)).toEqual(["mono", "history", "ai", "draft", "generate"]);
+		expect(ids(d.menuItems)).toEqual(["mono", "history", "columns", "ai", "draft", "generate"]);
 		expect(d).not.toHaveProperty("chartMode");
 	});
 

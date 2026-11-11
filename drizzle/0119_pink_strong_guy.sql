@@ -1,0 +1,1 @@
+ALTER TABLE `song` ADD `chart_columns` text;

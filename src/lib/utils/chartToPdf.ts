@@ -10,7 +10,6 @@ import {
 	type RowItem,
 	type SectionBlock,
 } from "@barmark/render";
-import { chartRehearsalLetters } from "./chartRehearsalLetters.js";
 import {
 	printDirection,
 	printPasses,
@@ -50,7 +49,7 @@ type Fonts = { chord: string; text: string; textBold: string; textItalic: string
  * the left margin and `doc.y` below the chart.
  */
 export function chartToPdfPages(doc: PDFKit.PDFDocument, text: string, fonts: Fonts): void {
-	const model = layoutChart(text, { rehearsalLetters: chartRehearsalLetters(text) });
+	const model = layoutChart(text, { rehearsalLetters: true });
 	const { margins, width } = doc.page;
 	const ctx: Ctx = {
 		doc,

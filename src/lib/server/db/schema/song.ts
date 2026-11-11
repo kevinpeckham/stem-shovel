@@ -131,6 +131,15 @@ export const song = table(
 		chartSource: t
 			.text("chart_source", { mode: "json" })
 			.$type<import("../../../val/ChartSourceSchema").ChartSource>(),
+		/**
+		 * How the chart's sections size their columns (`ChartColumnsSchema`):
+		 * `row` sizes each row's cells on its own; null is `shared`, barmark's
+		 * default, with bar lines aligned down the section. Picked in the Chart
+		 * panel's ⋯ menu; drawn by `renderScoreChartHtml` and the editor's preview.
+		 */
+		chartColumns: t
+			.text("chart_columns")
+			.$type<import("../../../val/ChartColumnsSchema").ChartColumns>(),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

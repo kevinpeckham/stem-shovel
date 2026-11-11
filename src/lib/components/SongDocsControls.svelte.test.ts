@@ -21,6 +21,7 @@ function setup({ canEdit = true, busy = false } = {}) {
 			chartVersion: 1,
 			lyricsVersion: 0,
 			notesVersion: 0,
+			chartColumns: "shared",
 		}),
 		docs: () => html,
 		myNote: () => null,
@@ -31,6 +32,7 @@ function setup({ canEdit = true, busy = false } = {}) {
 		engineStatus: () => null,
 		hasGrid: () => false,
 		onhistory: () => {},
+		onsaved: async () => {},
 	});
 	render(SongDocsControls, { docs, canEdit, docsHtml: html, busy });
 	return docs;

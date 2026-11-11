@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from "svelte";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	/**
 	 * A chord chart's rendered HTML in the page: barmark's `<barmark-chart>`
@@ -26,6 +27,12 @@
 	 * import registers both elements and does not load Verovio: the element
 	 * loads it in its worker on the first switch to the score. `numerals` and
 	 * `text` go to whichever element the HTML holds; both take them.
+	 *
+	 * When the score cannot be drawn (`@barmark/score` 0.4: Verovio refused
+	 * the chart, failed to load or timed out) the element keeps the grid and
+	 * fires `scoreerror` (bubbles, composed) with the reason; the wrapper
+	 * hears it and shows the reason as an error notification, with the way
+	 * out.
 	 */
 	interface Props {
 		html: string;
@@ -38,6 +45,15 @@
 		paper?: string | null;
 	}
 	let { html, markdown, numerals = null, text: textProp = null, paper = null }: Props = $props();
+
+	/** The score element's `scoreerror`: its `detail.reason` is barmark's sentence. */
+	function scoreError(e: CustomEvent<{ reason?: string }>) {
+		const reason = e.detail?.reason;
+		notify(
+			`The score can't be drawn${reason ? `: ${reason.replace(/\.$/, "")}` : ""}. Fix it in the text and the score follows.`,
+			{ kind: "error" },
+		);
+	}
 
 	type ChartElement = HTMLElement & { text: string | null; numerals: string | null };
 	/** The grid alone (`renderChartHtml`) or the grid with its score switch (`renderScoreChartHtml`). */
@@ -81,7 +97,12 @@
 
 {#key html}
 	<!-- barmark.dev's chart look (uno.config.ts): the renderer's palette reads these custom properties from its host. -->
-	<div class="barmark-look min-w-0" style:--barmark-paper={paper} {@attach draw(html)}>
+	<div
+		class="barmark-look min-w-0"
+		style:--barmark-paper={paper}
+		onscoreerror={scoreError}
+		{@attach draw(html)}
+	>
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -- renderChartHtml escapes what it draws; renderMarkdown is sanitized -->
 		{@html html}
 	</div>

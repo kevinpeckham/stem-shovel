@@ -4,6 +4,24 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Size columns per row.** The chart grid lines its bars up down each
+  section, so one busy bar widens its whole column. When that spoils a
+  section, the Chart panel's ⋯ menu now offers "Size columns per row",
+  which lets each row size its own bars, for everyone who opens the song.
+- **The Score view loads faster.** The engraver it downloads on the first
+  switch to Score is less than half the size it was.
+
+### Changed
+
+- **Charts read from scores come out cleaner.** A chord the chart cannot
+  read keeps its bar (marked, instead of dropping the whole line), stacked
+  chord spellings such as D6(omit5add9) are respelled the way the chart
+  reads them, and a first ending longer than a row continues on the next
+  line. When the Score view cannot draw a chart, the reason now appears as a
+  notification with the way to fix it.
+
 ## [0.259.8] - 2026-11-10
 
 ### Changed

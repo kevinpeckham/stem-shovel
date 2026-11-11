@@ -8,6 +8,7 @@
 	import { chartDefaults } from "#lib/utils/chartDefaults.js";
 	import { chartSourceText } from "#lib/utils/chartSourceText.js";
 	import type { ChartScoreFile } from "#lib/server/songView.js";
+	import type { ChartColumns } from "#lib/val/ChartColumnsSchema.js";
 	import type { ChartSource } from "#lib/val/ChartSourceSchema.js";
 	import type { SongDocKind } from "#lib/val/SongDocKindSchema.js";
 
@@ -22,8 +23,9 @@
 			chartSource: ChartSource | null;
 			/** The PDF or image the chart was read from, still attached: the Score view shows it. */
 			chartScoreFile?: ChartScoreFile | null;
+			/** How the chart sizes its columns: the editor's preview draws it so. */
+			chartColumns?: ChartColumns;
 			/** Why the score cannot be engraved, null when it can. */
-			chartScoreNote?: string | null;
 			noAi: boolean;
 			project: { noAi: boolean };
 		};
@@ -96,17 +98,7 @@
 				>{/if}
 		</p>
 	{/if}
-	{@render scoreNote(docsHtml.chart ? song.chartScoreNote : null)}
 	{@render above?.()}
-{/snippet}
-
-<!-- Why the Score view cannot engrave the chart, with the way out. -->
-{#snippet scoreNote(note: string | null | undefined)}
-	{#if note}
-		<p class="mb-4 text-sm text-dim">
-			The score can't be drawn: {note.replace(/\.$/, "")}. Fix it in the text and the score follows.
-		</p>
-	{/if}
 {/snippet}
 
 <!-- An editor's empty chart: the three ways to fill it. -->
@@ -187,6 +179,7 @@
 				numerals={docs.numerals}
 				chartText={docs.chartKey.text(song.chartMarkdown)}
 				{scoreFile}
+				chartColumns={song.chartColumns}
 			/>
 		{/key}
 	{/if}
