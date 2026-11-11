@@ -3370,3 +3370,21 @@ behind a lazy load, with ONNX Runtime on the server (about one second
 per minute of audio at four threads) as the fallback. The port has four
 parts: the log mel front end, the 1500-frame chunking, the minimal
 peak-picking postprocessor, and Study 41's tempo and meter derivations.
+
+## The steady share enriches for a wrong bar without separating; joining is a wash with one clear win (2026-11-11)
+
+stem-bench Study 44 measured the two rules on the tracker's bars over
+the 261-song census, the Woodward songs, the five dev recordings and the
+Study 43 guitar takes. Joining adjacent half bars moves the tracker's
+bar count toward the artist's count about as often as away (73 to 61
+on the census), but it rescues a 6/8 song the tracker reads as bars of
+three and six by turns, which the steadiness rule would otherwise
+reject; the bench says keep it. The steady share at 0.6 removes 35
+census readings of which 22 have a right bar at some fold, removes two
+sound drafts and misses the one confidently-wrong draft on small0 bars,
+and no alternative measure does better; the bench's judgment is 0.4,
+enough to keep mop heart off the chart and nothing else. Mop heart is
+not the small checkpoint's weakness: the big one fails it the same way,
+and only a DBN postprocessor reads it steadily, at half the declared
+tempo. The bench's package readings match our stored counts on all
+five dev recordings.
