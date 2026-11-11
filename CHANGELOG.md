@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.263.0] - 2026-11-11
+
 ### Added
 
 - **A page and share links for a demo recording** (docs/mixes.md, "A page

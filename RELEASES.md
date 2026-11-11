@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.263.0] - 2026-11-11
+
 ### Added
 
 - **Share a demo on its own page.** Each demo recording now has a clean
