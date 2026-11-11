@@ -1,6 +1,7 @@
 import type { ComponentProps } from "svelte";
 import type ContextMenu from "#lib/components/ContextMenu.svelte";
 import type SongDocPanel from "#lib/components/SongDocPanel.svelte";
+import { MAIN_ONLY } from "#lib/constants/arrangements.js";
 import { saveDoc, setChartColumns } from "#lib/remote/songs.remote.js";
 import { ChartKeyChoice } from "#lib/state/chartKey.svelte.js";
 import { ChordDialectChoice, type ChordDialect } from "#lib/state/chordDialect.svelte.js";
@@ -51,6 +52,8 @@ export interface DocsSong {
 	notesVersion: number;
 	/** How the chart sizes its columns, the ⋯ menu's "Size columns per row". */
 	chartColumns: ChartColumns;
+	/** The arrangement the player shows (docs/arrangements.md): on an alternate the AI's draft and Generate stay Main's until phase 3. */
+	arrangementId?: string | null;
 }
 
 /** The history panel's subject for a document (the page's DocHistoryPanel). */
@@ -316,22 +319,29 @@ export class SongDocs {
 				{ id: "cancel", label: "Cancel", iconClass: "i-ph-x", action: () => draft.cancelDraft() },
 			];
 		const status = o.engineStatus();
+		const blocked = this.#blocked(status, true);
 		return [
 			{ id: "ai", kind: "divider" },
 			{
 				id: "draft",
 				label: "Draft chart with AI",
 				iconClass: "i-ph-sparkle",
-				disabled: status !== "ready" || !o.hasGrid(),
-				title: !o.hasGrid()
-					? "Needs a tempo and a time signature first (song settings)"
-					: status !== "ready"
-						? "Available once every stem has decoded"
-						: "Transcribe the stems and have the AI draft sections, progressions and a chart",
+				disabled: !!blocked,
+				title:
+					blocked ??
+					"Transcribe the stems and have the AI draft sections, progressions and a chart",
 				action: () => draft.draftFromPanel(),
 			},
 			...this.#generateItems(status),
 		];
+	}
+
+	/** Why a run from the stems cannot start now: an alternate arrangement (Main's until phase 3), no grid where it needs one, or stems still decoding; null when it can. */
+	#blocked(status: string | null, needsGrid: boolean): string | null {
+		if (this.#opts.song().arrangementId) return MAIN_ONLY;
+		if (needsGrid && !this.#opts.hasGrid())
+			return "Needs a tempo and a time signature first (song settings)";
+		return status === "ready" ? null : "Available once every stem has decoded";
 	}
 
 	/** "Generate chart from the stems": the whole run, saved to the song, so only to an editor and where there is no chart to replace. */
@@ -339,16 +349,16 @@ export class SongDocs {
 		const o = this.#opts;
 		if (o.docs().chart || !o.canEdit()) return [];
 		const draft = o.chordDraft();
+		const blocked = this.#blocked(status, false);
 		return [
 			{
 				id: "generate",
 				label: "Generate chart from the stems",
 				iconClass: "i-ph-magic-wand",
-				disabled: status !== "ready",
+				disabled: !!blocked,
 				title:
-					status !== "ready"
-						? "Available once every stem has decoded"
-						: "Set the tempo when it is missing, detect the chords, place the bar lines, draft the chart and save it with its sections",
+					blocked ??
+					"Set the tempo when it is missing, detect the chords, place the bar lines, draft the chart and save it with its sections",
 				action: () => void draft.generateChart(),
 			},
 		];

@@ -51,9 +51,12 @@ function file(name: string, size = 10) {
 	Object.defineProperty(f, "size", { value: size });
 	return f;
 }
-function setup() {
+function setup(arrangementId: string | null = null) {
 	const onsaved = vi.fn(async () => {});
-	const actions = new StemActions({ song: () => ({ id: "song1", version: "1.2.3" }), onsaved });
+	const actions = new StemActions({
+		song: () => ({ id: "song1", version: "1.2.3", arrangementId }),
+		onsaved,
+	});
 	return { actions, onsaved };
 }
 
@@ -184,13 +187,27 @@ describe("StemActions", () => {
 	test("saveOrder saves the order, refreshes and notifies; a failure notifies the error", async () => {
 		const { actions, onsaved } = setup();
 		await actions.saveOrder(["b", "a"]);
-		expect(remote.reorderStems).toHaveBeenCalledWith({ songId: "song1", ids: ["b", "a"] });
+		expect(remote.reorderStems).toHaveBeenCalledWith({
+			songId: "song1",
+			ids: ["b", "a"],
+			arrangementId: null,
+		});
 		expect(onsaved).toHaveBeenCalledOnce();
 		expect(notify).toHaveBeenCalledWith("Stem order saved");
 		remote.reorderStems.mockRejectedValueOnce(new Error("Not a member"));
 		await actions.saveOrder(["a", "b"]);
 		expect(notify).toHaveBeenLastCalledWith("Could not save the stem order: Not a member", {
 			kind: "error",
+		});
+	});
+
+	test("saveOrder on an alternate arrangement names it", async () => {
+		const { actions } = setup("alt1");
+		await actions.saveOrder(["b", "a"]);
+		expect(remote.reorderStems).toHaveBeenCalledWith({
+			songId: "song1",
+			ids: ["b", "a"],
+			arrangementId: "alt1",
 		});
 	});
 

@@ -8,6 +8,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Arrangements: several sets of stems for one song** (docs/arrangements.md,
+  phase 2). The song's own stems are Main; editors add up to twelve
+  alternates from the switcher at the top of the Stems view, each copied
+  from Main or another arrangement (sharing its files) or started empty.
+  Uploads, added and replaced stems, removal, reorder and the default
+  mix act on the arrangement shown, and `?arrangement=<id>` carries it in
+  the address. A Custom Stem Mix renders an alternate's stems.
+- **A saved mute.** The default mix now keeps which stems are muted, per
+  arrangement, and the rendered original mix leaves a muted stem out.
+
 ### Fixed
 
 - **The project page no longer re-posts a mix job for a song with a

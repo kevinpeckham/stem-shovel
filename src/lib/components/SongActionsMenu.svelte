@@ -5,6 +5,7 @@
 	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
 	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 	import { MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
+	import { MAIN_ONLY } from "#lib/constants/arrangements.js";
 	import type { DemoUploads } from "#lib/state/demoUploads.svelte.js";
 	import type { SongCheck } from "#lib/state/songCheck.svelte.js";
 	import type { SongDownloads } from "#lib/state/songDownloads.svelte.js";
@@ -30,6 +31,8 @@
 		song: {
 			id: string;
 			title: string;
+			/** The arrangement shown (docs/arrangements.md): new stems join it; null or absent for Main. */
+			arrangementId?: string | null;
 			stems: {
 				id: string;
 				label: string;
@@ -50,7 +53,7 @@
 		mixBusy: boolean;
 		/** The listener moved something away from the default mix. */
 		mixDirty: boolean;
-		/** The faders and pans alone differ from the default: there is a new default to save. */
+		/** The faders, pans or mutes differ from the default: there is a new default to save. */
 		fadersDirty: boolean;
 		/** The stem uploads' progress and refusal, shared with the empty player's uploader. */
 		jobs?: UploadJob[];
@@ -94,6 +97,12 @@
 	/** The two menus, closed on a click outside them. */
 	let uploadsEl = $state<HTMLDetailsElement | null>(null);
 	let downloadsEl = $state<HTMLDetailsElement | null>(null);
+	/** An alternate arrangement: the rendered original mix and Dawn's import read Main's stems on the server, and an upload's detection writes the song's tempo and key, until phase 3. */
+	let onAlternate = $derived(!!song.arrangementId);
+	let originalMixTitle = $derived(onAlternate ? MAIN_ONLY : "An MP3 of the song's default mix");
+	let dawnTitle = $derived(
+		onAlternate ? MAIN_ONLY : "The stems as they are now, each on a track of a new Dawn song",
+	);
 </script>
 
 <svelte:window
@@ -140,7 +149,7 @@
 			type="button"
 			disabled={downloads.savingMix}
 			onclick={() => void downloads.saveMixAsDefault()}
-			title="Save these fader levels as the default mix for every listener"
+			title="Save these fader levels, pans and mutes as the default mix for every listener"
 		>
 			<span class="i-ph-floppy-disk" aria-hidden="true"></span>
 			{downloads.savingMix ? "Saving…" : "Save as Default Mix"}
@@ -179,17 +188,19 @@
 			<StemUploader
 				bind:this={uploader}
 				songId={song.id}
+				arrangementId={song.arrangementId ?? null}
 				stemCount={song.stems.length}
 				decodedBytes={decodedStemBytes(song.stems)}
 				bind:jobs
 				bind:notice
 				{onuploaded}
-				onanalysis={check.applyDetection}
+				onanalysis={onAlternate ? undefined : check.applyDetection}
 				menu
 			/>
 			{#if song.stems.length > 0}
 				<StemReplacer
 					songId={song.id}
+					arrangementId={song.arrangementId ?? null}
 					stems={song.stems.map((s) => ({
 						id: s.id,
 						label: s.label,
@@ -198,7 +209,7 @@
 					bind:jobs
 					bind:notice
 					{onuploaded}
-					onanalysis={check.applyDetection}
+					onanalysis={onAlternate ? undefined : check.applyDetection}
 					menu
 				/>
 			{/if}
@@ -311,9 +322,9 @@
 					class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
 					type="button"
 					role="menuitem"
-					disabled={!!downloads.mixing}
+					disabled={!!downloads.mixing || onAlternate}
 					onclick={() => void downloads.downloadMix("original")}
-					title="An MP3 of the song's default mix"
+					title={originalMixTitle}
 				>
 					<span class="i-ph-music-note mr-2" aria-hidden="true"></span>
 					{downloads.mixing === "original" ? "Rendering…" : "Original Stem Mix (MP3)"}
@@ -334,9 +345,9 @@
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
 						type="button"
 						role="menuitem"
-						disabled={downloads.openingInDawn}
+						disabled={downloads.openingInDawn || onAlternate}
 						onclick={() => void downloads.openInDawn()}
-						title="The stems as they are now, each on a track of a new Dawn song"
+						title={dawnTitle}
 					>
 						<span class="i-ph-sliders-horizontal mr-2" aria-hidden="true"></span>
 						{downloads.openingInDawn ? "Loading into Dawn…" : "Open stems in Dawn"}

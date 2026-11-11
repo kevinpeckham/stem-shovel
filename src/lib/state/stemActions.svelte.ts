@@ -12,6 +12,8 @@ import { midiContentType } from "#lib/utils/midiContentType.js";
 export interface StemActionsSong {
 	id: string;
 	version: string;
+	/** The arrangement whose stems the page shows (docs/arrangements.md); null for Main. */
+	arrangementId?: string | null;
 }
 
 /** What the page supplies: the song and what to do once something is saved. */
@@ -182,10 +184,11 @@ export class StemActions {
 		}
 	};
 
-	/** A member dragged the rows into a new order: it becomes the song's order, for everyone. */
+	/** A member dragged the rows into a new order: it becomes the arrangement's order, for everyone. */
 	saveOrder = async (ids: string[]) => {
+		const song = this.#opts.song();
 		try {
-			await reorderStems({ songId: this.#opts.song().id, ids });
+			await reorderStems({ songId: song.id, ids, arrangementId: song.arrangementId ?? null });
 			await this.#opts.onsaved();
 			notify("Stem order saved");
 		} catch (e) {

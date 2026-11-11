@@ -91,7 +91,15 @@ beforeEach(() => {
 
 describe("prepare", () => {
 	const sources: StemSource[] = [
-		{ ...src("a"), duration: 8, peaks: [0.1, 0.5], gain: 0.5, pan: -0.25, tint: "red" },
+		{
+			...src("a"),
+			duration: 8,
+			peaks: [0.1, 0.5],
+			gain: 0.5,
+			pan: -0.25,
+			tint: "red",
+			muted: true,
+		},
 		{ ...src("b"), duration: 12, channels: 2 },
 	];
 	it("fills a placeholder row per stem from the manifest, nothing decoded, the status still idle", () => {
@@ -101,8 +109,27 @@ describe("prepare", () => {
 		expect(engine.total).toBe(2);
 		expect(engine.duration).toBe(12);
 		expect(engine.stems).toMatchObject([
-			{ id: "a", label: "a", duration: 8, peaks: [0.1, 0.5], gain: 0.5, pan: -0.25, tint: "red" },
-			{ id: "b", label: "b", duration: 12, channels: 2, peaks: [], gain: 1, pan: 0, tint: null },
+			{
+				id: "a",
+				label: "a",
+				duration: 8,
+				peaks: [0.1, 0.5],
+				gain: 0.5,
+				pan: -0.25,
+				tint: "red",
+				muted: true,
+			},
+			{
+				id: "b",
+				label: "b",
+				duration: 12,
+				channels: 2,
+				peaks: [],
+				gain: 1,
+				pan: 0,
+				tint: null,
+				muted: false,
+			},
 		]);
 		expect(engine.stems.every((s) => !s.decoded)).toBe(true);
 		expect(fetchSpy).not.toHaveBeenCalled();

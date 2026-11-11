@@ -61,30 +61,33 @@ export function snapshotLocalMix(
 	engine: MixEngine,
 	defaults: Map<string, number>,
 	defaultPans: Map<string, number> = new Map(),
+	defaultMuted: ReadonlySet<string> = new Set(),
 ): LocalMix | null {
 	const mix: LocalMix = { gains: {}, pans: {}, muted: [], soloed: [], master: engine.master };
 	let differs = engine.master !== 1;
 	for (const s of engine.stems) {
-		const base = defaults.get(s.id) ?? 1;
-		if (Math.abs(s.gain - base) > 1e-6) {
-			mix.gains[s.id] = s.gain;
-			differs = true;
-		}
-		if (Math.abs(s.pan - (defaultPans.get(s.id) ?? 0)) > 1e-6) {
-			mix.pans![s.id] = s.pan;
-			differs = true;
-		}
-		if (s.muted) {
-			mix.muted.push(s.id);
-			differs = true;
-		}
-		if (s.soloed) {
-			mix.soloed.push(s.id);
-			differs = true;
-		}
+		if (recordStem(mix, s, defaults.get(s.id) ?? 1, defaultPans.get(s.id) ?? 0)) differs = true;
+		// The muted list is the whole set (applyLocalMix sets every stem from it); only a change from the default's makes the mix differ.
+		if (s.muted !== defaultMuted.has(s.id)) differs = true;
 	}
 	if (mix.pans && Object.keys(mix.pans).length === 0) delete mix.pans;
 	return differs ? mix : null;
+}
+
+/** One stem into the snapshot: its gain and pan where they leave the default's, its mute and solo; true when the gain, pan or solo differs. */
+function recordStem(mix: LocalMix, s: MixEngine["stems"][number], gain: number, pan: number) {
+	let differs = false;
+	if (Math.abs(s.gain - gain) > 1e-6) {
+		mix.gains[s.id] = s.gain;
+		differs = true;
+	}
+	if (Math.abs(s.pan - pan) > 1e-6) {
+		mix.pans![s.id] = s.pan;
+		differs = true;
+	}
+	if (s.muted) mix.muted.push(s.id);
+	if (s.soloed) mix.soloed.push(s.id);
+	return differs || s.soloed;
 }
 
 /** Puts a local mix (or, with null, the default mix) onto the engine. */
@@ -93,11 +96,12 @@ export function applyLocalMix(
 	mix: LocalMix | null,
 	defaults: Map<string, number>,
 	defaultPans: Map<string, number> = new Map(),
+	defaultMuted: ReadonlySet<string> = new Set(),
 ): void {
 	for (const s of engine.stems) {
 		engine.setGain(s.id, mix?.gains[s.id] ?? defaults.get(s.id) ?? 1);
 		engine.setPan(s.id, mix?.pans?.[s.id] ?? defaultPans.get(s.id) ?? 0);
-		const wantMuted = !!mix?.muted.includes(s.id);
+		const wantMuted = mix ? mix.muted.includes(s.id) : defaultMuted.has(s.id);
 		if (s.muted !== wantMuted) engine.toggleMute(s.id);
 		const wantSoloed = !!mix?.soloed.includes(s.id);
 		if (s.soloed !== wantSoloed) engine.toggleSolo(s.id);

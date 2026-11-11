@@ -356,7 +356,7 @@ export class StemEngine {
 
 	/**
 	 * Fill the rows from the manifest alone (label, duration, peaks, gain, pan,
-	 * tint), nothing decoded and the status untouched. Synchronous and free of
+	 * tint, the default mix's mute), nothing decoded and the status untouched. Synchronous and free of
 	 * browser APIs, so the player can call it at creation and the server
 	 * renders the rows; `load` starts with it.
 	 */
@@ -369,7 +369,7 @@ export class StemEngine {
 			gain: clamp(src.gain ?? 1, 0, FADER_MAX),
 			pan: clamp(src.pan ?? 0, -1, 1),
 			tint: src.tint ?? null,
-			muted: false,
+			muted: src.muted ?? false,
 			soloed: false,
 			duration: src.duration ?? 0,
 			channels: src.channels ?? 0,

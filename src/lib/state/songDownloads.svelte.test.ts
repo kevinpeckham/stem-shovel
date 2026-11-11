@@ -42,11 +42,12 @@ function setup(
 	opts: {
 		ready?: ReturnType<typeof stem>[];
 		engine?: unknown;
+		arrangementId?: string | null;
 	} = {},
 ) {
 	const onmixsaved = vi.fn(async () => {});
 	const downloads = new SongDownloads({
-		song: () => song,
+		song: () => ({ ...song, arrangementId: opts.arrangementId ?? null }),
 		ready: () => opts.ready ?? [stem("Bass"), stem("Drums")],
 		engine: () => (opts.engine ?? null) as never,
 		onmixsaved,
@@ -134,20 +135,48 @@ describe("SongDownloads", () => {
 		expect(downloads.openingInDawn).toBe(false);
 	});
 
-	test("saving the default mix sends the rounded levels after a confirmation", async () => {
+	test("saving the default mix sends the rounded levels and the mutes after a confirmation", async () => {
 		vi.stubGlobal(
 			"confirm",
 			vi.fn(() => true),
 		);
-		const engine = { stems: [{ id: "s1", gain: 0.123456, pan: -0.3333 }] };
+		const engine = {
+			stems: [
+				{ id: "s1", gain: 0.123456, pan: -0.3333, muted: false },
+				{ id: "s2", gain: 1, pan: 0, muted: true },
+			],
+		};
 		const { downloads, onmixsaved } = setup({ engine });
 		await downloads.saveMixAsDefault();
 		expect(saveDefaultMix).toHaveBeenCalledWith({
 			id: "song1",
-			gains: [{ id: "s1", gain: 0.123, pan: -0.33 }],
+			gains: [
+				{ id: "s1", gain: 0.123, pan: -0.33, muted: false },
+				{ id: "s2", gain: 1, pan: 0, muted: true },
+			],
+			arrangementId: null,
 		});
 		expect(onmixsaved).toHaveBeenCalled();
+		expect(notify).toHaveBeenLastCalledWith(
+			"Saved as the default mix; the original mixdown is re-rendering",
+		);
 		expect(downloads.savingMix).toBe(false);
+	});
+
+	test("on an alternate arrangement the default mix is its own", async () => {
+		vi.stubGlobal(
+			"confirm",
+			vi.fn(() => true),
+		);
+		const engine = { stems: [{ id: "s1", gain: 1, pan: 0, muted: true }] };
+		const { downloads } = setup({ engine, arrangementId: "alt1" });
+		await downloads.saveMixAsDefault();
+		expect(saveDefaultMix).toHaveBeenCalledWith({
+			id: "song1",
+			gains: [{ id: "s1", gain: 1, pan: 0, muted: true }],
+			arrangementId: "alt1",
+		});
+		expect(notify).toHaveBeenLastCalledWith("Saved as the default mix");
 	});
 
 	test("declining the confirmation saves nothing", async () => {

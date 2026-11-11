@@ -9,7 +9,12 @@ export type MixMode = "original" | "custom";
  * audible stems with their gains for a custom one, or null when nothing is
  * audible (the caller tells the user to unmute something).
  */
-export function mixQuery(mode: MixMode, engine?: StemEngine | null): string | null {
+export function mixQuery(
+	mode: MixMode,
+	engine?: StemEngine | null,
+	/** An alternate arrangement's id: its stems are the ones the server mixes (docs/arrangements.md). */
+	arrangementId: string | null = null,
+): string | null {
 	if (mode !== "custom") return "";
 	const mix = engine?.mix() ?? { stems: [], master: 1 };
 	if (mix.stems.length === 0) return null;
@@ -21,6 +26,7 @@ export function mixQuery(mode: MixMode, engine?: StemEngine | null): string | nu
 			.join(","),
 	);
 	params.set("master", mix.master.toFixed(3));
+	if (arrangementId) params.set("arrangement", arrangementId);
 	return `?${params}`;
 }
 

@@ -73,7 +73,7 @@
 		onengine?: (engine: StemEngine) => void;
 		/** The site's streaming setting (docs/stem-streaming.md); the listener's own choice in this browser wins. */
 		streaming?: StemStreamingSetting;
-		/** When given, the listener's fader/mute/solo/master changes persist in this browser (localMix). */
+		/** When given, the listener's fader/mute/solo/master changes persist in this browser (localMix), under this key (the song page adds an alternate arrangement's id). */
 		songId?: string;
 		/** The line under the rows saying how many stems are decoded; the front page's demo hides it. */
 		showStatus?: boolean;
@@ -145,8 +145,9 @@
 	const click = new StemClick(engine, () => grid);
 	/** The song's default mix per stem, from the manifest. */
 	let defaults = $derived(new Map(manifest.stems.map((s) => [s.id, s.gain ?? 1])));
-	/** The song's default pans, likewise. */
+	/** The song's default pans, likewise, and the stems it starts muted. */
 	let defaultPans = $derived(new Map(manifest.stems.map((s) => [s.id, s.pan ?? 0])));
+	let defaultMuted = $derived(new Set(manifest.stems.flatMap((s) => (s.muted ? [s.id] : []))));
 	/**
 	 * The rate most of the stems share, and a mark for any at another: they play in time here
 	 * (every stem is decoded at the player's rate), but a DAW session built from the downloads
@@ -173,11 +174,11 @@
 	);
 	/** The listener's own mix differs from the default (there is something to reset). */
 	export function hasLocalMix() {
-		return !!snapshotLocalMix(engine, defaults, defaultPans);
+		return !!snapshotLocalMix(engine, defaults, defaultPans, defaultMuted);
 	}
 	/** Back to the song's default mix, and forget the local one. */
 	export function resetMix() {
-		applyLocalMix(engine, null, defaults, defaultPans);
+		applyLocalMix(engine, null, defaults, defaultPans, defaultMuted);
 		if (songId) saveLocalMix(songId, null);
 	}
 	/** After a member saved the current faders as the default: they are the default now, nothing local left. */
@@ -191,7 +192,6 @@
 	if (dev && typeof window !== "undefined") (window as { __click?: StemClick }).__click = click;
 
 	// Effects only run in the browser (no AudioContext during SSR).
-	//
 	// What is loaded is identified by the stems' ids + urls, not the manifest
 	// object: a refreshed load (after a rename, a settings save…) hands us a new
 	// object with the same stems, which must not re-decode 70 MB files. Three
@@ -225,7 +225,7 @@
 	$effect(() => {
 		if (!songId) return;
 		const id = songId;
-		const snapshot = snapshotLocalMix(engine, defaults, defaultPans);
+		const snapshot = snapshotLocalMix(engine, defaults, defaultPans, defaultMuted);
 		untrack(() => {
 			if (engine.status !== "ready" && engine.status !== "loading") return;
 			if (saveTimer) clearTimeout(saveTimer);
@@ -274,7 +274,7 @@
 		keep.load(() => {
 			const loading = engine.load(stems, { choice, site: streaming });
 			const local = songId ? loadLocalMix(songId) : null;
-			if (local) applyLocalMix(engine, local, defaults, defaultPans);
+			if (local) applyLocalMix(engine, local, defaults, defaultPans, defaultMuted);
 			engine.clearMixHistory(); // the mix as loaded is the starting point, not a move
 			return loading;
 		});

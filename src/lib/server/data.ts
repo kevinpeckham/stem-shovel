@@ -1215,6 +1215,7 @@ export async function manifestFor(s: {
 				gain: st.gain,
 				pan: st.pan,
 				tint: st.tint ?? undefined,
+				muted: st.muted,
 			})),
 		),
 	};
@@ -9106,7 +9107,7 @@ export async function scoreForAi(
 	return { kind: "chart", markdown: row.chartMarkdown, title: row.title };
 }
 
-export async function songForMix(songId: string) {
+export async function songForMix(songId: string, arrangementId: string | null = null) {
 	const row = await db.query.song.findFirst({
 		where: eq(song.id, songId),
 		columns: {
@@ -9135,7 +9136,7 @@ export async function songForMix(songId: string) {
 				with: { account: { columns: { name: true } } },
 			},
 			stems: {
-				where: mainStems,
+				where: stemsOf(arrangementId),
 				columns: {
 					id: true,
 					status: true,

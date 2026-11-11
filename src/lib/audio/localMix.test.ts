@@ -108,3 +108,24 @@ describe("applyLocalMix", () => {
 		expect(e.stems[1]!.pan).toBe(0.3);
 	});
 });
+
+describe("the default mix's mutes", () => {
+	const muted = new Set(["b"]);
+	test("a stem the default mutes, still muted, is no local mix; unmuted, it is", () => {
+		const e = fakeEngine([
+			{ id: "a", gain: 1 },
+			{ id: "b", gain: 0.6, muted: true },
+		]);
+		expect(snapshotLocalMix(e, defaults, new Map(), muted)).toBeNull();
+		e.toggleMute("b");
+		expect(snapshotLocalMix(e, defaults, new Map(), muted)).toMatchObject({ muted: [] });
+	});
+	test("reset puts the default's mutes back", () => {
+		const e = fakeEngine([
+			{ id: "a", gain: 1, muted: true },
+			{ id: "b", gain: 0.6 },
+		]);
+		applyLocalMix(e, null, defaults, new Map(), muted);
+		expect(e.stems.map((s) => s.muted)).toEqual([false, true]);
+	});
+});

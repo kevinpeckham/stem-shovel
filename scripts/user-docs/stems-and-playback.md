@@ -6,13 +6,21 @@ On a song page, **Add Stems** takes one or more audio files: WAV, FLAC, MP3, M4A
 
 ## Your mix and the default mix
 
-Every song has a **default mix**: the fader level each stem starts at, the same for everyone who opens the song, and the balance the Original Mix MP3 and the project playlist use. Moving a fader, muting, soloing or changing the master only changes **your mix**, kept in your browser: it is there when you come back, and nobody else hears it. **⌘Z** (Ctrl+Z on Windows) undoes the last move, a whole drag or knob turn at a time, and **⌘⇧Z** puts it back; the Stage has buttons for both. **Reset Mix** puts everything back to the default. Members who want everyone to hear their balance use **Save as Default Mix**, which stores the current fader levels on the song (mutes, solos and the master are not part of it) and re-renders the Original Mix.
+Every song has a **default mix**: the fader level each stem starts at, the same for everyone who opens the song, and the balance the Original Mix MP3 and the project playlist use. Moving a fader, muting, soloing or changing the master only changes **your mix**, kept in your browser: it is there when you come back, and nobody else hears it. **⌘Z** (Ctrl+Z on Windows) undoes the last move, a whole drag or knob turn at a time, and **⌘⇧Z** puts it back; the Stage has buttons for both. **Reset Mix** puts everything back to the default. Members who want everyone to hear their balance use **Save as Default Mix**, which stores the current fader levels, pans and mutes on the arrangement you are on (solos and the master are not part of it) and, on Main, re-renders the Original Mix without the muted stems.
 
 A song with no stems yet also shows **Add Demos** beside Add Stems, since an idea usually starts as a phone memo or a rough take; once stems exist, demos are added from the song's settings and played from the Demos button. The player's third view, **Mixes**, holds the bounces an engineer sends the band for feedback (see [Mixes](/docs/mixes)).
 
 **Replace Stems** takes the song's whole new set at once, for a fresh bounce from the session: a file with the same name as an existing stem (the filename, or the stem's name) replaces it in place, keeping its name, order and MIDI; a file with a new name is added; and existing stems with no file in the pick are removed. You see the three lists and confirm before anything is uploaded, and nothing is removed unless every upload succeeds. Afterwards the song offers a version bump, as after any stem change.
 
 Each stem is kept as uploaded (that is what you download later) and a lighter playback rendition is made from it, so a song loads quickly even when the stems are large WAVs.
+
+## Arrangements
+
+A song can hold several sets of stems. Its own stems are the **Main** arrangement, and members who can edit the song add **alternates**: another treatment of the song, or one person's ideas for the band to hear. The arrangements show as a row at the top of the Stems view; click one to switch, and the address changes with it, so a link opens the arrangement you were looking at.
+
+**+** makes a new arrangement. Give it a name, an optional note saying what it tries, and choose what it starts from: a copy of Main, a copy of another arrangement, or empty. A copy shares its audio files with the arrangement it came from, so it takes no extra storage and appears at once. From there the arrangement is its own: mute a stem and save the mix, remove a stem, upload a new version of one or add new stems, and nothing changes in the arrangement it was copied from. The ⋯ beside the row renames, duplicates or deletes the arrangement you are on; deleting one keeps any stems it shares with others. A song holds up to twelve alternates.
+
+Each arrangement has its own default mix, now including which stems are muted. The song's chart, lyrics, tempo, key and sections are shared by all of its arrangements. For now the Original Stem Mix download, chart generation, chord detection and the stems scan work on Main only; a Custom Stem Mix works on any arrangement.
 
 ## What the upload detects
 

@@ -55,6 +55,8 @@
 			changes: SongChange[];
 			isPrivate: boolean;
 			project: { noAi: boolean; isPrivate: boolean };
+			/** The arrangement the player shows: Scan stems and Detect chords stay Main's until phase 3 (docs/arrangements.md). */
+			arrangementId?: string | null;
 			demos: {
 				id: string;
 				label: string;
@@ -362,6 +364,7 @@
 					savedChanges={song.changes}
 					startAt={song.startAt}
 					onstartset={details.reset}
+					onAlternate={!!song.arrangementId}
 				/>
 			{/if}
 			{#if settingsTab === "demos"}

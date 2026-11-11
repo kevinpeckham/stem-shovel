@@ -4,6 +4,7 @@
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
 	import SongDocsControls from "#lib/components/SongDocsControls.svelte";
 	import SongDocsToolbar from "#lib/components/SongDocsToolbar.svelte";
+	import { MAIN_ONLY } from "#lib/constants/arrangements.js";
 	import { DOC_HINTS, DOC_LABELS, type SongDocs } from "#lib/state/songDocs.svelte.js";
 	import { chartDefaults } from "#lib/utils/chartDefaults.js";
 	import { chartSourceText } from "#lib/utils/chartSourceText.js";
@@ -28,6 +29,8 @@
 			/** Why the score cannot be engraved, null when it can. */
 			noAi: boolean;
 			project: { noAi: boolean };
+			/** The arrangement the player shows: Generate reads Main's stems until phase 3 (docs/arrangements.md). */
+			arrangementId?: string | null;
 		};
 		/** The rendered documents by kind (the page's `data.docs`). */
 		docsHtml: Record<SongDocKind, string>;
@@ -110,8 +113,10 @@
 			<button
 				class="button button-sm"
 				type="button"
-				disabled={busy}
-				title="The tempo, the chords, the sections and the bar lines, saved to the song"
+				disabled={busy || !!song.arrangementId}
+				title={song.arrangementId
+					? MAIN_ONLY
+					: "The tempo, the chords, the sections and the bar lines, saved to the song"}
 				onclick={onGenerate}>Generate from the stems</button
 			>
 		{/if}

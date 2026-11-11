@@ -9,6 +9,8 @@
 	type UploaderProps = ComponentProps<typeof StemUploader>;
 	interface Props {
 		songId: string;
+		/** The arrangement shown (docs/arrangements.md): new stems join it; null or absent for Main. */
+		arrangementId?: string | null;
 		/** The song's stems, in-flight ones included (`data.song.stems`). */
 		stems: Parameters<typeof decodedStemBytes>[0];
 		canEdit: boolean;
@@ -19,7 +21,16 @@
 		/** What the batch sounds like (SongCheck.applyDetection). */
 		onanalysis: UploaderProps["onanalysis"];
 	}
-	let { songId, stems, canEdit, uploads, demos, onuploaded, onanalysis }: Props = $props();
+	let {
+		songId,
+		arrangementId = null,
+		stems,
+		canEdit,
+		uploads,
+		demos,
+		onuploaded,
+		onanalysis,
+	}: Props = $props();
 </script>
 
 <!-- The player's box, empty: the page keeps its shape before the first stem arrives. -->
@@ -35,6 +46,7 @@
 			<StemUploader
 				bind:this={uploads.uploader}
 				{songId}
+				{arrangementId}
 				stemCount={stems.length}
 				decodedBytes={decodedStemBytes(stems)}
 				bind:jobs={uploads.jobs}

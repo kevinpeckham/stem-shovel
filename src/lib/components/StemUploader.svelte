@@ -38,6 +38,8 @@
 
 	interface Props {
 		songId: string;
+		/** The arrangement a new stem joins (docs/arrangements.md); null or absent for Main. */
+		arrangementId?: string | null;
 		/** Stems the song already has, in-flight ones included. */
 		stemCount: number;
 		/** What those stems take once decoded (utils/decodedStemBytes), for the memory warning after the upload. */
@@ -67,6 +69,7 @@
 	 */
 	let {
 		songId,
+		arrangementId = null,
 		stemCount,
 		decodedBytes = 0,
 		jobs = $bindable([]),
@@ -132,6 +135,7 @@
 						job.reservation ??
 						postJson<Reservation>("/api/stems", {
 							songId,
+							arrangementId,
 							filename: job.file.name,
 							sizeBytes: job.file.size,
 						}),

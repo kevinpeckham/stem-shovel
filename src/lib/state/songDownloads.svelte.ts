@@ -12,6 +12,8 @@ interface DownloadsSong {
 	slug: string;
 	version: string;
 	project: { slug: string };
+	/** The arrangement whose stems the page shows (docs/arrangements.md); null for Main. */
+	arrangementId?: string | null;
 }
 
 /** A ready stem, as the zip reads it. */
@@ -65,7 +67,7 @@ export class SongDownloads {
 	async downloadMix(mixMode: MixMode) {
 		if (this.mixing) return;
 		this.mixError = null;
-		const query = mixQuery(mixMode, this.#opts.engine());
+		const query = mixQuery(mixMode, this.#opts.engine(), this.#opts.song().arrangementId ?? null);
 		if (query === null) {
 			this.mixError = "Nothing is audible — unmute a stem first.";
 			return;
@@ -138,28 +140,37 @@ export class SongDownloads {
 		}
 	}
 
-	/** The player's fader levels and pans as the song's default mix, for everyone, after a confirmation. */
+	/** The player's fader levels, pans and mutes as the arrangement's default mix, for everyone, after a confirmation (solo stays the listener's). */
 	async saveMixAsDefault() {
 		const engine = this.#opts.engine();
 		if (!engine || this.savingMix) return;
 		if (
 			!confirm(
-				"Save these fader levels and pans as the default mix for everyone who opens this song?",
+				"Save these fader levels, pans and mutes as the default mix for everyone who opens this song?",
 			)
 		)
 			return;
 		this.savingMix = true;
+		const song = this.#opts.song();
+		const arrangementId = song.arrangementId ?? null;
 		try {
 			await saveDefaultMix({
-				id: this.#opts.song().id,
+				id: song.id,
 				gains: engine.stems.map((s) => ({
 					id: s.id,
 					gain: Math.round(s.gain * 1000) / 1000,
 					pan: Math.round(s.pan * 100) / 100,
+					muted: s.muted,
 				})),
+				arrangementId,
 			});
 			await this.#opts.onmixsaved();
-			notify("Saved as the default mix; the original mixdown is re-rendering");
+			// The rendered original mixdown is Main's until phase 3 (docs/arrangements.md).
+			notify(
+				arrangementId
+					? "Saved as the default mix"
+					: "Saved as the default mix; the original mixdown is re-rendering",
+			);
 		} catch (e) {
 			notify(`Could not save the mix: ${errorMessage(e)}`, { kind: "error" });
 		} finally {

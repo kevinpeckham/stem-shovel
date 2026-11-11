@@ -2,7 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { SongMix } from "./songMix.svelte.js";
 
-/** The listener's mix against the song's default: dirty for any move, faders-dirty for a fader or pan alone. */
+/** The listener's mix against the song's default: dirty for any move, faders-dirty for a fader, pan or mute (what a new default saves). */
 const manifest = {
 	stems: [
 		{ id: "a", gain: 0.5, pan: -0.25 },
@@ -66,16 +66,48 @@ describe("SongMix", () => {
 		expect(mix.fadersDirty).toBe(true);
 	});
 
-	test("the master, a mute or a solo: dirty, but no new default to save", () => {
+	test("the master or a solo: dirty, but no new default to save", () => {
 		expect(mixOf(engine({ master: 0.8 })).dirty).toBe(true);
+		const soloed = engine({
+			stems: [
+				{ id: "a", gain: 0.5, pan: -0.25, muted: false, soloed: false },
+				{ id: "b", gain: 1, pan: 0, muted: false, soloed: true },
+			],
+		});
+		const mix = mixOf(soloed);
+		expect(mix.dirty).toBe(true);
+		expect(mix.fadersDirty).toBe(false);
+	});
+
+	test("a mute away from the default's: dirty, and a new default to save", () => {
 		const muted = engine({
 			stems: [
 				{ id: "a", gain: 0.5, pan: -0.25, muted: true, soloed: false },
-				{ id: "b", gain: 1, pan: 0, muted: false, soloed: true },
+				{ id: "b", gain: 1, pan: 0, muted: false, soloed: false },
 			],
 		});
 		const mix = mixOf(muted);
 		expect(mix.dirty).toBe(true);
-		expect(mix.fadersDirty).toBe(false);
+		expect(mix.fadersDirty).toBe(true);
+	});
+
+	test("a stem the default starts muted: muted is clean, unmuted is a move", () => {
+		const saved = { stems: [{ id: "a", gain: 0.5, pan: -0.25, muted: true }, manifest.stems[1]] };
+		const at = (muted: boolean) =>
+			new SongMix({
+				manifest: () => saved,
+				engine: () =>
+					engine({
+						stems: [
+							{ id: "a", gain: 0.5, pan: -0.25, muted, soloed: false },
+							{ id: "b", gain: 1, pan: 0, muted: false, soloed: false },
+						],
+					}),
+			});
+		expect(at(true).defaultMuted).toEqual(new Set(["a"]));
+		expect(at(true).dirty).toBe(false);
+		expect(at(true).fadersDirty).toBe(false);
+		expect(at(false).dirty).toBe(true);
+		expect(at(false).fadersDirty).toBe(true);
 	});
 });

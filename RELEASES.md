@@ -4,6 +4,19 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Arrangements.** A song can now hold several sets of stems: its Main
+  arrangement and up to twelve alternates, for a different treatment or
+  one member's ideas. Add one with the + at the top of the Stems view,
+  starting from a copy of an existing arrangement or from nothing, then
+  mute, remove, replace or add stems without touching the original. A
+  copy shares its audio, so it uses no extra storage. Switch between
+  arrangements from the same row; a link opens the one you were on.
+- **Mutes are part of the default mix.** Saving the default mix now keeps
+  which stems are muted, and a muted stem is left out of the Original
+  Stem Mix.
+
 ## [0.262.1] - 2026-11-11
 
 ### Changed

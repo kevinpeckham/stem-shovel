@@ -18,6 +18,7 @@
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import { barGrid, barSecondsAt, type BarGrid } from "#lib/audio/measures.js";
 	import { SONG_CHANGE_KINDS, SONG_CHANGE_LABELS } from "#lib/constants/songChanges.js";
+	import { MAIN_ONLY } from "#lib/constants/arrangements.js";
 	import type { SongCheck } from "#lib/state/songCheck.svelte.js";
 	import type { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import { POSITION_PLACEHOLDER, type SongChanges } from "#lib/state/songChanges.svelte.js";
@@ -65,6 +66,8 @@
 		startAt: number | null;
 		/** The song's start of bar 1 was just set from the stems: the Details tab's entry should show it. */
 		onstartset?: () => void;
+		/** The player shows an alternate arrangement: Scan stems and Detect chords read and write Main's until phase 3 (docs/arrangements.md). */
+		onAlternate?: boolean;
 	}
 
 	let {
@@ -85,6 +88,7 @@
 		savedChanges,
 		startAt,
 		onstartset,
+		onAlternate = false,
 	}: Props = $props();
 
 	/** The declared grid's bar at the start (the song's tempo and meter, not the followed map). */
@@ -92,6 +96,15 @@
 		const declaredGrid = barGrid(savedChanges, startAt);
 		return declaredGrid ? { barSeconds: barSecondsAt(declaredGrid, startAt ?? 0) } : null;
 	});
+
+	/** Why Scan stems cannot run now (an alternate arrangement, stems still decoding), null when it can. */
+	let scanBlocked = $derived(
+		onAlternate
+			? MAIN_ONLY
+			: engine?.status !== "ready"
+				? "Available once every stem has decoded"
+				: null,
+	);
 
 	let timingBusy = $state(false);
 	/**
@@ -136,6 +149,11 @@
 
 <div>
 	{@render actionsRow()}
+	{#if onAlternate}
+		<p class="mt-1 text-sm text-dim">
+			Scan stems and Detect chords read the Main arrangement's stems: switch to Main to use them.
+		</p>
+	{/if}
 	{#if chordDraft.chordError}<p class="mt-2 text-sm text-red-400" role="alert">
 			{chordDraft.chordError}
 		</p>{/if}
@@ -202,12 +220,11 @@
 			<button
 				class="button button-xs"
 				type="button"
-				disabled={check.scanning || !engine || engine.status !== "ready"}
-				title={engine?.status !== "ready"
-					? "Available once every stem has decoded"
-					: hasScore && aiAvailable
+				disabled={!!scanBlocked || check.scanning}
+				title={scanBlocked ??
+					(hasScore && aiAvailable
 						? "The song has a chart: the AI reads it and listens to the mix for its keys, and for tempo and time signature where the chart marks them"
-						: "Listen to the loaded stems for tempo, key and time signature"}
+						: "Listen to the loaded stems for tempo, key and time signature")}
 				onclick={check.scanStems}
 			>
 				<span class="i-ph-waveform" aria-hidden="true"></span>
@@ -420,10 +437,16 @@
 	<button
 		class="button button-xs"
 		type="button"
-		disabled={!!chordDraft.chordBusy || !engine || engine.status !== "ready" || !grid}
-		title={!grid
-			? "Needs a tempo and a time signature first"
-			: "Read a chord per bar from the mix with the chord model, or from the transcribed stems when there is no mix yet"}
+		disabled={onAlternate ||
+			!!chordDraft.chordBusy ||
+			!engine ||
+			engine.status !== "ready" ||
+			!grid}
+		title={onAlternate
+			? MAIN_ONLY
+			: !grid
+				? "Needs a tempo and a time signature first"
+				: "Read a chord per bar from the mix with the chord model, or from the transcribed stems when there is no mix yet"}
 		onclick={() => chordDraft.detectChords()}
 	>
 		<span class="i-ph-music-notes" aria-hidden="true"></span>

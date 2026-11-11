@@ -17,6 +17,8 @@ export interface StemSource {
 	pan?: number;
 	/** The row's tint, an id from constants/stemTints.ts (none when absent). */
 	tint?: string;
+	/** The song's default mix starts this stem muted (unmuted when absent). */
+	muted?: boolean;
 }
 
 /** Reactive per-stem state exposed by the engine to the UI. */

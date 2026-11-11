@@ -46,6 +46,7 @@
 	import StemVersionOffer from "#lib/components/StemVersionOffer.svelte";
 	import { StemActions } from "#lib/state/stemActions.svelte.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
+	import ArrangementSwitcher from "#lib/components/ArrangementSwitcher.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
 	import MixList from "#lib/components/MixList.svelte";
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
@@ -304,7 +305,9 @@
 	/** A stem's MIDI file drawn under its row when its badge is on. */
 	const midi = new MidiViews();
 	// The player's engine, for the custom mix (the download row lives outside the player).
-	let playerEngine = $state<StemEngine | null>(null);
+	let heldEngine = $state<StemEngine | null>(null);
+	/** None while the arrangement shown has no stems: its player, and the engine it disposed, are gone (docs/arrangements.md). */
+	let playerEngine = $derived(data.manifest.stems.length > 0 ? heldEngine : null);
 	/** Detect chords and the AI's chart draft (the Tempo & key tab, the Docs panel's ⋯ menu and draft card). */
 	const chordDraft = new SongChordDraft({
 		songId: () => data.song.id,
@@ -680,57 +683,19 @@
 						onfiles={(files) => void mixUploads.upload(files)}
 					/>
 				</div>
-			{:else if data.manifest.stems.length > 0}
-				<div bind:clientHeight={layout.stemBoxHeight}>
-					<SongPlayerStatus
-						engine={playerEngine}
-						stemCount={data.manifest.stems.length}
-						{keepProps}
-						onmode={(m) => player?.switchMode(m)}
-						showStageNotice={(stage === "mixing" || stage === "finished") && readyMixes.length > 0}
-						onshowmixes={() => layout.show("mixes")}
-					/>
-					<StemPlayer
-						manifest={data.manifest}
-						streaming={data.stemStreaming}
-						showStatus={false}
-						{stemMenu}
-						{stemBadge}
-						midiViews={midi.views}
-						sections={data.song.sections}
-						changes={data.song.changes}
-						startAt={data.song.startAt}
-						endAt={data.song.endAt}
-						timing={data.song.chartTiming}
-						useTiming={data.song.useChartTiming}
-						chartMarkdown={data.song.chartMarkdown}
-						fps={data.song.frameRate}
-						onengine={(e) => (playerEngine = e)}
-						contextItems={(_stem, seconds) =>
-							data.canEdit
-								? [commentHere(() => comments.open({ at: changes.editPos(seconds) }))]
-								: []}
-						{afterRows}
-						songId={data.song.id}
-						onreorder={data.canEdit ? stemActions.saveOrder : undefined}
-						bind:this={player}
-					>
-						{#snippet errorHint()}
-							A stem's file is missing from the Blob store. Remove it from its menu and upload it
-							again.
-						{/snippet}
-					</StemPlayer>
-				</div>
 			{:else}
-				<SongEmptyPlayer
-					songId={data.song.id}
-					stems={data.song.stems}
-					canEdit={data.canEdit}
-					{uploads}
-					{demos}
-					onuploaded={stemActions.offer}
-					onanalysis={check.applyDetection}
-				/>
+				<div>
+					<ArrangementSwitcher
+						arrangements={data.song.arrangements}
+						arrangementId={data.song.arrangementId}
+						songId={data.song.id}
+						canEdit={data.canEdit}
+					/>
+					<!-- Each arrangement gets its own player (docs/arrangements.md): switching disposes the engine and starts over. -->
+					{#key data.song.arrangementId}
+						{@render stemsView()}
+					{/key}
+				</div>
 			{/if}
 		</FloatingPanel>
 
@@ -949,4 +914,59 @@
 
 {#snippet stemMenu(stem: StemState)}
 	<StemMenu {stem} row={stemRows.get(stem.id)} actions={stemActions} canEdit={data.canEdit} />
+{/snippet}
+
+{#snippet stemsView()}
+	{#if data.manifest.stems.length > 0}
+		<div bind:clientHeight={layout.stemBoxHeight}>
+			<SongPlayerStatus
+				engine={playerEngine}
+				stemCount={data.manifest.stems.length}
+				{keepProps}
+				onmode={(m) => player?.switchMode(m)}
+				showStageNotice={(stage === "mixing" || stage === "finished") && readyMixes.length > 0}
+				onshowmixes={() => layout.show("mixes")}
+			/>
+			<StemPlayer
+				manifest={data.manifest}
+				streaming={data.stemStreaming}
+				showStatus={false}
+				{stemMenu}
+				{stemBadge}
+				midiViews={midi.views}
+				sections={data.song.sections}
+				changes={data.song.changes}
+				startAt={data.song.startAt}
+				endAt={data.song.endAt}
+				timing={data.song.chartTiming}
+				useTiming={data.song.useChartTiming}
+				chartMarkdown={data.song.chartMarkdown}
+				fps={data.song.frameRate}
+				onengine={(e) => (heldEngine = e)}
+				contextItems={(_stem, seconds) =>
+					data.canEdit ? [commentHere(() => comments.open({ at: changes.editPos(seconds) }))] : []}
+				{afterRows}
+				songId={data.song.arrangementId
+					? `${data.song.id}:${data.song.arrangementId}`
+					: data.song.id}
+				onreorder={data.canEdit ? stemActions.saveOrder : undefined}
+				bind:this={player}
+			>
+				{#snippet errorHint()}
+					A stem's file is missing from the Blob store. Remove it from its menu and upload it again.
+				{/snippet}
+			</StemPlayer>
+		</div>
+	{:else}
+		<SongEmptyPlayer
+			songId={data.song.id}
+			arrangementId={data.song.arrangementId}
+			stems={data.song.stems}
+			canEdit={data.canEdit}
+			{uploads}
+			{demos}
+			onuploaded={stemActions.offer}
+			onanalysis={data.song.arrangementId ? undefined : check.applyDetection}
+		/>
+	{/if}
 {/snippet}

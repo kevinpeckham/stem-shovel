@@ -37,6 +37,8 @@
 	 */
 	interface Props {
 		songId: string;
+		/** The arrangement a new stem joins (docs/arrangements.md); null or absent for Main. */
+		arrangementId?: string | null;
 		stems: { id: string; label: string; filename: string }[];
 		jobs?: UploadJob[];
 		notice?: string | null;
@@ -48,6 +50,7 @@
 	}
 	let {
 		songId,
+		arrangementId = null,
 		stems,
 		jobs = $bindable([]),
 		notice = $bindable(null),
@@ -126,6 +129,7 @@
 								})
 							: postJson<Reservation>("/api/stems", {
 									songId,
+									arrangementId,
 									filename: job.file.name,
 									sizeBytes: job.file.size,
 								}),

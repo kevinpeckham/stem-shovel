@@ -61,6 +61,37 @@ Asked for by users; designed with Kevin on 2026-11-11.
   the song does not have redirects to Main. Uploads take `arrangementId`
   in the reserve body. Remote functions: `arrangements.remote.ts`.
 
+## Phase 2, the page (2026-11-11)
+
+- **The switcher** (`ArrangementSwitcher.svelte`) sits at the top of the
+  Stems view: a link per arrangement, Main first, the current one marked
+  (`arrangementHref`), an alternate's note and creator under the row.
+  Editors get "+" (`ArrangementNewPopover`: name, note, start from) and,
+  on an alternate, a ⋯ menu to rename, duplicate or delete
+  (`ArrangementRenamePopover`). A viewer sees the row only when the song
+  has an alternate.
+- **Switching** is a navigation to `?arrangement=<id>` that keeps the
+  scroll position; the stems view is keyed on the arrangement, so the
+  player is torn down and built again and nothing of the last one plays
+  on.
+- **What follows the arrangement on the page**: uploads and added stems
+  (`arrangementId` in the reserve), reorder, the default mix with its
+  mutes (the engine starts a saved-muted stem muted; Reset Mix returns to
+  the saved mutes), the browser's own mix and "keep on this device"
+  (keyed by song and arrangement), and the Custom Stem Mix download
+  (`/api/songs/[id]/mix?arrangement=`, always rendered: the cached
+  original is Main's).
+- **Main only until phase 3**, disabled on an alternate with "Available
+  on the Main arrangement" (`MAIN_ONLY`): the Original Stem Mix download,
+  Draft chart with AI, Generate chart from the stems, Scan stems, Detect
+  chords, Open stems in Dawn, and the detection that runs after an
+  upload. Comments are still the song's.
+- **Checked in a browser on dev** (2026-11-11): create from Main (five
+  stems copied, no upload), remove a stem on the alternate (Main kept its
+  five and the file), mute and save (stored on the alternate only, loaded
+  muted), custom mix (200, the alternate's stems), rename, delete (back
+  on Main, five stems, the shared file intact).
+
 ## Decisions (Kevin, 2026-11-11)
 
 1. The chart, tempo, key and sections are the song's and shared by its

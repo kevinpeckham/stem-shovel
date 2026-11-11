@@ -113,6 +113,21 @@ describe("GET /api/songs/[id]/mix", () => {
 			'attachment; filename="proj-song-custom-mix.mp3"',
 		);
 	});
+	it("an alternate arrangement's mix reads its own stems and always renders, never the cached original", async () => {
+		// isOriginal says yes (the mock's default), but the cached original is Main's.
+		const res = await get(asEditorOf(ACCOUNT), "?stems=x:1&arrangement=arr1");
+		expect(data.songForMix).toHaveBeenCalledWith(SONG, "arr1");
+		expect(h.originalMix).not.toHaveBeenCalled();
+		expect(h.renderMix).toHaveBeenCalledOnce();
+		expect(rateLimited).toHaveBeenCalled();
+		expect(res.headers.get("content-disposition")).toBe(
+			'attachment; filename="proj-song-custom-mix.mp3"',
+		);
+	});
+	it("without an arrangement the song's own stems are read", async () => {
+		await get();
+		expect(data.songForMix).toHaveBeenCalledWith(SONG, null);
+	});
 	it("a custom mix from a visitor is counted by address", async () => {
 		h.isOriginal.mockReturnValue(false);
 		await get(asSignedOut(), "?stems=x:0.5");
