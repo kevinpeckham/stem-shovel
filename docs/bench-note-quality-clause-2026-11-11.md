@@ -62,3 +62,15 @@ chords, the examples the prompt receives carry that style already (the
 bench's drafts ran with "No example charts yet"). The next gap on
 acoustic material is the hint's missing half-diminished, which is a
 ChordMini vocabulary matter the bench can measure on request.
+
+
+## Correction (2026-11-11, same day)
+
+Above, the bench wrote that ChordMini's vocabulary has no half-diminished.
+Wrong: its 170 labels include hdim7 for every root, and the bench's
+mapping writes it as "dim", the same quality family as m7b5. The hint was
+wrong on those bars because the model did not hear a half-diminished
+there (it voted E or C#), not because it could not name one. The
+attribution numbers stand; the cause is the model's accuracy on that
+quality, not its vocabulary. The bench is measuring that accuracy across
+all of GuitarSet (stem-bench Study 46) and will report.

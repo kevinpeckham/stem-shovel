@@ -3408,9 +3408,10 @@ eighteen of forty-one.
 ## The prompt's rock clause costs chord quality on jazz-flavoured sheets, and the hint model has no half-diminished (2026-11-11)
 
 stem-bench Study 45 traced the quality loss on the dense GuitarSet sheet.
-Most of it sits on bars where ChordMini's hint was already wrong, because
-its vocabulary has no half-diminished chord; the rest is the model's
-power-chord fallback on thin takes. Replacing the system prompt's "think
+Most of it sits on bars where ChordMini's hint was already wrong (the
+model does not hear the half-diminished there; its vocabulary does carry
+the label, a correction the bench made the same day); the rest is the
+model's power-chord fallback on thin takes. Replacing the system prompt's "think
 like a rock musician" clause with a style-neutral instruction about
 quality, and nothing else, lifted qualities on six of ten paired takes,
 lowered one, turned the only confidently wrong draft on the tracker's
