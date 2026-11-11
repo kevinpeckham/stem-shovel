@@ -267,12 +267,12 @@ downbeats). This export is the system of Studies 36 to 41.
 
 **Timed** (one 30 s chunk, model only, bench VM, mean of 5):
 
-| runtime | threads | per chunk | per minute of audio |
-|---|---|---|---|
-| torch (the package) | 16 | 0.56 s | 1.1 s |
-| ONNX Runtime CPU | 4 | 0.54 s | 1.1 s |
-| ONNX Runtime CPU | 1 | 1.31 s | 2.6 s |
-| ONNX Runtime Web 1.31.1, wasm, Node 22 | 1 | 4.46 s | 8.9 s |
+| runtime                                | threads | per chunk | per minute of audio |
+| -------------------------------------- | ------- | --------- | ------------------- |
+| torch (the package)                    | 16      | 0.56 s    | 1.1 s               |
+| ONNX Runtime CPU                       | 4       | 0.54 s    | 1.1 s               |
+| ONNX Runtime CPU                       | 1       | 1.31 s    | 2.6 s               |
+| ONNX Runtime Web 1.31.1, wasm, Node 22 | 1       | 4.46 s    | 8.9 s               |
 
 Requesting 4 wasm threads changed nothing in Node (the threaded build
 needs the worker-backed binary and cross-origin isolation), so 4.5 s is
@@ -288,8 +288,9 @@ per minute) is the fallback if that latency is too long for the draft
 card.
 
 **What to port, exactly:**
+
 1. Front end: 22050 Hz mono, n_fft 1024, hop 441, Hann, magnitude
-   (power 1) normalised by frame length, 128 slaney mels 30 to 11000
+   (power 1) normalized by frame length, 128 slaney mels 30 to 11000
    Hz, log1p(1000·x). The numpy translation in stem-bench
    scripts/study10/nbeat.py is verified identical to torchaudio's.
 2. Chunking: 1500-frame windows stepping by 1488, last window aligned
