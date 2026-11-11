@@ -3388,3 +3388,19 @@ not the small checkpoint's weakness: the big one fails it the same way,
 and only a DBN postprocessor reads it steadily, at half the declared
 tempo. The bench's package readings match our stored counts on all
 five dev recordings.
+
+## Two cells a bar buy nothing where chords change by the bar; the guitar gap is chord quality (2026-11-11)
+
+stem-bench Study 43 drafted twelve GuitarSet takes and eight Winterreise
+songs on Beat This small0's bars twice, as read and with each bar split
+at its middle beat. The guitar sheet that had produced every confidently
+wrong guitar draft turned out to be one chord a bar with repeats, and on
+the tracker's bars as read its roots are already right on most takes;
+what holds the drafts below good is chord quality (a seventh and two
+minors written as plain roots), a question for the drafting prompt and
+the per-bar hints. On the lieder the half grid lifted roots from a median
+of 0.36 to 0.58 and left every song wrong, at twelve percent more input.
+The bench recommends drafting on the tracker's bar as read, which is
+what the generated draft does. One Winterreise song drafted good on
+small0's bars with nothing typed, where madmom's bars had scored
+eighteen of forty-one.
