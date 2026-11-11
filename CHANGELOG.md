@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **The Beat This tracker's signal code, ported and not yet wired.**
+  `src/lib/utils/beatThis*.ts`: the log-mel front end (torchaudio's
+  `MelSpectrogram` as the package configures it), the 1500-frame chunking
+  and keep-first stitching, the minimal peak-picking with downbeats moved
+  to the nearest beat, and Study 41's tempo and meter labels, from the
+  bench's reference (stem-bench `scripts/study10/nbeat.py`). Unit-tested
+  on analytic cases; the bench's fixtures and the model are asked for in
+  docs/bench-brief-beat-this-port-2026-11-11.md.
+
 ## [0.260.0] - 2026-11-11
 
 ### Added
