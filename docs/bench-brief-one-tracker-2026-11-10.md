@@ -232,3 +232,78 @@ Predictions: P1 (no small0 draft wrong), P4 (final0 within two roots on
 all-ten rule fails on at least one song) wrong; P6 (ONNX agrees at F ≥
 0.95) wrong. Spend $2.010 against a $2.00 pre-draft fence: the fence
 stood at $1.929 before the twentieth draft; disclosed.
+
+## Bench reply, the export (2026-11-11, stem-bench Study 42, $0)
+
+Produced, verified and timed, as asked. Registered as Study 42
+(stem-bench docs/BRIEF-STUDY42.md, results/study42.json).
+
+**The cause.** `rotary_embedding_torch` caches its position frequencies
+in a buffer and slices `cached_freqs[:seq_len]` on each call; a tracer
+bakes that slice at the traced length, so the Study 10 export (traced
+short) rotated every longer input wrongly. Export at the inference
+length, or with the cache off, and the problem is gone.
+
+**The export to use.** `beat_this-small0-static1500.onnx`, 9,932,033
+bytes, sha256
+`d57ae630f0daa290f558d076d963d2216b4c447d72695e691a79e3c792447124`,
+input `spectrogram` float32 (1, 1500, 128), outputs `beat` and
+`downbeat` float32 (1, 1500) logits; opset 17. On the bench VM at
+`~/projects/stem-bench/models/study42/`, reproducible by
+`scripts/export-study42.py` from the package's small0 checkpoint (sha256
+`6074be2c…`). A dynamic-length variant (`…-dynamic.onnx`, 10.5 MB, sha256
+`8c009d90…`, cache off, dynamo exporter, opset 18) is there too and
+verified at 750, 1500 and 3000 frames; the static one is simpler to
+run. Say where you want the file and the bench will put it there.
+
+**Verified.** Frame logits against the torch package: max absolute
+difference 2e-5 to 7e-5 (float32 noise) on three songs. The full
+reference inference with the static export, in numpy (1500-frame
+chunks, border 6, keep_first, minimal postprocessor), against the
+package's own beats and downbeats on the ten modern songs: beat F
+1.000, downbeat F 1.000, identical beat and downbeat counts on all ten
+(cherubs 655 / 169 on both, where the Study 10 export read 87
+downbeats). This export is the system of Studies 36 to 41.
+
+**Timed** (one 30 s chunk, model only, bench VM, mean of 5):
+
+| runtime | threads | per chunk | per minute of audio |
+|---|---|---|---|
+| torch (the package) | 16 | 0.56 s | 1.1 s |
+| ONNX Runtime CPU | 4 | 0.54 s | 1.1 s |
+| ONNX Runtime CPU | 1 | 1.31 s | 2.6 s |
+| ONNX Runtime Web 1.31.1, wasm, Node 22 | 1 | 4.46 s | 8.9 s |
+
+Requesting 4 wasm threads changed nothing in Node (the threaded build
+needs the worker-backed binary and cross-origin isolation), so 4.5 s is
+the single-thread floor and a browser with SIMD and threads should do
+better. Session load under a second.
+
+**Placement, by the registered rule (S42-D1):** under 15 s per minute
+of audio in wasm → **the browser**, behind the lazy load the
+transcriber already uses. A four-minute song is about 36 s of model
+time on one bench core, plus the front end; a laptop core scales by its
+own factor. The server path (ONNX Runtime Node, four threads, about 1 s
+per minute) is the fallback if that latency is too long for the draft
+card.
+
+**What to port, exactly:**
+1. Front end: 22050 Hz mono, n_fft 1024, hop 441, Hann, magnitude
+   (power 1) normalised by frame length, 128 slaney mels 30 to 11000
+   Hz, log1p(1000·x). The numpy translation in stem-bench
+   scripts/study10/nbeat.py is verified identical to torchaudio's.
+2. Chunking: 1500-frame windows stepping by 1488, last window aligned
+   to the end, stitched keep_first with the 6-frame borders dropped;
+   pad a piece shorter than 1500 frames.
+3. Postprocessor: beat (downbeat) where the logit is the 7-frame local
+   maximum and above 0; adjacent peaks merged; downbeats moved to the
+   nearest beat. No DBN.
+4. Study 41 Ask B: tempo 60 / median beat interval; label from the
+   modal beats per bar (6 → 6/8 at tempo ÷ 3; 3 → 3/4; else 4/4).
+5. Verify your port the way the bench did: frame logits against this
+   export on one chunk, then beats and downbeats on a few songs; the
+   bench will run the comparison at $0 against the package on request.
+
+Predictions: P1, P2, P3, P5 right; P4 wrong (ONNX Runtime at its
+default thread count is 1.5× the torch forward; at four threads it is
+at parity).
