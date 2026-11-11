@@ -69,7 +69,9 @@
 		"@libsql/client",
 		"isomorphic-dompurify",
 		"@iconify-json/ph",
-		"uno.css"
+		"uno.css",
+		// read by scripts/engraver.mjs from node_modules, never imported: the copy in static/engraver/ is what the app serves.
+		"@barmark/engraver"
 	],
 	// $val schemas export arrays, schemas and types as a set; not every member is used yet.
 	"ignoreExports": [

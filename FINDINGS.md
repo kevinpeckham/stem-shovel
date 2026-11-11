@@ -18,10 +18,28 @@ with its own response, not the document's (only `blob:` and `data:`
 workers inherit the owner's), and the worker's JavaScript is served by
 Vite or Vercel's CDN with no CSP header (`securityHeaders.ts` carries
 none; the CSP is SvelteKit's, on pages). So the engraver's attributes
-on `<barmark-score>` were enough. Verified in headless Chromium on dev:
-both files 200 from jsDelivr, the score drawn. A worker served with a
-CSP of its own would need the CDN in `connect-src` and `blob:` in
-`script-src`, as the package README says.
+on `<barmark-score>` were enough. Verified in headless Chromium on dev
+and on staging (Vercel): both files 200 from jsDelivr, the score drawn. A
+worker served with a CSP of its own would need the CDN in `connect-src`
+and `blob:` in `script-src`, as the package README says. (The engraver
+is self-hosted since the same day, for a different reason: no third
+party at run time.)
+
+A false alarm on the way: the first staging probe reported `TypeError:
+Failed to fetch` and the fallback. Playwright's
+`browser.newContext({ extraHTTPHeaders })` sends the header to every
+origin, and a custom header on a cross-origin fetch forces a CORS
+preflight the CDN refuses. Scope a bypass header to the app's origin with
+`context.route` instead; the same probe then loaded the CDN files.
+
+## Oxfmt formats a copied vendor file in static/ and breaks its SRI digest (2026-11-11)
+
+`bun run format` rewrote `static/engraver/0.1.1/verovio-module.mjs` (a
+byte-for-byte copy of a published package file whose SHA-384 the score
+worker checks) and the digest test failed. Oxfmt formats every `.mjs`
+under the repo, `static/` included; generated or vendored copies go in
+its `ignorePatterns` (vite.config.ts `fmt`, and `lint` for Oxlint), as
+`drizzle/**` already did.
 
 ## Svelte's element typings refuse a custom event attribute until declared (2026-11-11)
 

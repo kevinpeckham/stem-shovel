@@ -68,16 +68,20 @@ export function renderScoreChartHtml(markdown: string, options?: ChartHtmlOption
 
 /**
  * The engraver the score element loads: `@barmark/engraver`, barmark's build
- * of the same Verovio 6.4.1 at about 3 MB where stock is about 7 MB, from
- * jsDelivr with both files' SRI digests (the module's and the `.wasm`
- * beside it), as the package's own constants spell them. On a digest
- * mismatch or a failed download the element falls back to the package's
- * own copy, once, with a warning. `renderScoreHtml` writes its options as
- * attributes on the element but has none for these, so they join its
- * opening tag here.
+ * of the same Verovio 6.4.1 at about 3 MB where stock is about 7 MB, served
+ * from our own origin (`static/engraver/<version>/`, the copy `bun run
+ * engraver` makes; the page's CSP allows no other) with both files' SRI
+ * digests (the module's and the `.wasm` beside it) as `@barmark/score`'s
+ * own constants spell them, so a copy from another version is refused. On
+ * a digest mismatch or a failed download the element falls back to the
+ * package's own copy, once, with a warning. `renderScoreHtml` writes its
+ * options as attributes on the element but has none for these, so they
+ * join its opening tag here.
  */
+export const ENGRAVER_URL = `/engraver/${ENGRAVER_CDN_URL.match(/engraver@([\d.]+)\//)?.[1]}/verovio-module.mjs`;
+
 const ENGRAVER_ATTRIBUTES = [
-	`verovio-url="${ENGRAVER_CDN_URL}"`,
+	`verovio-url="${ENGRAVER_URL}"`,
 	`verovio-integrity="${ENGRAVER_CDN_INTEGRITY}"`,
 	`verovio-wasm-integrity="${ENGRAVER_WASM_INTEGRITY}"`,
 ].join(" ");

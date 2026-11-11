@@ -17,11 +17,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   0119, `ChartColumnsSchema`, the `setChartColumns` command) and drawn by
   the song's chart, the set list's show page and the editor's preview; the
   PDF already sizes a section's bars equally. Off by default, as before.
-- **The lighter engraver.** The Score view loads `@barmark/engraver`, barmark's
-  build of the same Verovio 6.4.1 at about 3 MB where stock is about 7 MB,
-  from jsDelivr with both files' SRI digests on the `<barmark-score>`
-  element (`renderScoreChartHtml`); a digest mismatch falls back to the
-  package's own copy with a warning.
+- **The lighter engraver, self-hosted.** The Score view loads `@barmark/engraver`,
+  barmark's build of the same Verovio 6.4.1 at about 3 MB where stock is
+  about 7 MB, from our own origin (`static/engraver/<version>/`, the copy
+  `bun run engraver` makes from the new dev dependency; a test hashes it
+  against the digests `@barmark/score` publishes) with both files' SRI
+  digests on the `<barmark-score>` element (`renderScoreChartHtml`); a
+  digest mismatch falls back to the package's own copy with a warning.
+  Workers build as ES modules now (`worker: { format: "es" }`), so that
+  stock copy is a chunk fetched only on the fallback: the score worker
+  went from 8.5 MB to 210 KB.
 
 ### Changed
 

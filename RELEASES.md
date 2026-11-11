@@ -11,7 +11,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
   section, the Chart panel's ⋯ menu now offers "Size columns per row",
   which lets each row size its own bars, for everyone who opens the song.
 - **The Score view loads faster.** The engraver it downloads on the first
-  switch to Score is less than half the size it was.
+  switch to Score is about a third of the size it was, and comes from
+  Stem Shovel itself rather than a third-party server.
 
 ### Changed
 

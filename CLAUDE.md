@@ -74,6 +74,7 @@ bunx fallow audit    # what CI gates on changed files, incl. the house rules (fa
 bunx fallow guard <file>   # which rules and import boundaries apply to a file, before editing it
 bun run spell        # cspell over the prose (docs, user docs, README, changelog)
 bun run stems        # generate the static test WAVs (gitignored)
+bun run engraver     # copy @barmark/engraver (the Score view's Verovio) into static/engraver/<version>/, committed; rerun after an engraver bump (chartHtml.test.ts checks the digests)
 bun run smoke:blob   # create a smoke project + song and upload through the real flow
 bun run smoke:urls   # every route answers as expected, signed out and as the bot; SMOKE_BASE=https://www.stemshovel.com for production
 bun run og           # draw static/og.png, the social card every page shares (docs/security.md "Indexability audit"); committed, rerun after a copy or look change

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vite-plus/test";
+import { ENGRAVER_CDN_INTEGRITY, ENGRAVER_WASM_INTEGRITY } from "@barmark/score";
 
 vi.mock("./markdown.js", () => ({ renderMarkdown: (md: string) => `<p>${md}</p>` }));
-const { renderChartHtml, renderDocHtml, renderScoreChartHtml } = await import("./chartHtml.js");
+const { ENGRAVER_URL, renderChartHtml, renderDocHtml, renderScoreChartHtml } =
+	await import("./chartHtml.js");
 
 describe("renderChartHtml", () => {
 	it("draws a barmark chart as <barmark-chart> with a declarative shadow root", () => {
@@ -33,7 +35,7 @@ describe("renderDocHtml", () => {
 	it("draws the song's chart as <barmark-score>: the grid and the Grid / Score switch in a declarative shadow root", () => {
 		const html = renderDocHtml("chart", "## Verse\n| D | A |");
 		expect(html).toMatch(
-			/^<barmark-score verovio-url="https:\/\/cdn\.jsdelivr\.net\/npm\/@barmark\/engraver@[\d.]+\/dist\/verovio-module\.mjs" verovio-integrity="sha384-[^"]+" verovio-wasm-integrity="sha384-[^"]+" theme="dark" rehearsal-letters>/,
+			/^<barmark-score verovio-url="\/engraver\/[\d.]+\/verovio-module\.mjs" verovio-integrity="sha384-[^"]+" verovio-wasm-integrity="sha384-[^"]+" theme="dark" rehearsal-letters>/,
 		);
 		expect(html).toContain('<template shadowrootmode="open">');
 		expect(html).toContain('role="radiogroup"');
@@ -71,5 +73,19 @@ describe("columns", () => {
 		expect(renderScoreChartHtml(chart, { columns: "shared" })).toBe(renderScoreChartHtml(chart));
 		expect(renderChartHtml(chart)).not.toMatch(/^<barmark-chart [^>]*columns=/);
 		expect(renderScoreChartHtml(chart)).not.toMatch(/^<barmark-score [^>]*columns=/);
+	});
+});
+
+describe("the self-hosted engraver", () => {
+	it("is the version @barmark/score expects, byte for byte (bun run engraver after a bump)", async () => {
+		const { createHash } = await import("node:crypto");
+		const { readFileSync } = await import("node:fs");
+		const dir = `static${ENGRAVER_URL.replace(/\/verovio-module\.mjs$/, "")}`;
+		const digest = (file: string) =>
+			`sha384-${createHash("sha384")
+				.update(readFileSync(`${dir}/${file}`))
+				.digest("base64")}`;
+		expect(digest("verovio-module.mjs")).toBe(ENGRAVER_CDN_INTEGRITY);
+		expect(digest("verovio-module.wasm")).toBe(ENGRAVER_WASM_INTEGRITY);
 	});
 });

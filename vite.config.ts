@@ -60,6 +60,11 @@ export default defineConfig({
 		exclude: ["svelte"],
 	},
 	resolve: { dedupe: ["svelte"] },
+	// Workers as ES modules (every worker here is created with `type: "module"`),
+	// so the score worker's fallback copy of Verovio (7 MB) is a chunk of its
+	// own, fetched only if the self-hosted engraver fails (static/engraver), not
+	// inlined into the worker every reader downloads.
+	worker: { format: "es" },
 	// Oxlint. It has no Svelte template linting yet, so .svelte files are only
 	// covered by svelte-check (`npm run check`); Oxlint covers .ts/.js/.svelte.ts.
 	lint: {
@@ -68,7 +73,7 @@ export default defineConfig({
 		options: { typeAware: true, typeCheck: true },
 		// Swamp behavior types run on swamp's own Deno (`Deno`, `npm:` specifiers):
 		// `~/.swamp/deno/deno check extensions/behaviors/<file>.ts` checks them.
-		ignorePatterns: ["extensions/**", ".swamp/**"],
+		ignorePatterns: ["extensions/**", ".swamp/**", "static/engraver/**"],
 	},
 	// Oxfmt. Formats .svelte end to end (script AND template) via the bundled
 	// prettier-plugin-svelte — the part Biome couldn't do.
@@ -76,10 +81,11 @@ export default defineConfig({
 		useTabs: true, // match the SvelteKit scaffold
 		printWidth: 100,
 		svelte: true, // needs the `svelte` package present, which SvelteKit provides
-		// generated: varlock types, drizzle-kit migrations; chart texts: fixtures and the migration's output are charts, not markdown to reflow
+		// generated: varlock types, drizzle-kit migrations, the engraver copy (its digest must hold); chart texts: fixtures and the migration's output are charts, not markdown to reflow
 		ignorePatterns: [
 			"src/env.d.ts",
 			"drizzle/**",
+			"static/engraver/**",
 			"tests/fixtures/charts/**",
 			"scripts/chart-migration/**",
 		],

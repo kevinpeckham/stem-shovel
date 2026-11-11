@@ -21,6 +21,7 @@
 		"spell:us": "bun scripts/american-spelling.ts",
 		"format": "vp fmt",
 		"stems": "node scripts/make-test-stems.mjs",
+		"engraver": "node scripts/engraver.mjs",
 		"samples:piano": "varlock run -- bun scripts/piano-samples.ts",
 		"samples:bass": "bun scripts/instrument-samples.ts bass",
 		"samples:guitar": "bun scripts/instrument-samples.ts guitar",
@@ -118,6 +119,7 @@
 		"verovio": "6.4.1"
 	},
 	"devDependencies": {
+		"@barmark/engraver": "0.1.1",
 		"@iconify-json/ph": "^1.2.2",
 		"@playwright/test": "1.64.1",
 		"@sveltejs/adapter-vercel": "^7.0.1",

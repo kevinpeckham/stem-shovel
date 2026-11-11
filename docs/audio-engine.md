@@ -1178,17 +1178,27 @@ New with the bump:
 
 - **The engraver.** `renderScoreChartHtml` writes `verovio-url`,
   `verovio-integrity` and `verovio-wasm-integrity` on the `<barmark-score>`
-  opening tag from the package's `ENGRAVER_*` constants: `@barmark/engraver`
-  0.1.1 from jsDelivr, barmark's build of the same Verovio 6.4.1 at about
-  3 MB where stock is about 7 MB, both files checked against their SRI
-  digests by the worker, with a fall-back to the package's own copy on a
-  mismatch (a console warning names the reason). Verified in the browser
-  on dev: the worker fetched the module and the `.wasm` from jsDelivr
-  (200, 200) and the score drew; the package's 26 KB toolkit wrapper
-  loads as before, the 7 MB engine never. The worker is a same-origin
-  module worker with no CSP of its own, so the page's CSP (vite.config.ts)
-  needed no change. `renderScoreHtml` has no option for these attributes
-  yet (an ask for #16).
+  opening tag: `@barmark/engraver` 0.1.1, barmark's build of the same
+  Verovio 6.4.1 at about 3 MB where stock is about 7 MB, served from our
+  own origin at `/engraver/<version>/` (`static/engraver/`, the copy
+  `bun run engraver` makes from the dev dependency and commits, the way
+  `static/basic-pitch` ships its model), with the SRI digests
+  `@barmark/score` publishes for the version it expects: the worker checks
+  both files against them and falls back to the package's own copy on a
+  mismatch (a console warning names the reason), and a test in
+  `chartHtml.test.ts` hashes the committed copy against the same
+  constants, so a bump without the rerun fails the suite. Self-hosted
+  rather than from jsDelivr (where the package's constants point) so a
+  reader's score depends on no third party at run time: the page's CSP
+  did not require it (the worker is a same-origin module worker with no
+  CSP of its own; FINDINGS "A same-origin module worker…"). With
+  `worker: { format: "es" }` (vite.config.ts) the stock engine is a chunk
+  the score worker imports only on that fallback, not 7 MB inlined into a
+  worker every reader downloads; the built score worker went from 8.5 MB
+  to 210 KB. Verified in the browser on dev: module and `.wasm` 200 from
+  our origin, the score drawn, the stock engine never fetched.
+  `renderScoreHtml` has no option for these attributes yet (an ask for
+  #16).
 - **Columns.** `columns: "shared" | "row"` (`"shared"` the default) is a
   per-song setting, `song.chart_columns` (migration 0119,
   `ChartColumnsSchema`): the Chart panel's ⋯ menu offers "Size columns
