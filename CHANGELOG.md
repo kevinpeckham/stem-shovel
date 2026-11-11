@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.262.0] - 2026-11-11
+
 ### Changed
 
 - **Generate chart sets bar one from the tracker.** On a draft built on

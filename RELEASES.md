@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.262.0] - 2026-11-11
+
 ### Changed
 
 - **A generated chart and the player count the same bars.** Generate from
