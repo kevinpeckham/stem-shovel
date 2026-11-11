@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.260.0] - 2026-11-11
+
 ### Added
 
 - **Size columns per row.** The chart grid aligns bar lines down each section,

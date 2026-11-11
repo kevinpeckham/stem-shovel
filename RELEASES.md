@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.260.0] - 2026-11-11
+
 ### Added
 
 - **Size columns per row.** The chart grid lines its bars up down each

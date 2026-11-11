@@ -1,6 +1,6 @@
 {
 	"name": "stem-shovel",
-	"version": "0.259.8",
+	"version": "0.260.0",
 	"private": true,
 	"license": "Apache-2.0",
 	"type": "module",
