@@ -666,6 +666,44 @@ describe("SongChordDraft", () => {
 			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
 		});
 
+		test("on the tracker's bars the song's start of bar 1 is the tracker's first downbeat, the tempo unchanged, not the comb's", async () => {
+			remote.songChords.mockImplementation(() => asQuery(STORED));
+			placing.chartlessGridInBrowser.mockResolvedValue(placedAs(PLACED));
+			remote.draftChart.mockResolvedValue({
+				...DRAFT,
+				barStarts: [1.02004, 3, 5, 7, 9],
+				onTracker: true,
+				gridNote: null,
+			});
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.useChartlessGrid).toHaveBeenCalledOnce();
+			expect(remote.useChartlessGrid).toHaveBeenCalledWith({
+				id: "song1",
+				startAt: 1.02,
+				bpm: 120,
+			});
+			// After the draft: its grid says whose bar one it is.
+			expect(remote.draftChart.mock.invocationCallOrder[0]).toBeLessThan(
+				remote.useChartlessGrid.mock.invocationCallOrder[0]!,
+			);
+			expect(notify).toHaveBeenCalledWith(expect.stringContaining("start of bar 1 set to 0:01.0."));
+		});
+
+		test("on the tracker's bars a song with its own start of bar 1 keeps it", async () => {
+			remote.songChords.mockImplementation(() => asQuery(STORED));
+			remote.draftChart.mockResolvedValue({
+				...DRAFT,
+				barStarts: [1, 3, 5, 7, 9],
+				onTracker: true,
+				gridNote: null,
+			});
+			const cd = make({ startAt: 0.3 });
+			await cd.generateChart();
+			expect(remote.useChartlessGrid).not.toHaveBeenCalled();
+			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
+		});
+
 		test("on the tracker's bars the comb's drift does not hold the draft", async () => {
 			remote.songChords.mockImplementation(() => asQuery(STORED));
 			placing.chartlessGridInBrowser.mockResolvedValueOnce(
@@ -696,6 +734,8 @@ describe("SongChordDraft", () => {
 			await cd.generateChart();
 			expect(remote.saveChartDraft).not.toHaveBeenCalled();
 			expect(remote.saveSections).not.toHaveBeenCalled();
+			// Nor is a bar one set on a grid the song's settings do not make.
+			expect(remote.useChartlessGrid).not.toHaveBeenCalled();
 			expect(cd.draft).toMatchObject({ onTracker: true, gridNote });
 			expect(notify).toHaveBeenCalledWith(
 				"Chart drafted but not saved: the recording's bars are not the bars the song's tempo and time signature make. Review it on the draft card.",

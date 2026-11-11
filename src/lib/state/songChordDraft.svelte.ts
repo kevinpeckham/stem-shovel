@@ -131,6 +131,9 @@ export interface SongChordDraftOptions {
 const attempt = <A>(thunk: (signal: AbortSignal) => PromiseLike<A>) =>
 	Effect.tryPromise({ try: thunk, catch: (e) => e });
 
+/** What "Generate chart" set on the song before saving: the start of bar 1, and the tempo when the browser's placement set that too. */
+type BarOnePlaced = { startAt: number; bpm?: number };
+
 /** How often, and for how long, a run waits for the chord model to read a song's mix on the server. */
 const MODEL_POLL_SECONDS = 3;
 /** How long a posted job may take to claim the song before the page stops waiting for it. */
@@ -301,10 +304,14 @@ export class SongChordDraft {
 				this.#step = "Detecting the chords…";
 				yield* this.#detect();
 				if (!this.chordSegments) return;
-				const placed = yield* this.#useBarOne();
 				this.#step = "Drafting the chart with AI…";
 				yield* this.#draft();
-				if (this.draft) yield* this.#saveOrHold(this.draft, placed, detectedGrid);
+				if (!this.draft) return;
+				// Bar one after the draft: its grid says whose bar one the chart starts on.
+				const placed = this.draft.onTracker
+					? yield* this.#useTrackerBarOne(this.draft)
+					: yield* this.#useBarOne();
+				yield* this.#saveOrHold(this.draft, placed, detectedGrid);
 			}).pipe(Effect.catch(this.#fail), Effect.ensuring(Effect.sync(() => (this.#step = null)))),
 		);
 
@@ -327,11 +334,44 @@ export class SongChordDraft {
 	}
 
 	/**
+	 * On a draft built on the tracker's bars: its first downbeat saved as the
+	 * song's start of bar 1, so the player counts the bars the chart draws.
+	 * The tempo is the song's own and is written back unchanged. Skipped (null)
+	 * when the song has a start of bar 1 of its own, when the recording's bars
+	 * are not the bars the song's settings make (the draft is held, and a bar
+	 * one on another grid would say nothing), or when the save failed (said,
+	 * and the run goes on). The browser's placement is not used here: its bar
+	 * one belongs to a grid the chart does not stand on.
+	 */
+	#useTrackerBarOne(draft: ChartDraft): Effect.Effect<BarOnePlaced | null> {
+		return Effect.gen({ self: this }, function* () {
+			const first = draft.barStarts?.[0];
+			const bpm = this.#opts.grid()?.tempos[0]?.bpm;
+			if (first === undefined || bpm === undefined) return null;
+			if (draft.gridNote || this.#opts.startAt() !== null) return null;
+			this.#step = "Setting the start of bar 1…";
+			const startAt = Math.round(first * 10_000) / 10_000;
+			return yield* attempt(async () => {
+				await useChartlessGrid({ id: this.#opts.songId(), startAt, bpm });
+				await this.#opts.onsaved();
+				return { startAt };
+			}).pipe(
+				Effect.catch((e) =>
+					Effect.sync(() => {
+						notify(errorMessage(e), { kind: "info" });
+						return null;
+					}),
+				),
+			);
+		});
+	}
+
+	/**
 	 * A decided placement's bar one and tempo saved as the song's ("Use as
 	 * start of bar 1"); null when there is none or the save failed (said, and
 	 * the run goes on: the chart carries its own timing map).
 	 */
-	#useBarOne(): Effect.Effect<{ startAt: number; bpm: number } | null> {
+	#useBarOne(): Effect.Effect<BarOnePlaced | null> {
 		return Effect.gen({ self: this }, function* () {
 			const placement = this.placement;
 			if (!placement?.decided || placement.byStart) return null;
@@ -360,7 +400,7 @@ export class SongChordDraft {
 	 */
 	#saveOrHold(
 		draft: ChartDraft,
-		placed: { startAt: number; bpm: number } | null,
+		placed: BarOnePlaced | null,
 		detectedGrid: boolean,
 	): Effect.Effect<void, SaveError> {
 		const grid = this.#opts.grid();
@@ -387,7 +427,7 @@ export class SongChordDraft {
 	/** The generated draft's sections (unless the song has some) and its chart saved; the draft goes and the page refreshes. */
 	#saveGenerated(
 		draft: ChartDraft,
-		placed: { startAt: number; bpm: number } | null,
+		placed: BarOnePlaced | null,
 		notes: string[],
 	): Effect.Effect<void, SaveError> {
 		return Effect.gen({ self: this }, function* () {

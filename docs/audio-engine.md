@@ -1450,6 +1450,14 @@ beat tracker, not an even grid laid from the song's declared tempo.
   it on the card instead of saving, unless the tempo was one the run
   itself had just detected. Nothing about the song's settings, the
   player's count or any saved chart changes.
+- **Bar one.** "Generate chart" on a tracker draft saves the draft's
+  first downbeat as the song's start of bar 1, the tempo left as it is,
+  so the player counts the bars the chart draws
+  (`SongChordDraft#useTrackerBarOne`). Not when the song has a start of
+  bar 1 of its own, nor when the recording and the settings disagree
+  (the draft is held). The browser's placement, whose bar one belongs to
+  a grid the chart does not stand on, is used only for a draft on the
+  browser's grid; the step now runs after the draft for both.
 - **Holds** (`generatedChartVerdict`): on the tracker's bars the
   detected-grid hold and the drift hold do not apply (Study 41, Ask C:
   the first held every automatic draft, the second fired at metrical

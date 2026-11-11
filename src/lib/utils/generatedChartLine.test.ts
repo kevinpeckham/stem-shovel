@@ -8,6 +8,12 @@ describe("generatedChartLine", () => {
 		);
 	});
 
+	test("a start placed without a tempo (the tracker's first downbeat)", () => {
+		expect(generatedChartLine({ bars: 72, sections: 4, placed: { startAt: 1.02 } })).toBe(
+			"Chart generated from the stems: 72 bars, 4 sections; start of bar 1 set to 0:01.0.",
+		);
+	});
+
 	test("no sections, nothing placed", () => {
 		expect(generatedChartLine({ bars: 78, sections: 0, placed: null })).toBe(
 			"Chart generated from the stems: 78 bars, no sections.",

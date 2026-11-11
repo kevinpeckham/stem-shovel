@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Generate chart sets bar one from the tracker.** On a draft built on
+  the tracker's bars, the song's start of bar 1 is the draft's first
+  downbeat, with the tempo unchanged, in place of the browser placement's
+  bar one and tempo, which belong to a grid the chart no longer stands
+  on. Skipped when the song has its own start of bar 1 or the recording
+  and the settings disagree. The bar-one step runs after the draft now
+  (`SongChordDraft`, `generatedChartLine`).
+
 ## [0.261.0] - 2026-11-11
 
 ### Changed

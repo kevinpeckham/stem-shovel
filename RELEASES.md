@@ -4,6 +4,13 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **A generated chart and the player count the same bars.** Generate from
+  the stems now sets the song's start of bar 1 to the first bar the
+  recording plays, so bar numbers in the chart match the player's
+  counter. A start of bar 1 you set yourself is kept.
+
 ## [0.261.0] - 2026-11-11
 
 ### Changed

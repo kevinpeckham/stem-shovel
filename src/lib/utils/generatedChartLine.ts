@@ -16,12 +16,14 @@ export function generatedChartLine({
 }: {
 	bars: number;
 	sections: number;
-	placed: { startAt: number; bpm: number } | null;
+	/** The start of bar 1 the run set, with the tempo when it set that too. */
+	placed: { startAt: number; bpm?: number } | null;
 	notes?: string[];
 }): string {
 	const chart = `Chart generated from the stems: ${count(bars, "bar")}, ${sections ? count(sections, "section") : "no sections"}`;
+	const tempo = placed?.bpm === undefined ? "" : ` and tempo to ${placed.bpm} bpm`;
 	const line = placed
-		? `${chart}; start of bar 1 set to ${formatTime(placed.startAt)} and tempo to ${placed.bpm} bpm.`
+		? `${chart}; start of bar 1 set to ${formatTime(placed.startAt)}${tempo}.`
 		: `${chart}.`;
 	return notes.length ? `${line} Note: ${notes.join("; ")}.` : line;
 }
