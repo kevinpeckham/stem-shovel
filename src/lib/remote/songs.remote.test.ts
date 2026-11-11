@@ -596,6 +596,73 @@ describe("side effects of the editor-gated functions", () => {
 			expect.objectContaining({ to: "friend@example.com", url: "http://localhost/s/sharecode" }),
 		);
 	});
+	describe("shareSong aimed at a demo recording", () => {
+		const DEMO = fakeId("demo-one");
+		const input = { songId: SONG, demoId: DEMO, to: "friend@example.com" };
+		beforeEach(() => {
+			data.songForMix.mockResolvedValue({
+				title: "Track",
+				isPrivate: true,
+				project: { isPrivate: false, name: "Album" },
+			});
+			data.songSlugs.mockResolvedValue({ account: "acct", project: "album", song: "track" });
+			data.demoOwnership.mockResolvedValue({ id: DEMO, songId: SONG, label: "Phone memo" });
+			data.createShareLink.mockResolvedValue({ code: "sharecode" });
+		});
+		it("401 signed out; 404 for an outsider, a viewer and a member kept out of the restricted project", async () => {
+			asSignedOut();
+			await expect(call(songs.shareSong, input)).rejects.toMatchObject(httpError(401));
+			asOutsider();
+			await expect(call(songs.shareSong, input)).rejects.toMatchObject(httpError(404));
+			asViewerOf(ACCOUNT);
+			await expect(call(songs.shareSong, input)).rejects.toMatchObject(httpError(404));
+			asEditorOf(ACCOUNT);
+			data.projectRestricted.mockResolvedValue(true);
+			await expect(call(songs.shareSong, input)).rejects.toMatchObject(httpError(404));
+			expect(email.sendShareEmail).not.toHaveBeenCalled();
+		});
+		it("404 for a demo of another song; a mix and a demo together are refused", async () => {
+			asEditorOf(ACCOUNT);
+			data.demoOwnership.mockResolvedValue({ id: DEMO, songId: fakeId("song-two"), label: "x" });
+			await expect(call(songs.shareSong, input)).rejects.toMatchObject(httpError(404));
+			await expect(
+				call(songs.shareSong, { ...input, mixId: fakeId("mix-one") }),
+			).rejects.toBeDefined();
+			expect(email.sendShareEmail).not.toHaveBeenCalled();
+		});
+		it("a private song: the viewing link records the demo, and the email names it", async () => {
+			asEditorOf(ACCOUNT);
+			await expect(call(songs.shareSong, input)).resolves.toEqual({ sent: "friend@example.com" });
+			expect(data.createShareLink).toHaveBeenCalledWith(
+				ACCOUNT,
+				USER,
+				{ songId: SONG, demoId: DEMO },
+				expect.objectContaining({ maxUses: null }),
+			);
+			expect(email.sendShareEmail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: "http://localhost/s/sharecode",
+					mix: null,
+					demo: expect.objectContaining({ label: "Phone memo" }),
+				}),
+			);
+		});
+		it("a public song: the email carries the demo page's own address", async () => {
+			asEditorOf(ACCOUNT);
+			data.songForMix.mockResolvedValue({
+				title: "Track",
+				isPrivate: false,
+				project: { isPrivate: false, name: "Album" },
+			});
+			await call(songs.shareSong, input);
+			expect(data.createShareLink).not.toHaveBeenCalled();
+			expect(email.sendShareEmail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `http://localhost/acct/projects/album/track/demos/${DEMO}`,
+				}),
+			);
+		});
+	});
 	it("askAiAboutSong refuses a song whose project opted out of AI", async () => {
 		asEditorOf(ACCOUNT);
 		data.songForMix.mockResolvedValue({

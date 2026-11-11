@@ -2110,6 +2110,35 @@ export async function commentOwnership(id: string) {
 	});
 }
 
+/**
+ * A demo recording's own page: the song (its privacy, for the viewing rule)
+ * and the demo with who uploaded it, scoped to the account and found by the
+ * page's slugs. Null when there is no such song; `demo` is null when the
+ * song has no such demo.
+ */
+export async function songDemo(
+	accountId: string,
+	projectSlug: string,
+	songSlug: string,
+	demoId: string,
+) {
+	const proj = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.slug, projectSlug)),
+		columns: { id: true, name: true, slug: true, isPrivate: true, isRestricted: true },
+	});
+	if (!proj) return null;
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.projectId, proj.id), eq(song.slug, songSlug)),
+		columns: { id: true, projectId: true, title: true, slug: true, isPrivate: true },
+	});
+	if (!row) return null;
+	const d = await db.query.demo.findFirst({
+		where: and(eq(demo.accountId, accountId), eq(demo.songId, row.id), eq(demo.id, demoId)),
+		with: { uploader: { columns: { name: true } } },
+	});
+	return { song: { ...row, project: proj }, demo: d ?? null };
+}
+
 /** A demo's song and label, for a comment on it (docs/uploads-and-blob.md, "Demos" review). */
 export async function demoOwnership(id: string) {
 	return db.query.demo.findFirst({
@@ -3640,6 +3669,7 @@ export async function createShareLink(
 		songId?: string;
 		projectId?: string;
 		mixId?: string;
+		demoId?: string;
 		recordingId?: string;
 		sessionId?: string;
 		setListId?: string;
@@ -3653,6 +3683,7 @@ export async function createShareLink(
 			songId: target.songId ?? null,
 			projectId: target.projectId ?? null,
 			mixId: target.mixId ?? null,
+			demoId: target.demoId ?? null,
 			recordingId: target.recordingId ?? null,
 			sessionId: target.sessionId ?? null,
 			setListId: target.setListId ?? null,
@@ -3825,7 +3856,14 @@ async function sessionShareTarget(link: {
 	return s ? `/${s.account.slug}/sessions/s/${s.id}` : null;
 }
 
-/** The page a share link opens (`/s/<code>`): the song's or the project's current address, a mix's page (docs/mixes.md), a session's or a session recording's, a set list's show view (docs/band-plan.md); null when no such code. */
+/** A song's link aimed at a mix (docs/mixes.md) or a demo recording opens that one's own page under the song's address. */
+function aimedSongPath(path: string, link: { mixId: string | null; demoId: string | null }) {
+	if (link.mixId) return `${path}/mixes/${link.mixId}`;
+	if (link.demoId) return `${path}/demos/${link.demoId}`;
+	return path;
+}
+
+/** The page a share link opens (`/s/<code>`): the song's or the project's current address, a mix's or a demo's page (docs/mixes.md), a session's or a session recording's, a set list's show view (docs/band-plan.md); null when no such code. */
 export async function shareLinkTarget(code: string): Promise<string | null> {
 	const link = await db.query.shareLink.findFirst({
 		where: eq(shareLink.code, code),
@@ -3833,6 +3871,7 @@ export async function shareLinkTarget(code: string): Promise<string | null> {
 			songId: true,
 			projectId: true,
 			mixId: true,
+			demoId: true,
 			recordingId: true,
 			sessionId: true,
 			setListId: true,
@@ -3858,7 +3897,7 @@ export async function shareLinkTarget(code: string): Promise<string | null> {
 		});
 		if (!s) return null;
 		const path = `/${s.project.account.slug}/projects/${s.project.slug}/${s.slug}`;
-		return link.mixId ? `${path}/mixes/${link.mixId}` : path;
+		return aimedSongPath(path, link);
 	}
 	if (link.projectId) {
 		const p = await db.query.project.findFirst({
@@ -7167,6 +7206,8 @@ export async function deleteDemo(accountId: string, demoId: string) {
 		.returning({ url: demo.url, playbackUrl: demo.playbackUrl });
 	if (!row) return false;
 	await deleteCommentRows(eq(comment.demoId, demoId));
+	// Turso keeps no foreign keys: a link made for the demo falls back to the song (`share_link.demo_id` is "set null").
+	await db.update(shareLink).set({ demoId: null }).where(eq(shareLink.demoId, demoId));
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	return true;
 }
@@ -7383,6 +7424,8 @@ export async function deleteMix(accountId: string, mixId: string) {
 		.returning({ url: songMix.url, playbackUrl: songMix.playbackUrl });
 	if (!row) return false;
 	await deleteCommentRows(eq(comment.mixId, mixId));
+	// A link made for the mix falls back to the song, as a deleted demo's does (Turso runs no `set null`).
+	await db.update(shareLink).set({ mixId: null }).where(eq(shareLink.mixId, mixId));
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	return true;
 }

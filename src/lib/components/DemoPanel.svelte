@@ -4,13 +4,14 @@
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { saveAs } from "#lib/upload.js";
+	import { demoMenuItems } from "#lib/utils/demoMenuItems.js";
 	import { tick, type Snippet } from "svelte";
 
 	/**
 	 * The song page's demos view, sharing the player's box with the stem
 	 * player: a transport (previous, play/pause, next, seek, volume) over the
 	 * list of demo recordings, each with its own play button and a ⋯ menu
-	 * holding its downloads.
+	 * holding its own page (and, for an editor, Share… there) and its downloads.
 	 * The page decides which view shows; `pause()` lets it quiet this one
 	 * when the stems take over. Under the transport, the current demo's
 	 * review (RecordingReview, docs/uploads-and-blob.md "Sessions" review):
@@ -29,6 +30,8 @@
 	}
 	interface Props {
 		demos: PanelDemo[];
+		/** A demo's own page (the song page's `demoPath`): the row menu's Open page, and Share… for an editor. */
+		hrefOf?: (id: string) => string;
 		/** At least this tall (the stem player's box, so the page keeps its shape across the toggle). */
 		minHeight?: number;
 		/** An editor may remove a demo from its row's menu (Kevin: there was no way on a song with stems). */
@@ -46,6 +49,7 @@
 	}
 	let {
 		demos,
+		hrefOf,
 		minHeight = 0,
 		canEdit = false,
 		onremove,
@@ -116,6 +120,19 @@
 		if (demos[index + 1]) step(1);
 		else paused = true;
 	}
+	/** A row's ⋯ menu (demoMenuItems): Remove quiets the demo first when it is the one playing. */
+	const rowItems = (d: PanelDemo) =>
+		demoMenuItems(d, {
+			hrefOf,
+			canEdit,
+			save: saveAs,
+			remove:
+				onremove &&
+				(() => {
+					if (current === d.id) pause();
+					void onremove(d);
+				}),
+		});
 	function seek(e: Event) {
 		const at = Number((e.currentTarget as HTMLInputElement).value);
 		if (audio) audio.currentTime = at;
@@ -271,41 +288,20 @@
 									(e.currentTarget.parentElement as HTMLDetailsElement).open = false;
 							}}
 						>
-							{#if d.playbackUrl}
-								<button
+							{#each rowItems(d) as item (item.label)}
+								<svelte:element
+									this={item.element}
+									type={item.type}
 									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-									type="button"
 									role="menuitem"
-									onclick={() => saveAs(d.playbackUrl!, `${d.label}.mp3`)}
+									tabindex="0"
+									href={item.href}
+									title={item.title}
+									onclick={item.action}
 								>
-									<span class="i-ph-download-simple" aria-hidden="true"></span>Download MP3
-								</button>
-							{/if}
-							<button
-								class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-								type="button"
-								role="menuitem"
-								title={d.filename}
-								onclick={() => saveAs(d.url, d.filename)}
-							>
-								<span class="i-ph-file-audio" aria-hidden="true"></span>Download {d.playbackUrl
-									? "original"
-									: "file"}
-							</button>
-							{#if canEdit && onremove}
-								<button
-									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-									type="button"
-									role="menuitem"
-									title="Remove this demo from the song; the file is deleted"
-									onclick={() => {
-										if (current === d.id) pause();
-										void onremove(d);
-									}}
-								>
-									<span class="i-ph-trash" aria-hidden="true"></span>Remove demo
-								</button>
-							{/if}
+									<span class={item.icon} aria-hidden="true"></span>{item.label}
+								</svelte:element>
+							{/each}
 						</div>
 					</details>
 				</li>

@@ -11,7 +11,6 @@ import {
 	requireUser,
 } from "#lib/server/access.js";
 import {
-	mixOwnership,
 	createShareLink as create,
 	revokeShareLink as revoke,
 	setProjectPrivacy,
@@ -25,6 +24,7 @@ import {
 } from "#lib/val/ShareLinkSchema.js";
 import { background } from "#lib/server/background.js";
 import { relocateProjectFiles, relocateSongFiles } from "#lib/server/relocate.js";
+import { songShareAim } from "#lib/server/songShareAim.js";
 import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
 import { error } from "@sveltejs/kit";
 
@@ -64,9 +64,9 @@ function memberForTarget(locals: App.Locals, t: ShareTarget) {
 	return memberOf(locals, accountOfProject, t.projectId);
 }
 
-/** What the link opens, as data.ts records it (exactly one is set; the schema checks). */
-function targetOf(t: ShareTarget, mixId: string) {
-	if (t.songId) return { songId: t.songId, mixId: mixId || undefined };
+/** What the link opens, as data.ts records it (exactly one is set; the schema checks); a song's link with the mix or demo it is aimed at. */
+function targetOf(t: ShareTarget, aim: { mixId?: string; demoId?: string }) {
+	if (t.songId) return { songId: t.songId, ...aim };
 	if (t.recordingId) return { recordingId: t.recordingId };
 	if (t.sessionId) return { sessionId: t.sessionId };
 	if (t.setListId) return { setListId: t.setListId };
@@ -76,16 +76,15 @@ function targetOf(t: ShareTarget, mixId: string) {
 /** Any member makes a viewing link for a song, a project, a session, a session recording or a set list of their account. */
 export const createShareLink = form(
 	ShareLinkCreateSchema,
-	async ({ mixId, note, maxUses, expiresDays, ...target }) => {
+	async ({ mixId, demoId, note, maxUses, expiresDays, ...target }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		if (await rateLimited(`sharelink:${user.id}`, 60, HOUR))
 			error(429, "Too many links in one hour.");
 		const m = await memberForTarget(locals, target);
-		// A link made for a mix (docs/mixes.md): the mix must be this song's.
-		if (mixId && (!target.songId || (await mixOwnership(mixId))?.songId !== target.songId))
-			error(404, "Mix not found");
-		const row = await create(m.accountId, user.id, targetOf(target, mixId), {
+		// A link made for a mix (docs/mixes.md) or a demo: it must be this song's.
+		const aim = await songShareAim(target.songId, mixId, demoId);
+		const row = await create(m.accountId, user.id, targetOf(target, aim.ids), {
 			note,
 			maxUses,
 			expiresDays,

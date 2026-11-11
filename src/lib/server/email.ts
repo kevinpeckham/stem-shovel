@@ -104,6 +104,32 @@ export async function sendInvitationEmail(opts: {
 	});
 }
 
+/** What a share email names, says and offers: a mix (docs/mixes.md), a demo recording, or the song. */
+function sharedThing(opts: {
+	songTitle: string;
+	mix?: { version: number; label: string } | null;
+	demo?: { label: string } | null;
+}) {
+	if (opts.mix)
+		return {
+			what: `mix v${opts.mix.version} "${opts.mix.label}" of "${opts.songTitle}"`,
+			offer: "Anyone with the link can listen to the mix and leave comments on it.",
+			cta: `Listen to mix v${opts.mix.version}`,
+		};
+	if (opts.demo)
+		return {
+			what: `the demo "${opts.demo.label}" of "${opts.songTitle}"`,
+			offer: "Anyone with the link can listen to the demo and download it.",
+			cta: "Listen to the demo",
+		};
+	return {
+		what: `"${opts.songTitle}"`,
+		offer:
+			"Anyone with the link can listen to the stems, read the chart and lyrics, and download the mixes.",
+		cta: `Open ${opts.songTitle}`,
+	};
+}
+
 export async function sendShareEmail(opts: {
 	to: string;
 	url: string;
@@ -114,23 +140,18 @@ export async function sendShareEmail(opts: {
 	message: string;
 	/** A mix the share is aimed at (docs/mixes.md): the email says so and the link lands on it. */
 	mix?: { version: number; label: string } | null;
+	/** A demo recording the share is aimed at: the email says so and the link lands on its page. */
+	demo?: { label: string } | null;
 }) {
-	const what = opts.mix
-		? `mix v${opts.mix.version} "${opts.mix.label}" of "${opts.songTitle}"`
-		: `"${opts.songTitle}"`;
+	const { what, offer, cta } = sharedThing(opts);
 	const body = renderEmail({
 		greeting: "Hi,",
 		lines: [
 			`${opts.senderName} shared ${what} (from ${opts.projectName}) with you on Stem Shovel.`,
 			...(opts.message ? [opts.message] : []),
-			opts.mix
-				? "Anyone with the link can listen to the mix and leave comments on it."
-				: "Anyone with the link can listen to the stems, read the chart and lyrics, and download the mixes.",
+			offer,
 		],
-		cta: {
-			label: opts.mix ? `Listen to mix v${opts.mix.version}` : `Open ${opts.songTitle}`,
-			url: opts.url,
-		},
+		cta: { label: cta, url: opts.url },
 	});
 	await sendEmail({
 		to: opts.to,

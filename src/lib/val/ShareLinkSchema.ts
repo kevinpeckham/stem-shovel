@@ -8,6 +8,8 @@ export const ShareLinkCreateSchema = v.pipe(
 		songId: v.optional(v.pipe(v.string(), v.trim()), ""),
 		/** A mix of the song (docs/mixes.md): the link opens the song on it. */
 		mixId: v.optional(v.pipe(v.string(), v.trim()), ""),
+		/** A demo recording of the song: the link opens the demo's own page. */
+		demoId: v.optional(v.pipe(v.string(), v.trim()), ""),
 		projectId: v.optional(v.pipe(v.string(), v.trim()), ""),
 		/** A session recording (docs/uploads-and-blob.md, "Sessions"): the link opens its own page. */
 		recordingId: v.optional(v.pipe(v.string(), v.trim()), ""),
@@ -41,6 +43,10 @@ export const ShareLinkCreateSchema = v.pipe(
 			[o.songId, o.projectId, o.sessionId, o.recordingId, o.setListId].filter((id) => id !== "")
 				.length === 1,
 		"A share link is for one song, one project, one session, one recording or one set list.",
+	),
+	v.check(
+		(o) => o.mixId === "" || o.demoId === "",
+		"A share link opens a mix or a demo of the song, not both.",
 	),
 	v.check((o) => o.songId === "" || v.is(NanoIdSchema, o.songId), "Not a valid id."),
 	v.check((o) => o.projectId === "" || v.is(NanoIdSchema, o.projectId), "Not a valid id."),

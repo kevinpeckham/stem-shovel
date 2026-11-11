@@ -9,6 +9,7 @@ describe("ShareLinkCreateSchema", () => {
 		expect(v.parse(ShareLinkCreateSchema, { songId: id })).toEqual({
 			songId: id,
 			mixId: "",
+			demoId: "",
 			projectId: "",
 			recordingId: "",
 			sessionId: "",
@@ -40,6 +41,18 @@ describe("ShareLinkCreateSchema", () => {
 		expect(v.safeParse(ShareLinkCreateSchema, {}).success).toBe(false);
 		expect(v.safeParse(ShareLinkCreateSchema, { songId: id, projectId: id }).success).toBe(false);
 		expect(v.safeParse(ShareLinkCreateSchema, { songId: "not an id!" }).success).toBe(false);
+	});
+	test("a song's link may aim at a mix or a demo of it, never both", () => {
+		expect(v.parse(ShareLinkCreateSchema, { songId: id, demoId: id })).toMatchObject({
+			songId: id,
+			mixId: "",
+			demoId: id,
+		});
+		const both = v.safeParse(ShareLinkCreateSchema, { songId: id, mixId: id, demoId: id });
+		expect(both.success).toBe(false);
+		expect(both.issues?.[0].message).toBe(
+			"A share link opens a mix or a demo of the song, not both.",
+		);
 	});
 });
 

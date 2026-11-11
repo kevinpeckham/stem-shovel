@@ -104,6 +104,60 @@ describe("createShareLink", () => {
 			{ note: "", maxUses: null, expiresDays: 0 },
 		);
 	});
+	describe("a link for a demo recording: the song's code with the demo it opens", () => {
+		const DEMO = fakeId("demo-one");
+		const input = { songId: SONG, demoId: DEMO };
+		beforeEach(() => data.demoOwnership.mockResolvedValue({ id: DEMO, songId: SONG }));
+		it("401 signed out", async () => {
+			asSignedOut();
+			await expect(call(share.createShareLink, input)).rejects.toMatchObject(httpError(401));
+		});
+		it("404 for an outsider and for a viewer", async () => {
+			asOutsider();
+			await expect(call(share.createShareLink, input)).rejects.toMatchObject(httpError(404));
+			asViewerOf(ACCOUNT);
+			await expect(call(share.createShareLink, input)).rejects.toMatchObject(httpError(404));
+			expect(data.createShareLink).not.toHaveBeenCalled();
+		});
+		it("404 for a member not added to the restricted project", async () => {
+			asEditorOf(ACCOUNT);
+			data.projectRestricted.mockResolvedValue(true);
+			await expect(call(share.createShareLink, input)).rejects.toMatchObject(httpError(404));
+			expect(data.createShareLink).not.toHaveBeenCalled();
+		});
+		it("404 for a demo of another song, or none", async () => {
+			asEditorOf(ACCOUNT);
+			data.demoOwnership.mockResolvedValue({ id: DEMO, songId: fakeId("song-two") });
+			await expect(call(share.createShareLink, input)).rejects.toMatchObject(httpError(404));
+			data.demoOwnership.mockResolvedValue(undefined);
+			await expect(call(share.createShareLink, input)).rejects.toMatchObject(httpError(404));
+			// A demo with no song named is refused the same way.
+			data.demoOwnership.mockResolvedValue({ id: DEMO, songId: SONG });
+			await expect(
+				call(share.createShareLink, { projectId: PROJECT, demoId: DEMO }),
+			).rejects.toMatchObject(httpError(404));
+			expect(data.createShareLink).not.toHaveBeenCalled();
+		});
+		it("refuses a link aimed at a mix and a demo together", async () => {
+			asEditorOf(ACCOUNT);
+			data.mixOwnership.mockResolvedValue({ id: fakeId("mix-one"), songId: SONG });
+			await expect(
+				call(share.createShareLink, { ...input, mixId: fakeId("mix-one") }),
+			).rejects.toBeDefined();
+			expect(data.createShareLink).not.toHaveBeenCalled();
+		});
+		it("an editor makes it under the account, the demo recorded", async () => {
+			asEditorOf(ACCOUNT);
+			await expect(call(share.createShareLink, input)).resolves.toEqual({ code: "abc" });
+			expect(data.demoOwnership).toHaveBeenCalledWith(DEMO);
+			expect(data.createShareLink).toHaveBeenLastCalledWith(
+				ACCOUNT,
+				USER,
+				{ songId: SONG, demoId: DEMO },
+				{ note: "", maxUses: null, expiresDays: 0 },
+			);
+		});
+	});
 	it('a link for a session recording (docs/uploads-and-blob.md, "Sessions"): the recording\'s account, the recording recorded', async () => {
 		const RECORDING = fakeId("rec-one");
 		givenRow("sessionRecording", { accountId: ACCOUNT });

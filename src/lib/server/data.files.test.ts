@@ -12,6 +12,7 @@ const {
 	createFile,
 	createNotation,
 	deleteDemo,
+	deleteMix,
 	deleteFile,
 	deleteNotation,
 	demosWantingPlayback,
@@ -659,6 +660,40 @@ describe("demos", () => {
 		expect(await deleteDemo("a1", "d3")).toBe(true);
 		expect(blob.deleteBlobs).toHaveBeenCalledWith(["https://b/d3.m4a", "https://b/d3.mp3"]);
 		expect(fake.rows("demo").map((r) => r.id)).toEqual(["d1", "d2"]);
+	});
+	test("deleteDemo lets go of the links made for it: they open the song, other links untouched", async () => {
+		reset({
+			demo: [demo("d1"), demo("d2")],
+			shareLink: [
+				{ id: "l1", accountId: "a1", songId: "sg1", demoId: "d1", code: "AAAA" },
+				{ id: "l2", accountId: "a1", songId: "sg1", demoId: "d2", code: "BBBB" },
+				{ id: "l3", accountId: "a1", songId: "sg1", mixId: "m1", code: "CCCC" },
+			],
+		});
+		expect(await deleteDemo("a2", "d1")).toBe(false);
+		expect(fake.rows("shareLink").map((l) => l.demoId)).toEqual(["d1", "d2", undefined]);
+		expect(await deleteDemo("a1", "d1")).toBe(true);
+		expect(fake.rows("shareLink").map((l) => [l.id, l.demoId ?? null, l.mixId ?? null])).toEqual([
+			["l1", null, null],
+			["l2", "d2", null],
+			["l3", null, "m1"],
+		]);
+	});
+	test("deleteMix lets go of the links made for it too", async () => {
+		reset({
+			songMix: [
+				{ id: "m1", accountId: "a1", songId: "sg1", url: "https://b/m1.wav", playbackUrl: null },
+			],
+			shareLink: [
+				{ id: "l1", accountId: "a1", songId: "sg1", mixId: "m1", code: "AAAA" },
+				{ id: "l2", accountId: "a1", songId: "sg1", demoId: "d2", code: "BBBB" },
+			],
+		});
+		expect(await deleteMix("a1", "m1")).toBe(true);
+		expect(fake.rows("shareLink").map((l) => [l.id, l.mixId ?? null, l.demoId ?? null])).toEqual([
+			["l1", null, null],
+			["l2", null, "d2"],
+		]);
 	});
 	test("the playback claim is the lock; finishing and failing record the outcome", async () => {
 		reset({

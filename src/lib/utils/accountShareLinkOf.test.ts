@@ -15,6 +15,7 @@ const row = (over: Partial<Row> = {}): Row => ({
 	revokedAt: null,
 	songId: null,
 	mixId: null,
+	demoId: null,
 	projectId: null,
 	recordingId: null,
 	sessionId: null,
@@ -68,6 +69,14 @@ describe("accountShareLinkOf", () => {
 		});
 	});
 
+	it("a demo opens the song's demo page", () => {
+		expect(accountShareLinkOf(row({ songId: "s1", demoId: "d1", song }), "mmkk")).toMatchObject({
+			kind: "demo",
+			title: "Eat All the Clocks · demo",
+			path: "/mmkk/projects/lp/clocks/demos/d1",
+		});
+	});
+
 	it("a project opens the project's page", () => {
 		expect(
 			accountShareLinkOf(row({ projectId: "p1", project: { name: "LP", slug: "lp" } }), "mmkk"),
@@ -118,6 +127,7 @@ describe("accountShareLinkOf", () => {
 		const cases: [Partial<Row>, string][] = [
 			[{ songId: "s1" }, "song"],
 			[{ songId: "s1", mixId: "m1" }, "mix"],
+			[{ songId: "s1", demoId: "d1" }, "demo"],
 			[{ projectId: "p1" }, "project"],
 			[{ recordingId: "r1" }, "recording"],
 			[{ sessionId: "x1" }, "session"],

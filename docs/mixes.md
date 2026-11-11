@@ -173,3 +173,24 @@ file or the MP3).
 - Notifications: kind `mix` (a new mix, under the demos opt-in); a comment
   on a mix names it.
 - User doc `scripts/user-docs/mixes.md`.
+
+## A page and a link for a demo too (2026-11-11)
+
+A demo recording has what a mix has: a page of its own at
+`/[account]/projects/[project]/[song]/demos/[demo]` (the song's access
+rules; a player whose volume starts at `DEMO_DEFAULT_VOLUME`, the
+download, the demo's comments on its waveform, and for editors the share
+popover) and share links aimed at it (`share_link.demo_id`, migration
+0123). `src/lib/server/songShareAim.ts` checks that the mix or the demo a
+link names is the song's and gives the page it lands on; a link names one
+or the other, never both. `/s/<code>` sends a demo's code to the demo's
+page (`shareLinkTarget`). As with a mix, the code is the song's viewing
+code with something it points at: it opens the song to its holder as any
+song link does. The demo row's menu in the song page has "Open page" and,
+for editors, "Share…" (`?open=share`). The share popover
+(`SongSharePopover`, with an `aim`) and the comment popover
+(`RecordingCommentPopover`) are shared by the two pages. Deleting a demo
+or a mix clears the id on the links made for it, so they open the song:
+Turso runs no `set null`, and a mix's links used to keep a dead id and
+land on a 404. Comment notifications for a demo still link to the song
+page.

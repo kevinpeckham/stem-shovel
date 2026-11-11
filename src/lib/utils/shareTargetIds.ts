@@ -1,6 +1,6 @@
-/** What a viewing link opens (src/lib/components/ShareLinks.svelte): a song (on a mix of it), a project, a whole session, one session recording or a set list (its show view). */
+/** What a viewing link opens (src/lib/components/ShareLinks.svelte): a song (on a mix or a demo of it), a project, a whole session, one session recording or a set list (its show view). */
 export type ShareTarget =
-	| { songId: string; mixId?: string }
+	| { songId: string; mixId?: string; demoId?: string }
 	| { projectId: string }
 	| { sessionId: string }
 	| { recordingId: string }
@@ -11,12 +11,19 @@ export function shareTargetIds(target: ShareTarget) {
 	const ids = {
 		songId: "",
 		mixId: "",
+		demoId: "",
 		projectId: "",
 		sessionId: "",
 		recordingId: "",
 		setListId: "",
 	};
-	if ("songId" in target) return { ...ids, songId: target.songId, mixId: target.mixId ?? "" };
+	if ("songId" in target)
+		return {
+			...ids,
+			songId: target.songId,
+			mixId: target.mixId ?? "",
+			demoId: target.demoId ?? "",
+		};
 	if ("projectId" in target) return { ...ids, projectId: target.projectId };
 	if ("sessionId" in target) return { ...ids, sessionId: target.sessionId };
 	if ("setListId" in target) return { ...ids, setListId: target.setListId };

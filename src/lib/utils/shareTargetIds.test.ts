@@ -5,6 +5,7 @@ describe("shareTargetIds", () => {
 	const none = {
 		songId: "",
 		mixId: "",
+		demoId: "",
 		projectId: "",
 		sessionId: "",
 		recordingId: "",
@@ -15,6 +16,11 @@ describe("shareTargetIds", () => {
 			...none,
 			songId: "s",
 			mixId: "m",
+		});
+		expect(shareTargetIds({ songId: "s", demoId: "d" })).toEqual({
+			...none,
+			songId: "s",
+			demoId: "d",
 		});
 		expect(shareTargetIds({ songId: "s" })).toEqual({ ...none, songId: "s" });
 		expect(shareTargetIds({ projectId: "p" })).toEqual({ ...none, projectId: "p" });

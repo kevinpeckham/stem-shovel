@@ -32,6 +32,12 @@ export const ROUTES = [
 		[404],
 	],
 	[
+		"[account]/projects/[project]/[song]/demos/[demo]",
+		"/{account}/projects/{project}/{song}/demos/nope",
+		[404],
+		[404],
+	],
+	[
 		"[account]/projects/[project]/[song]/[doc=songDoc]",
 		"/{account}/projects/{project}/{song}/chart",
 		[303],

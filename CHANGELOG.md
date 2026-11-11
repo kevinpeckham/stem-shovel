@@ -10,6 +10,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **A page and share links for a demo recording** (docs/mixes.md, "A page
+  and a link for a demo too"). `/…/[song]/demos/[demo]` plays one demo on
+  a clean page with its download and comments; a share link or a share by
+  email can be aimed at a demo as at a mix (`share_link.demo_id`,
+  migration 0123; `songShareAim`), and `/s/<code>` lands on the demo's
+  page. The demo row's menu has "Open page" and, for editors, "Share…".
 - **Arrangements: several sets of stems for one song** (docs/arrangements.md,
   phase 2). The song's own stems are Main; editors add up to twelve
   alternates from the switcher at the top of the Stems view, each copied
@@ -26,6 +32,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **A share link made for a mix that was later deleted opens the song**,
+  not a 404: `deleteMix` clears the id on its links, as `deleteDemo` does.
 - **Demo, mix and file uploads retry a dropped connection, as stems
   did.** Chrome now and then refuses a TLS record on the multipart-create
   call (`net::ERR_SSL_BAD_RECORD_MAC_ALERT`); a stem was tried again and

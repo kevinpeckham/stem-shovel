@@ -2,17 +2,15 @@
 	import { afterNavigate, goto, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import CommentCard from "#lib/components/CommentCard.svelte";
-	import CommentFields from "#lib/components/CommentFields.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import MixPanel, { type MixComment, type PanelMix } from "#lib/components/MixPanel.svelte";
-	import ShareLinks from "#lib/components/ShareLinks.svelte";
+	import RecordingCommentPopover from "#lib/components/RecordingCommentPopover.svelte";
+	import SongSharePopover from "#lib/components/SongSharePopover.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
 	import { MAX_MIXES_PER_SONG, MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
 	import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
-	import { createComment, updateComment } from "#lib/remote/comments.remote.js";
 	import { removeMix, renameMix, setMixNotes } from "#lib/remote/mixes.remote.js";
-	import { shareSong } from "#lib/remote/songs.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { postJson, saveAs, uploadMixFile } from "#lib/upload.js";
 	import { demoContentType } from "#lib/utils/demoContentType.js";
@@ -164,20 +162,9 @@
 	}
 
 	// ---- the comment popover: one, to post or edit ----
-	let commentPanel = $state<HTMLDivElement | null>(null);
-	let commentDraft = $state<{ id: string | null; title: string; body: string; at: string }>({
-		id: null,
-		title: "",
-		body: "",
-		at: "",
-	});
-	function openComment(draft: Partial<typeof commentDraft> = {}) {
-		commentDraft = { id: null, title: "", body: "", at: "", ...draft };
-		const f = commentDraft.id ? updateComment.fields : createComment.fields;
-		f.title.set(commentDraft.title);
-		f.body.set(commentDraft.body);
-		f.position.set(commentDraft.at);
-		commentPanel?.showPopover();
+	let commentPopover = $state<RecordingCommentPopover | null>(null);
+	function openComment(draft: { id?: string; title?: string; body?: string; at?: string } = {}) {
+		commentPopover?.open(draft);
 	}
 	/** The comment form's Playhead: where the mix is playing. */
 	const commentPlayhead = $derived({
@@ -195,34 +182,7 @@
 	}
 
 	// ---- share by email, aimed at this mix ----
-	let sharePanel = $state<HTMLDivElement | null>(null);
-	let shareTo = $state("");
-	let shareMessage = $state("");
-	let shareBusy = $state(false);
-	let shareError = $state<string | null>(null);
-	let isPrivate = $derived(data.song.isPrivate || data.song.project.isPrivate);
-	async function sendShare(e: SubmitEvent) {
-		e.preventDefault();
-		if (!mix) return;
-		shareError = null;
-		shareBusy = true;
-		try {
-			const { sent } = await shareSong({
-				songId: data.song.id,
-				mixId: mix.id,
-				to: shareTo,
-				message: shareMessage,
-			});
-			shareTo = "";
-			shareMessage = "";
-			notify(`Sent to ${sent}`);
-			sharePanel?.hidePopover();
-		} catch (err) {
-			shareError = errorMessage(err);
-		} finally {
-			shareBusy = false;
-		}
-	}
+	let sharePopover = $state<SongSharePopover | null>(null);
 	let mixUrl = $derived(mix ? `${page.url.origin}${mixPath(mix.id)}` : "");
 
 	// ---- the song's chat, as on the song page ----
@@ -349,7 +309,7 @@
 					class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
 					title="Share this mix by email"
 					aria-label="Share mix"
-					onclick={() => sharePanel?.showPopover()}
+					onclick={() => sharePopover?.showShare()}
 				>
 					<span class="block i-ph-paper-plane-tilt"></span>
 				</button>
@@ -419,7 +379,7 @@
 			onrename={renameMixRow}
 			onnotes={saveMixNotes}
 			onremove={(m) => void removeMixRow(m)}
-			onshare={() => sharePanel?.showPopover()}
+			onshare={() => sharePopover?.showShare()}
 			oncomment={(_m, seconds) => openComment({ at: seconds === null ? "" : mixPos(seconds) })}
 			oneditcomment={editComment}
 			oncontext={(_m, seconds, x, y) => (menuAt = { seconds, x, y })}
@@ -502,135 +462,21 @@
 
 {#if data.canComment && mix}
 	<!-- One popover for posting and editing a comment on the mix. -->
-	<div
-		id="song-comment"
-		popover="auto"
-		bind:this={commentPanel}
-		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
-	>
-		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">
-				{commentDraft.id ? "Edit comment" : "Add a comment"} on mix v{mix.version}
-			</h2>
-			<button
-				class="button button-xs"
-				type="button"
-				popovertarget="song-comment"
-				popovertargetaction="hide"
-			>
-				Close
-			</button>
-		</div>
-		{#if commentDraft.id}
-			{@const remoteForm = updateComment}
-			<form
-				class="grid gap-3"
-				{...remoteForm.enhance(async ({ submit }) => {
-					await submit();
-					if (!remoteForm.fields.allIssues()) {
-						notify("Comment updated");
-						commentPanel?.hidePopover();
-					}
-				})}
-			>
-				<input {...remoteForm.fields.id.as("hidden", commentDraft.id)} />
-				<CommentFields
-					fields={remoteForm.fields}
-					draft={commentDraft}
-					hint="optional, as time"
-					placeholder="1:23.4"
-					playhead={commentPlayhead}
-				/>
-				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
-					>{remoteForm.pending ? "Saving…" : "Save"}</button
-				>
-			</form>
-		{:else}
-			{@const remoteForm = createComment}
-			<form
-				class="grid gap-3"
-				{...remoteForm.enhance(async ({ submit }) => {
-					await submit();
-					if (!remoteForm.fields.allIssues()) {
-						notify("Comment posted");
-						commentPanel?.hidePopover();
-					}
-				})}
-			>
-				<input {...remoteForm.fields.songId.as("hidden", data.song.id)} />
-				<input {...remoteForm.fields.mixId.as("hidden", mix.id)} />
-				<CommentFields
-					fields={remoteForm.fields}
-					draft={commentDraft}
-					hint="optional, as time"
-					placeholder="1:23.4"
-					playhead={commentPlayhead}
-				/>
-				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
-					>{remoteForm.pending ? "Posting…" : "Post comment"}</button
-				>
-			</form>
-		{/if}
-	</div>
+	<RecordingCommentPopover
+		bind:this={commentPopover}
+		songId={data.song.id}
+		on={{ kind: "mix", id: mix.id }}
+		name="mix v{mix.version}"
+		playhead={commentPlayhead}
+	/>
 {/if}
 
 {#if data.canEdit && mix}
 	<!-- Share this mix by email; the viewing links made here land on it (docs/mixes.md). -->
-	<div
-		id="song-share"
-		popover="auto"
-		bind:this={sharePanel}
-		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
-	>
-		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">Share mix v{mix.version}</h2>
-			<button
-				class="button button-xs"
-				type="button"
-				popovertarget="song-share"
-				popovertargetaction="hide"
-			>
-				Close
-			</button>
-		</div>
-		<p class="mb-3 text-sm text-dim">
-			Sends a link that opens this mix{#if isPrivate}, as a viewing link made for the recipient (it
-				appears below and can be revoked){/if}. Links made below land on the mix too.
-		</p>
-		{#if !isPrivate}
-			<div class="mb-3 flex flex-wrap items-center gap-3 text-sm">
-				<code class="min-w-0 truncate font-mono text-12px opacity-80">{mixUrl}</code>
-				<button
-					type="button"
-					class="link-dim text-12px"
-					onclick={() =>
-						navigator.clipboard
-							.writeText(mixUrl)
-							.then(() => notify("Link copied"))
-							.catch(() => notify("Could not copy the link", { kind: "error" }))}>Copy link</button
-				>
-			</div>
-		{/if}
-		<form class="grid gap-3" onsubmit={sendShare}>
-			<label class="block">
-				<span class="text-sm text-dim">To</span>
-				<input class="mt-1 field" type="email" bind:value={shareTo} required autocomplete="off" />
-			</label>
-			<label class="block">
-				<span class="text-sm text-dim">Note <span class="opacity-60">(optional)</span></span>
-				<textarea class="mt-1 field text-sm" rows="3" bind:value={shareMessage}></textarea>
-			</label>
-			{#if shareError}<p class="text-sm text-red-400" role="alert">{shareError}</p>{/if}
-			<button class="button-accent justify-self-start" disabled={shareBusy}>
-				{shareBusy ? "Sending…" : "Send"}
-			</button>
-		</form>
-		<div class="mt-6 border-t border-white/15 pt-4">
-			<ShareLinks
-				target={{ songId: data.song.id, mixId: mix.id }}
-				links={data.shareLinks}
-				{isPrivate}
-			/>
-		</div>
-	</div>
+	<SongSharePopover
+		bind:this={sharePopover}
+		song={data.song}
+		shareLinks={data.shareLinks}
+		aim={{ kind: "mix", id: mix.id, name: `mix v${mix.version}`, url: mixUrl }}
+	/>
 {/if}

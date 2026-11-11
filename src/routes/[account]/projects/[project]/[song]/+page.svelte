@@ -132,6 +132,9 @@
 	let readyMixes = $derived(data.song.mixes.filter((m) => m.status === "ready" && m.url));
 	const mixPath = (id: string) =>
 		`/${data.account.slug}/projects/${data.song.project.slug}/${data.song.slug}/mixes/${id}`;
+	/** A demo's own page, as a mix has one: its share links land there. */
+	const demoPath = (id: string) =>
+		`/${data.account.slug}/projects/${data.song.project.slug}/${data.song.slug}/demos/${id}`;
 	let mixCommentCounts = $derived(
 		data.mixComments.reduce(
 			(m, c) => m.set(c.mixId, (m.get(c.mixId) ?? 0) + 1),
@@ -655,6 +658,7 @@
 					<DemoPanel
 						bind:this={demoPanel}
 						demos={readyDemos}
+						hrefOf={demoPath}
 						minHeight={Math.max(560, layout.stemBoxHeight)}
 						canEdit={data.canEdit}
 						onremove={(d) => demos.remove(d)}

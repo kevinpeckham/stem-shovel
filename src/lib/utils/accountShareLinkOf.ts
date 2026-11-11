@@ -2,7 +2,7 @@ import { sessionDisplayName } from "./sessionName";
 import type { SessionKind } from "#lib/constants/sessionRecordings.js";
 
 /** What a viewing link opens. */
-type ShareLinkKind = "song" | "mix" | "project" | "session" | "recording" | "set list";
+type ShareLinkKind = "song" | "mix" | "demo" | "project" | "session" | "recording" | "set list";
 
 /** A share_link row with what it opens joined (listAccountShareLinks in src/lib/server/data.ts); a target that was deleted comes back null. */
 interface AccountShareLinkRow {
@@ -16,6 +16,7 @@ interface AccountShareLinkRow {
 	revokedAt: Date | null;
 	songId: string | null;
 	mixId: string | null;
+	demoId: string | null;
 	projectId: string | null;
 	recordingId: string | null;
 	sessionId: string | null;
@@ -41,7 +42,7 @@ export interface AccountShareLink {
 	createdByName: string | null;
 	state: "open" | "revoked" | "expired" | "used up";
 	kind: ShareLinkKind;
-	/** The song's title (a mix: "<title> · mix"), the project's name, the recording's, the session's or the set list's; "(deleted)" when the target is gone. */
+	/** The song's title (a mix: "<title> · mix", a demo: "<title> · demo"), the project's name, the recording's, the session's or the set list's; "(deleted)" when the target is gone. */
 	title: string;
 	/** The page it opens, as shareLinkTarget() in data.ts builds it; null when the target is gone. */
 	path: string | null;
@@ -52,7 +53,9 @@ function kindOf(r: AccountShareLinkRow): ShareLinkKind {
 	if (r.recordingId) return "recording";
 	if (r.sessionId) return "session";
 	if (r.setListId) return "set list";
-	if (r.songId) return r.mixId ? "mix" : "song";
+	if (r.songId && r.mixId) return "mix";
+	if (r.songId && r.demoId) return "demo";
+	if (r.songId) return "song";
 	return "project";
 }
 
@@ -71,6 +74,11 @@ const TARGETS: Record<ShareLinkKind, (r: AccountShareLinkRow, account: string) =
 		s && {
 			title: `${s.title} · mix`,
 			path: `/${a}/projects/${s.project.slug}/${s.slug}/mixes/${mixId}`,
+		},
+	demo: ({ song: s, demoId }, a) =>
+		s && {
+			title: `${s.title} · demo`,
+			path: `/${a}/projects/${s.project.slug}/${s.slug}/demos/${demoId}`,
 		},
 	project: ({ project: p }, a) => p && { title: p.name, path: `/${a}/projects/${p.slug}` },
 };

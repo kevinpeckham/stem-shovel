@@ -6,6 +6,10 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ### Added
 
+- **Share a demo on its own page.** Each demo recording now has a clean
+  page with just the player, the download and its comments. Open it from
+  the demo's ⋯ menu, and use Share… there to email it or make a viewing
+  link that lands straight on the demo.
 - **Arrangements.** A song can now hold several sets of stems: its Main
   arrangement and up to twelve alternates, for a different treatment or
   one member's ideas. Add one with the + at the top of the Stems view,

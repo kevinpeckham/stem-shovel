@@ -24,6 +24,7 @@ const {
 	setProjectRestricted,
 	setSongPrivacy,
 	shareLinkTarget,
+	songDemo,
 	songSlugs,
 	updateProject,
 	useShareLink,
@@ -328,6 +329,22 @@ describe("createShareLink", () => {
 			expiresAt: null,
 		});
 	});
+	test("a song's link may record the demo it opens; the others record none", async () => {
+		const forDemo = await createShareLink(
+			"a1",
+			"u1",
+			{ songId: "s1", demoId: "d1" },
+			{ note: "", maxUses: null, expiresDays: 0 },
+		);
+		expect(forDemo).toMatchObject({ songId: "s1", demoId: "d1", mixId: null });
+		const forSong = await createShareLink(
+			"a1",
+			"u1",
+			{ songId: "s1" },
+			{ note: "", maxUses: null, expiresDays: 0 },
+		);
+		expect(forSong).toMatchObject({ demoId: null, mixId: null });
+	});
 });
 
 describe("listShareLinks, revokeShareLink, openShareLinks", () => {
@@ -416,6 +433,16 @@ describe("permalinkTarget, shareLinkTarget", () => {
 		expect(await shareLinkTarget(link("l3").code)).toBeNull();
 		expect(await shareLinkTarget("NOPE")).toBeNull();
 	});
+	test("a song's code made for a mix or a demo opens that one's page under the song's address", async () => {
+		reset({
+			account: [a1],
+			project: [p1],
+			song: [s1],
+			shareLink: [link("l1", { mixId: "m1" }), link("l2", { demoId: "d1" })],
+		});
+		expect(await shareLinkTarget(link("l1").code)).toBe("/band/projects/album/one/mixes/m1");
+		expect(await shareLinkTarget(link("l2").code)).toBe("/band/projects/album/one/demos/d1");
+	});
 	test("a session's or a session recording's page (docs/uploads-and-blob.md, \"Sessions\")", async () => {
 		reset({
 			account: [a1],
@@ -430,6 +457,50 @@ describe("permalinkTarget, shareLinkTarget", () => {
 		expect(await shareLinkTarget(link("l1").code)).toBe("/band/sessions/s/ses1");
 		expect(await shareLinkTarget(link("l2").code)).toBe("/band/sessions/r/rec1");
 		expect(await shareLinkTarget(link("l3").code)).toBeNull();
+	});
+});
+
+describe("songDemo", () => {
+	const d1 = { id: "d1", accountId: "a1", songId: "s1", label: "Take one", uploadedBy: "u1" };
+	test("the song's privacy and the demo with its uploader, found by the page's slugs", async () => {
+		reset({
+			account: [a1],
+			project: [{ ...p1, isPrivate: true, isRestricted: false }],
+			song: [{ ...s1, isPrivate: false }],
+			user: [u1],
+			demo: [d1],
+		});
+		expect(await songDemo("a1", "album", "one", "d1")).toEqual({
+			song: {
+				id: "s1",
+				projectId: "p1",
+				title: "One",
+				slug: "one",
+				isPrivate: false,
+				project: {
+					id: "p1",
+					name: "Album",
+					slug: "album",
+					isPrivate: true,
+					isRestricted: false,
+				},
+			},
+			demo: { ...d1, uploader: { name: "Ann" } },
+		});
+	});
+	test("null for another account's slugs; no demo for one of another song or account", async () => {
+		reset({
+			account: [a1],
+			project: [p1],
+			song: [s1, { ...s1, id: "s2", slug: "two" }],
+			user: [u1],
+			demo: [d1, { ...d1, id: "d2", songId: "s2" }, { ...d1, id: "d3", accountId: "a2" }],
+		});
+		expect(await songDemo("a2", "album", "one", "d1")).toBeNull();
+		expect(await songDemo("a1", "album", "nope", "d1")).toBeNull();
+		expect((await songDemo("a1", "album", "one", "d2"))?.demo).toBeNull();
+		expect((await songDemo("a1", "album", "one", "d3"))?.demo).toBeNull();
+		expect((await songDemo("a1", "album", "one", "d1"))?.demo?.id).toBe("d1");
 	});
 });
 

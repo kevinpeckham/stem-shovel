@@ -4,6 +4,7 @@
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import { formatInviteCode } from "#lib/utils/formatInviteCode.js";
+	import { shareLinkAim } from "#lib/utils/shareLinkAim.js";
 	import { shareTargetIds, type ShareTarget } from "#lib/utils/shareTargetIds.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { page } from "$app/state";
@@ -22,12 +23,13 @@
 		uses: number;
 		maxUses: number | null;
 		expiresAt: Date | null;
-		/** Set on a link made for a mix (docs/mixes.md). */
+		/** Set on a link made for a mix (docs/mixes.md) or a demo: the link opens its page. */
 		mixId?: string | null;
+		demoId?: string | null;
 		state: "open" | "revoked" | "expired" | "used up";
 	}
 	interface Props {
-		/** A song, with a mix of it (docs/mixes.md) when the links should open on that mix; a project; a whole session; or one session recording. */
+		/** A song, with a mix (docs/mixes.md) or a demo of it when the links should open on that one; a project; a whole session; or one session recording. */
 		target: ShareTarget;
 		links: Link[];
 		isPrivate: boolean;
@@ -47,6 +49,9 @@
 	/** The form's id fields: the target's own set, the others "". */
 	const ids = $derived(shareTargetIds(target));
 	let open = $derived(links.filter((l) => l.state === "open"));
+	const idNames = $derived(Object.keys(ids) as (keyof typeof ids)[]);
+	// The form remembers its last values for the life of the page (CLAUDE.md): the target is set at submit, not left to the hidden fields' defaults, so a link made on a mix's or a demo's page records it.
+	const setTarget = () => idNames.forEach((name) => createShareLink.fields[name].set(ids[name]));
 </script>
 
 <div>
@@ -62,12 +67,7 @@
 	<form
 		class="mt-2 flex flex-wrap items-end gap-3"
 		{...createShareLink.enhance(async ({ submit, element }) => {
-			// The form remembers its last values for the life of the page (CLAUDE.md): the target is set at submit, not left to the hidden fields' defaults, so a link made on a mix's page records the mix.
-			createShareLink.fields.songId.set(ids.songId);
-			createShareLink.fields.mixId.set(ids.mixId);
-			createShareLink.fields.projectId.set(ids.projectId);
-			createShareLink.fields.recordingId.set(ids.recordingId);
-			createShareLink.fields.sessionId.set(ids.sessionId);
+			setTarget();
 			await submit();
 			if (createShareLink.result?.code) {
 				notify("Viewing link created");
@@ -76,11 +76,7 @@
 			}
 		})}
 	>
-		<input {...createShareLink.fields.songId.as("hidden", ids.songId)} />
-		<input {...createShareLink.fields.mixId.as("hidden", ids.mixId)} />
-		<input {...createShareLink.fields.projectId.as("hidden", ids.projectId)} />
-		<input {...createShareLink.fields.sessionId.as("hidden", ids.sessionId)} />
-		<input {...createShareLink.fields.recordingId.as("hidden", ids.recordingId)} />
+		{@render idFields()}
 		<label class="block grow">
 			<span class="text-13px text-dim">Note (optional)</span>
 			<input
@@ -121,6 +117,7 @@
 		<ul class="mt-3 surface divide-y divide-white/10 text-sm">
 			{#each links as l (l.id)}
 				{@const revoke = revokeShareLink.for(l.id)}
+				{@const aim = shareLinkAim(l)}
 				<li
 					class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 {l.state ===
 					'open'
@@ -134,8 +131,8 @@
 							{#if l.expiresAt}
 								· expires {formatDate(l.expiresAt)}
 							{/if}
-							{#if l.mixId}
-								· <span class="rounded border border-current/30 px-1 text-10px">mix</span>
+							{#if aim}
+								· <span class="rounded border border-current/30 px-1 text-10px">{aim}</span>
 							{/if}
 							{#if l.note}
 								· {l.note}
@@ -166,3 +163,9 @@
 	{/if}
 	<AccountLinksNote />
 </div>
+
+{#snippet idFields()}
+	{#each idNames as name (name)}<input
+			{...createShareLink.fields[name].as("hidden", ids[name])}
+		/>{/each}
+{/snippet}
