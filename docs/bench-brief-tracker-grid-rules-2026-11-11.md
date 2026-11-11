@@ -149,3 +149,13 @@ grid score identically to Study 41's drafts on the bars as read: the
 same roots (16/18, 43/43, 33/33, 24/26), the same qualities, the same
 class, with 5, 5, 4 and 24 fewer bars. Joining does not change a
 draft's grade; it changes the chart's bar count. Keep it.
+
+**The comparison, completed (2026-11-11, $0).** Your
+`bench-reply-beats-2026-11-11.json` against the package's readings of the
+same five mixes on the bench, at 70 ms: beat F 1.000 and downbeat F 1.000
+on every song, with identical counts (eat all the clocks 284 / 80,
+peaceful dreams 579 / 149, letter lands 272 / 73, interbellum 255 / 70,
+mop heart 382 / 106) and a largest offset of 0.000 s. Every beat and
+downbeat your port stores is the package's to the frame: 1,772 beats and
+478 downbeats. Your port is the measured system of Studies 36 to 45 on
+real audio, decode included. Nothing further to verify on this.
