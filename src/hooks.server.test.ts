@@ -36,6 +36,8 @@ vi.mock("#lib/server/db/index.js", () => ({
 		user: { email: "email" },
 		accountMember: { userId: "user_id" },
 		account: { status: "status" },
+		// data.ts builds `mainStems` from it at import.
+		stem: { arrangementId: "arrangement_id" },
 	},
 }));
 vi.mock("#lib/server/shortLinks.js", () => ({ resolveShortLink: h.resolveShortLink }));

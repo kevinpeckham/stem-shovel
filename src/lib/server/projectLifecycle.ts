@@ -49,6 +49,7 @@ export async function deleteProject(
 		.from(song)
 		.where(and(eq(song.accountId, accountId), eq(song.projectId, id)));
 	const songIds = songs.map((s) => s.id);
+	// every arrangement: every row's files go with the project.
 	const stems = songIds.length
 		? await db
 				.select({ url: stem.url, playbackUrl: stem.playbackUrl, midiUrl: stem.midiUrl })

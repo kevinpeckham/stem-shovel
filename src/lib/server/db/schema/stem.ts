@@ -5,6 +5,7 @@ import type { StemStatus } from "../../../val/StemStatusSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { song } from "./song";
+import { songArrangement } from "./songArrangement";
 import { user } from "./user";
 
 /**
@@ -24,6 +25,14 @@ export const stem = table(
 			.text("song_id")
 			.notNull()
 			.references(() => song.id, { onDelete: "cascade" }),
+		/**
+		 * The alternate arrangement this stem belongs to (docs/arrangements.md);
+		 * null for the song's own stems, its main arrangement. Every read of "the
+		 * song's stems" names which it wants (`mainStems` in data.ts).
+		 */
+		arrangementId: t
+			.text("arrangement_id")
+			.references(() => songArrangement.id, { onDelete: "cascade" }),
 		/** "Bass DI"; defaults to the filename minus its extension. */
 		label: t.text("label").notNull(),
 		sortOrder: t.integer("sort_order").notNull().default(0),
@@ -69,5 +78,6 @@ export const stem = table(
 	(table) => [
 		t.index("stem_song_sort_idx").on(table.songId, table.sortOrder),
 		t.index("stem_account_idx").on(table.accountId),
+		t.index("stem_arrangement_idx").on(table.arrangementId),
 	],
 );

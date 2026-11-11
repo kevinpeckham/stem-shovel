@@ -18,6 +18,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   and the settings disagree. The bar-one step runs after the draft now
   (`SongChordDraft`, `generatedChartLine`).
 
+### Technical
+
+- **Arrangements, phase 1: the model, with nothing visible** (docs/arrangements.md).
+  Migration 0121 adds `song_arrangement` and a nullable `stem.arrangement_id`:
+  a stem without one belongs to the song's main arrangement, so every song is
+  its own Main with nothing backfilled. Every server read of "the song's stems"
+  now names Main (`mainStems` in data.ts), housekeeping over every row is
+  marked `// every arrangement:`, and `stemReads.test.ts` fails a stem query
+  that says neither. No alternates can be created yet.
+- Fallow's clone check leaves `src/lib/server/db/schema/` out: table
+  definitions repeat by nature.
+
 ## [0.261.0] - 2026-11-11
 
 ### Changed

@@ -173,6 +173,7 @@ describe("deleteSongRows", () => {
 			"song_pdf",
 			"song_notation",
 			"stem",
+			"song_arrangement",
 			"dashboard_pin",
 			"slug_alias",
 			"song",

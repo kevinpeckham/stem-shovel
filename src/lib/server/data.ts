@@ -290,6 +290,15 @@ const {
 	contact,
 } = schema;
 
+/**
+ * The condition for "the song's stems": its main arrangement, the rows with no
+ * `arrangementId` (docs/arrangements.md). Every read of a song's stems that a
+ * user sees or a job derives from takes it; housekeeping over every row (storage,
+ * moving blobs, deletes) is marked `// every arrangement:` instead, and a read by
+ * stem id needs neither.
+ */
+export const mainStems = isNull(stem.arrangementId);
+
 // ---- account (org) --------------------------------------------------------
 
 export type UpdateAccountResult =
@@ -354,6 +363,7 @@ export async function accountLimitsOf(accountId: string) {
  * line) and not failed ones. Renditions and mixes are derived, not counted.
  */
 export async function accountStorageBytes(accountId: string) {
+	// every arrangement: storage counts each arrangement's rows.
 	const [stems] = await db
 		.select({ bytes: sql<number | null>`sum(${stem.sizeBytes})` })
 		.from(stem)
@@ -469,6 +479,7 @@ export async function accountUsage(accountId: string) {
 		.select({ n: sql<number>`count(*)` })
 		.from(song)
 		.where(eq(song.accountId, accountId));
+	// every arrangement: storage usage counts each arrangement's rows.
 	const [stems] = await db
 		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${stem.sizeBytes})` })
 		.from(stem)
@@ -640,6 +651,7 @@ export function getProject(accountId: string, slug: string) {
 				orderBy: [asc(song.sortOrder), asc(song.title)],
 				with: {
 					stems: {
+						where: mainStems,
 						columns: {
 							id: true,
 							status: true,
@@ -805,7 +817,7 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 	const row = await db.query.song.findFirst({
 		where: and(eq(song.projectId, proj.id), eq(song.slug, songSlug)),
 		with: {
-			stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
+			stems: { where: mainStems, orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
 			demos: { orderBy: [asc(demo.createdAt)] },
 			mixes: {
 				orderBy: [asc(songMix.version)],
@@ -1178,6 +1190,7 @@ export async function presentSongFiles<
 }
 
 export async function deleteSong(accountId: string, songId: string) {
+	// every arrangement: every row's files go with the song.
 	const rows = await db
 		.select({ url: stem.url, playbackUrl: stem.playbackUrl, midiUrl: stem.midiUrl })
 		.from(stem)
@@ -1248,7 +1261,7 @@ export async function createStem(
 	const owner = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
 		columns: { id: true },
-		with: { stems: { columns: { sortOrder: true, status: true } } },
+		with: { stems: { where: mainStems, columns: { sortOrder: true, status: true } } },
 	});
 	if (!owner) return null;
 	// The ceiling counts what is on the song or on its way, not uploads that failed (Kevin: active stems only).
@@ -1370,7 +1383,7 @@ export async function setDefaultMix(
 	gains: { id: string; gain: number; pan?: number }[],
 ) {
 	const owned = await db.query.stem.findMany({
-		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId)),
+		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId), mainStems),
 		columns: { id: true },
 	});
 	const ids = new Set(owned.map((s) => s.id));
@@ -1448,7 +1461,7 @@ export async function reorderSongs(accountId: string, projectId: string, ids: st
 /** The song's stems in the given order, top first; ids from other songs are ignored, stems left out keep their place after the named ones. */
 export async function reorderStems(accountId: string, songId: string, ids: string[]) {
 	const rows = await db.query.stem.findMany({
-		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId)),
+		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId), mainStems),
 		columns: { id: true, sortOrder: true },
 		orderBy: [asc(stem.sortOrder), asc(stem.createdAt)],
 	});
@@ -2514,6 +2527,7 @@ export async function systemOverview() {
 		.select({ accountId: song.accountId, songs: sql<number>`count(*)` })
 		.from(song)
 		.groupBy(song.accountId);
+	// every arrangement: the admin's storage totals count each arrangement's rows.
 	const storage = await db
 		.select({ accountId: stem.accountId, bytes: sql<number | null>`sum(${stem.sizeBytes})` })
 		.from(stem)
@@ -3483,6 +3497,7 @@ export async function setAccountStatus(id: string, status: AccountStatus) {
 
 /** Removes the account and everything in it, files included (stems, renditions, MIDI, demos, mixes). */
 export async function deleteAccount(id: string) {
+	// every arrangement: every row's files go with the account.
 	const stems = await db
 		.select({ url: stem.url, playbackUrl: stem.playbackUrl, midiUrl: stem.midiUrl })
 		.from(stem)
@@ -3866,6 +3881,7 @@ export function songForNotes(songId: string) {
 		with: {
 			project: { columns: { noAi: true } },
 			stems: {
+				where: mainStems,
 				columns: {
 					id: true,
 					status: true,
@@ -4167,6 +4183,7 @@ export async function songNotesFor(accountId: string, songId: string) {
 		columns: { notesJson: true, notesKey: true, notesDoneSeconds: true },
 		with: {
 			stems: {
+				where: mainStems,
 				columns: {
 					id: true,
 					status: true,
@@ -5470,6 +5487,7 @@ export async function accountActivity(
 				eq(stem.accountId, accountId),
 				eq(stem.status, "ready"),
 				gt(stem.createdAt, since),
+				mainStems,
 			),
 			orderBy: desc(stem.createdAt),
 			limit,
@@ -5818,6 +5836,7 @@ export async function accountPendingWork(
 		db.query.stem.findMany({
 			where: and(
 				eq(stem.accountId, accountId),
+				mainStems,
 				or(
 					eq(stem.status, "uploading"),
 					and(
@@ -7509,7 +7528,7 @@ export async function copyRecordingStemsToSong(
 	const s = await db.query.song.findFirst({
 		where: eq(song.id, songId),
 		columns: { id: true, accountId: true },
-		with: { stems: { columns: { sortOrder: true } } },
+		with: { stems: { where: mainStems, columns: { sortOrder: true } } },
 	});
 	if (!s) return null;
 	if (s.stems.length + rec.stems.length > MAX_STEMS_PER_SONG) return "full" as const;
@@ -8156,7 +8175,7 @@ export async function importSongStemsIntoStudio(
 	const s = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
 		columns: { id: true, title: true, changes: true },
-		with: { stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] } },
+		with: { stems: { where: mainStems, orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] } },
 	});
 	if (!s) return null;
 	const ready = s.stems.filter((st) => st.status === "ready" && st.url);
@@ -8582,7 +8601,7 @@ export async function stemsForImport(accountIds: string[]) {
 		with: {
 			project: { columns: { name: true } },
 			stems: {
-				where: eq(stem.status, "ready"),
+				where: and(eq(stem.status, "ready"), mainStems),
 				orderBy: [asc(stem.sortOrder), asc(stem.createdAt)],
 				columns: { id: true, label: true, url: true, playbackUrl: true, durationSeconds: true },
 			},
@@ -8724,6 +8743,7 @@ export async function songForMix(songId: string) {
 				with: { account: { columns: { name: true } } },
 			},
 			stems: {
+				where: mainStems,
 				columns: {
 					id: true,
 					status: true,
@@ -8950,7 +8970,7 @@ async function refreshSongDuration(songId: string) {
 	const [{ max }] = await db
 		.select({ max: sql<number | null>`max(${stem.durationSeconds})` })
 		.from(stem)
-		.where(and(eq(stem.songId, songId), eq(stem.status, "ready")));
+		.where(and(eq(stem.songId, songId), eq(stem.status, "ready"), mainStems));
 	await db.update(song).set({ durationSeconds: max }).where(eq(song.id, songId));
 }
 
@@ -9448,7 +9468,7 @@ export async function listPublicSongs() {
 				columns: { name: true, slug: true, isPrivate: true, status: true },
 				with: { account: { columns: { name: true, slug: true, status: true } } },
 			},
-			stems: { columns: { status: true } },
+			stems: { where: mainStems, columns: { status: true } },
 		},
 	});
 	return rows
@@ -10496,7 +10516,7 @@ export async function recentSongs(accountId: string, n: number) {
 			project: {
 				columns: { name: true, slug: true, status: true, isPrivate: true, isRestricted: true },
 			},
-			stems: { where: eq(stem.status, "ready"), columns: { id: true } },
+			stems: { where: and(eq(stem.status, "ready"), mainStems), columns: { id: true } },
 			mixes: { where: eq(songMix.status, "ready"), columns: { id: true } },
 			demos: { where: eq(demo.status, "ready"), columns: { id: true } },
 		},
@@ -10535,7 +10555,7 @@ export async function accountNudges(
 		},
 		with: {
 			project: { columns: { slug: true, status: true, isPrivate: true, isRestricted: true } },
-			stems: { where: eq(stem.status, "ready"), columns: { id: true } },
+			stems: { where: and(eq(stem.status, "ready"), mainStems), columns: { id: true } },
 			demos: { where: eq(demo.status, "ready"), columns: { id: true } },
 		},
 	});

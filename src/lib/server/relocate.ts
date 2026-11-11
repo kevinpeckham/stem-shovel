@@ -56,6 +56,7 @@ export async function relocateSongFiles(songId: string): Promise<number> {
 		moved += 1;
 		return moveBlob(url, to);
 	};
+	// every arrangement: every row's files move with the song.
 	const stems = await db.query.stem.findMany({ where: eq(stem.songId, songId) });
 	for (const s of stems) {
 		const url = s.url ? await move(s.url) : s.url;

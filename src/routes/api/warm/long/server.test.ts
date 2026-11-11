@@ -3,8 +3,11 @@ import { asSignedOut } from "../../../../../tests/helpers/fakeRequestEvent";
 import { callRoute } from "../../../../../tests/helpers/fakeApiEvent";
 
 const run = vi.hoisted(() => vi.fn());
-// `schema` for the Idea Recorder's load module, imported below to compare configs (its data layer takes `db` and `schema` at import).
-vi.mock("#lib/server/db/index.js", () => ({ db: { run }, schema: {} }));
+// `schema` for the Idea Recorder's load module, imported below to compare configs (its data layer takes `db` and `schema` at import, and builds `mainStems` from `stem`).
+vi.mock("#lib/server/db/index.js", () => ({
+	db: { run },
+	schema: { stem: { arrangementId: "arrangement_id" } },
+}));
 
 const { GET, config } = await import("./+server");
 

@@ -81,6 +81,7 @@ const {
 	userDoc,
 	userDocVersion,
 	songFile,
+	songArrangement,
 	songMix,
 	songNotation,
 	songUserNote,
@@ -153,7 +154,9 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(demo).where(inArray(demo.songId, songIds));
 	await db.delete(songFile).where(inArray(songFile.songId, songIds));
 	await db.delete(songNotation).where(inArray(songNotation.songId, songIds));
+	// every arrangement: the song's rows in every arrangement go with it.
 	await db.delete(stem).where(inArray(stem.songId, songIds));
+	await db.delete(songArrangement).where(inArray(songArrangement.songId, songIds));
 	await db
 		.delete(dashboardPin)
 		.where(and(eq(dashboardPin.kind, "song"), inArray(dashboardPin.targetId, songIds)));
@@ -313,7 +316,9 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(sessionComment).where(eq(sessionComment.accountId, accountId));
 	await db.delete(sessionRecording).where(eq(sessionRecording.accountId, accountId));
 	await db.delete(recordingSession).where(eq(recordingSession.accountId, accountId));
+	// every arrangement: the account's rows in every arrangement go with it.
 	await db.delete(stem).where(eq(stem.accountId, accountId));
+	await db.delete(songArrangement).where(eq(songArrangement.accountId, accountId));
 	await db.delete(shareLink).where(eq(shareLink.accountId, accountId));
 	await deleteEventRows(
 		(await db.select({ id: event.id }).from(event).where(eq(event.accountId, accountId))).map(
@@ -400,6 +405,10 @@ export async function deleteUserRows(userId: string): Promise<void> {
 		.set({ createdBy: null })
 		.where(eq(recordingSession.createdBy, userId));
 	await db.update(songMix).set({ uploadedBy: null }).where(eq(songMix.uploadedBy, userId));
+	await db
+		.update(songArrangement)
+		.set({ createdBy: null })
+		.where(eq(songArrangement.createdBy, userId));
 	await db.update(songFile).set({ uploadedBy: null }).where(eq(songFile.uploadedBy, userId));
 	await db.update(eventFile).set({ uploadedBy: null }).where(eq(eventFile.uploadedBy, userId));
 	await db
@@ -446,6 +455,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 		.update(songDocVersion)
 		.set({ createdBy: null })
 		.where(eq(songDocVersion.createdBy, userId));
+	// every arrangement: the uploader is cleared on every row.
 	await db.update(stem).set({ uploadedBy: null }).where(eq(stem.uploadedBy, userId));
 	await db.update(supportRequest).set({ userId: null }).where(eq(supportRequest.userId, userId));
 	await db.update(userDoc).set({ updatedBy: null }).where(eq(userDoc.updatedBy, userId));

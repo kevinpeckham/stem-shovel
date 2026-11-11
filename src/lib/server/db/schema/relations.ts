@@ -61,6 +61,7 @@ import { songNotation } from "./songNotation";
 import { songUserNote } from "./songUserNote";
 import { userDoc } from "./userDoc";
 import { userDocVersion } from "./userDocVersion";
+import { songArrangement } from "./songArrangement";
 import { stem } from "./stem";
 import { studioRevision } from "./studioRevision";
 import { studioSource } from "./studioSource";
@@ -164,6 +165,7 @@ export const songRelations = relations(song, ({ one, many }) => ({
 	project: one(project, { fields: [song.projectId], references: [project.id] }),
 	creator: one(user, { fields: [song.createdBy], references: [user.id] }),
 	stems: many(stem),
+	arrangements: many(songArrangement),
 	demos: many(demo),
 	recordingSessions: many(recordingSession),
 	sessionRecordings: many(sessionRecording),
@@ -356,9 +358,20 @@ export const demoRelations = relations(demo, ({ one, many }) => ({
 	comments: many(comment),
 }));
 
+export const songArrangementRelations = relations(songArrangement, ({ one, many }) => ({
+	account: one(account, { fields: [songArrangement.accountId], references: [account.id] }),
+	song: one(song, { fields: [songArrangement.songId], references: [song.id] }),
+	creator: one(user, { fields: [songArrangement.createdBy], references: [user.id] }),
+	stems: many(stem),
+}));
+
 export const stemRelations = relations(stem, ({ one }) => ({
 	account: one(account, { fields: [stem.accountId], references: [account.id] }),
 	song: one(song, { fields: [stem.songId], references: [song.id] }),
+	arrangement: one(songArrangement, {
+		fields: [stem.arrangementId],
+		references: [songArrangement.id],
+	}),
 	uploader: one(user, { fields: [stem.uploadedBy], references: [user.id] }),
 }));
 

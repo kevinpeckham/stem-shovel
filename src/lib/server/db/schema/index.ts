@@ -58,6 +58,7 @@ export * from "./song";
 export * from "./songCredit";
 export * from "./songDocVersion";
 export * from "./songFile";
+export * from "./songArrangement";
 export * from "./songMix";
 export * from "./songNotation";
 export * from "./songUserNote";
