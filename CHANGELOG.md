@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.261.0] - 2026-11-11
+
 ### Changed
 
 - **A generated chart's bars are the recording's.** The chords job now

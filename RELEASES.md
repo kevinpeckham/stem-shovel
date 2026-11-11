@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.261.0] - 2026-11-11
+
 ### Changed
 
 - **Generated charts follow the recording's bars.** Generate from the
