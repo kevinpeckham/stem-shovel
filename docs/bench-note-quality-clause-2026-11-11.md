@@ -45,7 +45,7 @@ third sounds".
 
 **By the registered rule** (qualities up on six AND two more good drafts)
 the result is reported without a recommendation: good rose by one. The
-bench's labelled judgment is that the evidence favours the clause, since
+bench's labeled judgment is that the evidence favours the clause, since
 it lifted six takes, lowered one, and cost the modern songs nothing. Your
 call; the paired cells are in results/study45.json.
 
