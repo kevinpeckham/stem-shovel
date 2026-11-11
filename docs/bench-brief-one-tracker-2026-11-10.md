@@ -125,22 +125,22 @@ half bars (my favorite regret, goodbye to spring) and cost nothing,
 here; where it is better (Study 39: rubato, poor audio) is not the
 full-band case.
 
-| song | declared grid | madmom | small0 | final0 |
-|---|---|---|---|---|
-| let it in | 18/21 | 18/21 | 18/21 | 18/21 |
-| same boat | 15/18 | 16/18 | 16/18 | 16/18 |
-| gravity (6/8) | 16/26 wrong | 24/26 | 24/26 | 24/26 |
-| my favorite regret (6/8) | 26/42 wrong | 40/42 | 42/42 | 41/42 |
-| california lullabye | 49/53 | 48/53 | 50/53 | 48/53 |
-| swansong | 28/30 | 29/30 | 29/30 | 29/30 |
-| afterglow | 15/15 | 15/15 | 15/15 | 15/15 |
-| cherubs | 28/28 | 28/28 | 28/28 | 28/28 |
-| goodbye to spring | 43/43 | 43/43 | 43/43 | 43/43 |
-| i'm letting go | 28/33 | 33/33 | 33/33 | 30/33 |
+| song                     | declared grid | madmom | small0 | final0 |
+| ------------------------ | ------------- | ------ | ------ | ------ |
+| let it in                | 18/21         | 18/21  | 18/21  | 18/21  |
+| same boat                | 15/18         | 16/18  | 16/18  | 16/18  |
+| gravity (6/8)            | 16/26 wrong   | 24/26  | 24/26  | 24/26  |
+| my favorite regret (6/8) | 26/42 wrong   | 40/42  | 42/42  | 41/42  |
+| california lullabye      | 49/53         | 48/53  | 50/53  | 48/53  |
+| swansong                 | 28/30         | 29/30  | 29/30  | 29/30  |
+| afterglow                | 15/15         | 15/15  | 15/15  | 15/15  |
+| cherubs                  | 28/28         | 28/28  | 28/28  | 28/28  |
+| goodbye to spring        | 43/43         | 43/43  | 43/43  | 43/43  |
+| i'm letting go           | 28/33         | 33/33  | 33/33  | 30/33  |
 
 **Ask B, operationally.** What the pipeline did on every song: bar
 lines = the tracker's downbeats as read plus a closing bar at the audio
-end; every tracker bar is a chart bar, identical neighbours merged
+end; every tracker bar is a chart bar, identical neighbors merged
 afterwards; tempo = 60 / median inter-beat interval, whole bpm; beats
 per bar = round(median bar / median beat).
 
@@ -154,7 +154,7 @@ per bar = round(median bar / median beat).
    single rounded median, never a per-bar count, and the bars stay the
    tracker's whatever their length. Study 38's label rule (3 → 3/4,
    else 4/4) had one blind spot, now seen: gravity on small0 has a
-   modal count of 6 and was labelled "4/4 at 143 bpm" on a bar that is
+   modal count of 6 and was labeled "4/4 at 143 bpm" on a bar that is
    the true 6/8 bar (2.43 s against 2.50). The draft did not suffer;
    the label was wrong. Label from the modal count: 4 → 4/4, 3 → 3/4,
    6 → 6/8 with the tempo divided by three (your dotted-quarter
@@ -172,11 +172,11 @@ per bar = round(median bar / median beat).
 **Ask C.** Over Study 38's 46 drafts on a tracker's bars (ten modern,
 36 guitar; three confidently-wrong, all the dense SS2-107-Ab sheet):
 
-| hold | would hold | good among them | catches of the 3 bad |
-|---|---|---|---|
-| detected grid | 46 (every automatic draft) | 32 | 3 |
-| drift > 4 % off the declared bar | 17 | 12 | 1 |
-| fewer than 3 notes a bar | 0 | 0 | 0 |
+| hold                             | would hold                 | good among them | catches of the 3 bad |
+| -------------------------------- | -------------------------- | --------------- | -------------------- |
+| detected grid                    | 46 (every automatic draft) | 32              | 3                    |
+| drift > 4 % off the declared bar | 17                         | 12              | 1                    |
+| fewer than 3 notes a bar         | 0                          | 0               | 0                    |
 
 The detected-grid hold is not a filter in automatic mode. The drift
 hold comes out: 16 of the 17 it holds sit at a metrical fold (the
@@ -196,9 +196,9 @@ small0 8,451,101 bytes, sha256
 `6074be2c4d490c5f6101fcc374a1ec72ae93456e23bb6019783b849f5dc7d47b`;
 final0 81,058,141 bytes, sha256
 `8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331`.
-Input: mono float32 at 22050 Hz (channels averaged), no normalisation.
+Input: mono float32 at 22050 Hz (channels averaged), no normalization.
 Front end `LogMelSpect`: n_fft 1024, hop 441 (50 fps), 30 to 11000 Hz,
-128 slaney mels, magnitude normalised by frame length, log1p(1000·x).
+128 slaney mels, magnitude normalized by frame length, log1p(1000·x).
 Inference in 1500-frame (30 s) chunks, 6-frame border, overlap
 keep_first, last chunk aligned to the end. Postprocessor "minimal", no
 DBN: a frame is a beat (downbeat) when its logit is the 7-frame local
