@@ -66,3 +66,64 @@ differs on either.
 
 We will ask for the $0 comparison Study 42 offered: our beats and
 downbeats against the package's on a few of the ten songs.
+
+## Bench delivery (2026-11-11, from stem-bench Study 42)
+
+**Placement.** No reason against the jobs function. The bench's rule
+placed it by speed alone, as the brief says; one decode and one child
+process beside ChordMini is the better architecture, and the speed
+holds either way (ONNX Runtime at four threads matches torch, about one
+second of model time per minute of audio). The scan's detector staying
+in the browser is consistent with Study 40's advice (no 6/8 call).
+
+**Delivered, pushed to dev with this note:**
+
+1. `src/lib/server/beatThis/model.json`: `{sha256, bytes, base64}` of
+   `beat_this-small0-static1500.onnx`, sha256
+   `d57ae630f0daa290f558d076d963d2216b4c447d72695e691a79e3c792447124`,
+   9,932,033 bytes (13.2 MB as JSON). Input `spectrogram` float32
+   [1, 1500, 128]; outputs `beat`, `downbeat` float32 [1, 1500] logits.
+2. `tests/fixtures/beat-this/`, 4.4 MB in all, little-endian float32:
+   `audio.f32` (32 s, 2.8 MB; two 1500-frame windows need more than
+   29.8 s, so the audio could not go under two megabytes), `logmel.f32`
+   (1601 × 128), `chunk0.f32` (1500 × 128, the first window exactly as
+   fed: six zero frames, then frames 0 to 1493), `chunk0-beat.f32` and
+   `chunk0-downbeat.f32` (the export's logits for it),
+   `beat-logits.f32` and `downbeat-logits.f32` (1601 each, stitched
+   keep_first with the borders dropped), `expected.json` (the package's
+   own `Audio2Beats(small0, dbn=False)` beats and downbeats in seconds,
+   tempo 60 / median inter-beat interval, beats-per-bar counts, the
+   modal count and the Study 41 label), and `manifest.json` with every
+   shape, the front-end and chunking parameters, and the versions
+   (beat_this 1.1.0, torch 2.15.0+cpu, torchaudio 2.11.1+cpu,
+   onnxruntime 1.31.1; export script stem-bench
+   scripts/export-study42.py at 4792e1f; fixture script
+   scripts/deliver-study42-fixtures.py).
+3. The synthetic audio is a drum-kit pattern at 110 bpm in 4/4 (kick on
+   1 and 3 with the downbeat accented, snare on 2 and 4, hats on the
+   eighths, a bass note alternating C and G on the downbeats, a quiet
+   triad pad changing by the bar), chosen from six candidates as the one
+   the package reads as a steady 4/4: 59 beats, 15 downbeats, every bar
+   4 beats, tempo 111.1 (110 at the 20 ms frame grid), first downbeat at
+   0.0. A click-only pattern was read as 200 bpm with broken bars, so
+   do not simplify the fixture. The export's reading through the numpy
+   postprocessor equals the package's on this audio
+   (`exportMatchesPackage: true`).
+
+**The two torchaudio details, confirmed from the package's module:**
+`center=True` with `pad_mode="reflect"`, and slaney mels with
+`norm=None` (filterbank 513 × 128). Two more worth matching: the window
+is torch's default periodic Hann (`torch.hann_window(1024)`, first
+samples 0, 9.42e-6, 3.76e-5), and `normalized="frame_length"` divides
+the magnitude by sqrt(1024) = 32 before the mel projection and the
+log1p(1000·x). One-sided spectrum, 513 bins.
+
+**Verifying the port:** compare your log-mel of `audio.f32` with
+`logmel.f32` (expect agreement to about 1e-4 after log1p; the FFT
+libraries differ in the last bits), your first window with
+`chunk0.f32` exactly, your session's logits on `chunk0.f32` with
+`chunk0-beat.f32` and `chunk0-downbeat.f32` (expect 1e-4 or better),
+your stitched logits with `beat-logits.f32` and `downbeat-logits.f32`,
+and your beats and downbeats with `expected.json` to the frame (20 ms).
+When the port runs on real audio, send the bench the slugs and it will
+run the $0 comparison against the package on the ten songs.

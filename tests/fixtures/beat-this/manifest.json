@@ -1,0 +1,107 @@
+{
+	"made": "2026-11-11, stem-bench scripts/deliver-study42-fixtures.py (Study 42, docs/BRIEF-STUDY42.md)",
+	"export": {
+		"file": "beat_this-small0-static1500.onnx",
+		"sha256": "d57ae630f0daa290f558d076d963d2216b4c447d72695e691a79e3c792447124",
+		"bytes": 9932033,
+		"input": "spectrogram float32 [1, 1500, 128]",
+		"outputs": "beat, downbeat float32 [1, 1500] logits",
+		"exportScript": "stem-bench scripts/export-study42.py @ 4792e1f",
+		"checkpoint": "beat_this small0, sha256 6074be2c4d490c5f6101fcc374a1ec72ae93456e23bb6019783b849f5dc7d47b"
+	},
+	"versions": {
+		"beat_this": "1.1.0",
+		"torch": "2.15.0+cpu",
+		"torchaudio": "2.11.1+cpu",
+		"onnxruntime": "1.31.1",
+		"numpy": "2.2.6",
+		"stemBenchCommit": "aa7ffa5"
+	},
+	"frontEnd": {
+		"sampleRate": 22050,
+		"nFft": 1024,
+		"winLength": 1024,
+		"hop": 441,
+		"window": "hann, periodic (torch.hann_window default)",
+		"center": true,
+		"padMode": "reflect",
+		"power": 1,
+		"normalized": "frame_length (magnitude divided by sqrt(1024) = 32)",
+		"nMels": 128,
+		"melScale": "slaney",
+		"melNorm": null,
+		"fMin": 30,
+		"fMax": 11000,
+		"compress": "log1p(1000 * x)",
+		"layout": "frames x 128, row-major float32"
+	},
+	"chunking": {
+		"chunk": 1500,
+		"border": 6,
+		"overlap": "keep_first",
+		"avoidShortEnd": true,
+		"note": "first window is zero-padded by 6 frames on the left (start -6); a window shorter than 1500 is zero-padded at the end before the session and its padding dropped after"
+	},
+	"postprocessor": "minimal: a frame is a beat (downbeat) when its logit is the maximum over 7 frames and > 0; adjacent peaks (gap <= 1 frame) merged to their mean; downbeats moved to the nearest beat and de-duplicated; frames / 50 = seconds",
+	"files": {
+		"audio.f32": {
+			"shape": [
+				705600
+			],
+			"dtype": "float32 LE",
+			"what": "32 s synthetic 4/4 at 110 bpm, 22050 Hz mono, peak 0.9: kick on 1 and 3 (downbeat accented), snare on 2 and 4, hats on the eighths, a bass note on each downbeat alternating C2 and G1, a quiet C and G triad pad changing by the bar"
+		},
+		"logmel.f32": {
+			"shape": [
+				1601,
+				128
+			],
+			"dtype": "float32 LE",
+			"what": "the package's LogMelSpect of audio.f32"
+		},
+		"chunk0.f32": {
+			"shape": [
+				1500,
+				128
+			],
+			"dtype": "float32 LE",
+			"what": "the first window exactly as fed to the export (6 zero frames, then logmel frames 0..1493)"
+		},
+		"chunk0-beat.f32": {
+			"shape": [
+				1500
+			],
+			"dtype": "float32 LE",
+			"what": "the export's beat logits for chunk0"
+		},
+		"chunk0-downbeat.f32": {
+			"shape": [
+				1500
+			],
+			"dtype": "float32 LE",
+			"what": "the export's downbeat logits for chunk0"
+		},
+		"beat-logits.f32": {
+			"shape": [
+				1601
+			],
+			"dtype": "float32 LE",
+			"what": "stitched full-length beat logits (keep_first, borders dropped; -1000 where no window covers a frame)"
+		},
+		"downbeat-logits.f32": {
+			"shape": [
+				1601
+			],
+			"dtype": "float32 LE",
+			"what": "stitched full-length downbeat logits"
+		},
+		"expected.json": {
+			"what": "the package's (Audio2Beats, dbn=False) beats and downbeats in seconds, tempo = 60 / median inter-beat interval, beats-per-bar counts (beats strictly between consecutive downbeats, plus one), modal count, Study 41 label and its tempo"
+		}
+	},
+	"windows": 2,
+	"starts": [
+		-6,
+		107
+	]
+}
