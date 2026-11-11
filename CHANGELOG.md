@@ -8,6 +8,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.262.1] - 2026-11-11
+
+### Changed
+
+- **The draft prompt names the chord quality the notes support.** Step 0
+  of `draftChartWithAi`'s system prompt told the model to "think like a
+  rock musician" with power chords and sus chords common; it now asks
+  for a seventh when the seventh sounds, a triad when it does not, and a
+  power chord only when neither third sounds (stem-bench Study 45,
+  docs/bench-note-quality-clause-2026-11-11.md: qualities up on six of
+  ten guitar takes and down on one, no root lost, the ten full-band
+  songs unchanged in grade). The clause is the only change.
+
 ## [0.262.0] - 2026-11-11
 
 ### Changed

@@ -4,6 +4,14 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.262.1] - 2026-11-11
+
+### Changed
+
+- **AI chart drafts name chords more precisely.** A draft now writes a
+  seventh chord where the seventh is played and keeps power chords for
+  where no third is played, instead of leaning toward simpler spellings.
+
 ## [0.262.0] - 2026-11-11
 
 ### Changed
