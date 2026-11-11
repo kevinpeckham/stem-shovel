@@ -7,8 +7,22 @@ import { pdfThumbnail } from "#lib/utils/pdfThumbnail.js";
 import { imageThumbnail } from "#lib/utils/imageThumbnail.js";
 import { FILE_CONTENT_TYPE_OF, fileKindOf, type FileKind } from "#lib/constants/fileFormats.js";
 import { NOTATION_CONTENT_TYPE_OF, notationFormatOf } from "#lib/constants/notationFormats.js";
-import { upload } from "@vercel/blob/client";
+import { upload as uploadOnce } from "@vercel/blob/client";
 import { withRetries } from "#lib/utils/withRetries.js";
+
+/**
+ * The Blob client's `upload`, tried three times when the network drops it
+ * (utils/withRetries; docs/uploads-and-blob.md, "Retries"): every transfer
+ * in this file goes through it. Chrome now and then refuses a TLS record on
+ * the multipart-create call (`net::ERR_SSL_BAD_RECORD_MAC_ALERT`) before a
+ * byte has moved, and the next attempt goes through; the stems had this
+ * retry from 2026-10-12, and a demo that failed where the same file went up
+ * as a stem (2026-11-11) showed the other kinds needed it too. Every
+ * reservation's token allows an overwrite, so a partial blob from the
+ * attempt before is replaced.
+ */
+const upload: typeof uploadOnce = (pathname, body, options) =>
+	withRetries(() => uploadOnce(pathname, body, options));
 
 export interface Reservation {
 	stemId: string;
@@ -40,19 +54,15 @@ export async function uploadStemFile(
 	opts.onReserved?.(reservation);
 	const { stemId, pathname, access = "public" } = reservation;
 	const contentType = stemContentType(file.name) ?? undefined;
-	// The transfer is tried three times when the network drops it (utils/withRetries); the
-	// reservation allows an overwrite, so a partial blob from the attempt before is replaced.
-	const blob = await withRetries(() =>
-		upload(pathname, file, {
-			access,
-			handleUploadUrl: "/api/upload",
-			// The reservation allows exactly the type derived from the extension; the
-			// browser's own guess differs ("audio/x-m4a" for a Voice Memo) and would be refused.
-			contentType,
-			multipart: true,
-			onUploadProgress: ({ percentage }) => opts.onProgress?.(percentage),
-		}),
-	);
+	const blob = await upload(pathname, file, {
+		access,
+		handleUploadUrl: "/api/upload",
+		// The reservation allows exactly the type derived from the extension; the
+		// browser's own guess differs ("audio/x-m4a" for a Voice Memo) and would be refused.
+		contentType,
+		multipart: true,
+		onUploadProgress: ({ percentage }) => opts.onProgress?.(percentage),
+	});
 	opts.onDecoding?.();
 	// Channels are reported after the same dual-mono collapse the player does,
 	// so a dual-mono file gets a mono rendition. The rate comes from the file's

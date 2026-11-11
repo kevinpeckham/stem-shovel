@@ -20,8 +20,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **A saved mute.** The default mix now keeps which stems are muted, per
   arrangement, and the rendered original mix leaves a muted stem out.
 
+### Changed
+
+- **The demo player starts at 75% volume**, not full (`DEMO_DEFAULT_VOLUME`).
+
 ### Fixed
 
+- **Demo, mix and file uploads retry a dropped connection, as stems
+  did.** Chrome now and then refuses a TLS record on the multipart-create
+  call (`net::ERR_SSL_BAD_RECORD_MAC_ALERT`); a stem was tried again and
+  went up, a demo was not and failed. Every Blob transfer in
+  `src/lib/upload.ts` now goes through `withRetries`
+  (docs/uploads-and-blob.md, "Retries").
 - **The project page no longer re-posts a mix job for a song with a
   panned stem.** `getProject` did not select `pan`, so the page's mix key
   never matched the rendered one and every visit scheduled a render that

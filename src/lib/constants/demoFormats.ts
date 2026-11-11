@@ -29,3 +29,6 @@ export const DEMO_ACCEPT = Object.keys(DEMO_FORMATS)
 export const DEMO_FORMAT_LIST = Object.keys(DEMO_FORMATS)
 	.map((ext) => ext.toUpperCase())
 	.join(", ");
+
+/** Where the demo player's volume starts, 0 to 1: a phone memo or a rough take is often hot, so not full (Kevin, 2026-11-11). */
+export const DEMO_DEFAULT_VOLUME = 0.75;

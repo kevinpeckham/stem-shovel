@@ -281,6 +281,31 @@ describe("uploadNotationFile", () => {
 });
 
 describe("the simple reserve → upload → ready helpers", () => {
+	it("a transfer the network dropped is tried again: a demo goes up on the second attempt", async () => {
+		vi.useFakeTimers();
+		try {
+			// Chrome's wording for a TLS record it refused on the multipart-create call.
+			h.upload.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+			const done = uploadDemoFile(file("take.mp3"), async () => ({
+				demoId: "d1",
+				pathname: "p.mp3",
+			}));
+			await vi.advanceTimersByTimeAsync(1000);
+			await done;
+			expect(h.upload).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("an answer is not retried: a refused type fails a demo at once", async () => {
+		h.upload.mockRejectedValueOnce(new Error("Vercel Blob: content type not allowed"));
+		await expect(
+			uploadDemoFile(file("take.mp3"), async () => ({ demoId: "d1", pathname: "p.mp3" })),
+		).rejects.toThrow("content type not allowed");
+		expect(h.upload).toHaveBeenCalledOnce();
+	});
+
 	it("uploadDemoFile reports the URL alone", async () => {
 		await uploadDemoFile(file("Voice Memo.m4a"), async () => ({ demoId: "d1", pathname: "p.m4a" }));
 		expect(h.upload).toHaveBeenCalledWith(

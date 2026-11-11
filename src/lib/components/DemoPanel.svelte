@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { DEMO_DEFAULT_VOLUME } from "#lib/constants/demoFormats.js";
 	import RecordingReview, { type ReviewComment } from "#lib/components/RecordingReview.svelte";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
@@ -63,7 +64,7 @@
 	let audio = $state<HTMLAudioElement | null>(null);
 	let currentTime = $state(0);
 	let duration = $state(0);
-	let volume = $state(1);
+	let volume = $state(DEMO_DEFAULT_VOLUME);
 	let panelEl = $state<HTMLDivElement | null>(null);
 
 	/** A press outside an open row menu closes it, as the page's own menus do. */

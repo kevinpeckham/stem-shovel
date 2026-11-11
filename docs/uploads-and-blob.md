@@ -363,6 +363,12 @@ batch went through once the connection had settled. Three layers now:
   or wording about the network, TLS, a reset or a timeout); an answer
   (a 4xx, a refused type) is thrown at once. The reservation allows an
   overwrite, so a partial blob from the attempt before is replaced.
+- Since 2026-11-11 the transfer's retry covers every kind of upload, not
+  the stems alone: `upload` in `src/lib/upload.ts` is the Blob client's
+  wrapped in `withRetries`, and every helper there sends through it. A
+  demo had failed in Chrome with the same TLS error where the same MP3
+  went up as a stem in the same browser; the stem had simply been tried
+  again. Every reservation's token allows an overwrite.
 - `StemUploader` keeps each job's reservation (`onReserved`) and, once
   the batch is through, runs the jobs that failed for a network reason
   once more, unasked, to the same stems.

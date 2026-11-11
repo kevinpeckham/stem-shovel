@@ -17,6 +17,16 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
   which stems are muted, and a muted stem is left out of the Original
   Stem Mix.
 
+### Changed
+
+- **Demos start at 75% volume** instead of full.
+
+### Fixed
+
+- **Demo and mix uploads no longer fail on a brief connection error.** An
+  upload that the browser dropped before it started is now tried again
+  automatically, as stem uploads already were.
+
 ## [0.262.1] - 2026-11-11
 
 ### Changed
