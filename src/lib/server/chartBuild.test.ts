@@ -2,6 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 import { checkTimingMap } from "@barmark/sync";
 import { buildChartFromDetections, type ChartBuildSong } from "./chartBuild";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
+import type { TrackerBarGrid } from "#lib/utils/trackerBarGrid.js";
 
 const song = (over: Partial<ChartBuildSong> = {}): ChartBuildSong => ({
 	title: "Track",
@@ -47,6 +49,8 @@ describe("buildChartFromDetections", () => {
 		});
 		expect(checkTimingMap(built.timing, { text: built.chart }).map).not.toBeNull();
 		expect(built.confidence?.bars).toHaveLength(4);
+		expect(built.grid).toEqual(GRID);
+		expect(built.onTracker).toBe(false);
 	});
 
 	it("the chord model's stored runs (Harte labels in frames) are used as they are", () => {
@@ -106,5 +110,91 @@ describe("buildChartFromDetections", () => {
 		expect(built.chart).toBe("");
 		expect(built.timing).toBeNull();
 		expect(built.diagnostics).toContainEqual({ level: "error", message: expect.any(String) });
+	});
+
+	describe("on the beat tracker's bars", () => {
+		/** Five bars of 3/4 at 2.5 s: not the song's 4/4 at 120. */
+		const TRACKER: TrackerBarGrid = {
+			bars: [0, 2.5, 5, 7.5, 10, 12.5],
+			meter: "3/4",
+			barSeconds: 2.5,
+		};
+		const RUNS: ChordminiRuns = {
+			version: "v1",
+			frameSec: 0.5,
+			frames: 25,
+			runs: [
+				{ start: 0, end: 10, chord: "Cm", label: "C:min" },
+				{ start: 10, end: 25, chord: "G7", label: "G:7" },
+			],
+		};
+
+		it("with the chord model's runs the tracker's bars and meter replace the browser's grid", () => {
+			const built = buildChartFromDetections(song({ chordsJson: RUNS }), {
+				grid: GRID,
+				chords: SEGMENTS,
+				source: "model",
+				tracker: TRACKER,
+			});
+			expect(built.onTracker).toBe(true);
+			expect(built.grid).toEqual(TRACKER.bars);
+			expect(built.chart).toContain("time: 3/4");
+			expect(built.chart).not.toContain("time: 4/4");
+			expect(built.chart).toContain("Cm");
+			expect(built.chart).toContain("G7");
+			expect(built.timing).toMatchObject({
+				chart: { bars: 5 },
+				recording: { id: "mix-1", duration: 12.5 },
+				end: 12.5,
+			});
+			expect(checkTimingMap(built.timing, { text: built.chart }).map).not.toBeNull();
+		});
+
+		it("ignored for the notes matcher's chords", () => {
+			const built = buildChartFromDetections(song({ chordsJson: RUNS }), {
+				grid: GRID,
+				chords: SEGMENTS,
+				source: "matcher",
+				tracker: TRACKER,
+			});
+			expect(built.onTracker).toBe(false);
+			expect(built.grid).toEqual(GRID);
+			expect(built.chart).toContain("time: 4/4");
+			expect(built.timing).toMatchObject({ chart: { bars: 4 }, end: 8 });
+		});
+
+		it("ignored when the model named the chords but none are stored", () => {
+			const built = buildChartFromDetections(song(), {
+				grid: GRID,
+				chords: SEGMENTS,
+				source: "model",
+				tracker: TRACKER,
+			});
+			expect(built.onTracker).toBe(false);
+			expect(built.grid).toEqual(GRID);
+			expect(built.chart).toContain("time: 4/4");
+		});
+
+		it("the song's tempo and meter changes are left out; its key changes are kept", () => {
+			const changes: SongChange[] = [
+				{ kind: "tempo", start: 0, value: "120" },
+				{ kind: "meter", start: 0, value: "4/4" },
+				{ kind: "key", start: 0, value: "C minor" },
+				{ kind: "tempo", start: 5, value: "180" },
+				{ kind: "meter", start: 5, value: "6/8" },
+				{ kind: "key", start: 5, value: "G# major" },
+			];
+			const built = buildChartFromDetections(song({ changes, chordsJson: RUNS }), {
+				grid: GRID,
+				chords: SEGMENTS,
+				source: "model",
+				tracker: TRACKER,
+			});
+			expect(built.onTracker).toBe(true);
+			expect(built.chart).toContain("key: Ab");
+			expect(built.chart).not.toContain("6/8");
+			expect(built.chart).not.toContain("tempo: 180");
+			expect(built.chart).not.toContain("tempo: 120");
+		});
 	});
 });

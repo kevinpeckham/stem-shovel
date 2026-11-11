@@ -9,6 +9,10 @@ export interface VerdictDraft {
 	diagnostics?: { level: "error" | "warning" }[];
 	/** Null when the draft step dropped the map; absent for a draft that never carries one. */
 	timing?: unknown;
+	/** The draft was built on the beat tracker's bars, not the song's grid. */
+	onTracker?: boolean;
+	/** On the tracker's bars: what the draft says when they are not the song's settings' bars (utils/trackerGridNote.ts). */
+	gridNote?: string | null;
 }
 
 export interface GeneratedChartVerdict {
@@ -21,6 +25,31 @@ export interface GeneratedChartVerdict {
 }
 
 const NO_CHORD = new Set(["?", "N.C."]);
+
+/**
+ * The holds that come from the grid the draft stands on. On the song's
+ * grid: a tempo this run detected, or bars the comb settled far off the
+ * declared tempo. On the tracker's bars: a tempo the member set that the
+ * recording's bars are not.
+ */
+function gridHolds(
+	draft: VerdictDraft,
+	detectedGrid: boolean,
+	gridDrift: number | null,
+): (string | false)[] {
+	if (draft.onTracker === true)
+		return [
+			!detectedGrid &&
+				!!draft.gridNote &&
+				"the recording's bars are not the bars the song's tempo and time signature make",
+		];
+	return [
+		detectedGrid && "its tempo and time signature were detected from the stems and need checking",
+		gridDrift !== null &&
+			gridDrift > GENERATED_MAX_GRID_DRIFT &&
+			`its bars settled ${Math.round(100 * gridDrift)}% off the declared tempo`,
+	];
+}
 
 /**
  * Whether "Generate chart from the stems" saves its draft unattended
@@ -37,7 +66,12 @@ const NO_CHORD = new Set(["?", "N.C."]);
  * the true tempo and meter declared the same five stayed wrong, two because
  * the comb drifted on an unevenly cut 78 and three because the
  * transcription found one or two notes a bar, and both signals flagged all
- * five before the model ran while no other hold here saw them. Saved with a note when
+ * five before the model ran while no other hold here saw them. A draft on
+ * the beat tracker's bars (stem-bench Study 41) does not stand on the
+ * song's grid, so neither grid hold applies to it; it is held instead when
+ * its bars are not the bars a tempo the member set makes, so the member
+ * reads that on the card before anything is saved (a tempo this run
+ * detected itself is not theirs to contradict). Saved with a note when
  * the vote left bar 1 unplaced or the chart carries warnings.
  */
 export function generatedChartVerdict({
@@ -66,10 +100,7 @@ export function generatedChartVerdict({
 	const warnings = levels.filter((l) => l === "warning").length;
 	const notesPerBar = noteCount === null || bars === 0 ? null : noteCount / bars;
 	const holds = [
-		detectedGrid && "its tempo and time signature were detected from the stems and need checking",
-		gridDrift !== null &&
-			gridDrift > GENERATED_MAX_GRID_DRIFT &&
-			`its bars settled ${Math.round(100 * gridDrift)}% off the declared tempo`,
+		...gridHolds(draft, detectedGrid, gridDrift),
 		notesPerBar !== null &&
 			notesPerBar < GENERATED_MIN_NOTES_PER_BAR &&
 			`the stems gave too few notes to hear the chords (${notesPerBar.toFixed(1)} a bar)`,

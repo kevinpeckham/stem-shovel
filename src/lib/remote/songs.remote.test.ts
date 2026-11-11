@@ -308,6 +308,9 @@ describe("editor-gated functions", () => {
 				confidence: expect.objectContaining({ format: "barmark-confidence" }),
 				diagnostics: expect.any(Array),
 				source: "ai",
+				barStarts: [0, 2],
+				onTracker: false,
+				gridNote: null,
 			},
 		},
 		{
@@ -972,6 +975,134 @@ describe("draftChart builds the chart on the browser's grid", () => {
 		const draft = await drafted({ ...input, source: "model" });
 		expect(draft.chart).toContain("Bm");
 		expect(draft.chart).not.toContain("| G |");
+	});
+
+	it("the browser's grid is the draft's bar starts, off the tracker", async () => {
+		aiDetect.aiAvailable.mockReturnValue(false);
+		data.getSongById.mockResolvedValue(song());
+		await expect(drafted(input)).resolves.toMatchObject({
+			barStarts: GRID,
+			onTracker: false,
+			gridNote: null,
+		});
+	});
+
+	describe("on the beat tracker's bars", () => {
+		/** Six bars of 3/4, a beat every half second: a bar every 1.5 s, against the song's 4/4 at 120. */
+		const beatsOf = (perBar: number, bars: number) => {
+			const beats = Array.from({ length: perBar * bars + 1 }, (_, i) => i * 0.5);
+			return {
+				version: "b1",
+				duration: beats.at(-1)!,
+				beats,
+				downbeats: beats.filter((_, i) => i % perBar === 0),
+			};
+		};
+		const RUNS = {
+			version: "v1",
+			frameSec: 1,
+			frames: 9,
+			runs: [{ start: 0, end: 9, chord: "Bm", label: "B:min" }],
+		};
+		const TRACKER_BARS = [0, 1.5, 3, 4.5, 6, 7.5, 9];
+		const NOTE =
+			"The recording plays 3/4 with a bar every 1.50 s; the song is set to 4/4 at 120 bpm (a bar every 2.00 s). The draft follows the recording, so its bar numbers will not match the player's count until the song's tempo and time signature are changed.";
+		/** The draft with the tracker's fields. */
+		const trackerDraft = (i: unknown) =>
+			call(songs.draftChart, i) as Promise<{
+				chart: string;
+				source: string;
+				timing: TimingMap | null;
+				diagnostics: { level: string; message: string }[];
+				barStarts: number[];
+				onTracker: boolean;
+				gridNote: string | null;
+			}>;
+		beforeEach(() => {
+			data.getSongById.mockResolvedValue(song());
+			data.songDetectionsFor.mockResolvedValue({
+				mixKey: "mix-1",
+				chordsJson: RUNS,
+				beatsJson: beatsOf(3, 6),
+			});
+		});
+
+		it("with the chord model's runs the draft stands on the tracker's bars, its note leading the diagnostics", async () => {
+			aiDetect.aiAvailable.mockReturnValue(false);
+			const draft = await trackerDraft({ ...input, source: "model" });
+			expect(draft).toMatchObject({
+				source: "built",
+				barStarts: TRACKER_BARS,
+				onTracker: true,
+				gridNote: NOTE,
+				timing: { chart: { bars: 6 }, end: 9 },
+			});
+			expect(draft.chart).toContain("time: 3/4");
+			expect(draft.diagnostics[0]).toEqual({ level: "warning", message: NOTE });
+		});
+
+		it("no note when the tracker's bars are the song's", async () => {
+			aiDetect.aiAvailable.mockReturnValue(false);
+			data.songDetectionsFor.mockResolvedValue({
+				mixKey: "mix-1",
+				chordsJson: RUNS,
+				beatsJson: beatsOf(4, 5),
+			});
+			const draft = await trackerDraft({ ...input, source: "model" });
+			expect(draft).toMatchObject({
+				barStarts: [0, 2, 4, 6, 8, 10],
+				onTracker: true,
+				gridNote: null,
+			});
+			expect(draft.diagnostics).not.toContainEqual(
+				expect.objectContaining({ message: expect.stringContaining("The recording plays") }),
+			);
+		});
+
+		it("ignored for the notes matcher's chords", async () => {
+			aiDetect.aiAvailable.mockReturnValue(false);
+			const draft = await trackerDraft(input);
+			expect(draft).toMatchObject({ barStarts: GRID, onTracker: false, gridNote: null });
+			expect(draft.chart).toContain("time: 4/4");
+		});
+
+		it("a reading too short to stand keeps the browser's grid", async () => {
+			aiDetect.aiAvailable.mockReturnValue(false);
+			data.songDetectionsFor.mockResolvedValue({
+				mixKey: "mix-1",
+				chordsJson: RUNS,
+				beatsJson: beatsOf(3, 3),
+			});
+			await expect(trackerDraft({ ...input, source: "model" })).resolves.toMatchObject({
+				barStarts: GRID,
+				onTracker: false,
+			});
+		});
+
+		it("the AI gets no tempo, the tracker's meter and no notes per bar; the note still leads", async () => {
+			aiDetect.draftChartWithAi.mockResolvedValue(answer("| Bm | Bm |\n"));
+			const draft = await trackerDraft({ ...input, source: "model" });
+			expect(aiDetect.draftChartWithAi.mock.calls[0][0]).toMatchObject({
+				tempo: null,
+				key: "D major",
+				meter: "3/4",
+				bars: [],
+				source: "model",
+				barCount: 6,
+			});
+			expect(draft).toMatchObject({
+				source: "ai",
+				barStarts: TRACKER_BARS,
+				onTracker: true,
+				gridNote: NOTE,
+				timing: null,
+			});
+			expect(draft.diagnostics[0]).toEqual({ level: "warning", message: NOTE });
+			expect(draft.diagnostics.at(-1)).toEqual({
+				level: "warning",
+				message: "The AI changed the bar count (2 for 6); the timing map was dropped.",
+			});
+		});
 	});
 });
 

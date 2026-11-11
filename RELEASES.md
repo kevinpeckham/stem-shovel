@@ -4,6 +4,15 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **Generated charts follow the recording's bars.** Generate from the
+  stems now listens for where each bar actually falls in your recording,
+  so chords land in the right bars even when the tempo drifts or the song
+  was played without a click. If those bars are not the bars your
+  tempo and time signature make, the draft tells you and waits for your
+  review instead of saving. Charts you already have are not changed.
+
 ## [0.260.0] - 2026-11-11
 
 ### Added

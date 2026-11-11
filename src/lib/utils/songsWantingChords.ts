@@ -13,6 +13,7 @@ export function songsWantingChords(
 		mixUrl: string | null;
 		mixKey: string | null;
 		chordsKey: string | null;
+		beatsKey: string | null;
 		chordsStartedAt: Date | null;
 	}[],
 	project: { noAi: boolean },

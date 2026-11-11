@@ -5,8 +5,9 @@ const song = (over: Partial<Parameters<typeof songWantsChords>[0]> = {}) => ({
 	noAi: false,
 	mixUrl: "https://x/mix.mp3",
 	mixKey: "abc",
-	chordsKey: null,
-	chordsStartedAt: null,
+	chordsKey: null as string | null,
+	beatsKey: null as string | null,
+	chordsStartedAt: null as Date | null,
 	project: { noAi: false },
 	...over,
 });
@@ -15,8 +16,15 @@ describe("songWantsChords", () => {
 	test("a song with a mix and no chords wants them", () => {
 		expect(songWantsChords(song())).toBe(true);
 	});
-	test("chords read from the current mix: nothing to do", () => {
-		expect(songWantsChords(song({ chordsKey: "abc" }))).toBe(false);
+	test("chords and beats read from the current mix: nothing to do", () => {
+		expect(songWantsChords(song({ chordsKey: "abc", beatsKey: "abc" }))).toBe(false);
+	});
+	test("chords read from the current mix without its beats: again", () => {
+		expect(songWantsChords(song({ chordsKey: "abc" }))).toBe(true);
+		expect(songWantsChords(song({ chordsKey: "abc", beatsKey: "old" }))).toBe(true);
+	});
+	test("beats read from the current mix without its chords: again", () => {
+		expect(songWantsChords(song({ beatsKey: "abc" }))).toBe(true);
 	});
 	test("a new mix since the chords were read: again", () => {
 		expect(songWantsChords(song({ chordsKey: "old" }))).toBe(true);

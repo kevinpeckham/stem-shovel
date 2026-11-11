@@ -89,9 +89,11 @@ import {
 	ChartTimingUseSchema,
 	ChordsCheckSchema,
 } from "#lib/val/ChartDraftSchema.js";
-import { buildChartFromDetections } from "#lib/server/chartBuild.js";
+import { buildChartFromDetections, type ChartBuildInput } from "#lib/server/chartBuild.js";
 import { checkedConfidence } from "#lib/utils/checkedConfidence.js";
 import { sectionBarsOnMap } from "#lib/utils/sectionBarsOnMap.js";
+import { trackerBarGrid } from "#lib/utils/trackerBarGrid.js";
+import { trackerGridNote } from "#lib/utils/trackerGridNote.js";
 import { MY_NOTES_KIND, type SongDocKind } from "#lib/val/SongDocKindSchema.js";
 import { SongStageSetSchema } from "#lib/val/SongStageSchema.js";
 import { SongCreditAddSchema } from "#lib/val/ArtistSchema.js";
@@ -473,6 +475,57 @@ async function aiOrStopped<T>(work: Promise<T>): Promise<T | DraftStoppedError> 
 	}
 }
 
+/** A song the models have not read: nothing stored beside it. */
+const NO_DETECTIONS = { beatsJson: null, mixKey: null, chordsJson: null };
+
+/** The diagnostics with a notice, when there is one, leading them as a warning. */
+const withNotice = <D extends { level: "error" | "warning"; message: string }>(
+	notice: string | null,
+	diagnostics: D[],
+) => (notice ? [{ level: "warning" as const, message: notice }, ...diagnostics] : diagnostics);
+
+/**
+ * The chart built from the detections, as the draft card's draft: on the
+ * beat tracker's bars when they stand and the chord model named the chords
+ * (`tracker` is then set, and `gridNote` says when those bars are not the
+ * bars the song's settings make), else on the browser's grid. A 422 when
+ * there are no bars to chart.
+ */
+function builtChartDraft(
+	song: NonNullable<Awaited<ReturnType<typeof getSongById>>>,
+	detections: Awaited<ReturnType<typeof songDetectionsFor>>,
+	input: Pick<ChartBuildInput, "grid" | "chords" | "source">,
+) {
+	const { beatsJson, mixKey, chordsJson } = detections ?? NO_DETECTIONS;
+	const read = trackerBarGrid(beatsJson);
+	const built = buildChartFromDetections(
+		{ title: song.title, changes: song.changes, sections: song.sections, mixKey, chordsJson },
+		{ ...input, tracker: read },
+	);
+	if (!built.chart || !built.timing) error(422, "No bars to chart");
+	const timing = built.timing;
+	const tracker = built.onTracker ? read : null;
+	const sections = sectionBarsOnMap(timing, song.sections);
+	const gridNote = tracker ? trackerGridNote(tracker, song.changes, song.startAt) : null;
+	const builtDraft = {
+		chords: "",
+		sections,
+		progressions: [],
+		chart: built.chart,
+		notes: "",
+		chartHtml: renderChartHtml(built.chart),
+		timing,
+		confidence: built.confidence,
+		diagnostics: withNotice(gridNote, built.diagnostics),
+		source: "built" as const,
+		// Where each bar starts in the mix and the last ends: the client places the draft's sections on it.
+		barStarts: built.grid,
+		onTracker: built.onTracker,
+		gridNote,
+	};
+	return { built, tracker, timing, sections, gridNote, builtDraft };
+}
+
 /**
  * A chart drafted from the browser's chord detection (members): built on its
  * bar grid by `chartFromDetections` (src/lib/server/chartBuild.ts), with the
@@ -490,31 +543,11 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, s
 		songDetectionsFor(accountId, id),
 	]);
 	if (!song) error(404, "Song not found");
-	const built = buildChartFromDetections(
-		{
-			title: song.title,
-			changes: song.changes,
-			sections: song.sections,
-			mixKey: detections?.mixKey ?? null,
-			chordsJson: detections?.chordsJson ?? null,
-		},
+	const { built, tracker, timing, sections, gridNote, builtDraft } = builtChartDraft(
+		song,
+		detections,
 		{ grid, chords, source },
 	);
-	if (!built.chart || !built.timing) error(422, "No bars to chart");
-	const timing = built.timing;
-	const sections = sectionBarsOnMap(timing, song.sections);
-	const builtDraft = {
-		chords: "",
-		sections,
-		progressions: [],
-		chart: built.chart,
-		notes: "",
-		chartHtml: renderChartHtml(built.chart),
-		timing,
-		confidence: built.confidence,
-		diagnostics: built.diagnostics,
-		source: "built" as const,
-	};
 	if (!aiAvailable() || song.noAi || song.project.noAi) return builtDraft;
 	if (await rateLimited(`chart:${user.id}`, 5, HOUR)) error(429, "Too many drafts in one hour.");
 	const at0 = (kind: string) =>
@@ -523,11 +556,13 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, s
 		draftChartWithAi(
 			{
 				title: song.title,
-				tempo: at0("tempo"),
+				// On the tracker's bars the model reads the starting chart's own tempo line, and the
+				// browser's notes per bar sit on another grid, so neither is passed.
+				tempo: tracker ? null : at0("tempo"),
 				key: at0("key"),
-				meter: at0("meter"),
+				meter: tracker ? tracker.meter : at0("meter"),
 				existingSections: sections,
-				bars,
+				bars: tracker ? [] : bars,
 				source,
 				startingChart: built.chart,
 				barCount: timing.chart.bars,
@@ -564,10 +599,13 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars, s
 			? { ...timing, chart: { ...timing.chart, hash: chartHash(answer.chart, parse) } }
 			: null,
 		confidence: kept ? built.confidence : null,
+		barStarts: builtDraft.barStarts,
+		onTracker: builtDraft.onTracker,
+		gridNote,
 		diagnostics: kept
-			? built.diagnostics
+			? builtDraft.diagnostics
 			: [
-					...built.diagnostics,
+					...builtDraft.diagnostics,
 					{
 						level: "warning" as const,
 						message: `The AI changed the bar count (${parse.bars.length} for ${timing.chart.bars}); the timing map was dropped.`,

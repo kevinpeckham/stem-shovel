@@ -118,4 +118,74 @@ describe("generatedChartVerdict", () => {
 			}).notes,
 		).toEqual(["1 warning on the chart"]);
 	});
+
+	describe("a draft on the beat tracker's bars", () => {
+		const NOTE = "The recording plays 3/4 with a bar every 2.50 s; the song is set to 4/4 …";
+		const ON_TRACKER = { ...CLEAN, onTracker: true, gridNote: null };
+
+		test("the detected-grid hold and the drift hold do not apply", () => {
+			expect(
+				generatedChartVerdict({
+					draft: ON_TRACKER,
+					segments: CHORDS,
+					undecided: false,
+					detectedGrid: true,
+					gridDrift: 0.2,
+				}),
+			).toEqual({ save: true, holds: [], notes: [] });
+		});
+
+		test("bars that disagree with a tempo the member set hold it, the note counted as a warning", () => {
+			expect(
+				generatedChartVerdict({
+					draft: {
+						...ON_TRACKER,
+						gridNote: NOTE,
+						diagnostics: [{ level: "warning" }],
+					},
+					segments: CHORDS,
+					undecided: false,
+				}),
+			).toEqual({
+				save: false,
+				holds: ["the recording's bars are not the bars the song's tempo and time signature make"],
+				notes: ["1 warning on the chart"],
+			});
+		});
+
+		test("a tempo this run detected itself is not held against the tracker's bars", () => {
+			const v = generatedChartVerdict({
+				draft: { ...ON_TRACKER, gridNote: NOTE },
+				segments: CHORDS,
+				undecided: false,
+				detectedGrid: true,
+			});
+			expect(v.save).toBe(true);
+			expect(v.holds).toEqual([]);
+		});
+
+		test("the other holds still apply", () => {
+			expect(
+				generatedChartVerdict({
+					draft: { ...ON_TRACKER, diagnostics: [{ level: "error" }] },
+					segments: CHORDS,
+					undecided: false,
+					noteCount: 4,
+				}).holds,
+			).toEqual([
+				"the stems gave too few notes to hear the chords (1.0 a bar)",
+				"the chart has errors",
+			]);
+		});
+
+		test("a grid note off the tracker holds nothing by itself", () => {
+			expect(
+				generatedChartVerdict({
+					draft: { ...CLEAN, onTracker: false, gridNote: NOTE },
+					segments: CHORDS,
+					undecided: false,
+				}).save,
+			).toBe(true);
+		});
+	});
 });

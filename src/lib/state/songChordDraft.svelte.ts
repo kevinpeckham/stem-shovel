@@ -91,6 +91,12 @@ export type ChartDraft = ChartDraftAnswer & {
 	partName?: string;
 	/** The file a score's chart came from, for the chart's source once saved (`chartSourceOfDraft`). */
 	scoreFile?: { kind: "notation" | "file"; id: string };
+	/** Where each bar of the draft starts in the mix and the last ends (the server's grid: the tracker's bars, or the browser's). */
+	barStarts?: number[];
+	/** Built on the beat tracker's bars (docs/audio-engine.md, "The tracker's bars"). */
+	onTracker?: boolean;
+	/** On the tracker's bars: the notice when they are not the song's settings' bars; it leads the diagnostics too. */
+	gridNote?: string | null;
 	/** A built draft standing in for the AI's, which the model stopped: the gateway's finish reason; the notice (`draftStopNotice`) leads the diagnostics. */
 	stopped?: { reason: string };
 };
@@ -129,7 +135,7 @@ const attempt = <A>(thunk: (signal: AbortSignal) => PromiseLike<A>) =>
 const MODEL_POLL_SECONDS = 3;
 /** How long a posted job may take to claim the song before the page stops waiting for it. */
 const MODEL_CLAIM_SECONDS = 9;
-const MODEL_WAIT_SECONDS = 90;
+const MODEL_WAIT_SECONDS = 180;
 
 /** A run's failure that it reports: a step that ends the run. */
 type StepError = GridError | ChordsError | DraftError | SaveError;
@@ -387,11 +393,13 @@ export class SongChordDraft {
 		return Effect.gen({ self: this }, function* () {
 			this.#step = "Saving…";
 			const id = this.#opts.songId();
-			const bars = this.#barStarts.length - 1;
+			// The grid the draft was built on: the server's (the tracker's bars), else the browser's.
+			const barStarts = draft.barStarts ?? this.#barStarts;
+			const bars = barStarts.length - 1;
 			// Each section at its placed bar's start; a bar off the grid is left out.
 			const sections = draft.sections.flatMap((s) => {
 				const bar = Math.round(s.bar);
-				return bar >= 1 && bar <= bars ? [{ name: s.name, start: this.#barStarts[bar - 1]! }] : [];
+				return bar >= 1 && bar <= bars ? [{ name: s.name, start: barStarts[bar - 1]! }] : [];
 			});
 			if (sections.length > 0 && !this.#opts.hasSections())
 				yield* attempt(() => saveSections({ id, sections })).pipe(

@@ -14,6 +14,10 @@ import { runJob } from "#lib/server/effect/runJob.js";
 import { Db, type Services } from "#lib/server/effect/services.js";
 import { TranscriberError } from "#lib/server/effect/transcriptionErrors.js";
 import { JobTuning } from "#lib/server/effect/tuning.js";
+import type { BeatThisBeats } from "#lib/utils/beatThisBeats.js";
+import { beatThisDownbeats } from "#lib/utils/beatThisDownbeats.js";
+import { beatThisLogMel } from "#lib/utils/beatThisLogMel.js";
+import { beatThisPeaks } from "#lib/utils/beatThisPeaks.js";
 import { chordminiFeatures } from "#lib/utils/chordminiCqt.js";
 import { chordminiIndices } from "#lib/utils/chordminiSmooth.js";
 import { chordminiRunsOf } from "#lib/utils/chordminiRunsOf.js";
@@ -36,8 +40,11 @@ import { join } from "node:path";
  * process (chordmini/infer.ts: onnxruntime-web's wasm backend, so the
  * function's event loop is never held), the reference smoothing and argmax,
  * and the frames run-length encoded onto the song row with barmark's spelling
- * of each label (`harteToBarmark`). Runs after the mix renders and from the
- * song page as a backstop; a song (or project) marked "no AI" is skipped.
+ * of each label (`harteToBarmark`). The same decode then goes through the
+ * Beat This tracker (beatThis/infer.ts; "The tracker's bars"), whose beats
+ * and downbeats are stored beside the chords: a generated draft's bar
+ * lines. Runs after the mix renders and from the song page as a backstop;
+ * a song (or project) marked "no AI" is skipped.
  */
 const MODEL_RATE = 22050;
 /** Frames per second of the model's features (hop 2048 at 22050 Hz). */
@@ -86,6 +93,40 @@ function inferLogits(features: Float32Array, frames: number, dir: string) {
 	}).pipe(Effect.withSpan("chords.infer"));
 }
 
+/** The contract's name on the stored beats: the export's SHA-256 (beatThis/model.json), pinned by stem-bench Study 42. */
+export const BEAT_THIS_VERSION = "d57ae630";
+
+/**
+ * The tracker's beats and downbeats for the decode, from the child, under
+ * the job's time limit. A tracker that fails does not cost the song its
+ * chords: the failure is logged and the beats are stored empty, so the
+ * draft keeps the declared grid and the job does not run again for it.
+ */
+function trackBeats(samples: Float32Array, dir: string) {
+	return Effect.gen(function* () {
+		const { ffmpegTimeout } = yield* JobTuning;
+		const mel = beatThisLogMel(samples);
+		const logits = yield* Effect.tryPromise({
+			// The model (13 MB as JSON) loads only when a chords job runs, never with the jobs function.
+			try: async () =>
+				(await import("./beatThis/infer.js")).beatThisLogits(mel.data, mel.frames, dir),
+			catch: (e) =>
+				new TranscriberError({ code: null, signal: null, stderr: String(e).slice(-2048) }),
+		}).pipe(Effect.timeout(ffmpegTimeout));
+		const beats = beatThisPeaks(logits.beat);
+		return { beats, downbeats: beatThisDownbeats(beats, beatThisPeaks(logits.downbeat)) };
+	}).pipe(
+		Effect.withSpan("chords.beats"),
+		Effect.tapError((e) => Effect.logWarning("beat tracker failed", e)),
+		Effect.orElseSucceed(() => ({ beats: [] as number[], downbeats: [] as number[] })),
+		Effect.map((read): BeatThisBeats => ({
+			version: BEAT_THIS_VERSION,
+			duration: samples.length / MODEL_RATE,
+			...read,
+		})),
+	);
+}
+
 /** The stored shape: runs of frames with barmark's spelling and the model's own label. */
 function runsOf(indices: Int32Array, labels: string[], frames: number): ChordminiRuns {
 	return {
@@ -106,7 +147,8 @@ export function ensureSongChordsEffect(songId: string): Effect.Effect<void, Chor
 		const db = yield* Db;
 		const song = yield* db.call("chords:read", () => songForChords(songId));
 		if (!song || song.noAi || song.project.noAi) return;
-		if (!song.mixUrl || !song.mixKey || song.chordsKey === song.mixKey) return;
+		if (!song.mixUrl || !song.mixKey) return;
+		if (song.chordsKey === song.mixKey && song.beatsKey === song.mixKey) return;
 		const key = song.mixKey;
 		const url = song.mixUrl;
 		const claimed = yield* Effect.acquireRelease(
@@ -126,7 +168,8 @@ export function ensureSongChordsEffect(songId: string): Effect.Effect<void, Chor
 		const logits = yield* inferLogits(features, frames, dir);
 		const indices = chordminiIndices(logits, frames);
 		const runs = runsOf(indices, config.chordVocab, frames);
-		yield* db.call("chords:store", () => setSongChords(songId, key, runs));
+		const beats = yield* trackBeats(samples, dir);
+		yield* db.call("chords:store", () => setSongChords(songId, key, runs, beats));
 	}).pipe(Effect.scoped, Effect.withSpan("chords.ensure", { attributes: { songId } }));
 }
 

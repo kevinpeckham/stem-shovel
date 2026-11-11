@@ -142,6 +142,7 @@ import type { PlaybackStatus } from "#lib/val/PlaybackStatusSchema.js";
 import { NOTES_STALE_MS } from "#lib/constants/notesStale.js";
 import { CHORDS_STALE_MS } from "#lib/constants/chordsStale.js";
 import { chordReadState } from "#lib/utils/chordReadState.js";
+import type { BeatThisBeats } from "#lib/utils/beatThisBeats.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import {
 	MY_NOTES_KIND,
@@ -3941,6 +3942,7 @@ export function songForChords(songId: string) {
 			mixUrl: true,
 			mixKey: true,
 			chordsKey: true,
+			beatsKey: true,
 			chordsStartedAt: true,
 		},
 		with: { project: { columns: { noAi: true } } },
@@ -3964,10 +3966,21 @@ export async function claimSongChords(songId: string) {
 }
 
 /** The run's result for the mix `key`, and the claim cleared. */
-export async function setSongChords(songId: string, key: string, runs: ChordminiRuns) {
+export async function setSongChords(
+	songId: string,
+	key: string,
+	runs: ChordminiRuns,
+	beats: BeatThisBeats,
+) {
 	await db
 		.update(song)
-		.set({ chordsJson: runs, chordsKey: key, chordsStartedAt: null })
+		.set({
+			chordsJson: runs,
+			chordsKey: key,
+			beatsJson: beats,
+			beatsKey: key,
+			chordsStartedAt: null,
+		})
 		.where(eq(song.id, songId));
 }
 
@@ -3983,7 +3996,12 @@ export async function songsWantingChordsAdmin(limit: number) {
 		eq(song.noAi, false),
 		eq(project.noAi, false),
 		isNotNull(song.mixUrl),
-		or(isNull(song.chordsKey), ne(song.chordsKey, song.mixKey)),
+		or(
+			isNull(song.chordsKey),
+			ne(song.chordsKey, song.mixKey),
+			isNull(song.beatsKey),
+			ne(song.beatsKey, song.mixKey),
+		),
 		or(isNull(song.chordsStartedAt), lt(song.chordsStartedAt, new Date(stale))),
 	);
 	const [[{ count }], rows] = await Promise.all([
@@ -4019,6 +4037,7 @@ export async function chordReadStatesAdmin(ids: string[]) {
 			projectSlug: project.slug,
 			accountSlug: account.slug,
 			chordsKey: song.chordsKey,
+			beatsKey: song.beatsKey,
 			mixKey: song.mixKey,
 			chordsStartedAt: song.chordsStartedAt,
 		})
@@ -4074,11 +4093,22 @@ export async function songChordsFor(accountId: string, songId: string) {
 export async function songDetectionsFor(accountId: string, songId: string) {
 	const row = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
-		columns: { chordsJson: true, chordsKey: true, mixKey: true, mixUrl: true },
+		columns: {
+			chordsJson: true,
+			chordsKey: true,
+			beatsJson: true,
+			beatsKey: true,
+			mixKey: true,
+			mixUrl: true,
+		},
 	});
 	if (!row) return null;
-	const current = !!row.mixUrl && row.chordsKey !== null && row.chordsKey === row.mixKey;
-	return { chordsJson: current ? row.chordsJson : null, mixKey: row.mixKey };
+	const current = (key: string | null) => !!row.mixUrl && key !== null && key === row.mixKey;
+	return {
+		chordsJson: current(row.chordsKey) ? row.chordsJson : null,
+		beatsJson: current(row.beatsKey) ? row.beatsJson : null,
+		mixKey: row.mixKey,
+	};
 }
 
 /**

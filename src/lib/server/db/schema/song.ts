@@ -101,6 +101,16 @@ export const song = table(
 		chordsKey: t.text("chords_key"),
 		chordsStartedAt: t.integer("chords_started_at", { mode: "timestamp_ms" }),
 		/**
+		 * Beats and downbeats read from the same mix by the Beat This tracker,
+		 * in the chords job (src/lib/server/chords.ts; docs/audio-engine.md,
+		 * "The tracker's bars"): a generated draft's bar lines. `beatsKey`
+		 * names the mix they were read from, as `chordsKey` does.
+		 */
+		beatsJson: t
+			.text("beats_json", { mode: "json" })
+			.$type<import("../../../utils/beatThisBeats").BeatThisBeats>(),
+		beatsKey: t.text("beats_key"),
+		/**
 		 * The chart's timing map (@barmark/sync's "barmark-timing" v1;
 		 * docs/audio-engine.md, "The timing map"): when each played bar of
 		 * `chartMarkdown` starts in the mix, from the detections' bar grid the

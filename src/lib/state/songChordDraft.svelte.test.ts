@@ -416,9 +416,12 @@ describe("SongChordDraft", () => {
 				remote.songChords.mockImplementation(() => asQuery(RUNNING));
 				const cd = make();
 				const run = cd.detectChords();
+				// The page waits three minutes, a poll every 3 s; at 90 s it is still waiting.
+				await vi.advanceTimersByTimeAsync(90_000);
+				expect(remote.reconcileChords).not.toHaveBeenCalled();
 				await vi.advanceTimersByTimeAsync(90_000);
 				await run;
-				expect(remote.songChords).toHaveBeenCalledTimes(31);
+				expect(remote.songChords).toHaveBeenCalledTimes(61);
 				expect(cd.chordSource).toBe("notes");
 				expect(remote.reconcileChords).toHaveBeenCalledTimes(1);
 				expect(cd.chordsChecked).toEqual({ changed: 1 });
@@ -641,6 +644,63 @@ describe("SongChordDraft", () => {
 			expect(notify).toHaveBeenCalledWith("Not a member", { kind: "info" });
 			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
 			expect(cd.chordError).toBeNull();
+		});
+
+		test("on the tracker's bars the sections are placed on the draft's bar starts, not the browser's grid", async () => {
+			remote.songChords.mockImplementation(() => asQuery(STORED));
+			remote.draftChart.mockResolvedValue({
+				...TWO_SECTIONS,
+				barStarts: [0.1, 1.6, 3.1, 4.6, 6.1, 7.6, 9.1],
+				onTracker: true,
+				gridNote: null,
+			});
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.saveSections).toHaveBeenCalledWith({
+				id: "song1",
+				sections: [
+					{ name: "Verse", start: 0.1 },
+					{ name: "Chorus", start: 3.1 },
+				],
+			});
+			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
+		});
+
+		test("on the tracker's bars the comb's drift does not hold the draft", async () => {
+			remote.songChords.mockImplementation(() => asQuery(STORED));
+			placing.chartlessGridInBrowser.mockResolvedValueOnce(
+				placedAs({ ...PLACED, period: 2.144, barStarts: [0.3, 2.444, 4.588, 6.732, 7.9] }),
+			);
+			remote.draftChart.mockResolvedValue({
+				...DRAFT,
+				barStarts: [0, 2, 4, 6, 8],
+				onTracker: true,
+				gridNote: null,
+			});
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.saveChartDraft).toHaveBeenCalledOnce();
+		});
+
+		test("tracker bars that are not the song's settings' bars hold the draft for review", async () => {
+			remote.songChords.mockImplementation(() => asQuery(STORED));
+			const gridNote = "The recording plays 3/4 with a bar every 1.50 s; …";
+			remote.draftChart.mockResolvedValue({
+				...DRAFT,
+				diagnostics: [{ level: "warning", message: gridNote }],
+				barStarts: [0, 1.5, 3, 4.5, 6],
+				onTracker: true,
+				gridNote,
+			});
+			const cd = make();
+			await cd.generateChart();
+			expect(remote.saveChartDraft).not.toHaveBeenCalled();
+			expect(remote.saveSections).not.toHaveBeenCalled();
+			expect(cd.draft).toMatchObject({ onTracker: true, gridNote });
+			expect(notify).toHaveBeenCalledWith(
+				"Chart drafted but not saved: the recording's bars are not the bars the song's tempo and time signature make. Review it on the draft card.",
+				{ kind: "info" },
+			);
 		});
 
 		test("the song's own sections stay; no placement, no bar one", async () => {

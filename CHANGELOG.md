@@ -8,7 +8,35 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **A generated chart's bars are the recording's.** The chords job now
+  also runs the Beat This tracker on the mix (stem-bench Studies 41 and 42) and stores its beats and downbeats on the song; `draftChart`
+  builds the draft on those downbeats when the chord model named the
+  chords, with the tracker's meter and the grid's own tempo, in place of
+  an even grid from the declared tempo (docs/audio-engine.md, "The
+  tracker's bars"). Adjacent half bars are joined, and a reading whose
+  bars do not settle on one beat count is not used (`trackerBarGrid`);
+  both are ours, for the bench to measure. Saved charts, the song's
+  settings and the player's count are untouched.
+- **A draft says when the recording and the song's tempo disagree.**
+  When the tracker's meter or bar length (beyond 4%) is not what the
+  song's settings make, the notice leads the draft's diagnostics, and
+  "Generate chart" holds the draft on the card instead of saving
+  (`trackerGridNote`, `generatedChartVerdict`). On the tracker's bars the
+  detected-grid and drift holds no longer apply; the thin-transcription
+  hold stays.
+- A run waits up to 180 s (was 90) for the server's read of the mix, now
+  that the job reads beats as well as chords.
+
 ### Technical
+
+- Migration 0120 adds `song.beats_json` and `song.beats_key`. Songs read
+  before it get their beats on the next visit to the song or its project
+  (a song wants the chords job when either key is behind its mix).
+- The help page "Charts, lyrics and notes" says where a generated
+  chart's bars come from: production owes
+  `db:update-docs charts-lyrics-and-notes`.
 
 - **The Beat This tracker's signal code, ported and not yet wired.**
   `src/lib/utils/beatThis*.ts`: the log-mel front end (torchaudio's

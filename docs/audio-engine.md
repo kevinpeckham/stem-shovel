@@ -1389,6 +1389,68 @@ chart existed.
   the app's copies (`utils/typesetChord.ts`, `utils/accidentalGlyphs.ts`)
   are gone.
 
+## The tracker's bars (2026-11-11)
+
+A generated draft's bar lines are the bars the recording plays, read by a
+beat tracker, not an even grid laid from the song's declared tempo.
+
+- **The tracker** is Beat This (CPJKU, MIT), the small0 checkpoint,
+  chosen by stem-bench Studies 36b to 41 as the one tracker to ship on
+  full-band material: within two chord roots of madmom on ten of ten
+  drafts, none confidently wrong. The model is the bench's export at
+  1500 frames (Study 42; `src/lib/server/beatThis/model.json`, 9.9 MB,
+  verified against the Python package to 7e-5). An export traced at a
+  shorter length is a different, worse tracker (FINDINGS), so the window
+  is never another length.
+- **Where it runs.** In the chords job (`src/lib/server/chords.ts`), on
+  the same 22050 Hz mono decode the chord model reads, in a child
+  process through the runner both models share
+  (`src/lib/server/ort/child.ts`). About 50 s for a four-minute song on
+  the VM. The pipeline is the package's, ported: the log-mel front end
+  (`utils/beatThisLogMel.ts`), 1500-frame windows with a 6-frame border
+  stitched keeping the earlier window (`beatThisChunks`, `beatThisChunkOf`,
+  `beatThisStitch`), the minimal postprocessor with no DBN
+  (`beatThisPeaks`, `beatThisDownbeats`). Fixtures from the bench pin
+  every stage to the package's numbers (`tests/fixtures/beat-this`).
+- **What is stored.** `song.beats_json` (`BeatThisBeats`: beats,
+  downbeats, the duration read, the export's version) with `beats_key`
+  naming the mix, beside the chords and written with them (migration
+  0120). A song wants the job when either key is behind its mix
+  (`songWantsChords`), which is also how songs read before this get their
+  beats. A tracker that fails stores empty beats and the chords still
+  store; the draft then keeps the declared grid.
+- **The draft's grid** (`utils/trackerBarGrid.ts`): every downbeat a bar
+  line as read (Study 41, Ask B), with two rules of ours on top, both
+  from the five dev recordings and both for the bench to measure.
+  Adjacent half bars are joined: the tracker read one song's intro as
+  fifteen two-beat bars, which a chart would draw as fifteen bars of 4/4.
+  And a reading whose bars do not settle on one count of beats (under
+  60% at the usual count) is not used: a 3/4 at 224 bpm came back as bars
+  of 2 to 6 beats in no pattern. The meter is Study 41's label (modal
+  beats per bar: 6 is 6/8, 3 is 3/4, else 4/4); the tempo is the grid's
+  own, derived by `@barmark/sync`.
+- **The build** (`buildChartFromDetections`, `draftChart`): on the
+  tracker's bars when they stand and the chord model named the chords;
+  the model's frames are voted onto those bars, the song's keys are
+  kept, and its tempo and meter changes, which sit on the declared
+  timeline, are left out. The AI gets the tracker's meter and no notes
+  per bar (the browser's sit on another grid). Otherwise the browser's
+  grid, as before. The draft carries its grid back (`barStarts`), and
+  the generated chart's sections are placed on it.
+- **When the recording and the song's settings disagree**
+  (`utils/trackerGridNote.ts`): the meters differ, or the declared tempo
+  makes a bar more than 4% longer or shorter than the tracker's,
+  compared in seconds a bar so a tempo's counting unit never enters. The
+  draft says so first among its diagnostics, and "Generate chart" holds
+  it on the card instead of saving, unless the tempo was one the run
+  itself had just detected. Nothing about the song's settings, the
+  player's count or any saved chart changes.
+- **Holds** (`generatedChartVerdict`): on the tracker's bars the
+  detected-grid hold and the drift hold do not apply (Study 41, Ask C:
+  the first held every automatic draft, the second fired at metrical
+  folds); the thin-transcription hold stays. On the browser's grid all
+  three stand as before.
+
 ## The chartless grid: bar one from the stems (2026-11-08)
 
 A song with no chart drafts its chords on a bar grid, and until today that
