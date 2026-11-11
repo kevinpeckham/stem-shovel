@@ -9,6 +9,10 @@ import { FILE_CONTENT_TYPE_OF, fileKindOf, type FileKind } from "#lib/constants/
 import { NOTATION_CONTENT_TYPE_OF, notationFormatOf } from "#lib/constants/notationFormats.js";
 import { upload as uploadOnce } from "@vercel/blob/client";
 import { withRetries } from "#lib/utils/withRetries.js";
+import { reportUploadDrop } from "#lib/utils/reportUploadDrop.js";
+
+/** The waits before a transfer's second and third attempts. */
+const UPLOAD_RETRY_DELAYS_MS = [1000, 3000];
 
 /**
  * The Blob client's `upload`, tried three times when the network drops it
@@ -22,7 +26,15 @@ import { withRetries } from "#lib/utils/withRetries.js";
  * attempt before is replaced.
  */
 const upload: typeof uploadOnce = (pathname, body, options) =>
-	withRetries(() => uploadOnce(pathname, body, options));
+	withRetries(async (attempt) => {
+		try {
+			return await uploadOnce(pathname, body, options);
+		} catch (e) {
+			// Sentry hears of each drop, the retried and the final (utils/reportUploadDrop): caught here, they reach it no other way.
+			void reportUploadDrop(e, pathname, attempt, attempt >= UPLOAD_RETRY_DELAYS_MS.length);
+			throw e;
+		}
+	}, UPLOAD_RETRY_DELAYS_MS);
 
 export interface Reservation {
 	stemId: string;

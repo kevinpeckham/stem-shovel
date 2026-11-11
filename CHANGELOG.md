@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Dropped uploads are reported to Sentry.** A transfer the network
+  dropped was caught, retried and shown in the page, so Sentry never
+  heard of it. Each drop now sends one grouped message
+  (`reportUploadDrop`): a warning when it is retried, an error when the
+  last attempt fails, tagged with the kind of file, the attempt and the
+  outcome (docs/uploads-and-blob.md, "Retries").
+
 ## [0.263.0] - 2026-11-11
 
 ### Added

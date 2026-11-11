@@ -9,11 +9,13 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
  */
 const h = vi.hoisted(() => ({
 	upload: vi.fn(),
+	reportUploadDrop: vi.fn(async () => {}),
 	pdfThumbnail: vi.fn(),
 	imageThumbnail: vi.fn(),
 	fetch: vi.fn(),
 }));
 vi.mock("@vercel/blob/client", () => ({ upload: h.upload }));
+vi.mock("#lib/utils/reportUploadDrop.js", () => ({ reportUploadDrop: h.reportUploadDrop }));
 vi.mock("#lib/utils/pdfThumbnail.js", () => ({ pdfThumbnail: h.pdfThumbnail }));
 vi.mock("#lib/utils/imageThumbnail.js", () => ({ imageThumbnail: h.imageThumbnail }));
 vi.mock("#lib/audio/mono.js", () => ({ collapseDualMono: (b: unknown) => b }));
@@ -293,6 +295,8 @@ describe("the simple reserve → upload → ready helpers", () => {
 			await vi.advanceTimersByTimeAsync(1000);
 			await done;
 			expect(h.upload).toHaveBeenCalledTimes(2);
+			// Sentry heard of the drop that was retried: its pathname, the first attempt, not the last.
+			expect(h.reportUploadDrop).toHaveBeenCalledWith(expect.any(TypeError), "p.mp3", 0, false);
 		} finally {
 			vi.useRealTimers();
 		}

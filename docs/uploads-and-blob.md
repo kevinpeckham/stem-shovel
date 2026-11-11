@@ -369,6 +369,15 @@ batch went through once the connection had settled. Three layers now:
   demo had failed in Chrome with the same TLS error where the same MP3
   went up as a stem in the same browser; the stem had simply been tried
   again. Every reservation's token allows an overwrite.
+- Each drop is reported to Sentry (`utils/reportUploadDrop.ts`, from
+  the same wrapper): one issue, "An upload's transfer was dropped by the
+  network", a warning for an attempt that is retried and an error for
+  the last, tagged `upload.kind`, `upload.attempt` and `upload.outcome`.
+  The upload code catches these failures to retry and to show its own
+  message, so before this nothing reached Sentry. The browser cannot
+  tell a TLS record it refused from any other failed fetch, so the issue
+  counts every dropped transfer; its tags and Sentry's browser breakdown
+  say how often a retry saves one and where they cluster.
 - `StemUploader` keeps each job's reservation (`onReserved`) and, once
   the batch is through, runs the jobs that failed for a network reason
   once more, unasked, to the same stems.
