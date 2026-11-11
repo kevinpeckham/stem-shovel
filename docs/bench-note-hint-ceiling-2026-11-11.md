@@ -7,11 +7,11 @@ solos), scored per bar against the lead sheet.
 
 ## The numbers
 
-| input | root right | quality family right | hint absent (N.C.) |
-|---|---|---|---|
-| comping, Rock and Singer-Songwriter | 95 % | 83 % | under 1 % |
-| comping, Bossa Nova / Jazz / Funk | 66 % | 56 % | 8 % |
-| single melodic line (solo) | 11 % | 21 % | 56 % |
+| input                               | root right | quality family right | hint absent (N.C.) |
+| ----------------------------------- | ---------- | -------------------- | ------------------ |
+| comping, Rock and Singer-Songwriter | 95 %       | 83 %                 | under 1 %          |
+| comping, Bossa Nova / Jazz / Funk   | 66 %       | 56 %                 | 8 %                |
+| single melodic line (solo)          | 11 %       | 21 %                 | 56 %               |
 
 By the sheet's quality, on comping: major right 77 %, minor 63 %,
 dominant seventh 41 % (heard as a plain major more often than as a
