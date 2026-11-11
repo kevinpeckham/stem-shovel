@@ -16,8 +16,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   and keep-first stitching, the minimal peak-picking with downbeats moved
   to the nearest beat, and Study 41's tempo and meter labels, from the
   bench's reference (stem-bench `scripts/study10/nbeat.py`). Unit-tested
-  on analytic cases; the bench's fixtures and the model are asked for in
-  docs/bench-brief-beat-this-port-2026-11-11.md.
+  on analytic cases and against the package's own numbers
+  (`tests/fixtures/beat-this`, delivered by stem-bench Study 42): the
+  front end agrees to float32 noise, and the beats, downbeats and tempo
+  are the package's to the frame.
+- **The Beat This model in the jobs function's child process, not yet
+  wired.** `src/lib/server/beatThis/` holds the small0 export at 1500
+  frames (`model.json`, 9.9 MB) and `beatThisLogits`, whose stitched
+  logits match the package's on the fixture. `src/lib/server/ort/child.ts`
+  is the child-process runner it shares with ChordMini (the model writer,
+  the wasm backend, the preamble), moved out of `chordmini/infer.ts`.
 
 ## [0.260.0] - 2026-11-11
 

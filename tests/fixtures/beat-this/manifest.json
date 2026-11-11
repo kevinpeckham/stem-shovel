@@ -45,53 +45,37 @@
 	"postprocessor": "minimal: a frame is a beat (downbeat) when its logit is the maximum over 7 frames and > 0; adjacent peaks (gap <= 1 frame) merged to their mean; downbeats moved to the nearest beat and de-duplicated; frames / 50 = seconds",
 	"files": {
 		"audio.f32": {
-			"shape": [
-				705600
-			],
+			"shape": [705600],
 			"dtype": "float32 LE",
 			"what": "32 s synthetic 4/4 at 110 bpm, 22050 Hz mono, peak 0.9: kick on 1 and 3 (downbeat accented), snare on 2 and 4, hats on the eighths, a bass note on each downbeat alternating C2 and G1, a quiet C and G triad pad changing by the bar"
 		},
 		"logmel.f32": {
-			"shape": [
-				1601,
-				128
-			],
+			"shape": [1601, 128],
 			"dtype": "float32 LE",
 			"what": "the package's LogMelSpect of audio.f32"
 		},
 		"chunk0.f32": {
-			"shape": [
-				1500,
-				128
-			],
+			"shape": [1500, 128],
 			"dtype": "float32 LE",
 			"what": "the first window exactly as fed to the export (6 zero frames, then logmel frames 0..1493)"
 		},
 		"chunk0-beat.f32": {
-			"shape": [
-				1500
-			],
+			"shape": [1500],
 			"dtype": "float32 LE",
 			"what": "the export's beat logits for chunk0"
 		},
 		"chunk0-downbeat.f32": {
-			"shape": [
-				1500
-			],
+			"shape": [1500],
 			"dtype": "float32 LE",
 			"what": "the export's downbeat logits for chunk0"
 		},
 		"beat-logits.f32": {
-			"shape": [
-				1601
-			],
+			"shape": [1601],
 			"dtype": "float32 LE",
 			"what": "stitched full-length beat logits (keep_first, borders dropped; -1000 where no window covers a frame)"
 		},
 		"downbeat-logits.f32": {
-			"shape": [
-				1601
-			],
+			"shape": [1601],
 			"dtype": "float32 LE",
 			"what": "stitched full-length downbeat logits"
 		},
@@ -100,8 +84,5 @@
 		}
 	},
 	"windows": 2,
-	"starts": [
-		-6,
-		107
-	]
+	"starts": [-6, 107]
 }

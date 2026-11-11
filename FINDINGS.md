@@ -7,6 +7,20 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A click track is not a test signal for Beat This, and a traced ONNX export is only its traced length (2026-11-11)
+
+Two lessons from wiring the tracker (stem-bench Studies 41 and 42). The
+bench's first export of small0 had been traced at a short length:
+`rotary_embedding_torch` caches its position frequencies and the tracer
+baked the slice, so every longer input was rotated wrongly and the
+"same weights" read 5-second windows as a different, worse tracker
+(downbeat F 0.51 to 0.78 against the package). The export in
+`src/lib/server/beatThis/model.json` is static at 1500 frames and
+verified against the package to 7e-5; never feed it another length. And
+the fixture audio is a drum-kit pattern with bass and a pad on purpose:
+the package read a click-only pattern as 200 bpm with broken bars, so a
+synthetic metronome proves nothing about this model.
+
 ## A same-origin module worker fetches a CDN script the page's CSP would refuse (2026-11-11)
 
 `@barmark/score`'s worker loads `@barmark/engraver` from jsDelivr
