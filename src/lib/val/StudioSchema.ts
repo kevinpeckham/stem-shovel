@@ -42,6 +42,7 @@ export const STUDIO_INPUT_SOURCES = [
 	"piano",
 	"chords",
 	"drums",
+	"expressionDrums",
 	"sampler",
 	"amp",
 ] as const;

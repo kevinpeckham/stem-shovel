@@ -283,6 +283,16 @@
 					</a>
 					<a
 						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
+							'/expression-drums',
+						)}"
+						role="menuitem"
+						href="/expression-drums"
+						onclick={() => (openMenu = null)}
+					>
+						<IconDrumKit />Expression Drums
+					</a>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {accent(
 							'/piano',
 						)}"
 						role="menuitem"
