@@ -3370,3 +3370,37 @@ behind a lazy load, with ONNX Runtime on the server (about one second
 per minute of audio at four threads) as the fallback. The port has four
 parts: the log mel front end, the 1500-frame chunking, the minimal
 peak-picking postprocessor, and Study 41's tempo and meter derivations.
+
+## The steady share enriches for a wrong bar without separating; joining is a wash with one clear win (2026-11-11)
+
+stem-bench Study 44 measured the two rules on the tracker's bars over
+the 261-song census, the Woodward songs, the five dev recordings and the
+Study 43 guitar takes. Joining adjacent half bars moves the tracker's
+bar count toward the artist's count about as often as away (73 to 61
+on the census), but it rescues a 6/8 song the tracker reads as bars of
+three and six by turns, which the steadiness rule would otherwise
+reject; the bench says keep it. The steady share at 0.6 removes 35
+census readings of which 22 have a right bar at some fold, removes two
+sound drafts and misses the one confidently-wrong draft on small0 bars,
+and no alternative measure does better; the bench's judgment is 0.4,
+enough to keep mop heart off the chart and nothing else. Mop heart is
+not the small checkpoint's weakness: the big one fails it the same way,
+and only a DBN postprocessor reads it steadily, at half the declared
+tempo. The bench's package readings match our stored counts on all
+five dev recordings.
+
+## Two cells a bar buy nothing where chords change by the bar; the guitar gap is chord quality (2026-11-11)
+
+stem-bench Study 43 drafted twelve GuitarSet takes and eight Winterreise
+songs on Beat This small0's bars twice, as read and with each bar split
+at its middle beat. The guitar sheet that had produced every confidently
+wrong guitar draft turned out to be one chord a bar with repeats, and on
+the tracker's bars as read its roots are already right on most takes;
+what holds the drafts below good is chord quality (a seventh and two
+minors written as plain roots), a question for the drafting prompt and
+the per-bar hints. On the lieder the half grid lifted roots from a median
+of 0.36 to 0.58 and left every song wrong, at twelve percent more input.
+The bench recommends drafting on the tracker's bar as read, which is
+what the generated draft does. One Winterreise song drafted good on
+small0's bars with nothing typed, where madmom's bars had scored
+eighteen of forty-one.
