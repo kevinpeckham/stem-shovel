@@ -3339,3 +3339,20 @@ torch checkpoint but its attention breaks past 300 frames; run in the
 30-second model the census measured (downbeat agreement 0.51 to 0.78).
 The browser port must be an export that runs at 1500 frames, verified
 against the package's logits.
+
+## The small0 export is fixed, verified and fast enough for the browser (2026-11-11)
+
+stem-bench Study 42 found the cause of the broken Beat This export in
+the rotary position embedding's cache, which a tracer bakes at the
+traced length, and produced two exports that do not have the problem:
+one traced at the reference's 1500-frame window (9.9 MB) and one with
+the cache off and a dynamic length. Both match the Python package's
+frame logits to float32 noise, and the static one run through the
+reference inference reproduces the package's beats and downbeats
+exactly on all ten modern songs. Under ONNX Runtime Web's WebAssembly
+backend it runs a 30-second chunk in 4.5 seconds single-threaded, about
+9 seconds per minute of audio, so the bench recommends the browser
+behind a lazy load, with ONNX Runtime on the server (about one second
+per minute of audio at four threads) as the fallback. The port has four
+parts: the log mel front end, the 1500-frame chunking, the minimal
+peak-picking postprocessor, and Study 41's tempo and meter derivations.
