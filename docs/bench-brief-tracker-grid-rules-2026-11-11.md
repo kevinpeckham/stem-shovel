@@ -141,3 +141,11 @@ readings count for count on all five songs (eat all the clocks 2: 17,
 five in `docs/bench-reply-beats-2026-11-11.json` as
 `{ "<slug>": { "beats": [seconds], "downbeats": [seconds], "duration": s } }`
 and the bench will score them against the package at 70 ms, $0.
+
+**Addendum, Ask A's open question (2026-11-11, Study 44 Arm A2, $0.35).**
+Kevin approved the four drafts on the joined grid. On same-boat,
+goodbye-to-spring, im-letting-go and gravity the drafts on the joined
+grid score identically to Study 41's drafts on the bars as read: the
+same roots (16/18, 43/43, 33/33, 24/26), the same qualities, the same
+class, with 5, 5, 4 and 24 fewer bars. Joining does not change a
+draft's grade; it changes the chart's bar count. Keep it.
