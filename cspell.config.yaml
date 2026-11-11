@@ -21,6 +21,11 @@ ignoreRegExpList:
   - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
   - "/https?:\\/\\/\\S+/g" # urls
 words:
+  - ashudesai
+  - CPJKU
+  - logit
+  - mels
+  - slaney
   - DAOM
   - Jamendo
   - JAAH
