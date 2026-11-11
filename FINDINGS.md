@@ -3419,3 +3419,15 @@ bars good, and left the ten modern songs' classes unchanged; it did not
 stop the power chords. By the registered rule the bench reports without
 a recommendation; its labelled judgment favours the clause
 (docs/bench-note-quality-clause-2026-11-11.md).
+
+## The hint's root is trustworthy on strummed material; its sevenths and diminished qualities are not (2026-11-11)
+
+stem-bench Study 46 scored the ChordMini per-bar hint against the lead
+sheet over all 360 GuitarSet excerpts. On rock-shaped comping the root
+is right 95 % and the quality family 83 %; on jazz-shaped comping 66 %
+and 56 %. By quality, on comping: major 77 %, minor 63 %, dominant 41 %,
+diminished 2 %. On a single melodic line the hint votes N.C. on 56 % of
+bars. The bench recommends the prompt treat the hint's root as reliable
+and its quality as advisory for sevenths and diminished chords, the
+sentence to be tested in a paired study
+(docs/bench-note-hint-ceiling-2026-11-11.md).
