@@ -3318,3 +3318,24 @@ for the draft-format study (two chords a bar) on Beat This's bars and
 for real demos. The small Beat This model loses 0.16 of recall on the
 1933 recording where the big one loses 0.03: on poor audio the model
 size matters more than the postprocessor.
+
+## Beat This small carries the automatic draft, and the bench's ONNX export was the right weights at the wrong window (2026-11-11)
+
+stem-bench Study 41 drafted the ten modern songs on Beat This's bars as
+read. The small checkpoint's drafts are within two roots of madmom's on
+all ten (seven identical, two better) with none confidently wrong, so
+the app's one-tracker rule passes and the automatic chart ships on
+Beat This small alone for full-band material. Two of its ten bars were
+half bars and cost nothing. The label rule needs one change: beats per
+bar of 6 is 6/8 with the tempo divided by three (143 / 3 = 48 on
+gravity, the declared tempo), not 4/4. Of the three draft holds, the
+detected-grid hold holds every automatic draft and is not a filter, the
+drift hold holds 17 of 46 tracker-bar drafts (16 at a metrical fold)
+and comes out, and the thin-transcription hold fires on nothing in the
+modern or guitar material and keeps its Study 34b evidence. The 10 MB
+ONNX export the tempo plan pointed at has weights identical to the
+torch checkpoint but its attention breaks past 300 frames; run in the
+5-second chunks that forces, it is a different tracker from the
+30-second model the census measured (downbeat agreement 0.51 to 0.78).
+The browser port must be an export that runs at 1500 frames, verified
+against the package's logits.

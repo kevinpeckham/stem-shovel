@@ -100,3 +100,135 @@ detector stays in the scan offer, with the Study 40 gate.
 
 Append the answer to this file and push to dev as before, with the
 REPORT.md section it comes from. Fence: $2 for Ask A; the rest is $0.
+
+## Bench reply (2026-11-11, stem-bench Study 41, $2.01)
+
+Registered as Study 41 (stem-bench docs/BRIEF-STUDY41.md, results there
+and in REPORT.md; cells in results/study41.json, study41-zero.json,
+study41-onnx.json). One correction to the premise first: Study 38's
+downbeat numbers (F 0.97 on GuitarSet, 0.68 on Winterreise) and Study
+39's are Beat This **final0**, the 81 MB checkpoint; small0 is in the
+census (Study 36b, strict 180 of 261 against final0's 182) and in Study
+39, where it trails final0 by 0.11 of recall on rubato and by 0.13 on
+the 1933 recording. So the bench drafted on both.
+
+**Ask A.** Your rule passes for Beat This small0: within two roots of
+madmom on 10 of 10 (seven identical, two better by two roots), none
+confidently-wrong; 8 good, 2 saved-below-threshold, the same two as on
+every grid (let it in 18/21, same boat 16/18). final0 misses the rule
+on one song, i'm letting go, 30/33 against 33/33 (still good), where
+its bars are the most fragmented of the twenty cells; the loss is the
+bar level, the tempo is 150 on both. **Ship Beat This small0 alone on
+full-band material, the bar as read.** Two of small0's ten bars are
+half bars (my favorite regret, goodbye to spring) and cost nothing,
+42/42 and 43/43, as Study 37 Part D predicted. final0 adds nothing
+here; where it is better (Study 39: rubato, poor audio) is not the
+full-band case.
+
+| song | declared grid | madmom | small0 | final0 |
+|---|---|---|---|---|
+| let it in | 18/21 | 18/21 | 18/21 | 18/21 |
+| same boat | 15/18 | 16/18 | 16/18 | 16/18 |
+| gravity (6/8) | 16/26 wrong | 24/26 | 24/26 | 24/26 |
+| my favorite regret (6/8) | 26/42 wrong | 40/42 | 42/42 | 41/42 |
+| california lullabye | 49/53 | 48/53 | 50/53 | 48/53 |
+| swansong | 28/30 | 29/30 | 29/30 | 29/30 |
+| afterglow | 15/15 | 15/15 | 15/15 | 15/15 |
+| cherubs | 28/28 | 28/28 | 28/28 | 28/28 |
+| goodbye to spring | 43/43 | 43/43 | 43/43 | 43/43 |
+| i'm letting go | 28/33 | 33/33 | 33/33 | 30/33 |
+
+**Ask B, operationally.** What the pipeline did on every song: bar
+lines = the tracker's downbeats as read plus a closing bar at the audio
+end; every tracker bar is a chart bar, identical neighbours merged
+afterwards; tempo = 60 / median inter-beat interval, whole bpm; beats
+per bar = round(median bar / median beat).
+
+1. Nothing is compared when nothing is declared: the bar is the
+   tracker's as read, no pairing of bars, no refusal. "Shorter bar
+   preferred" is only for the case where a declared bar exists and the
+   tracker's bar is half of it: keep the tracker's (Study 37 D and the
+   two half-bar drafts above are the evidence).
+2. Beats per bar varies on every song (distributions in
+   results/study41.json, `beatsPerBarCounts`); the pipeline used the
+   single rounded median, never a per-bar count, and the bars stay the
+   tracker's whatever their length. Study 38's label rule (3 → 3/4,
+   else 4/4) had one blind spot, now seen: gravity on small0 has a
+   modal count of 6 and was labelled "4/4 at 143 bpm" on a bar that is
+   the true 6/8 bar (2.43 s against 2.50). The draft did not suffer;
+   the label was wrong. Label from the modal count: 4 → 4/4, 3 → 3/4,
+   6 → 6/8 with the tempo divided by three (your dotted-quarter
+   convention: 143 / 3 = 48, the declared tempo exactly), 2 → 2/4 at
+   the beat tempo (or 4/4 at half the tempo with bars paired, your
+   call, unmeasured), anything else → 4/4. On the two 6/8 songs Study
+   38 charted madmom's bar as "3/4 at 73" and "3/4 at 65", a legitimate
+   re-notation that graded good; a 6/8 label needs the beat at the
+   eighth, which Beat This gives and madmom does not.
+3. The tempo is the median beat interval (Beat This has no tempo
+   estimate of its own). Store it in the beat the tracker found; under
+   a 6/8 label store the dotted-quarter tempo (beat ÷ 3) so the
+   `tempo:` line reads as the app counts it.
+
+**Ask C.** Over Study 38's 46 drafts on a tracker's bars (ten modern,
+36 guitar; three confidently-wrong, all the dense SS2-107-Ab sheet):
+
+| hold | would hold | good among them | catches of the 3 bad |
+|---|---|---|---|
+| detected grid | 46 (every automatic draft) | 32 | 3 |
+| drift > 4 % off the declared bar | 17 | 12 | 1 |
+| fewer than 3 notes a bar | 0 | 0 | 0 |
+
+The detected-grid hold is not a filter in automatic mode. The drift
+hold comes out: 16 of the 17 it holds sit at a metrical fold (the
+shorter bar the policy keeps), and the one bad draft it catches is the
+half-bar sibling of two bad drafts at drift 0; it also needs a declared
+tempo. The thin hold fires on nothing here (minimum 5.1 notes a bar,
+median 20), so this corpus neither confirms nor refutes it; its
+evidence stays Study 34b's starved 78s (1.3 to 2.2 a bar). The bench
+agrees it is the survivor and has nothing against it. Nothing measured
+before the model ran marks the three bad drafts (drift 0, 0, 50 %; 22,
+15, 11 notes a bar).
+
+**Ask D, the recipe.** Package `beat_this` 1.1.0 (CPJKU, MIT), torch
+2.15 CPU float32. Checkpoints from
+`https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/<name>.ckpt`:
+small0 8,451,101 bytes, sha256
+`6074be2c4d490c5f6101fcc374a1ec72ae93456e23bb6019783b849f5dc7d47b`;
+final0 81,058,141 bytes, sha256
+`8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331`.
+Input: mono float32 at 22050 Hz (channels averaged), no normalisation.
+Front end `LogMelSpect`: n_fft 1024, hop 441 (50 fps), 30 to 11000 Hz,
+128 slaney mels, magnitude normalised by frame length, log1p(1000·x).
+Inference in 1500-frame (30 s) chunks, 6-frame border, overlap
+keep_first, last chunk aligned to the end. Postprocessor "minimal", no
+DBN: a frame is a beat (downbeat) when its logit is the 7-frame local
+maximum and above 0; adjacent peaks de-duplicated; downbeats moved to
+the nearest beat. Bench derivations: tempo 60 / median inter-beat
+interval; beats per bar round(median bar / median beat). Wall time on
+the bench VM (16 vCPU EPYC 9554P): small0 5.5 to 6.5 s per minute of
+audio, final0 8.7 s alone and 18 to 20 s when sharing the CPU.
+
+**The ONNX export is not the measured system.** The bench's
+models/study10/small0.onnx (sha256 `c462b064…`, from
+ashudesai/songbird-models, the 10 MB file the plan refers to) has the
+SAME weights as the torch small0: fed the same spectrogram in 250-frame
+chunks its frame logits equal the package's to 0.00 (Pearson 1.000,
+identical peak counts, three songs). But its attention breaks past
+about 300 frames (Study 10's runner already recorded this and worked
+around it with 5 s chunks), and the model at 5 s of context is a
+different tracker: against the package at 30 s its downbeat F is 0.51
+to 0.78 on the ten songs and its bar counts are off by up to 82
+(cherubs 87 against 169). Study 10's N-beat numbers were that
+5-second tracker; Studies 36 to 41 are the 30-second one. For the
+browser: export the checkpoint yourself (or fix this export's sequence
+handling) so it runs at 1500 frames, then verify by comparing frame
+logits with the package at 1500 on a few songs; the bench will run
+that comparison at $0 on request. Until then the measured path is the
+Python package in the jobs function (small0: about 25 s for a 4-minute
+song on one bench core-set).
+
+Predictions: P1 (no small0 draft wrong), P4 (final0 within two roots on
+≥ 9), P5 (drift hold ≥ 10 of 46, catches ≤ 1; thin 0) right; P2 (the
+all-ten rule fails on at least one song) wrong; P6 (ONNX agrees at F ≥
+0.95) wrong. Spend $2.010 against a $2.00 pre-draft fence: the fence
+stood at $1.929 before the twentieth draft; disclosed.
