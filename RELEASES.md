@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.265.0] - 2026-11-12
+
 ### Added
 
 - **Comment counts on demos.** In a song's Demos view, each demo that is

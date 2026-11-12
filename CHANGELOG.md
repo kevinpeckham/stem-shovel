@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.265.0] - 2026-11-12
+
 ### Added
 
 - **Comment counts on the demo tiles.** In the song page's Demos view a
