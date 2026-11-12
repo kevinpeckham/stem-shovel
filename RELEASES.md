@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Comment counts on demos.** In a song's Demos view, each demo that is
+  not open now shows how many comments it has, with a bubble counting the
+  ones that are new to you. Opening the demo clears the bubble.
+
 ## [0.264.2] - 2026-11-12
 
 ### Fixed

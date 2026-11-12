@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Comment counts on the demo tiles.** In the song page's Demos view a
+  tile that is not the open demo shows its comment count beside the size
+  and, for the signed-in member, a bubble with the comments new to them:
+  the count of their unread comment notification for that demo
+  (`unreadDemoCommentCounts`; the subject format now lives in
+  `demoCommentSubject`). Opening the demo marks them seen
+  (`markDemoCommentsSeen`) and the bubble goes at once; the nav's inbox
+  badge catches up on the next navigation.
+
 ## [0.264.2] - 2026-11-12
 
 ### Fixed

@@ -15,7 +15,12 @@ import {
 	fakeId,
 	httpError,
 } from "../../../tests/helpers/fakeRequestEvent";
-import { data, givenRow, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
+import {
+	data,
+	givenRow,
+	notifications,
+	resetRemoteMocks,
+} from "../../../tests/helpers/fakeServerModules";
 
 /**
  * Authorization of the comment remote functions: any member of the song's
@@ -190,5 +195,39 @@ describe("deleteComment", () => {
 		asAdminOf(ACCOUNT);
 		await expect(call(comments.deleteComment, input)).resolves.toEqual({ deleted: true });
 		expect(data.deleteComment).toHaveBeenCalledWith(COMMENT);
+	});
+});
+
+describe("markDemoCommentsSeen", () => {
+	const DEMO = fakeId("demo-one");
+	const input = { songId: SONG, demoId: DEMO };
+	beforeEach(() => data.demoOwnership.mockResolvedValue({ id: DEMO, songId: SONG, label: "Memo" }));
+	it("401 signed out", async () => {
+		asSignedOut();
+		await expect(call(comments.markDemoCommentsSeen, input)).rejects.toMatchObject(httpError(401));
+		expect(notifications.markDemoCommentsRead).not.toHaveBeenCalled();
+	});
+	it("404 for a stranger to the account", async () => {
+		asOutsider();
+		await expect(call(comments.markDemoCommentsSeen, input)).rejects.toMatchObject(httpError(404));
+		expect(notifications.markDemoCommentsRead).not.toHaveBeenCalled();
+	});
+	it("404 for a demo of another song", async () => {
+		asViewerOf(ACCOUNT);
+		data.demoOwnership.mockResolvedValue({ id: DEMO, songId: fakeId("song-two"), label: "Memo" });
+		await expect(call(comments.markDemoCommentsSeen, input)).rejects.toMatchObject(httpError(404));
+		data.demoOwnership.mockResolvedValue(null);
+		await expect(call(comments.markDemoCommentsSeen, input)).rejects.toMatchObject(httpError(404));
+		expect(notifications.markDemoCommentsRead).not.toHaveBeenCalled();
+	});
+	it("a viewer marks their own notifications of the demo's comments read", async () => {
+		asViewerOf(ACCOUNT);
+		await call(comments.markDemoCommentsSeen, input);
+		expect(notifications.markDemoCommentsRead).toHaveBeenCalledWith(USER, SONG, DEMO);
+	});
+	it("a member too", async () => {
+		asMemberOf(ACCOUNT);
+		await call(comments.markDemoCommentsSeen, input);
+		expect(notifications.markDemoCommentsRead).toHaveBeenCalledWith(USER, SONG, DEMO);
 	});
 });

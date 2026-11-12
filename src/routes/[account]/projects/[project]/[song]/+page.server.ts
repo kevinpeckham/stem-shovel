@@ -15,6 +15,7 @@ import { linkMentions } from "#lib/utils/linkMentions.js";
 import { mentionTargets } from "#lib/utils/mentionTargets.js";
 import { mixKeyOf } from "#lib/server/mix.js";
 import { aiAvailable } from "#lib/server/aiDetect.js";
+import { unreadDemoCommentCounts } from "#lib/server/notifications.js";
 import { scheduleChords, scheduleNotationPdf, scheduleNotes } from "#lib/server/jobs.js";
 import { songView } from "#lib/server/songView.js";
 import { canCommentProject, canEditProject, canViewSong } from "#lib/server/viewAccess.js";
@@ -58,6 +59,12 @@ function onMainUnlessServed(url: URL, served: string | null) {
 	redirect(307, `${main.pathname}${main.search}${main.hash}`);
 }
 
+/** The Demos view's new-comment bubbles: demo id → the signed-in person's unread comments on it; none signed out. */
+const demoNewCommentsOf = async (
+	userId: string | null,
+	songId: string,
+): Promise<Record<string, number>> => (userId ? unreadDemoCommentCounts(userId, songId) : {});
+
 export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	const { account, who, shareGrants } = await parent();
 	const song = await getSong(account.id, params.project, params.song, arrangementOf(url));
@@ -82,16 +89,18 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	// song (file URLs the browser may fetch), manifest, comments, docs — shared with the home demo.
 	const canComment = canCommentProject(song.project, who);
 	const userId = locals.user?.id ?? null;
-	const [view, shareLinks, artists, myNote, chat, sessionRecordings] = await Promise.all([
-		songView(song),
-		canEdit ? listShareLinks({ songId: song.id }) : [],
-		canEdit ? listArtists(account.id) : [],
-		userId ? getUserNote(song.id, userId) : null,
-		// The chat (docs/chat.md) is the project's own: loaded for someone who may write in it, never for a visitor.
-		songChat(song.id, canComment ? userId : null),
-		// The session recordings the band tied to this song (docs/uploads-and-blob.md, "Sessions"); members only, as the Sessions page.
-		canEdit || canComment ? listSessionRecordingsOfSong(account.id, song.id) : [],
-	]);
+	const [view, shareLinks, artists, myNote, chat, sessionRecordings, demoNewComments] =
+		await Promise.all([
+			songView(song),
+			canEdit ? listShareLinks({ songId: song.id }) : [],
+			canEdit ? listArtists(account.id) : [],
+			userId ? getUserNote(song.id, userId) : null,
+			// The chat (docs/chat.md) is the project's own: loaded for someone who may write in it, never for a visitor.
+			songChat(song.id, canComment ? userId : null),
+			// The session recordings the band tied to this song (docs/uploads-and-blob.md, "Sessions"); members only, as the Sessions page.
+			canEdit || canComment ? listSessionRecordingsOfSong(account.id, song.id) : [],
+			demoNewCommentsOf(userId, song.id),
+		]);
 	// `@Chart` in a document links to the attachment, notation file or demo of that name (docs/uploads-and-blob.md, "Mentions").
 	const targets = mentionTargets(song);
 	const docs = {
@@ -119,6 +128,8 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		shareLinks,
 		/** Session recordings of this song, for the Demos view; empty for a visitor. */
 		sessionRecordings,
+		/** New comments per demo for the signed-in person (their unread comment notifications), for the Demos view's bubbles; `{}` signed out. */
+		demoNewComments,
 		/** The account's artist directory, for the credits picker. */
 		artists,
 		aiAvailable: canEdit && !noAi && aiAvailable(),

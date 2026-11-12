@@ -42,4 +42,7 @@ export const CommentUpdateSchema = v.object({
 	arrangementId: v.optional(v.union([NanoIdSchema, v.literal("")]), ""),
 });
 
+/** The person opened a demo in the song page's Demos view: its new comments are seen. */
+export const DemoCommentsSeenSchema = v.object({ songId: NanoIdSchema, demoId: NanoIdSchema });
+
 export type CommentInput = v.InferOutput<typeof CommentCreateSchema>;

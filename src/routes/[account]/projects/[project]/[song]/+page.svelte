@@ -48,6 +48,7 @@
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import ArrangementSwitcher from "#lib/components/ArrangementSwitcher.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
+	import { markDemoCommentsSeen } from "#lib/remote/comments.remote.js";
 	import MixList from "#lib/components/MixList.svelte";
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
@@ -174,6 +175,15 @@
 	// Until the visitor picks, a song with stems opens on them and a song with
 	// demos only on those; the visitor's pick sticks for the visit.
 	let demoPanel = $state<DemoPanel | null>(null);
+	/** The signed-in person's new comments per demo (the tiles' bubbles), seeded by the load; a demo opened here leaves it at once. */
+	let demoNewComments = $derived(data.demoNewComments);
+	/** A demo with new comments was opened in the Demos view: its bubble goes now, its notifications are read behind it (a convenience: a failure stays quiet). */
+	function demoSeen({ id }: { id: string }) {
+		const rest = { ...demoNewComments };
+		delete rest[id];
+		demoNewComments = rest;
+		markDemoCommentsSeen({ songId: data.song.id, demoId: id }).catch(() => {});
+	}
 	/** The song's stage (docs/mixes.md, "Phase 2"): set in settings, else read from what it holds. */
 	let stage = $derived(
 		songStage({
@@ -673,6 +683,8 @@
 						card={demoCommentCard}
 						oncomment={(d) => comments.open({ demoId: d.id })}
 						oncontext={(d, seconds, x, y) => pointerMenus.openDemo(d, seconds, x, y)}
+						newComments={demoNewComments}
+						onseen={demoSeen}
 					/>
 					<SongSessionRecordings
 						recordings={data.sessionRecordings}

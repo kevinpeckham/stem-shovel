@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { DEMO_DEFAULT_VOLUME } from "#lib/constants/demoFormats.js";
 	import RecordingReview, { type ReviewComment } from "#lib/components/RecordingReview.svelte";
-	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import DemoRowMenu from "#lib/components/DemoRowMenu.svelte";
+	import DemoTileText from "#lib/components/DemoTileText.svelte";
+	import { demoTileCounts } from "#lib/utils/demoTileCounts.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { saveAs } from "#lib/upload.js";
 	import { demoMenuItems } from "#lib/utils/demoMenuItems.js";
@@ -15,7 +17,8 @@
 	 * The page decides which view shows; `pause()` lets it quiet this one
 	 * when the stems take over. Under the transport, the current demo's
 	 * review (RecordingReview, docs/uploads-and-blob.md "Sessions" review):
-	 * its waveform and its comments, through the page's card and menu.
+	 * its waveform and its comments, through the page's card and menu; the
+	 * other tiles their comment count and a bubble of the new ones (`onseen`).
 	 */
 	export interface PanelDemo {
 		id: string;
@@ -46,6 +49,10 @@
 		oncomment?: (demo: PanelDemo) => void;
 		/** ⌘-click, Ctrl-click or right-click on the waveform: the page's menu (Seek here, Comment here). */
 		oncontext?: (demo: PanelDemo, seconds: number, x: number, y: number) => void;
+		/** New comments per demo id for the signed-in person: the bubble on a tile that is not open. */
+		newComments?: Record<string, number>;
+		/** A demo with new comments became the current one (selected, played, or opened by ?demo=): they are seen. */
+		onseen?: (demo: { id: string }) => void;
 	}
 	let {
 		demos,
@@ -58,6 +65,8 @@
 		card,
 		oncomment,
 		oncontext,
+		newComments = {},
+		onseen,
 	}: Props = $props();
 
 	let current = $state<string | null>(null);
@@ -65,6 +74,7 @@
 	let track = $derived(demos.find((d) => d.id === current) ?? null);
 	let index = $derived(track ? demos.indexOf(track) : -1);
 	let trackComments = $derived(track ? comments.filter((c) => c.demoId === track.id) : []);
+	let tileCounts = $derived(demoTileCounts(demos, comments, newComments, current));
 	let audio = $state<HTMLAudioElement | null>(null);
 	let currentTime = $state(0);
 	let duration = $state(0);
@@ -78,6 +88,11 @@
 		}
 	}
 
+	/** The demo shown above the list from now on; its new comments are seen. */
+	function makeCurrent(id: string) {
+		current = id;
+		if ((newComments[id] ?? 0) > 0) onseen?.({ id });
+	}
 	/** Play a demo (from its row or the transport); the same demo toggles. */
 	export async function play(id: string) {
 		if (current === id) {
@@ -86,7 +101,7 @@
 		}
 		// Swapping `src` fires a pause event that flips the bound state, so start
 		// the new track explicitly once the element has it.
-		current = id;
+		makeCurrent(id);
 		paused = false;
 		await tick();
 		await audio?.play().catch(() => {});
@@ -96,7 +111,7 @@
 	}
 	/** Show a demo (a notification's link, ?demo=) without starting it. */
 	export function show(id: string) {
-		if (demos.some((d) => d.id === id)) current = id;
+		if (demos.some((d) => d.id === id)) makeCurrent(id);
 	}
 	/** The page's menu (Seek here) and a comment's Go to. */
 	export function seekTo(seconds: number) {
@@ -266,44 +281,8 @@
 					>
 						<span class={playing ? "i-ph-pause-fill" : "i-ph-play-fill"} aria-hidden="true"></span>
 					</button>
-					<span class="min-w-0 grow truncate">
-						<span class="block font-500">{d.label}</span>
-						<span class="block text-xs opacity-85">{formatBytes(d.sizeBytes)}</span>
-					</span>
-					<!-- The row's menu: the downloads, out of the way of Play. -->
-					<details class="relative self-center">
-						<summary
-							class="button button-xs border-current/10 flex items-center list-none [&::-webkit-details-marker]:hidden"
-							title="Demo menu"
-							aria-label="Menu for {d.label}"
-						>
-							<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"></span>
-						</summary>
-						<div
-							class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm font-400 shadow-lg"
-							role="menu"
-							onclick={(e) => ((e.currentTarget.parentElement as HTMLDetailsElement).open = false)}
-							onkeydown={(e) => {
-								if (e.key === "Escape")
-									(e.currentTarget.parentElement as HTMLDetailsElement).open = false;
-							}}
-						>
-							{#each rowItems(d) as item (item.label)}
-								<svelte:element
-									this={item.element}
-									type={item.type}
-									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-									role="menuitem"
-									tabindex="0"
-									href={item.href}
-									title={item.title}
-									onclick={item.action}
-								>
-									<span class={item.icon} aria-hidden="true"></span>{item.label}
-								</svelte:element>
-							{/each}
-						</div>
-					</details>
+					<DemoTileText label={d.label} sizeBytes={d.sizeBytes} {...tileCounts.get(d.id)} />
+					<DemoRowMenu label={d.label} items={rowItems(d)} />
 				</li>
 			{/each}
 		</ul>

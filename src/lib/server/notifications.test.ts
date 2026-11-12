@@ -28,6 +28,7 @@ const {
 	checkStorage,
 	listInbox,
 	markAllRead,
+	markDemoCommentsRead,
 	markRead,
 	markSubjectRead,
 	notifyChat,
@@ -46,6 +47,7 @@ const {
 	digests,
 	DigestTuning,
 	unreadCount,
+	unreadDemoCommentCounts,
 } = await import("./notifications");
 const { runMail } = await import("./effect/mail");
 const Effect = await import("effect/Effect");
@@ -941,6 +943,53 @@ describe("the inbox", () => {
 			["n3", at(NOW - HOUR)],
 			["n4", null],
 		]);
+	});
+});
+
+describe("new comments on a song's demos", () => {
+	test("notifyComment on a demo stores the subject as <song>:demo:<demo>", async () => {
+		reset(base());
+		await notifyComment("a1", "s1", "u1", undefined, { id: "d1", label: "Memo" });
+		expect(inboxOf("u2")).toEqual([
+			expect.objectContaining({ subjectId: "s1:demo:d1", href: "/go/song/s1?demo=d1" }),
+		]);
+	});
+	beforeEach(() =>
+		reset(
+			base({
+				notification: [
+					item("n1", { subjectId: "s1:demo:d1", count: 2 }),
+					// Past the fold window, a second row on the same demo.
+					item("n2", { subjectId: "s1:demo:d1", count: 1 }),
+					item("n3", { subjectId: "s1:demo:d2", count: 4 }),
+					item("n4", { subjectId: "s1:demo:d2", readAt: at(NOW - HOUR), count: 9 }),
+					item("n5", { subjectId: "s2:demo:d9", count: 1 }),
+					item("n6", { subjectId: "s1", count: 3 }),
+					item("n7", { subjectId: "s1:mix:m1", count: 3 }),
+					item("n8", { subjectId: "s1:demo:d3", kind: "demo", count: 1 }),
+					// `_` is any character to `like`: a song id with one must not catch its neighbors.
+					item("n9", { subjectId: "sXa:demo:d5", count: 1 }),
+					item("n10", { subjectId: "s1:demo:d1", userId: "u3", count: 7 }),
+				],
+			}),
+		),
+	);
+	test("unreadDemoCommentCounts sums the person's unread comment rows per demo of the song", async () => {
+		expect(await unreadDemoCommentCounts("u2", "s1")).toEqual({ d1: 3, d2: 4 });
+		expect(await unreadDemoCommentCounts("u3", "s1")).toEqual({ d1: 7 });
+		expect(await unreadDemoCommentCounts("u2", "s_a")).toEqual({});
+		expect(await unreadDemoCommentCounts("u9", "s1")).toEqual({});
+	});
+	test("markDemoCommentsRead marks the person's unread comment rows on exactly that demo", async () => {
+		expect(await markDemoCommentsRead("u2", "s1", "d1")).toBe(2);
+		expect(notificationById("n1")?.readAt).toEqual(at(NOW));
+		expect(notificationById("n2")?.readAt).toEqual(at(NOW));
+		for (const id of ["n3", "n5", "n6", "n7", "n8", "n9", "n10"]) {
+			expect(notificationById(id)?.readAt).toBeNull();
+		}
+		expect(await markDemoCommentsRead("u2", "s1", "d1")).toBe(0);
+		expect(await unreadDemoCommentCounts("u2", "s1")).toEqual({ d2: 4 });
+		expect(await unreadDemoCommentCounts("u3", "s1")).toEqual({ d1: 7 });
 	});
 });
 

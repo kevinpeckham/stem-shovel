@@ -28,7 +28,7 @@ import {
 } from "#lib/utils/notificationPolicy.js";
 import type { NotificationKind } from "#lib/val/NotificationSchema.js";
 import type { ChatScopeKind } from "#lib/val/ChatSchema.js";
-import { and, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, like, ne, sql } from "drizzle-orm";
 
 /**
  * The inbox (docs/notifications.md): who hears about what, and how. Every
@@ -263,6 +263,14 @@ export async function notifyChat(
 	});
 }
 
+/**
+ * The subject of the comment notifications about one demo of a song; with
+ * no demo, the prefix every demo of the song shares. Written by
+ * `notifyComment`, read by the song page's Demos view (the new-comment
+ * bubbles) and marked read when the demo is opened there.
+ */
+const demoCommentSubject = (songId: string, demoId = "") => `${songId}:demo:${demoId}`;
+
 /** A comment on the song, or (with `mix`) feedback on one of its mixes (docs/mixes.md): the item names the mix and lands on it. */
 export async function notifyComment(
 	accountId: string,
@@ -296,7 +304,11 @@ export async function notifyComment(
 			: demo
 				? `${s.href}?demo=${demo.id}`
 				: `${s.href}?open=comments`,
-		subjectId: mix ? `${songId}:mix:${mix.id}` : demo ? `${songId}:demo:${demo.id}` : songId,
+		subjectId: mix
+			? `${songId}:mix:${mix.id}`
+			: demo
+				? demoCommentSubject(songId, demo.id)
+				: songId,
 		coalesce: true,
 	});
 }
@@ -818,6 +830,43 @@ export async function markSubjectRead(
 		)
 		.returning({ id: notification.id });
 	return rows.length;
+}
+
+/**
+ * The comments on a song's demos the person has not seen (the Demos view's
+ * bubbles): demo id → how many, from their unread comment notifications on
+ * those demos. A notification folds a burst into one row's `count`; rows
+ * past the fold window add up.
+ */
+export async function unreadDemoCommentCounts(
+	userId: string,
+	songId: string,
+): Promise<Record<string, number>> {
+	const prefix = demoCommentSubject(songId);
+	const rows = await db
+		.select({ subjectId: notification.subjectId, count: notification.count })
+		.from(notification)
+		.where(
+			and(
+				eq(notification.userId, userId),
+				eq(notification.kind, "comment"),
+				isNull(notification.readAt),
+				like(notification.subjectId, `${prefix}%`),
+			),
+		);
+	const counts: Record<string, number> = {};
+	for (const { subjectId, count } of rows) {
+		// `like` reads `_` in an id as any character: the prefix itself decides.
+		if (!subjectId?.startsWith(prefix)) continue;
+		const demoId = subjectId.slice(prefix.length);
+		counts[demoId] = (counts[demoId] ?? 0) + count;
+	}
+	return counts;
+}
+
+/** The person opened a demo in the Demos view: its comment notifications are read. Returns how many it marked. */
+export function markDemoCommentsRead(userId: string, songId: string, demoId: string) {
+	return markSubjectRead(userId, ["comment"], demoCommentSubject(songId, demoId));
 }
 
 export async function markAllRead(userId: string) {

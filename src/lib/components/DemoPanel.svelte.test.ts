@@ -72,3 +72,79 @@ describe("DemoPanel row menu", () => {
 		expect(items.map((i) => i.textContent?.trim())).toEqual(["Download MP3", "Download original"]);
 	});
 });
+
+/**
+ * The tiles' comments: a tile that is not open shows how many comments its
+ * demo has and, for the signed-in person, a bubble with the new ones; the
+ * open demo's tile shows neither (its comments are above the list). Opening
+ * a demo with new comments tells the page once.
+ */
+describe("DemoPanel comment counts", () => {
+	const comment = (id: string, demoId: string) => ({ id, demoId, title: id, body: "", at: null });
+	const tileOf = (label: string) =>
+		within(screen.getByRole("list", { name: "Demos" }))
+			.getByText(label)
+			.closest("li")!;
+	const comments = [comment("c1", "d1"), comment("c2", "d1"), comment("c3", "d2")];
+
+	beforeEach(() => vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue());
+
+	test("a tile counts its demo's comments, singular and plural; none without comments", () => {
+		render(DemoPanel, {
+			demos: [demo("d1"), demo("d2"), demo("d3")],
+			comments: comments as never,
+		});
+		expect(tileOf("Take d1").textContent).toContain("2 comments");
+		expect(tileOf("Take d2").textContent).toContain("1 comment");
+		expect(tileOf("Take d2").textContent).not.toContain("1 comments");
+		expect(tileOf("Take d3").textContent).not.toContain("comment");
+	});
+
+	test("new comments show in a bubble with an accessible name; none at zero", () => {
+		render(DemoPanel, {
+			demos: [demo("d1"), demo("d2"), demo("d3")],
+			comments: comments as never,
+			newComments: { d1: 2, d2: 1, d3: 0 },
+		});
+		const two = within(tileOf("Take d1")).getByLabelText("2 new comments");
+		expect(two.textContent).toBe("2");
+		expect(two.getAttribute("title")).toBe("2 new comments");
+		expect(within(tileOf("Take d2")).getByLabelText("1 new comment").textContent).toBe("1");
+		expect(within(tileOf("Take d3")).queryByLabelText(/new comment/)).toBeNull();
+	});
+
+	test("the open demo's tile shows neither; onseen fires once for a demo with new comments, not for one without", async () => {
+		const onseen = vi.fn();
+		render(DemoPanel, {
+			demos: [demo("d1"), demo("d2")],
+			comments: comments as never,
+			newComments: { d1: 2 },
+			onseen,
+		});
+		await fireEvent.click(screen.getByRole("button", { name: "Play Take d2" }));
+		expect(onseen).not.toHaveBeenCalled();
+		await fireEvent.click(screen.getByRole("button", { name: "Play Take d1" }));
+		expect(onseen).toHaveBeenCalledTimes(1);
+		expect(onseen).toHaveBeenCalledWith({ id: "d1" });
+		const open = tileOf("Take d1");
+		expect(open.textContent).not.toContain("comment");
+		expect(within(open).queryByLabelText(/new comment/)).toBeNull();
+		// Pausing and playing the same demo again is not opening it again.
+		await fireEvent.click(screen.getByRole("button", { name: "Pause Take d1" }));
+		await fireEvent.click(screen.getByRole("button", { name: "Play Take d1" }));
+		expect(onseen).toHaveBeenCalledTimes(1);
+		// The other tile, no longer open, counts its comments again.
+		expect(tileOf("Take d2").textContent).toContain("1 comment");
+	});
+
+	test("show() (a ?demo= link) opens the demo and reports it seen", async () => {
+		const onseen = vi.fn();
+		const { component } = render(DemoPanel, {
+			demos: [demo("d1")],
+			newComments: { d1: 3 },
+			onseen,
+		});
+		(component as unknown as { show: (id: string) => void }).show("d1");
+		expect(onseen).toHaveBeenCalledWith({ id: "d1" });
+	});
+});

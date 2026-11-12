@@ -1,8 +1,8 @@
-import { form, getRequestEvent } from "$app/server";
+import { command, form, getRequestEvent } from "$app/server";
 import { parsePosition } from "#lib/audio/measures.js";
 import { accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
 import { background } from "#lib/server/background.js";
-import { notifyComment } from "#lib/server/notifications.js";
+import { markDemoCommentsRead, notifyComment } from "#lib/server/notifications.js";
 import {
 	commentOwnership,
 	createComment as create,
@@ -13,7 +13,11 @@ import {
 	updateComment as update,
 } from "#lib/server/data.js";
 import { parseTime } from "#lib/utils/parseTime.js";
-import { CommentCreateSchema, CommentUpdateSchema } from "#lib/val/CommentSchema.js";
+import {
+	CommentCreateSchema,
+	CommentUpdateSchema,
+	DemoCommentsSeenSchema,
+} from "#lib/val/CommentSchema.js";
 import { IdSchema } from "#lib/val/SongSchema.js";
 import { error, invalid } from "@sveltejs/kit";
 
@@ -101,4 +105,14 @@ export const deleteComment = form(IdSchema, async ({ id }) => {
 		error(403, "Only the author or an admin can delete a comment");
 	await remove(id);
 	return { deleted: true };
+});
+
+/** The Demos view opened a demo (docs/notifications.md): the person's notifications of its comments are read, and its bubble goes. */
+export const markDemoCommentsSeen = command(DemoCommentsSeenSchema, async ({ songId, demoId }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	await memberOf(locals, accountOfSong, songId, { viewers: true });
+	const demo = await demoOwnership(demoId);
+	if (demo?.songId !== songId) error(404, "Demo not found");
+	await markDemoCommentsRead(user.id, songId, demoId);
 });
