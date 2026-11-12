@@ -222,6 +222,17 @@ remembered per browser, on/off is not (a click nobody asked for is a
 shock). The dev hook `window.__click` carries it for the browser test
 (`tests/e2e/click.spec.ts`).
 
+**The plan reads the clock, never the last frame (2026-11-12).** When the
+origin moves, the plan starts from the playhead. That is `engine.playhead()`,
+the position computed from the context clock at that instant, not
+`engine.position`, which is the same value as of the last animation frame.
+At a loop's turn the scheduler's 25 ms timer can fire before the next frame,
+while `position` still sits at the loop's end; planning from it put the next
+beat past the loop, and the click was silent for that whole pass and came
+back at the next turn (Kevin, looping a section with the click on). A
+background tab, where frames stop, made it certain. `stemClick.svelte.test.ts`
+turns a loop with a stale position and counts the clicks.
+
 ## Loop (2026-10-17)
 
 A stretch of the song can be selected and looped (Kevin: a section's

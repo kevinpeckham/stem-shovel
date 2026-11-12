@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The click no longer drops out for a pass of a loop.** At a loop's
+  turn the click planned its next beat from `engine.position`, which is
+  only as fresh as the last animation frame; when the scheduler's timer
+  fired first, the plan started past the loop's end and no beat sounded
+  until the next turn. It now reads `engine.playhead()`, the position
+  from the context clock (docs/stem-engine.md, "The click"). The click's
+  first tests reproduce it.
+
 ## [0.264.1] - 2026-11-12
 
 ### Changed

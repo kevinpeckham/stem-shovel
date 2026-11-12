@@ -210,8 +210,11 @@ export class StemClick {
 		if (shift > SHIFT_S) {
 			this.#clear();
 			this.#origin = origin;
-			// Before the stems start (a count-in), the playhead is ahead of the clock: plan from it.
-			const pos = Math.max(0, ctx.currentTime - origin, engine.position);
+			// Before the stems start (a count-in), the playhead is ahead of the clock: plan from it. The
+			// playhead is read from the clock now (`playhead()`), not from `position`, which is as old as
+			// the last animation frame: at a loop's turn it still sat at the loop's end, the plan started
+			// past it, and the click fell silent for that whole pass of the loop.
+			const pos = Math.max(0, ctx.currentTime - origin, engine.playhead());
 			this.#next = nextBeatAt(grid, pos).at;
 		} else if (shift > DRIFT_S) this.#origin = origin;
 		while (this.#next !== null && this.#next <= engine.duration) {

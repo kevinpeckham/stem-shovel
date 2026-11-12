@@ -1186,7 +1186,6 @@ export class StemEngine {
 
 	// ---- internals ---------------------------------------------------------
 
-	/** Where the playhead is right now, derived from the context clock. */
 	/**
 	 * The context's time at which song second `seconds` sounds, while
 	 * playing: the click (stemClick.svelte.ts) schedules its beats on it, so
@@ -1206,6 +1205,15 @@ export class StemEngine {
 		}
 		const pass = this.#activePass();
 		return pass ? pass.when + (seconds - pass.from) : this.#startedAt + (seconds - this.#offset);
+	}
+	/**
+	 * Where the playhead is this instant, read from the context clock:
+	 * `position` is the same value as of the last animation frame, which is
+	 * stale between frames and stops moving in a background tab. Anything that
+	 * plans against the clock (the click, at a loop's turn) reads this.
+	 */
+	playhead(): number {
+		return this.#currentPosition();
 	}
 	/** The engine's own context, for anything that must sound on its clock (the click); null before the first load. */
 	get audioContext(): AudioContext | null {

@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **The metronome no longer cuts out while looping a section.** With the
+  click on and a section looping, the click could go silent for one pass
+  of the loop and come back on the next. It now stays in.
+
 ## [0.264.1] - 2026-11-12
 
 ### Changed
