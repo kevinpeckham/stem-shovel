@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.264.1] - 2026-11-12
+
 ### Changed
 
 - **The sign-in link in the header reads "Sign In"** on screens wider

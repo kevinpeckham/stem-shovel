@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.264.1] - 2026-11-12
+
 ### Changed
 
 - **The nav's sign-in link reads "Sign In" above phone width**, with no
