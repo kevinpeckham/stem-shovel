@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.264.0] - 2026-11-12
+
 ### Added
 
 - **An arrangement's own tempo, key, time signature, start of bar 1 and
