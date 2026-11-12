@@ -19,9 +19,9 @@ const memberships = [
 ];
 
 describe("GlobalNav", () => {
-	test("a visitor sees Sign in with a way back to the page", () => {
+	test("a visitor sees Sign In with a way back to the page", () => {
 		render(GlobalNav, { props: { user: null, memberships: [] } });
-		expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+		expect(screen.getByRole("link", { name: "Sign In" })).toHaveAttribute(
 			"href",
 			"/sign-in?next=%2Fdocs",
 		);

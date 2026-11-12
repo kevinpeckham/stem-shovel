@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The nav's sign-in link reads "Sign In" above phone width**, with no
+  icon; a phone keeps the icon alone (`GlobalNav.svelte`).
+
 ## [0.264.0] - 2026-11-12
 
 ### Added
