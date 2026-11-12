@@ -3440,3 +3440,16 @@ quality counts, the half-diminished in the same seven of twelve, the
 modern songs unmoved. The quality lost on jazz-shaped guitar is not lost
 by deferring to the hint; the prompt studies have moved what a prompt can
 move, and the remaining gap is in the transcribed notes.
+
+## A transcribed bass line is not right often enough to show a bassist, yet (2026-11-12)
+
+stem-bench Study 48, on six of Kevin's songs with MIDI truth (598 bars):
+Basic Pitch writes a third of bass notes an octave up (all upward, the
+second harmonic), and a bass-range, lowest-note, one-at-a-time filter
+removes most of that for free. What remains is onsets: one note in five
+missed and a fifth to a half again as many extra onsets as the part has,
+so only 25 % to 39 % of bars are entirely right on five songs and 71 % on
+the one steady eighth-note part. pYIN fixes the octave and loses notes;
+not a fix. Next lever: merging same-pitch re-triggers inside a sixteenth
+and a ghost-note floor (docs/bench-brief-bass-transcription-2026-11-12.md,
+the bench's answer).

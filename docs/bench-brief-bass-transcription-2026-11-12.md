@@ -88,3 +88,64 @@ weigh whether a second model in the jobs function is worth one part.
 
 $3. Hand transcription is the expensive part: keep it to what Ask D
 needs to mean something, and say how many bars that was.
+
+---
+
+## The bench's answer (2026-11-12; stem-bench Study 48, docs/BRIEF-STUDY48.md, $0)
+
+**No, not yet.** On six of Kevin's songs with MIDI truth for the bass
+(Peaceful Dreams, Interbellum, Letter Lands, Eat All the Clocks, Mop
+Heart; Downline from Ghost Ghost), 598 bars and 1,999 notes, no pipeline
+writes a line that is entirely right in 70 % of bars and wrong in at most
+10 %, on every song. Kevin's MIDI replaced the hand transcription, so the
+$3 was not spent. The numbers, Basic Pitch as the app runs it unless
+said:
+
+**Ask A.** Note-level F with onset within 50 ms and the exact pitch:
+0.57 to 0.79 by song; on pitch class alone 0.61 to 0.82. The octave
+error rate is 12 % to 38 %, every error upward (the second harmonic),
+worst in E1 to A1 on four of six songs. The rest of the loss is onsets:
+one in six to one in four of the part's notes get no onset, and the
+transcription adds a fifth to a half again as many onsets as the part
+has, mostly re-triggers inside a sustained or decaying note.
+
+**Ask B.** The cheap constraint (pitch 28 to 60, one note at a time
+keeping the lowest, none under 60 ms) lifts exact F to 0.70 to 0.85 and
+cuts the octave errors to 4 % to 15 %: take it, it is a filter. pYIN
+(librosa, fmin 30 Hz) misses the octave on at most 2 % of notes but
+finds fewer notes and adds more extras; it grades below Basic Pitch on
+four of six songs. A second model is not the fix; CREPE was not tried.
+
+**Ask C.** On the app's own stored beats (Downline on the bench's Beat
+This reading of the band's mix), with a sixteenth or an eighth-note
+triplet per beat chosen per bar from the line's own onsets (triplet only
+when it fits the onsets under 0.8 of the straight grid's residual, two
+onsets at least), and notes under 0.4 of a sixteenth dropped: 74 % to
+95 % of the part's notes land on the right slot on the five 4/4 and 3/4
+songs, 64 % on Downline, whose 5/4 and 3/4 bars the tracker reads on the
+other subdivision 23 times in 186. Quantization is not where the line is
+lost.
+
+**Ask D.** Bars entirely right (every pitch, octave and slot, no extra
+onset): Peaceful Dreams 34 %, Interbellum 25 %, Letter Lands 71 %, Eat
+All the Clocks 35 %, Downline 29 %, Mop Heart 38 %; wrong (two errors or
+more): 18 % to 54 %. The bench's judgment as a player: a line helps when
+it is right in two bars of three and wrong in under one in ten; only
+Letter Lands, a steady eighth-note part at 132, comes near, and its 18 %
+wrong bars would still mislead. What predicts it in the stem is how much
+the transcription over-segments: the share of transcribed onsets with no
+note of the part behind them tracks the bar failure song by song, and
+the app could measure a proxy without truth (transcribed notes starting
+within a sixteenth of another of the same pitch class). The bench has
+not tested that proxy.
+
+**What would have to change.** The onsets, not the pitch: a rule that
+merges a re-trigger of the same pitch inside a sixteenth of a sounding
+note, and a ghost-note floor by loudness, would address the largest
+failure class, and the bench can measure both against the same truth
+on request. The stems here are Logic's rendering of the MIDI by a
+sampled bass, clean and exact; a miked bass would do worse on every row.
+The written `Bs` lines for every song and pipeline, and the truth's,
+are in stem-bench results/study48-lines/ and parse in barmark 0.17 with
+no error, so what the app would show from perfect notes sits beside what
+it would show today.
