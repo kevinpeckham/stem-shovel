@@ -3431,3 +3431,12 @@ bars. The bench recommends the prompt treat the hint's root as reliable
 and its quality as advisory for sevenths and diminished chords, the
 sentence to be tested in a paired study
 (docs/bench-note-hint-ceiling-2026-11-11.md).
+
+## Telling the model the hint's quality is advisory changes nothing (2026-11-12)
+
+stem-bench Study 47 put Study 46's finding into the hint sentence and
+drafted the 22 paired items again: 19 of 22 drafts unchanged in root and
+quality counts, the half-diminished in the same seven of twelve, the
+modern songs unmoved. The quality lost on jazz-shaped guitar is not lost
+by deferring to the hint; the prompt studies have moved what a prompt can
+move, and the remaining gap is in the transcribed notes.
