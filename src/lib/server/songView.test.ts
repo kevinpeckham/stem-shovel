@@ -40,6 +40,30 @@ beforeEach(() => {
 });
 
 describe("songView", () => {
+	it("serves the settings getSong put in force: an alternate's own, off the timing map", async () => {
+		const own = [{ kind: "tempo", start: 0, value: "90" }];
+		const view = await songView(
+			row({
+				changes: own,
+				startAt: 3,
+				endAt: null,
+				useChartTiming: false,
+				settingsOwn: true,
+				songSpan: { startAt: 1.5, endAt: 200 },
+				arrangementId: "arr1",
+			}),
+		);
+		expect(view.song).toMatchObject({
+			changes: own,
+			startAt: 3,
+			endAt: null,
+			useChartTiming: false,
+			settingsOwn: true,
+			songSpan: { startAt: 1.5, endAt: 200 },
+			arrangementId: "arr1",
+		});
+	});
+
 	it("carries the chart's source, null when the chart is the band's own", async () => {
 		const source = { kind: "stems", at: "2026-11-10T12:00:00.000Z" };
 		expect((await songView(row({ chartSource: source }))).song.chartSource).toEqual(source);

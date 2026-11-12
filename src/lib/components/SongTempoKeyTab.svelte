@@ -19,6 +19,8 @@
 	import { barGrid, barSecondsAt, type BarGrid } from "#lib/audio/measures.js";
 	import { SONG_CHANGE_KINDS, SONG_CHANGE_LABELS } from "#lib/constants/songChanges.js";
 	import { MAIN_ONLY } from "#lib/constants/arrangements.js";
+	import ArrangementSettingsLine from "#lib/components/ArrangementSettingsLine.svelte";
+	import ArrangementSpanForm from "#lib/components/ArrangementSpanForm.svelte";
 	import type { SongCheck } from "#lib/state/songCheck.svelte.js";
 	import type { SongChordDraft } from "#lib/state/songChordDraft.svelte.js";
 	import { POSITION_PLACEHOLDER, type SongChanges } from "#lib/state/songChanges.svelte.js";
@@ -68,6 +70,11 @@
 		onstartset?: () => void;
 		/** The player shows an alternate arrangement: Scan stems and Detect chords read and write Main's until phase 3 (docs/arrangements.md). */
 		onAlternate?: boolean;
+		/** The alternate shown (null for Main): its settings line, its own start and end, and where "Use as start of bar 1" writes. */
+		arrangementId?: string | null;
+		/** The alternate has settings of its own (docs/arrangements.md, "Settings of its own"); `startAt` and `endAt` are then its own. */
+		settingsOwn?: boolean;
+		endAt?: number | null;
 	}
 
 	let {
@@ -89,6 +96,9 @@
 		startAt,
 		onstartset,
 		onAlternate = false,
+		arrangementId = null,
+		settingsOwn = false,
+		endAt = null,
 	}: Props = $props();
 
 	/** The declared grid's bar at the start (the song's tempo and meter, not the followed map). */
@@ -132,7 +142,7 @@
 	/** The placement's bar one and tempo become the song's start of bar 1 and tempo; the rows show the new tempo. */
 	const usePlacement = (placement: ChartlessGrid) =>
 		timingAction(
-			() => useChartlessGrid({ id: songId, ...chartlessGridUse(placement) }),
+			() => useChartlessGrid({ id: songId, arrangementId, ...chartlessGridUse(placement) }),
 			({ startAt: at, bpm }) => {
 				changes.reset();
 				onstartset?.();
@@ -148,6 +158,9 @@
 </script>
 
 <div>
+	{#if arrangementId}
+		<ArrangementSettingsLine {arrangementId} own={settingsOwn} onreset={changes.reset} />
+	{/if}
 	{@render actionsRow()}
 	{#if onAlternate}
 		<p class="mt-1 text-sm text-dim">
@@ -181,6 +194,12 @@
 		</button>
 		<button class="link-dim text-xs" type="button" onclick={changes.reset}>Discard edits</button>
 	</div>
+	{#if arrangementId}
+		<!-- Remounted when the arrangement gains or drops settings of its own, so the entries show what is in force. -->
+		{#key settingsOwn}
+			<ArrangementSpanForm {arrangementId} span={{ startAt, endAt }} {changes} {engine} />
+		{/key}
+	{/if}
 	{@render barTiming()}
 </div>
 
@@ -188,8 +207,15 @@
 {#snippet barTiming()}
 	<div class="mt-5 border-t border-current/20 pt-3" data-chart-timing>
 		<h3 class="text-15px font-700">Bar timing</h3>
-		<p class="mt-1 text-sm opacity-90">{timingMapLine(timing, declared)}</p>
-		{#if timing}
+		{#if settingsOwn}
+			<p class="mt-1 text-sm opacity-90">
+				This arrangement counts bars on its own tempo and start of bar 1. The chart's timing map was
+				made for the Main arrangement's recording.
+			</p>
+		{:else}
+			<p class="mt-1 text-sm opacity-90">{timingMapLine(timing, declared)}</p>
+		{/if}
+		{#if timing && !settingsOwn}
 			<div class="mt-2 flex flex-wrap items-center gap-3">
 				<button
 					class="button button-xs"
@@ -237,10 +263,12 @@
 				<button
 					class="button button-xs"
 					type="button"
-					disabled={check.aiBusy || !hasScore}
-					title={hasScore
-						? "Send the rendered mix and the chart to a model that reads it beside the recording and places its keys, time signature and tempo marks"
-						: "Write the song's chart in the Chart tab, or attach its score (a MusicXML file, or a PDF or image marked as notation), first: the AI reads it beside the mix"}
+					disabled={check.aiBusy || !hasScore || onAlternate}
+					title={onAlternate
+						? MAIN_ONLY
+						: hasScore
+							? "Send the rendered mix and the chart to a model that reads it beside the recording and places its keys, time signature and tempo marks"
+							: "Write the song's chart in the Chart tab, or attach its score (a MusicXML file, or a PDF or image marked as notation), first: the AI reads it beside the mix"}
 					onclick={check.askAi}
 				>
 					<span class="i-ph-sparkle" aria-hidden="true"></span>

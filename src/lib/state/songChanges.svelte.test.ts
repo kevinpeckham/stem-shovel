@@ -69,6 +69,22 @@ describe("SongChanges", () => {
 		expect(saveChanges).not.toHaveBeenCalled();
 	});
 
+	test("on an alternate the save carries the arrangement: the rows become its own", async () => {
+		const song = { id: "song1", arrangementId: "arr1", changes: [] as SongChange[] };
+		const sc = new SongChanges({
+			song: () => song,
+			posCtx: () => ({ fps: 25, grid: null }),
+			onsaved: async () => {},
+		});
+		sc.rows = [{ time: "0:00.0", shown: "", seconds: null, kind: "tempo", value: "96" }];
+		await sc.save();
+		expect(saveChanges).toHaveBeenCalledWith({
+			id: "song1",
+			arrangementId: "arr1",
+			changes: [{ kind: "tempo", start: 0, value: "96" }],
+		});
+	});
+
 	test("save keeps an untouched row's exact seconds, refreshes and says so", async () => {
 		const { sc, onsaved } = make([
 			{ kind: "tempo", start: 0, value: "120" },
@@ -79,6 +95,7 @@ describe("SongChanges", () => {
 		await sc.save();
 		expect(saveChanges).toHaveBeenCalledWith({
 			id: "song1",
+			arrangementId: null,
 			changes: [
 				{ kind: "tempo", start: 0, value: "120" },
 				{ kind: "meter", start: 0, value: "4/4" },
@@ -153,6 +170,7 @@ describe("SongChanges", () => {
 		await sc.save();
 		expect(saveChanges).toHaveBeenLastCalledWith({
 			id: "song1",
+			arrangementId: null,
 			changes: [
 				{ kind: "tempo", start: 0, value: "120" },
 				{ kind: "meter", start: 0, value: "6/8" },

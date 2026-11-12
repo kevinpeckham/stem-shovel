@@ -16,6 +16,8 @@
 	interface Props {
 		comments: SongComments;
 		songId: string;
+		/** The alternate arrangement shown, so a position typed in bars is read on its grid (docs/arrangements.md); null for Main. */
+		arrangementId?: string | null;
 		/** Positions in the readout's format, and the placeholder for it. */
 		changes: SongChanges;
 		/** The Stem Player's engine, once it has one. */
@@ -25,7 +27,15 @@
 		/** A comment was posted: the page opens the Comments panel. */
 		onposted: () => void;
 	}
-	let { comments, songId, changes, engine, demoPanel, onposted }: Props = $props();
+	let {
+		comments,
+		songId,
+		arrangementId = null,
+		changes,
+		engine,
+		demoPanel,
+		onposted,
+	}: Props = $props();
 	let placeholder = $derived(comments.draft.demoId ? "0:00.0" : POSITION_PLACEHOLDER[changes.mode]);
 	/** A demo's playhead is the demo panel's, as time; the song's is the engine's, in the readout's format. */
 	let playhead = $derived(
@@ -76,6 +86,7 @@
 			})}
 		>
 			<input {...remoteForm.fields.id.as("hidden", comments.draft.id)} />
+			<input {...remoteForm.fields.arrangementId.as("hidden", arrangementId ?? "")} />
 			<CommentFields
 				fields={remoteForm.fields}
 				draft={comments.draft}
@@ -103,6 +114,7 @@
 			})}
 		>
 			<input {...remoteForm.fields.songId.as("hidden", songId)} />
+			<input {...remoteForm.fields.arrangementId.as("hidden", arrangementId ?? "")} />
 			<input {...remoteForm.fields.demoId.as("hidden", comments.draft.demoId)} />
 			<CommentFields
 				fields={remoteForm.fields}

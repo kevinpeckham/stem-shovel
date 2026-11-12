@@ -1,6 +1,7 @@
 import { SONG_CHANGE_KINDS } from "#lib/constants/songChanges.js";
 import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
 import * as v from "valibot";
+import { ArrangementRefSchema } from "./ArrangementSchema";
 
 export const SongChangeKindSchema = v.picklist(SONG_CHANGE_KINDS);
 
@@ -29,8 +30,9 @@ export const SongChangesSchema = v.pipe(
 	v.maxLength(MAX_SONG_CHANGES, `At most ${MAX_SONG_CHANGES} changes.`),
 );
 
-/** Argument of the saveChanges command. */
+/** Argument of the saveChanges command: the song, its changes, and the arrangement they are for (null or absent for Main, the song's own). */
 export const SongChangesSaveSchema = v.object({
 	id: v.pipe(v.string(), v.minLength(1)),
 	changes: SongChangesSchema,
+	arrangementId: ArrangementRefSchema,
 });

@@ -96,7 +96,12 @@
 	let mode = $derived(changes.mode);
 	const showPos = (seconds: number) => formatPosition(mode, seconds, posCtx);
 	/** The settings form (settings' Details tab): its entries, the start and end positions, and the credits. */
-	const details = new SongDetails({ song: () => data.song, changes, onsaved: refreshAll });
+	const details = new SongDetails({
+		// The song's own start and end: on an alternate the form carries them unchanged (its own are in Tempo & key).
+		song: () => ({ ...data.song, ...data.song.songSpan }),
+		changes,
+		onsaved: refreshAll,
+	});
 
 	/** The per-stem actions (the row menu, the pending list, the order) and the stems-changed version offer. */
 	const stemActions = new StemActions({ song: () => data.song, onsaved: refreshAll });
@@ -314,6 +319,7 @@
 	/** Detect chords and the AI's chart draft (the Tempo & key tab, the Docs panel's ⋯ menu and draft card). */
 	const chordDraft = new SongChordDraft({
 		songId: () => data.song.id,
+		arrangementId: () => data.song.arrangementId,
 		engine: () => playerEngine,
 		grid: () => posCtx.grid,
 		aiAvailable: () => data.aiAvailable,
@@ -820,6 +826,7 @@
 	<SongCommentPopover
 		{comments}
 		songId={data.song.id}
+		arrangementId={data.song.arrangementId}
 		{changes}
 		engine={playerEngine}
 		{demoPanel}

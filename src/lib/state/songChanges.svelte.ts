@@ -34,8 +34,8 @@ interface ChangeRow {
 
 /** What the page supplies: the song, the position context and what to do after a save. */
 export interface SongChangesOptions {
-	/** The song's id and its saved changes (the page's data, so a function). */
-	song: () => { id: string; changes: SongChange[] };
+	/** The song's id, its saved changes and the arrangement shown (null or absent for Main): the page's data, so a function. */
+	song: () => { id: string; changes: SongChange[]; arrangementId?: string | null };
 	/** The frame rate and the bar grid positions read and are typed against. */
 	posCtx: () => { fps: number; grid: BarGrid | null };
 	/** After a save: the page's data again (refreshAll). */
@@ -159,7 +159,9 @@ export class SongChanges {
 		}
 		this.saving = true;
 		try {
-			await saveChanges({ id: this.#opts.song().id, changes: parsed });
+			const { id, arrangementId = null } = this.#opts.song();
+			// On an alternate the rows are its own (docs/arrangements.md, "Settings of its own").
+			await saveChanges({ id, changes: parsed, arrangementId });
 			await this.#opts.onsaved();
 			this.reset();
 			notify("Tempo, key and time signature saved");

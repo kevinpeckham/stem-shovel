@@ -31,20 +31,21 @@ async function resolvePosition(
 	songId: string,
 	text: string,
 	timeOnly = false,
+	arrangementId: string | null = null,
 ): Promise<number | null | "invalid"> {
 	if (!text) return null;
 	if (timeOnly) {
 		const seconds = parseTime(text);
 		return seconds === null ? "invalid" : seconds;
 	}
-	const ctx = await songGrid(songId);
+	const ctx = await songGrid(songId, arrangementId);
 	const seconds = ctx ? parsePosition(text, ctx) : null;
 	return seconds === null ? "invalid" : seconds;
 }
 
 export const createComment = form(
 	CommentCreateSchema,
-	async ({ songId, mixId, demoId, title, body, position }, issue) => {
+	async ({ songId, mixId, demoId, title, body, position, arrangementId }, issue) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		// A viewer may comment: that is what the role is for.
@@ -54,7 +55,7 @@ export const createComment = form(
 		if (mixId && mix?.songId !== songId) error(404, "Mix not found");
 		const demo = demoId ? await demoOwnership(demoId) : null;
 		if (demoId && demo?.songId !== songId) error(404, "Demo not found");
-		const at = await resolvePosition(songId, position, !!demoId);
+		const at = await resolvePosition(songId, position, !!demoId, arrangementId || null);
 		if (at === "invalid") invalid(issue.position(demoId ? TIME_HELP : POSITION_HELP));
 		const row = await create(accountId, songId, user.id, {
 			title,
@@ -73,7 +74,7 @@ export const createComment = form(
 
 export const updateComment = form(
 	CommentUpdateSchema,
-	async ({ id, title, body, position }, issue) => {
+	async ({ id, title, body, position, arrangementId }, issue) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		const own = await commentOwnership(id);
@@ -81,7 +82,7 @@ export const updateComment = form(
 		// Still allowed to see the song (a viewer who left the project is not), then the author.
 		await memberOf(locals, accountOfSong, own.songId, { viewers: true });
 		if (own.userId !== user.id) error(403, "Only the author can edit a comment");
-		const at = await resolvePosition(own.songId, position, !!own.demoId);
+		const at = await resolvePosition(own.songId, position, !!own.demoId, arrangementId || null);
 		if (at === "invalid") invalid(issue.position(POSITION_HELP));
 		await update(id, { title, body, at }, user.id);
 		return { id };

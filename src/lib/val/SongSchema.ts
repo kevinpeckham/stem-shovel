@@ -4,6 +4,7 @@ import { FADER_MAX } from "../constants/fader";
 import { ArrangementRefSchema } from "./ArrangementSchema";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
+import { SecondsFieldSchema } from "./SecondsFieldSchema";
 import { SlugSchema } from "./SlugSchema";
 import { SongDocSaveKindSchema } from "./SongDocKindSchema";
 
@@ -27,14 +28,8 @@ export const SongSettingsSchema = v.object({
 		"",
 	),
 	/** Start of bar 1 and the song's end, typed in any position format; the page converts to seconds. */
-	startAt: v.optional(
-		v.union([v.literal(""), v.pipe(v.string(), v.trim(), v.decimal("Not a time."))]),
-		"",
-	),
-	endAt: v.optional(
-		v.union([v.literal(""), v.pipe(v.string(), v.trim(), v.decimal("Not a time."))]),
-		"",
-	),
+	startAt: SecondsFieldSchema,
+	endAt: SecondsFieldSchema,
 	/** Semantic version, user-managed: "1.2.3". */
 	version: v.optional(SongVersionSchema, "0.0.1"),
 	/** Frame rate for timecode, as a string from a select. */

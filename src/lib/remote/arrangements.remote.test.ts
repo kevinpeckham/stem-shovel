@@ -88,6 +88,24 @@ describe("editor-gated functions", () => {
 			args: [ACCOUNT, SONG, [OTHER, ARRANGEMENT]],
 			outcome: { ids: [OTHER, ARRANGEMENT] },
 		},
+		{
+			name: "saveArrangementSpan",
+			fn: arrangements.saveArrangementSpan,
+			input: { id: ARRANGEMENT, startAt: "2.5", endAt: "" },
+			arrange: () => data.updateArrangementSpan.mockResolvedValue(true),
+			dataFn: "updateArrangementSpan",
+			args: [ACCOUNT, ARRANGEMENT, { startAt: 2.5, endAt: null }],
+			outcome: { id: ARRANGEMENT },
+		},
+		{
+			name: "useSongSettings",
+			fn: arrangements.useSongSettings,
+			input: { id: ARRANGEMENT },
+			arrange: () => data.clearArrangementSettings.mockResolvedValue(true),
+			dataFn: "clearArrangementSettings",
+			args: [ACCOUNT, ARRANGEMENT],
+			outcome: undefined,
+		},
 	];
 	for (const c of cases) {
 		const run = () => {
@@ -170,5 +188,25 @@ describe("what the data layer refuses", () => {
 			httpError(404),
 		);
 		expect(data.deleteArrangement).not.toHaveBeenCalled();
+	});
+});
+
+describe("an arrangement's own settings", () => {
+	beforeEach(() => asEditorOf(ACCOUNT));
+	it("404 when the arrangement is gone", async () => {
+		data.updateArrangementSpan.mockResolvedValue(false);
+		await expect(
+			call(arrangements.saveArrangementSpan, { id: ARRANGEMENT, startAt: "1", endAt: "" }),
+		).rejects.toMatchObject(httpError(404));
+		data.clearArrangementSettings.mockResolvedValue(false);
+		await expect(call(arrangements.useSongSettings, { id: ARRANGEMENT })).rejects.toMatchObject(
+			httpError(404),
+		);
+	});
+	it("a start or end that is not a time is refused, as on the song's form", async () => {
+		await expect(
+			call(arrangements.saveArrangementSpan, { id: ARRANGEMENT, startAt: "soon", endAt: "" }),
+		).rejects.toThrow();
+		expect(data.updateArrangementSpan).not.toHaveBeenCalled();
 	});
 });

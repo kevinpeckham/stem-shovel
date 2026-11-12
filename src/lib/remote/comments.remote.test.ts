@@ -79,6 +79,19 @@ describe("createComment", () => {
 		);
 		expect(data.songGrid).not.toHaveBeenCalled();
 	});
+	it("a position typed on an alternate arrangement is read on that arrangement's grid", async () => {
+		asViewerOf(ACCOUNT);
+		const ARRANGEMENT = fakeId("arrangement-one");
+		data.songGrid.mockResolvedValue(null);
+		await call(comments.createComment, {
+			...input,
+			position: "1:02.5",
+			arrangementId: ARRANGEMENT,
+		}).catch(() => {});
+		expect(data.songGrid).toHaveBeenLastCalledWith(SONG, ARRANGEMENT);
+		await call(comments.createComment, { ...input, position: "1:02.5" }).catch(() => {});
+		expect(data.songGrid).toHaveBeenLastCalledWith(SONG, null);
+	});
 	it("feedback on a mix (docs/mixes.md): the mix must be this song's, and the notice names it", async () => {
 		asViewerOf(ACCOUNT);
 		const MIX = fakeId("mix-one");

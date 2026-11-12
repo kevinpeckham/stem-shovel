@@ -4,6 +4,15 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **An arrangement can have its own tempo.** An alternate arrangement
+  starts on the song's tempo, key, time signature and start of bar 1.
+  Change any of them in the song's settings while on that arrangement and
+  it keeps its own, so the bar and beat counter is right for a version at
+  another tempo or with a different lead-in. "Use the song's settings"
+  puts it back.
+
 ## [0.263.1] - 2026-11-11
 
 ### Changed

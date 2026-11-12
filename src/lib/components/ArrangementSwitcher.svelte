@@ -16,6 +16,8 @@
 		name: string;
 		note: string;
 		creator: { id: string; name: string } | null;
+		/** It has its own tempo, key, time signature and start of bar 1 (docs/arrangements.md, "Settings of its own"). */
+		settingsOwn?: boolean;
 	}
 
 	/**
@@ -38,10 +40,14 @@
 
 	let current = $derived(arrangements.find((a) => a.id === arrangementId) ?? null);
 	let tabs = $derived([{ id: null, name: "Main" }, ...arrangements]);
-	/** Under the row for an alternate: its note and who made it. */
+	/** Under the row for an alternate: its note, who made it, and whether it keeps time of its own. */
 	let about = $derived(
 		current
-			? [current.note, current.creator ? `by ${current.creator.name}` : ""]
+			? [
+					current.note,
+					current.creator ? `by ${current.creator.name}` : "",
+					current.settingsOwn ? "own tempo" : "",
+				]
 					.filter(Boolean)
 					.join(" · ")
 			: "",

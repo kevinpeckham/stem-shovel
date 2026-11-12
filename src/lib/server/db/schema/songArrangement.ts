@@ -31,6 +31,20 @@ export const songArrangement = table(
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		/** What the arrangement is for, in a line ("no drums, capo 2"); shown under its name. */
 		note: t.text("note").notNull().default(""),
+		/**
+		 * The arrangement's own tempo, time signature and key changes
+		 * (docs/arrangements.md, "Settings of its own"): null while it uses the
+		 * song's. Once set, the arrangement stands on these and on its own
+		 * `startAt` and `endAt` below, whatever the song's become; clearing it
+		 * returns the arrangement to the song's settings.
+		 */
+		changes: t
+			.text("changes", { mode: "json" })
+			.$type<import("../../../val/SongChangeSchema").SongChange[]>(),
+		/** With `changes` set: where bar 1 starts in this arrangement's stems, in seconds; null for the start of the audio. */
+		startAt: t.real("start_at"),
+		/** With `changes` set: where this arrangement ends, in seconds; null for the end of the audio. */
+		endAt: t.real("end_at"),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},

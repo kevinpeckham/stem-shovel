@@ -5,6 +5,7 @@ import {
 	MAX_ARRANGEMENTS,
 } from "../constants/arrangements";
 import { NanoIdSchema } from "./NanoIdSchema";
+import { SecondsFieldSchema } from "./SecondsFieldSchema";
 
 /** The starting points a new arrangement copies, besides another alternate's id: Main's stems, or none. */
 export const ARRANGEMENT_SOURCES = ["main", "empty"] as const;
@@ -54,3 +55,11 @@ export type ArrangementOrder = v.InferOutput<typeof ArrangementOrderSchema>;
 
 /** Which arrangement a stem command acts on: an alternate's id, or null (or absent) for Main. */
 export const ArrangementRefSchema = v.optional(v.nullable(NanoIdSchema), null);
+
+/** The saveArrangementSpan form: an alternate's own start of bar 1 and end in seconds ("" for the start or the end of the audio), checked as the song's are. */
+export const ArrangementSpanSchema = v.object({
+	id: NanoIdSchema,
+	startAt: SecondsFieldSchema,
+	endAt: SecondsFieldSchema,
+});
+export type ArrangementSpan = v.InferOutput<typeof ArrangementSpanSchema>;

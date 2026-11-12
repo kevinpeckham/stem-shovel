@@ -7,6 +7,7 @@ const {
 	accountStorageBytes,
 	accountUsage,
 	arrangementOfSong,
+	clearArrangementSettings,
 	createArrangement,
 	createStem,
 	deleteArrangement,
@@ -22,12 +23,15 @@ const {
 	reorderStems,
 	reserveStemReplacement,
 	setDefaultMix,
+	setSongStartAndTempo,
 	songForMix,
 	songsWantingMix,
 	stemsOf,
 	systemOverview,
 	unsharedStemBlobs,
 	updateArrangement,
+	updateArrangementSpan,
+	updateSongChanges,
 } = await import("./data");
 
 /**
@@ -199,6 +203,7 @@ describe("listArrangements and arrangementOfSong", () => {
 				createdAt: at(1),
 				creator: { id: "u1", name: "Uma" },
 				stemCount: 1,
+				settingsOwn: false,
 			},
 			{
 				id: "arr2",
@@ -208,6 +213,7 @@ describe("listArrangements and arrangementOfSong", () => {
 				createdAt: at(2),
 				creator: null,
 				stemCount: 1,
+				settingsOwn: false,
 			},
 		]);
 		expect(await listArrangements("a2", "s1")).toEqual([]);
@@ -540,5 +546,173 @@ describe("mutes and the rendered mix", () => {
 			() => "k",
 		);
 		expect(wanted).toEqual(["some"]);
+	});
+});
+
+/**
+ * An alternate's own tempo, key, time signature, start and end
+ * (docs/arrangements.md, "Settings of its own"): it inherits the song's until
+ * its first save copies them, and from then on stands on its own.
+ */
+describe("settings of its own", () => {
+	const songSettings = {
+		changes: [
+			{ kind: "tempo" as const, start: 0, value: "120" },
+			{ kind: "meter" as const, start: 0, value: "4/4" },
+		],
+		startAt: 1.5,
+		endAt: 200,
+		useChartTiming: true,
+	};
+	const ownSettings = {
+		changes: [{ kind: "tempo" as const, start: 0, value: "90" }],
+		startAt: 3,
+		endAt: null,
+	};
+	const withSettings = (arr1: Record<string, unknown> = {}) =>
+		withAlternates({
+			song: [{ ...s1, ...songSettings }, s2],
+			songArrangement: [
+				arr("arr1", 0, { changes: null, startAt: null, endAt: null, ...arr1 }),
+				arr("arr2", 1, { changes: null, startAt: null, endAt: null }),
+			],
+		});
+	const songRow = () => fake.rows("song").find((r) => r.id === "s1")!;
+	const arr1Row = () => arrangementRows().find((r) => r.id === "arr1")!;
+	const songUntouched = () => {
+		expect(songRow().changes).toEqual(songSettings.changes);
+		expect(songRow().startAt).toBe(1.5);
+		expect(songRow().endAt).toBe(200);
+	};
+
+	test("getSong serves the song's settings on Main and on an alternate that inherits", async () => {
+		withSettings();
+		for (const id of [null, "arr1"]) {
+			const got = (await getSong("a1", "album", "one", id))!;
+			expect(got.changes).toEqual(songSettings.changes);
+			expect(got.startAt).toBe(1.5);
+			expect(got.endAt).toBe(200);
+			expect(got.settingsOwn).toBe(false);
+			expect(got.useChartTiming).toBe(true);
+			expect(got.songSpan).toEqual({ startAt: 1.5, endAt: 200 });
+		}
+	});
+
+	test("getSong serves an alternate's own settings, off the chart's timing map; Main stays the song's", async () => {
+		withSettings(ownSettings);
+		const got = (await getSong("a1", "album", "one", "arr1"))!;
+		expect(got.changes).toEqual(ownSettings.changes);
+		expect(got.startAt).toBe(3);
+		expect(got.endAt).toBeNull();
+		expect(got.settingsOwn).toBe(true);
+		expect(got.useChartTiming).toBe(false);
+		expect(got.songSpan).toEqual({ startAt: 1.5, endAt: 200 });
+		expect(got.arrangements.map((a) => [a.id, a.settingsOwn])).toEqual([
+			["arr1", true],
+			["arr2", false],
+		]);
+		const main = (await getSong("a1", "album", "one"))!;
+		expect(main.changes).toEqual(songSettings.changes);
+		expect(main.settingsOwn).toBe(false);
+		expect(main.useChartTiming).toBe(true);
+	});
+
+	test("a first change on an alternate copies the song's start and end and writes the change; the song row is untouched", async () => {
+		withSettings();
+		const next = [{ kind: "tempo" as const, start: 0, value: "96" }];
+		expect(await updateSongChanges("a1", "s1", next, {}, "arr1")).toEqual({
+			ok: true,
+			changes: next,
+		});
+		expect(arr1Row()).toMatchObject({ changes: next, startAt: 1.5, endAt: 200 });
+		songUntouched();
+		// The song's later edits do not reach it.
+		await updateSongChanges("a1", "s1", [{ kind: "tempo", start: 0, value: "140" }], {
+			startAt: 0,
+		});
+		expect(songRow().changes).toEqual([{ kind: "tempo", start: 0, value: "140" }]);
+		const got = (await getSong("a1", "album", "one", "arr1"))!;
+		expect(got.changes).toEqual(next);
+		expect(got.startAt).toBe(1.5);
+	});
+
+	test("Main's changes are the song's, as before", async () => {
+		withSettings();
+		const next = [{ kind: "key" as const, start: 0, value: "D" }];
+		expect((await updateSongChanges("a1", "s1", next)).ok).toBe(true);
+		expect(songRow().changes).toEqual(next);
+		expect(arr1Row().changes).toBeNull();
+	});
+
+	test("Use as start of bar 1 on an alternate copies the song's changes, sets its tempo and start; the song row is untouched", async () => {
+		withSettings();
+		expect(await setSongStartAndTempo("a1", "s1", 0.75, 100, "arr1")).toBe(true);
+		expect(arr1Row()).toMatchObject({
+			changes: [
+				{ kind: "meter", start: 0, value: "4/4" },
+				{ kind: "tempo", start: 0, value: "100" },
+			],
+			startAt: 0.75,
+			endAt: 200,
+		});
+		songUntouched();
+	});
+
+	test("an alternate's start and end copy the song's changes on the first save; the song row is untouched", async () => {
+		withSettings();
+		expect(await updateArrangementSpan("a1", "arr1", { startAt: 2, endAt: null })).toBe(true);
+		expect(arr1Row()).toMatchObject({ changes: songSettings.changes, startAt: 2, endAt: null });
+		songUntouched();
+		// A later save keeps its own changes, not the song's.
+		await updateSongChanges("a1", "s1", [], {}, "arr1");
+		await updateArrangementSpan("a1", "arr1", { startAt: 4, endAt: 120 });
+		expect(arr1Row()).toMatchObject({ changes: [], startAt: 4, endAt: 120 });
+	});
+
+	test("an edit on an alternate already its own starts from its own values", async () => {
+		withSettings(ownSettings);
+		expect(await setSongStartAndTempo("a1", "s1", 0.5, 70, "arr1")).toBe(true);
+		expect(arr1Row()).toMatchObject({
+			changes: [{ kind: "tempo", start: 0, value: "70" }],
+			startAt: 0.5,
+			endAt: null,
+		});
+		songUntouched();
+	});
+
+	test("the validation refusals hold on an alternate, which keeps inheriting", async () => {
+		withSettings();
+		const twice = [
+			{ kind: "tempo" as const, start: 0, value: "96" },
+			{ kind: "tempo" as const, start: 0, value: "100" },
+		];
+		expect(await updateSongChanges("a1", "s1", twice, {}, "arr1")).toEqual({
+			ok: false,
+			error: "Two tempo changes start at 0s.",
+		});
+		expect(arr1Row().changes).toBeNull();
+	});
+
+	test("another song's or another account's arrangement is refused and nothing is written", async () => {
+		withSettings();
+		const next = [{ kind: "tempo" as const, start: 0, value: "96" }];
+		expect((await updateSongChanges("a1", "s2", next, {}, "arr1")).ok).toBe(false);
+		expect((await updateSongChanges("a2", "s1", next, {}, "arr1")).ok).toBe(false);
+		expect(await setSongStartAndTempo("a1", "s2", 1, 100, "arr1")).toBe(false);
+		expect(await updateArrangementSpan("a2", "arr1", { startAt: 1, endAt: null })).toBe(false);
+		expect(await clearArrangementSettings("a2", "arr1")).toBe(false);
+		expect(arr1Row().changes).toBeNull();
+		expect(arr1Row().startAt).toBeNull();
+		songUntouched();
+	});
+
+	test("Use the song's settings clears the alternate's own; it inherits again", async () => {
+		withSettings(ownSettings);
+		expect(await clearArrangementSettings("a1", "arr1")).toBe(true);
+		expect(arr1Row()).toMatchObject({ changes: null, startAt: null, endAt: null });
+		const got = (await getSong("a1", "album", "one", "arr1"))!;
+		expect(got.changes).toEqual(songSettings.changes);
+		expect(got.settingsOwn).toBe(false);
+		expect(got.useChartTiming).toBe(true);
 	});
 });

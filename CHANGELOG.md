@@ -8,6 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **An arrangement's own tempo, key, time signature, start of bar 1 and
+  end** (docs/arrangements.md, "Settings of its own"; migration 0124). An
+  alternate inherits the song's until one is changed on it, then stands
+  on its own copy; "Use the song's settings" returns it. The page is
+  served the effective values, so the transport counts bars on them. A
+  comment's bar position is read on the arrangement's grid.
+
+### Changed
+
+- "Ask AI to check" is disabled on an alternate, as the stems scan and
+  chord detection are: it listens to Main's mix.
+
 ## [0.263.1] - 2026-11-11
 
 ### Added

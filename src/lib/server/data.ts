@@ -157,6 +157,7 @@ import {
 } from "#lib/val/SongDocKindSchema.js";
 import type { ChartSource } from "#lib/val/ChartSourceSchema.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import { effectiveSongSettings, type SongTimeSettings } from "#lib/utils/effectiveSongSettings.js";
 import type { SongSection } from "#lib/val/SongSectionSchema.js";
 import type { MemberRole } from "#lib/val/MemberRoleSchema.js";
 import type { ProjectRole } from "#lib/val/ProjectRoleSchema.js";
@@ -918,7 +919,38 @@ export async function getSong(
 					where: and(eq(stem.accountId, accountId), eq(stem.songId, row.id), mainStems),
 					orderBy: [asc(stem.sortOrder), asc(stem.createdAt)],
 				});
-	return { ...row, stems, arrangements, arrangementId: served, project: proj };
+	const arrangement = served === null ? null : await arrangementOfSong(accountId, row.id, served);
+	return {
+		...row,
+		...servedSettings(row, arrangement),
+		stems,
+		arrangements,
+		arrangementId: served,
+		project: proj,
+	};
+}
+
+/**
+ * The tempo, key, time signature, start and end the song page serves for
+ * the arrangement shown (docs/arrangements.md, "Settings of its own"): the
+ * song's for Main and for an alternate that inherits them, the alternate's
+ * own otherwise. An alternate with its own settings counts bars on them,
+ * not on the chart's timing map (made for Main's recording). `songSpan` is
+ * the song's own start and end, which the song's settings form carries
+ * unchanged from an alternate.
+ */
+function servedSettings(
+	row: SongTimeSettings & { useChartTiming: boolean },
+	arrangement: Parameters<typeof effectiveSongSettings>[1],
+) {
+	const { own, ...settings } = effectiveSongSettings(row, arrangement);
+	return {
+		...settings,
+		/** True only for an alternate with settings of its own. */
+		settingsOwn: own,
+		useChartTiming: own ? false : row.useChartTiming,
+		songSpan: { startAt: row.startAt, endAt: row.endAt },
+	};
 }
 
 // ---- artists and credits (src/lib/remote/songs.remote.ts) ----------------
@@ -1640,7 +1672,7 @@ export async function listArrangements(accountId: string, songId: string) {
 	const rows = await db.query.songArrangement.findMany({
 		where: and(eq(songArrangement.accountId, accountId), eq(songArrangement.songId, songId)),
 		orderBy: [asc(songArrangement.sortOrder), asc(songArrangement.createdAt)],
-		columns: { id: true, name: true, note: true, sortOrder: true, createdAt: true },
+		columns: { id: true, name: true, note: true, sortOrder: true, createdAt: true, changes: true },
 		with: { creator: { columns: { id: true, name: true } } },
 	});
 	if (rows.length === 0) return [];
@@ -1658,10 +1690,12 @@ export async function listArrangements(accountId: string, songId: string) {
 		)
 		.groupBy(stem.arrangementId);
 	const countOf = new Map(counts.map((c) => [c.arrangementId, Number(c.n)]));
-	return rows.map(({ creator, ...a }) => ({
+	return rows.map(({ creator, changes, ...a }) => ({
 		...a,
 		creator: creator ?? null,
 		stemCount: countOf.get(a.id) ?? 0,
+		/** Its own tempo, key, time signature, start and end, not the song's (docs/arrangements.md, "Settings of its own"). */
+		settingsOwn: (changes ?? null) !== null,
 	}));
 }
 
@@ -1925,12 +1959,73 @@ export async function updateSongSections(
 
 export type SaveChangesResult = { ok: true; changes: SongChange[] } | { ok: false; error: string };
 
-/** Replaces the song's tempo / key / time signature changes: sorted by start, one per kind per time; `also` sets the song's start of bar 1 in the same write. */
+/**
+ * The tempo, key and time signature changes, start and end an edit on
+ * `arrangementId` starts from: the song's for Main (null), else the
+ * alternate's in force (the song's while it inherits them); null when the
+ * song or the arrangement is not this account's.
+ */
+async function songSettingsOf(
+	accountId: string,
+	songId: string,
+	arrangementId: string | null,
+): Promise<SongTimeSettings | null> {
+	const [row, arrangement] = await Promise.all([
+		db.query.song.findFirst({
+			where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+			columns: { changes: true, startAt: true, endAt: true },
+		}),
+		arrangementId === null ? null : arrangementOfSong(accountId, songId, arrangementId),
+	]);
+	if (!row || (arrangementId !== null && !arrangement)) return null;
+	const { changes, startAt, endAt } = effectiveSongSettings(row, arrangement);
+	return { changes, startAt, endAt };
+}
+
+/**
+ * Writes changes and/or a start and end: to the song for Main, or to one of
+ * its alternates. An alternate that still inherits gets the song's three
+ * copied first and the edit on top (copy on write); from then on it stands
+ * on its own and the song's later edits do not reach it. The song row is
+ * never touched for an alternate. Null when the song or the arrangement is
+ * not this account's.
+ */
+async function writeSongSettings(
+	accountId: string,
+	songId: string,
+	arrangementId: string | null,
+	set: Partial<SongTimeSettings>,
+): Promise<SongChange[] | null> {
+	if (arrangementId === null) {
+		const [row] = await db
+			.update(song)
+			.set(set)
+			.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
+			.returning({ changes: song.changes });
+		return row?.changes ?? null;
+	}
+	const current = await songSettingsOf(accountId, songId, arrangementId);
+	if (!current) return null;
+	const next = { ...current, ...set };
+	await db
+		.update(songArrangement)
+		.set(next)
+		.where(and(eq(songArrangement.accountId, accountId), eq(songArrangement.id, arrangementId)));
+	return next.changes;
+}
+
+/**
+ * Replaces the tempo / key / time signature changes: sorted by start, one per
+ * kind per time; `also` sets the start of bar 1 in the same write. The
+ * song's for Main (`arrangementId` null), else the alternate's own
+ * (writeSongSettings).
+ */
 export async function updateSongChanges(
 	accountId: string,
 	songId: string,
 	input: SongChange[],
 	also: { startAt?: number } = {},
+	arrangementId: string | null = null,
 ): Promise<SaveChangesResult> {
 	const changes = input
 		.map((c) => ({
@@ -1944,33 +2039,28 @@ export async function updateSongChanges(
 			return { ok: false, error: `Two ${changes[i].kind} changes start at ${changes[i].start}s.` };
 		}
 	}
-	const [row] = await db
-		.update(song)
-		.set({ changes, ...also })
-		.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
-		.returning({ changes: song.changes });
-	if (!row) return { ok: false, error: "Song not found." };
-	return { ok: true, changes: row.changes };
+	const saved = await writeSongSettings(accountId, songId, arrangementId, { changes, ...also });
+	if (!saved) return { ok: false, error: "Song not found." };
+	return { ok: true, changes: saved };
 }
 
 /**
- * The chartless placement made the song's grid ("Use as start of bar 1"):
- * its start of bar 1 becomes `startAt` and its first tempo `bpm` (a tempo
- * at the start when it has none), in one write. False when the song is not
- * this account's.
+ * The chartless placement made the grid ("Use as start of bar 1"): the start
+ * of bar 1 becomes `startAt` and the first tempo `bpm` (a tempo at the start
+ * when there is none), in one write, on the song or on one of its alternates
+ * (updateSongChanges). False when the song or the arrangement is not this
+ * account's.
  */
 export async function setSongStartAndTempo(
 	accountId: string,
 	songId: string,
 	startAt: number,
 	bpm: number,
+	arrangementId: string | null = null,
 ): Promise<boolean> {
-	const row = await db.query.song.findFirst({
-		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
-		columns: { changes: true },
-	});
-	if (!row) return false;
-	const changes = row.changes;
+	const current = await songSettingsOf(accountId, songId, arrangementId);
+	if (!current) return false;
+	const changes = current.changes;
 	const tempos = changes.filter((c) => c.kind === "tempo");
 	const first = tempos.length ? Math.min(...tempos.map((c) => c.start)) : null;
 	const value = String(bpm);
@@ -1978,31 +2068,74 @@ export async function setSongStartAndTempo(
 		first === null
 			? [...changes, { kind: "tempo" as const, start: 0, value }]
 			: changes.map((c) => (c.kind === "tempo" && c.start === first ? { ...c, value } : c));
-	return (await updateSongChanges(accountId, songId, next, { startAt })).ok;
+	return (await updateSongChanges(accountId, songId, next, { startAt }, arrangementId)).ok;
+}
+
+/**
+ * An alternate's own start of bar 1 and end (the arrangement's "Start and
+ * end" form; null for the start or the end of the audio), copying the song's
+ * tempo, key and time signature onto it if it still inherited them. False
+ * when the arrangement is not this account's.
+ */
+export async function updateArrangementSpan(
+	accountId: string,
+	arrangementId: string,
+	span: { startAt: number | null; endAt: number | null },
+): Promise<boolean> {
+	const row = await db.query.songArrangement.findFirst({
+		where: and(eq(songArrangement.accountId, accountId), eq(songArrangement.id, arrangementId)),
+		columns: { songId: true },
+	});
+	if (!row) return false;
+	return (await writeSongSettings(accountId, row.songId, arrangementId, span)) !== null;
+}
+
+/** "Use the song's settings": the alternate drops its own tempo, key, time signature, start and end. False when it is not this account's. */
+export async function clearArrangementSettings(accountId: string, arrangementId: string) {
+	const [row] = await db
+		.update(songArrangement)
+		.set({ changes: null, startAt: null, endAt: null })
+		.where(and(eq(songArrangement.accountId, accountId), eq(songArrangement.id, arrangementId)))
+		.returning({ id: songArrangement.id });
+	return !!row;
 }
 
 // ---- comments ---------------------------------------------------------------
 
 /** What parsePosition needs to read a typed position for this song. */
-export async function songGrid(songId: string) {
+export async function songGrid(songId: string, arrangementId: string | null = null) {
 	const s = await db.query.song.findFirst({
 		where: eq(song.id, songId),
 		columns: {
 			changes: true,
 			startAt: true,
+			endAt: true,
 			frameRate: true,
 			chartTiming: true,
 			useChartTiming: true,
 			chartMarkdown: true,
 		},
 	});
-	return s
-		? {
-				fps: s.frameRate,
-				// The chart's text numbers a timing map's bars as written, so "at 5 | 1" matches the transport.
-				grid: songBarGrid(s.changes, s.startAt, s.chartTiming, s.useChartTiming, s.chartMarkdown),
-			}
+	if (!s) return null;
+	// On an alternate with settings of its own a position is read on its grid, the one its transport shows (docs/arrangements.md).
+	const own = arrangementId
+		? await db.query.songArrangement.findFirst({
+				where: and(eq(songArrangement.songId, songId), eq(songArrangement.id, arrangementId)),
+				columns: { changes: true, startAt: true, endAt: true },
+			})
 		: null;
+	const served = servedSettings(s, own ?? null);
+	return {
+		fps: s.frameRate,
+		// The chart's text numbers a timing map's bars as written, so "at 5 | 1" matches the transport.
+		grid: songBarGrid(
+			served.changes,
+			served.startAt,
+			s.chartTiming,
+			served.useChartTiming,
+			s.chartMarkdown,
+		),
+	};
 }
 
 export interface CommentInput {

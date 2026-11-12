@@ -65,6 +65,16 @@ describe("ArrangementSwitcher", () => {
 		expect(screen.getByText(/Unplugged take/)).toHaveTextContent("Unplugged take · by Dawn");
 	});
 
+	test("an alternate with settings of its own says so under the row, to a viewer too", () => {
+		const own = [{ ...alternate("alt1", "Acoustic", "Unplugged take"), settingsOwn: true }];
+		render(ArrangementSwitcher, {
+			props: props({ arrangements: own, arrangementId: "alt1", canEdit: false }),
+		});
+		expect(screen.getByText(/Unplugged take/)).toHaveTextContent(
+			"Unplugged take · by Dawn · own tempo",
+		);
+	});
+
 	test("on Main, Main is current and no ⋯ menu shows", () => {
 		render(ArrangementSwitcher, { props: props() });
 		expect(within(nav()).getByRole("link", { name: "Main" })).toHaveAttribute(

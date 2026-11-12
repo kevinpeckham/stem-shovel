@@ -1,14 +1,17 @@
 import { command, form, getRequestEvent } from "$app/server";
 import { accountOfArrangement, accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
 import {
+	clearArrangementSettings,
 	createArrangement as create,
 	deleteArrangement as remove,
 	reorderArrangements as reorder,
 	updateArrangement as update,
+	updateArrangementSpan,
 } from "#lib/server/data.js";
 import {
 	ArrangementCreateSchema,
 	ArrangementOrderSchema,
+	ArrangementSpanSchema,
 	ArrangementUpdateSchema,
 } from "#lib/val/ArrangementSchema.js";
 import { IdSchema } from "#lib/val/SongSchema.js";
@@ -59,4 +62,25 @@ export const reorderArrangements = command(ArrangementOrderSchema, async ({ song
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
 	return { ids: await reorder(accountId, songId, ids) };
+});
+
+/**
+ * An alternate's own start of bar 1 and end, in seconds ("" for the start or
+ * the end of the audio): the song's own settings form carries the song's,
+ * so an alternate's are saved here. The first save gives the alternate
+ * settings of its own (the song's tempo, key and time signature copied).
+ */
+export const saveArrangementSpan = form(ArrangementSpanSchema, async ({ id, startAt, endAt }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfArrangement, id);
+	const span = { startAt: startAt ? Number(startAt) : null, endAt: endAt ? Number(endAt) : null };
+	if (!(await updateArrangementSpan(accountId, id, span))) error(404, "Arrangement not found");
+	return { id };
+});
+
+/** "Use the song's settings": the alternate drops its own tempo, key, time signature, start and end. */
+export const useSongSettings = command(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfArrangement, id);
+	if (!(await clearArrangementSettings(accountId, id))) error(404, "Arrangement not found");
 });

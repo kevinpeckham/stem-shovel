@@ -28,6 +28,8 @@ export const CommentCreateSchema = v.object({
 	title: TitleSchema,
 	body: BodySchema,
 	position: PositionSchema,
+	/** The alternate arrangement the position was typed on, so bars are read on its grid when it has settings of its own (docs/arrangements.md); empty for Main. */
+	arrangementId: v.optional(v.union([NanoIdSchema, v.literal("")]), ""),
 });
 
 /** Form boundary for editing one's own comment. */
@@ -36,6 +38,8 @@ export const CommentUpdateSchema = v.object({
 	title: TitleSchema,
 	body: BodySchema,
 	position: PositionSchema,
+	/** The alternate arrangement the position was typed on, so bars are read on its grid when it has settings of its own (docs/arrangements.md); empty for Main. */
+	arrangementId: v.optional(v.union([NanoIdSchema, v.literal("")]), ""),
 });
 
 export type CommentInput = v.InferOutput<typeof CommentCreateSchema>;

@@ -15,6 +15,7 @@ const h = vi.hoisted(() => ({
 	})),
 	refreshAll: vi.fn(async () => {}),
 	notify: vi.fn(),
+	useSongSettings: vi.fn(async (_input: { id: string }) => {}),
 }));
 vi.mock("#lib/remote/songs.remote.js", () => ({
 	setChartTimingUse: h.setChartTimingUse,
@@ -22,6 +23,10 @@ vi.mock("#lib/remote/songs.remote.js", () => ({
 	useChartlessGrid: h.useChartlessGrid,
 }));
 vi.mock("#lib/remote/files.remote.js", () => ({}));
+vi.mock("#lib/remote/arrangements.remote.js", async () => {
+	const { fakeRemoteForm } = await import("../../../tests/helpers/fakeRemoteForm");
+	return { useSongSettings: h.useSongSettings, saveArrangementSpan: fakeRemoteForm() };
+});
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify: h.notify }));
 vi.mock("$app/navigation", () => ({ refreshAll: h.refreshAll }));
 
@@ -208,7 +213,12 @@ describe("SongTempoKeyTab", () => {
 		const onstartset = vi.fn();
 		render(SongTempoKeyTab, { props: { ...props, onstartset } });
 		await fireEvent.click(screen.getByRole("button", { name: "Use as start of bar 1" }));
-		expect(h.useChartlessGrid).toHaveBeenCalledWith({ id: "song1", startAt: 0.5, bpm: 133.33 });
+		expect(h.useChartlessGrid).toHaveBeenCalledWith({
+			id: "song1",
+			arrangementId: null,
+			startAt: 0.5,
+			bpm: 133.33,
+		});
 		await vi.waitFor(() =>
 			expect(h.notify).toHaveBeenCalledWith("Start of bar 1 set to 0:00.5, tempo 133.33 bpm"),
 		);
@@ -241,5 +251,92 @@ describe("SongTempoKeyTab", () => {
 		changes.rows[1]!.value = "4/4";
 		await vi.waitFor(() => expect(screen.queryByLabelText("Tempo unit")).toBeNull());
 		expect(screen.queryByText(/the tempo counts/)).toBeNull();
+	});
+
+	test("on Main nothing about arrangements shows", () => {
+		const { props } = setup();
+		render(SongTempoKeyTab, { props });
+		expect(document.querySelector("[data-arrangement-settings]")).toBeNull();
+		expect(document.querySelector("[data-arrangement-span]")).toBeNull();
+	});
+
+	test("an alternate that inherits says so, and edits its own start and end here", () => {
+		const { props } = setup();
+		render(SongTempoKeyTab, {
+			props: { ...props, onAlternate: true, arrangementId: "arr1", settingsOwn: false },
+		});
+		expect(
+			document.querySelector("[data-arrangement-settings]")?.textContent?.replace(/\s+/g, " "),
+		).toContain(
+			"This arrangement uses the song's tempo, key, time signature and start of bar 1. Change any of them here to give it its own.",
+		);
+		expect(screen.queryByRole("button", { name: "Use the song's settings" })).toBeNull();
+		expect(screen.getByRole("form", { name: "Arrangement start and end" })).toBeTruthy();
+		expect(screen.getByLabelText("Start of bar 1")).toBeTruthy();
+		expect(screen.getByLabelText("End")).toBeTruthy();
+	});
+
+	test("an alternate with its own settings goes back to the song's after a confirmation; the timing map is not offered", async () => {
+		const timing: TimingMap = {
+			format: "barmark-timing",
+			version: 1,
+			chart: { bars: 2, hash: "h" },
+			source: "aligned",
+			bars: [
+				{ bar: 1, start: 0 },
+				{ bar: 2, start: 2 },
+			],
+			end: 4,
+		};
+		const { props, changes } = setup();
+		const reset = vi.spyOn(changes, "reset");
+		render(SongTempoKeyTab, {
+			props: { ...props, timing, onAlternate: true, arrangementId: "arr1", settingsOwn: true },
+		});
+		expect(document.querySelector("[data-arrangement-settings]")?.textContent).toContain(
+			"This arrangement has its own tempo, key, time signature and start of bar 1.",
+		);
+		expect(screen.queryByRole("button", { name: "Follow it" })).toBeNull();
+		expect(document.querySelector("[data-chart-timing]")?.textContent).toContain(
+			"This arrangement counts bars on its own tempo and start of bar 1.",
+		);
+		const confirm = vi
+			.spyOn(window, "confirm")
+			.mockReturnValueOnce(false)
+			.mockReturnValueOnce(true);
+		await fireEvent.click(screen.getByRole("button", { name: "Use the song's settings" }));
+		expect(h.useSongSettings).not.toHaveBeenCalled();
+		await fireEvent.click(screen.getByRole("button", { name: "Use the song's settings" }));
+		expect(confirm).toHaveBeenCalledTimes(2);
+		expect(h.useSongSettings).toHaveBeenCalledWith({ id: "arr1" });
+		await vi.waitFor(() =>
+			expect(h.notify).toHaveBeenCalledWith("Arrangement now uses the song's settings"),
+		);
+		expect(h.refreshAll).toHaveBeenCalled();
+		expect(reset).toHaveBeenCalled();
+	});
+
+	test("Use as start of bar 1 on an alternate writes the alternate's", async () => {
+		const { chordDraft, props } = setup();
+		chordDraft.chordSegments = [{ bar: 1, bars: 3, start: 0.5, chord: "C", confidence: 1 }];
+		chordDraft.placement = {
+			barStarts: [0.5, 2.3, 4.1, 5.9],
+			period: 1.8,
+			beatsPerBar: 4,
+			cls: 1,
+			decided: true,
+			byStart: false,
+			witnesses: [],
+		};
+		render(SongTempoKeyTab, {
+			props: { ...props, onAlternate: true, arrangementId: "arr1" },
+		});
+		await fireEvent.click(screen.getByRole("button", { name: "Use as start of bar 1" }));
+		expect(h.useChartlessGrid).toHaveBeenLastCalledWith({
+			id: "song1",
+			arrangementId: "arr1",
+			startAt: 0.5,
+			bpm: 133.33,
+		});
 	});
 });

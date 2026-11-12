@@ -104,6 +104,8 @@ export type ChartDraft = ChartDraftAnswer & {
 /** What the page supplies: functions, since each follows the page's data and the player. */
 export interface SongChordDraftOptions {
 	songId: () => string;
+	/** The arrangement shown (null or absent for Main): "Use as start of bar 1" writes its settings. Generate chart runs on Main only for now (MAIN_ONLY). */
+	arrangementId?: () => string | null;
 	/** The Stem Player's engine, once it has mounted. */
 	engine: () => StemEngine | null;
 	/** The song's bar grid (null without a tempo and a time signature). */
@@ -209,6 +211,11 @@ export class SongChordDraft {
 
 	constructor(opts: SongChordDraftOptions) {
 		this.#opts = opts;
+	}
+
+	/** Where a start of bar 1 is saved: the song, and the arrangement shown (its own settings on an alternate). */
+	#gridTarget() {
+		return { id: this.#opts.songId(), arrangementId: this.#opts.arrangementId?.() ?? null };
 	}
 
 	/**
@@ -352,7 +359,7 @@ export class SongChordDraft {
 			this.#step = "Setting the start of bar 1…";
 			const startAt = Math.round(first * 10_000) / 10_000;
 			return yield* attempt(async () => {
-				await useChartlessGrid({ id: this.#opts.songId(), startAt, bpm });
+				await useChartlessGrid({ ...this.#gridTarget(), startAt, bpm });
 				await this.#opts.onsaved();
 				return { startAt };
 			}).pipe(
@@ -378,7 +385,7 @@ export class SongChordDraft {
 			this.#step = "Setting the start of bar 1…";
 			const use = chartlessGridUse(placement);
 			return yield* attempt(async () => {
-				await useChartlessGrid({ id: this.#opts.songId(), ...use });
+				await useChartlessGrid({ ...this.#gridTarget(), ...use });
 				await this.#opts.onsaved();
 				return use;
 			}).pipe(

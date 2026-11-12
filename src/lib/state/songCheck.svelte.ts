@@ -48,6 +48,8 @@ import * as Schedule from "effect/Schedule";
 /** What the song check reads of the song (the page's data). */
 export interface CheckedSong {
 	id: string;
+	/** The arrangement shown (null or absent for Main): a save writes its settings. Scan and detection run on Main only for now (MAIN_ONLY). */
+	arrangementId?: string | null;
 	changes: SongChange[];
 	sections: { start: number }[];
 	startAt: number | null;
@@ -198,6 +200,12 @@ export class SongCheck {
 		this.#opts = opts;
 	}
 
+	/** Where a save goes: the song, and the arrangement shown (its own settings on an alternate). */
+	#target() {
+		const { id, arrangementId = null } = this.#opts.song();
+		return { id, arrangementId };
+	}
+
 	/** "The stems agree with your 224 bpm (heard as 112, counted in eighths)." */
 	agreementText(ladder: ScanLadder, d: Detection): string {
 		if (ladder.factor === 1) return `The stems agree with your ${ladder.declared} bpm.`;
@@ -332,7 +340,7 @@ export class SongCheck {
 		// On the declared tempo's ladder the tempo agrees: offer only what differs (docs/tempo-grid-plan.md). Read before a first fill saves the rows.
 		const offer = scanOffer(detection, values, this.#opts.song().changes);
 		if (fresh) {
-			await saveChanges({ id: this.#opts.song().id, changes: values });
+			await saveChanges({ ...this.#target(), changes: values });
 			await this.#opts.onsaved();
 			this.#opts.changes.reset();
 			notify("Tempo, key and time signature set from the stems");
@@ -349,7 +357,7 @@ export class SongCheck {
 			.song()
 			.changes.filter((c) => !(replaced.includes(c.kind) && (c.kind === "key" || c.start === 0)));
 		try {
-			await saveChanges({ id: this.#opts.song().id, changes: [...kept, ...values] });
+			await saveChanges({ ...this.#target(), changes: [...kept, ...values] });
 			await this.#opts.onsaved();
 			this.#opts.changes.reset();
 			notify(`${kindsText(values)} replaced from the stems`);
@@ -382,7 +390,7 @@ export class SongCheck {
 			return;
 		}
 		try {
-			await saveChanges({ id: song.id, changes });
+			await saveChanges({ ...this.#target(), changes });
 			await this.#opts.onsaved();
 			this.#opts.changes.reset();
 			notify(

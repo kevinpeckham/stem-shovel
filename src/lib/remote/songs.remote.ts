@@ -271,14 +271,21 @@ export const saveSections = command(SongSectionsSaveSchema, async ({ id, section
 	return result.sections;
 });
 
-/** Replaces a song's tempo / key / time signature changes. A command, from song settings. */
-export const saveChanges = command(SongChangesSaveSchema, async ({ id, changes }) => {
-	const { locals } = getRequestEvent();
-	const { accountId } = await memberOf(locals, accountOfSong, id);
-	const result = await updateSongChanges(accountId, id, changes);
-	if (!result.ok) error(400, result.error);
-	return result.changes;
-});
+/**
+ * Replaces the tempo / key / time signature changes of the song, or of one
+ * of its alternates (`arrangementId`; the first save gives it settings of
+ * its own, docs/arrangements.md). A command, from song settings.
+ */
+export const saveChanges = command(
+	SongChangesSaveSchema,
+	async ({ id, changes, arrangementId }) => {
+		const { locals } = getRequestEvent();
+		const { accountId } = await memberOf(locals, accountOfSong, id);
+		const result = await updateSongChanges(accountId, id, changes, {}, arrangementId);
+		if (!result.ok) error(400, result.error);
+		return result.changes;
+	},
+);
 
 /** Removes a stem's MIDI file and its blob. Used with `.for(stem.id)` in the row menu. */
 export const removeStemMidi = form(IdSchema, async ({ id }) => {
@@ -735,12 +742,16 @@ export const setChartColumns = command(ChartColumnsChangeSchema, async ({ id, co
  * The chartless placement made the song's grid ("Use as start of bar 1" on
  * the detected chords card): its start of bar 1 and its first tempo (members).
  */
-export const useChartlessGrid = command(ChartlessGridUseSchema, async ({ id, startAt, bpm }) => {
-	const { locals } = getRequestEvent();
-	const { accountId } = await memberOf(locals, accountOfSong, id);
-	if (!(await setSongStartAndTempo(accountId, id, startAt, bpm))) error(404, "Song not found");
-	return { startAt, bpm };
-});
+export const useChartlessGrid = command(
+	ChartlessGridUseSchema,
+	async ({ id, startAt, bpm, arrangementId }) => {
+		const { locals } = getRequestEvent();
+		const { accountId } = await memberOf(locals, accountOfSong, id);
+		if (!(await setSongStartAndTempo(accountId, id, startAt, bpm, arrangementId)))
+			error(404, "Song not found");
+		return { startAt, bpm };
+	},
+);
 
 /** Forgets the song's chart timing map and its confidence, and the player stops following it (members). */
 export const clearChartTiming = command(IdSchema, async ({ id }) => {

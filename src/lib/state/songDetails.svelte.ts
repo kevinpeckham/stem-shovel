@@ -1,6 +1,7 @@
 import { addSongCredit, removeSongCredit, updateSong } from "#lib/remote/songs.remote.js";
 import { notify } from "#lib/state/notifications.svelte.js";
 import type { SongChanges } from "#lib/state/songChanges.svelte.js";
+import { SpanEntries } from "#lib/state/spanEntries.svelte.js";
 import { clearForm } from "#lib/utils/clearForm.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
@@ -14,6 +15,7 @@ export interface DetailsSong {
 	writtenOn: string | null;
 	version: string;
 	frameRate: number;
+	/** The song's own start of bar 1 and end (on an alternate, the page passes the song's, not the arrangement's). */
 	startAt: number | null;
 	endAt: number | null;
 }
@@ -33,25 +35,19 @@ export interface SongDetailsOptions {
  * on the `updateSong` remote form (title, URL, description, first written,
  * start and end, version, frame rate), read back through its fields, and the
  * credits, added and removed as you go. Start and end are typed in the
- * readout's format and carried as seconds: `positionValue` is what the
- * form's hidden field holds, read as the entry is typed (a remote field's
- * `.as("hidden", value)` renders that value literally and ignores
- * `field.set`, and enhance captures the form's data before its callback
- * runs; FINDINGS.md), and `preparePositions` refuses a submit whose entry
- * is not a position.
+ * readout's format and carried as seconds (SpanEntries).
  */
-export class SongDetails {
-	/** Start of bar 1 as typed. */
-	startAtEntry = $state("");
-	/** The end as typed. */
-	endAtEntry = $state("");
-	positionError = $state<string | null>(null);
+export class SongDetails extends SpanEntries {
 	/** A name per role, added on Enter or with the button. */
 	creditDraft = $state<Record<CreditRole, string>>({ performer: "", composer: "", producer: "" });
 	creditBusy = $state(false);
 	#opts: SongDetailsOptions;
 
 	constructor(opts: SongDetailsOptions) {
+		super(
+			() => opts.song(),
+			() => opts.changes,
+		);
 		this.#opts = opts;
 	}
 
@@ -79,17 +75,6 @@ export class SongDetails {
 		return this.fields.frameRate.value() ?? String(this.#opts.song().frameRate);
 	}
 
-	/** The saved start of bar 1 in the readout's format ("" when there is none). */
-	get startAtText() {
-		const at = this.#opts.song().startAt;
-		return at === null ? "" : this.#opts.changes.editPos(at);
-	}
-	/** The saved end in the readout's format ("" when there is none). */
-	get endAtText() {
-		const at = this.#opts.song().endAt;
-		return at === null ? "" : this.#opts.changes.editPos(at);
-	}
-
 	/** Anything differs from the song as saved (Save is enabled). */
 	get settingsDirty() {
 		const song = this.#opts.song();
@@ -98,8 +83,7 @@ export class SongDetails {
 			this.slug.trim() !== song.slug ||
 			this.description.trim() !== song.description ||
 			this.writtenOn !== (song.writtenOn ?? "") ||
-			this.startAtEntry.trim() !== this.startAtText ||
-			this.endAtEntry.trim() !== this.endAtText ||
+			this.spanDirty ||
 			this.frameRate !== String(song.frameRate) ||
 			this.version.trim() !== song.version
 		);
@@ -111,46 +95,7 @@ export class SongDetails {
 	/** The form as the song has it: the saved values, not the last edit (the popover opening). */
 	reset = () => {
 		clearForm(updateSong, this.form);
-		this.positionError = null;
-		this.startAtEntry = this.startAtText;
-		this.endAtEntry = this.endAtText;
-	};
-
-	/** What an entry reads as: null when it is not a position, 0 when blank. */
-	#seconds(entry: "startAtEntry" | "endAtEntry"): number | null {
-		const text = this[entry];
-		if (!text.trim()) return 0;
-		const song = this.#opts.song();
-		const start = entry === "startAtEntry";
-		return this.#opts.changes.rowSeconds({
-			time: text,
-			shown: start ? this.startAtText : this.endAtText,
-			seconds: start ? song.startAt : song.endAt,
-		});
-	}
-
-	/** The hidden field's value for an entry, as typed: the seconds, or "" for a blank or unreadable entry (preparePositions reports the latter). */
-	positionValue = (entry: "startAtEntry" | "endAtEntry"): string => {
-		const seconds = this.#seconds(entry);
-		return this[entry].trim() && seconds !== null ? String(seconds) : "";
-	};
-
-	/**
-	 * Before a submit: false (with `positionError` set) when an entry does not
-	 * read as a position; the hidden fields already hold the seconds (`positionValue`).
-	 */
-	preparePositions = () => {
-		this.positionError = null;
-		for (const [entry, label] of [
-			["startAtEntry", "Start of bar 1"],
-			["endAtEntry", "End"],
-		] as const) {
-			if (this.#seconds(entry) === null) {
-				this.positionError = `${label}: ${this.#opts.changes.positionMessage(this[entry])}`;
-				return false;
-			}
-		}
-		return true;
+		this.resetEntries();
 	};
 
 	addCredit = async (role: CreditRole) => {

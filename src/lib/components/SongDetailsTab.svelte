@@ -5,7 +5,9 @@
 	import { POSITION_MODE_LABELS } from "#lib/constants/positionModes.js";
 	import { updateSong } from "#lib/remote/songs.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
-	import { POSITION_PLACEHOLDER, type SongChanges } from "#lib/state/songChanges.svelte.js";
+	import PositionEntry from "#lib/components/PositionEntry.svelte";
+	import type { SongChanges } from "#lib/state/songChanges.svelte.js";
+	import type { SpanEntry } from "#lib/state/spanEntries.svelte.js";
 	import type { DetailsSong, SongDetails } from "#lib/state/songDetails.svelte.js";
 	import { slugify } from "#lib/utils/slugify.js";
 	import { CREDIT_ROLES, type CreditRole } from "#lib/val/CreditRoleSchema.js";
@@ -33,9 +35,20 @@
 		engine: StemEngine | null;
 		/** After a successful save (the page closes the popover). */
 		onsaved: () => void;
+		/** The player shows an alternate arrangement: its start and end are its own, edited in Tempo & key; the form carries the song's unchanged. */
+		onAlternate?: boolean;
 	}
 
-	let { details, changes, song, artists, accountSlug, engine, onsaved }: Props = $props();
+	let {
+		details,
+		changes,
+		song,
+		artists,
+		accountSlug,
+		engine,
+		onsaved,
+		onAlternate = false,
+	}: Props = $props();
 
 	const fields = updateSong.fields;
 	let mode = $derived(changes.mode);
@@ -48,41 +61,17 @@
 {/snippet}
 
 <!-- Start of bar 1 and End: typed in the readout's format, carried as seconds in the hidden field (positionValue). -->
-{#snippet position(
-	label: string,
-	entry: "startAtEntry" | "endAtEntry",
-	field: "startAt" | "endAt",
-	hint: string,
-)}
-	<label class="block">
-		<span class="text-sm opacity-90">{label} <span class="opacity-60">(optional)</span></span>
-		<span class="mt-1 flex items-center gap-2">
-			<input
-				class="field font-mono text-sm"
-				placeholder={POSITION_PLACEHOLDER[mode]}
-				autocomplete="off"
-				bind:value={details[entry]}
-				defaultValue={field === "startAt" ? details.startAtText : details.endAtText}
-				aria-label={label}
-			/>
-			<!-- The entry's reset value is the saved text: clearForm resets the form when settings open, and
-			     Svelte writes each input's reset value back into its binding a tick later (so without this the
-			     entry came back blank). The hidden field renders the value it is given, literally: the seconds
-			     the entry reads as, as typed. -->
-			<input {...fields[field].as("hidden", details.positionValue(entry))} />
-			<button
-				class="button button-xs shrink-0"
-				type="button"
-				title="Use the transport's current position"
-				disabled={!engine || engine.status !== "ready"}
-				onclick={() => (details[entry] = changes.editPos(engine?.position ?? 0))}
-			>
-				Playhead
-			</button>
-		</span>
-		<span class="mt-1 block text-xs opacity-90">{hint}</span>
-		{@render issues(fields[field].issues())}
-	</label>
+{#snippet position(label: string, entry: SpanEntry, field: "startAt" | "endAt", hint: string)}
+	<PositionEntry
+		{label}
+		{hint}
+		entries={details}
+		{entry}
+		hidden={fields[field].as("hidden", details.positionValue(entry))}
+		issues={fields[field].issues()}
+		{changes}
+		{engine}
+	/>
 {/snippet}
 
 {#snippet identity()}
@@ -193,13 +182,22 @@
 		/>
 		{@render issues(fields.writtenOn.issues())}
 	</label>
-	{@render position(
-		"Start of bar 1",
-		"startAtEntry",
-		"startAt",
-		"Leading silence or a count-in: bars are counted from here.",
-	)}
-	{@render position("End", "endAtEntry", "endAt", "Where the song ends, for the bars total.")}
+	{#if onAlternate}
+		<!-- The song's own start and end ride along unchanged; the arrangement's are in Tempo & key. -->
+		<input {...fields.startAt.as("hidden", details.positionValue("startAtEntry"))} />
+		<input {...fields.endAt.as("hidden", details.positionValue("endAtEntry"))} />
+		<p class="text-sm opacity-90 sm:col-span-2" data-arrangement-span-note>
+			This arrangement's start of bar 1 and end are under Tempo &amp; key.
+		</p>
+	{:else}
+		{@render position(
+			"Start of bar 1",
+			"startAtEntry",
+			"startAt",
+			"Leading silence or a count-in: bars are counted from here.",
+		)}
+		{@render position("End", "endAtEntry", "endAt", "Where the song ends, for the bars total.")}
+	{/if}
 	<p
 		class="flex items-start gap-2 rounded border border-white/15 bg-blue-300/5 px-4 py-3 text-xs opacity-90 sm:col-span-2"
 	>

@@ -57,6 +57,8 @@
 			project: { noAi: boolean; isPrivate: boolean };
 			/** The arrangement the player shows: Scan stems and Detect chords stay Main's until phase 3 (docs/arrangements.md). */
 			arrangementId?: string | null;
+			/** The alternate shown has its own tempo, key, time signature, start and end (`startAt`, `endAt` are then its own). */
+			settingsOwn?: boolean;
 			demos: {
 				id: string;
 				label: string;
@@ -340,6 +342,7 @@
 					{accountSlug}
 					{engine}
 					onsaved={() => settingsPanel?.hidePopover()}
+					onAlternate={!!song.arrangementId}
 				/>
 			{/if}
 			{#if settingsTab === "sections"}
@@ -365,6 +368,9 @@
 					startAt={song.startAt}
 					onstartset={details.reset}
 					onAlternate={!!song.arrangementId}
+					arrangementId={song.arrangementId ?? null}
+					settingsOwn={song.settingsOwn ?? false}
+					endAt={song.endAt}
 				/>
 			{/if}
 			{#if settingsTab === "demos"}

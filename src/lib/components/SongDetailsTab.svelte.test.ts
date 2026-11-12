@@ -31,7 +31,7 @@ const { default: SongDetailsTab } = await import("./SongDetailsTab.svelte");
 const { SongChanges } = await import("#lib/state/songChanges.svelte.js");
 const { SongDetails } = await import("#lib/state/songDetails.svelte.js");
 
-function setup(over: { slug?: string } = {}) {
+function setup(over: { slug?: string; startAt?: number | null; endAt?: number | null } = {}) {
 	const song = {
 		id: "song1",
 		title: "Letter Lands",
@@ -97,5 +97,24 @@ describe("SongDetailsTab", () => {
 		expect(screen.getByRole("list", { name: "Composers" })).toHaveTextContent("Kevin");
 		expect(screen.getByRole("button", { name: "Remove Kevin as composer" })).toBeEnabled();
 		expect(screen.getAllByRole("button", { name: "Add" })[0]).toBeDisabled();
+	});
+
+	test("Main edits the start of bar 1 and the end here", () => {
+		const { props } = setup();
+		render(SongDetailsTab, { props });
+		expect(screen.getByLabelText("Start of bar 1")).toBeTruthy();
+		expect(document.querySelector("[data-arrangement-span-note]")).toBeNull();
+	});
+
+	test("on an alternate the entries go and the song's own start and end ride along unchanged", () => {
+		const { props } = setup({ startAt: 2.5, endAt: 180 });
+		render(SongDetailsTab, { props: { ...props, onAlternate: true } });
+		expect(screen.queryByLabelText("Start of bar 1")).toBeNull();
+		expect(screen.queryByLabelText("End")).toBeNull();
+		expect(document.querySelector("[data-arrangement-span-note]")?.textContent).toContain(
+			"This arrangement's start of bar 1 and end are under Tempo & key.",
+		);
+		expect(document.querySelector<HTMLInputElement>('input[name="startAt"]')?.value).toBe("2.5");
+		expect(document.querySelector<HTMLInputElement>('input[name="endAt"]')?.value).toBe("180");
 	});
 });

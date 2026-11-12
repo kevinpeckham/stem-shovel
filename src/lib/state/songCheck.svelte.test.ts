@@ -33,8 +33,8 @@ const ANSWER: AiAnswer = {
 	notes: "",
 };
 
-function make(changes: SongChange[] = [], hasScore = true) {
-	const song = { id: "song1", changes, sections: [], startAt: null };
+function make(changes: SongChange[] = [], hasScore = true, arrangementId: string | null = null) {
+	const song = { id: "song1", arrangementId, changes, sections: [], startAt: null };
 	const onsaved = vi.fn(async () => {});
 	const showTab = vi.fn();
 	const rows = new SongChanges({
@@ -96,6 +96,7 @@ describe("SongCheck", () => {
 		await check.useAiAnswer();
 		expect(remote.saveChanges).toHaveBeenCalledWith({
 			id: "song1",
+			arrangementId: null,
 			changes: [
 				{ kind: "tempo", start: 0, value: "96" },
 				{ kind: "key", start: 0, value: "C" },
@@ -149,6 +150,7 @@ describe("SongCheck", () => {
 		await check.replaceFromScan();
 		expect(remote.saveChanges).toHaveBeenCalledWith({
 			id: "song1",
+			arrangementId: null,
 			changes: [
 				{ kind: "meter", start: 0, value: "3/4" },
 				{ kind: "tempo", start: 0, value: "100" },
@@ -173,11 +175,25 @@ describe("SongCheck", () => {
 		]);
 		expect(remote.saveChanges).toHaveBeenCalledWith({
 			id: "song1",
+			arrangementId: null,
 			changes: expect.arrayContaining([
 				{ kind: "key", start: 0, value: "Eb" },
 				{ kind: "key", start: 30, value: "C#m" },
 			]),
 		});
+	});
+
+	test("on an alternate a save carries the arrangement (detection runs on Main only today; this keeps a later enablement safe)", async () => {
+		const { check } = make([], true, "arr1");
+		const d = {
+			tempo: { bpm: 120, confidence: 1, subdivision: "quarter", alternates: [] },
+			meter: { value: "4/4", confidence: 1 },
+			key: { value: "D", confidence: 1 },
+		} as unknown as Detection;
+		await check.applyDetection(d);
+		expect(remote.saveChanges).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "song1", arrangementId: "arr1" }),
+		);
 	});
 
 	test("an upload's detection on a song with settings is only reported", async () => {

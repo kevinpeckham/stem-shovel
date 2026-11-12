@@ -92,6 +92,40 @@ Asked for by users; designed with Kevin on 2026-11-11.
   muted), custom mix (200, the alternate's stems), rename, delete (back
   on Main, five stems, the shared file intact).
 
+## Settings of its own (2026-11-12)
+
+An alternate can count bars on its own tempo: "getting the tempo and
+time signatures and the offset correct so the transport counter can use
+beats and bars" (Kevin). Migration 0124 adds `changes`, `start_at` and
+`end_at` to `song_arrangement`.
+
+- **Inherit, then copy on write.** While an alternate's `changes` is
+  null it uses the song's tempo, key and time signature changes, start
+  of bar 1 and end. The first save of any of them on the alternate copies
+  the song's current three values onto the arrangement row and applies
+  the edit (`writeSongSettings` in data.ts); the song row is never
+  touched, and the song's later changes no longer reach that alternate.
+  "Use the song's settings" clears the three (`clearArrangementSettings`).
+  Main's settings are the song's, as always.
+- **Served in the song's place.** `getSong` puts the effective values
+  (`utils/effectiveSongSettings.ts`) where the song's were, with
+  `settingsOwn`, so the transport, the click, the timeline and every
+  other reader of `data.song.changes` and `startAt` follow without
+  knowing about arrangements. An alternate with its own settings is
+  served `useChartTiming: false`: the chart's timing map was made for
+  Main's recording.
+- **Saves.** `saveChanges` and `useChartlessGrid` take the arrangement;
+  an alternate's start and end have their own form
+  (`saveArrangementSpan`, `ArrangementSpanForm` in the Tempo & key tab),
+  since the song's details form also writes its title and address. A
+  comment's position typed in bars is read on the arrangement's grid
+  (`songGrid(songId, arrangementId)`).
+- **Still the song's:** the chart, the lyrics and the sections. Sections
+  are stored in seconds, so on an alternate at another tempo they sit at
+  the same seconds and fall wherever those land on its grid. They move
+  with the per-arrangement chart, later. The stems scan, chord detection
+  and "Ask AI to check" stay Main only; an alternate's tempo is typed.
+
 ## Decisions (Kevin, 2026-11-11)
 
 1. The chart, tempo, key and sections are the song's and shared by its

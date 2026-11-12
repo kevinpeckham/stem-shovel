@@ -579,7 +579,12 @@ describe("SongChordDraft", () => {
 			expect(cd.progress).not.toBeNull();
 			await run;
 			expect(ensureGrid).not.toHaveBeenCalled();
-			expect(remote.useChartlessGrid).toHaveBeenCalledWith({ id: "song1", startAt: 0.3, bpm: 120 });
+			expect(remote.useChartlessGrid).toHaveBeenCalledWith({
+				id: "song1",
+				arrangementId: null,
+				startAt: 0.3,
+				bpm: 120,
+			});
 			expect(remote.saveSections).toHaveBeenCalledWith({
 				id: "song1",
 				sections: [
@@ -680,6 +685,7 @@ describe("SongChordDraft", () => {
 			expect(remote.useChartlessGrid).toHaveBeenCalledOnce();
 			expect(remote.useChartlessGrid).toHaveBeenCalledWith({
 				id: "song1",
+				arrangementId: null,
 				startAt: 1.02,
 				bpm: 120,
 			});
