@@ -4,6 +4,13 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Notes on demos.** When you upload a demo you can add notes about it:
+  what the take is, what to listen for. They show with the demo when you
+  open it and on its own page, a small icon marks the demos that have
+  notes, and Edit notes… in the demo's ⋯ menu lets you change them.
+
 ## [0.265.0] - 2026-11-12
 
 ### Added

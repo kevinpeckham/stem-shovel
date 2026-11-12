@@ -7,7 +7,7 @@ The row under the player offers:
 - **Download Stems**: every stem as uploaded, in one zip.
 - **Original Stem Mix (MP3)**: all stems mixed as they are.
 - **Custom Stem Mix (MP3)**: the mix as you hear it right now, with your mutes, solos and fader positions.
-- **Demos**: switches the player to the demo recordings; each row's ⋯ menu downloads the MP3 or the original file, and **Open page** shows the demo on a page of its own: a player, the download and its comments, with nothing else of the song around it. For members who can edit, **Share…** opens that page with its sharing controls: send it by email or make a viewing link, and whoever opens the link lands on the demo.
+- **Demos**: switches the player to the demo recordings. When you upload demos, each file gets an optional **Notes** box before the upload starts: what the take is, what to listen for. The notes show with the demo when it is open and on its own page, a small note icon marks the demos that have them, and **Edit notes…** in a demo's ⋯ menu changes them later. A demo that is not open also shows how many comments it has, with a bubble for the ones new to you; each row's ⋯ menu downloads the MP3 or the original file, and **Open page** shows the demo on a page of its own: a player, the download and its comments, with nothing else of the song around it. For members who can edit, **Share…** opens that page with its sharing controls: send it by email or make a viewing link, and whoever opens the link lands on the demo.
 
 Single stems, and a stem's MIDI file, download from the ⋯ menu on the stem's row.
 

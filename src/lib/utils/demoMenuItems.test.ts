@@ -45,4 +45,20 @@ describe("demoMenuItems", () => {
 			"Download original",
 		]);
 	});
+	test("an editor's notes item: Add notes… with none, Edit notes… with some, before Remove", () => {
+		const editNotes = vi.fn();
+		const opts = { canEdit: true, save: vi.fn(), editNotes, remove: vi.fn() };
+		const labels = (notes: string) => demoMenuItems({ ...d, notes }, opts).map((i) => i.label);
+		expect(labels("")).toEqual(["Download MP3", "Download original", "Add notes…", "Remove demo"]);
+		expect(labels("Rough take")).toContain("Edit notes…");
+		demoMenuItems(d, opts)[2].action?.();
+		expect(editNotes).toHaveBeenCalled();
+	});
+	test("a viewer never gets the notes item, even when the page passes one", () => {
+		const items = demoMenuItems(
+			{ ...d, notes: "Rough take" },
+			{ canEdit: false, save: vi.fn(), editNotes: vi.fn() },
+		);
+		expect(items.map((i) => i.label)).toEqual(["Download MP3", "Download original"]);
+	});
 });

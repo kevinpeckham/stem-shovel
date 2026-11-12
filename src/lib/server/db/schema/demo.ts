@@ -26,6 +26,8 @@ export const demo = table(
 			.references(() => song.id, { onDelete: "cascade" }),
 		/** Defaults to the filename minus its extension. */
 		label: t.text("label").notNull(),
+		/** What the uploader said about the recording when they uploaded it: plain text, shown with the demo in the Demos view and on its page. */
+		notes: t.text("notes").notNull().default(""),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
 		pathname: t.text("pathname").notNull().unique(),

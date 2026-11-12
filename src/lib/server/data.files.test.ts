@@ -1,4 +1,4 @@
-import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { DEMO_NOTES_MAX, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { MAX_FILES_PER_PROJECT, MAX_FILES_PER_SONG } from "#lib/constants/fileFormats.js";
 import { MAX_NOTATION_PER_SONG } from "#lib/constants/notationFormats.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
@@ -8,6 +8,7 @@ const {
 	attachFile,
 	claimDemoPlayback,
 	createDemo,
+	setDemoNotes,
 	createDemoFromFile,
 	createFile,
 	createNotation,
@@ -619,7 +620,7 @@ describe("notation files", () => {
 });
 
 describe("demos", () => {
-	test("createDemo reserves the row labeled from the file; null for another account's song, full at the cap", async () => {
+	test("createDemo reserves the row labeled from the file, with its notes trimmed (none by default); null for another account's song, full at the cap", async () => {
 		reset({
 			...base(),
 			demo: Array.from({ length: MAX_DEMOS_PER_SONG }, (_, i) => demo(`d${i}`, { songId: "sg2" })),
@@ -637,9 +638,25 @@ describe("demos", () => {
 			contentType: "audio/mp4",
 			sizeBytes: 9,
 			uploadedBy: "u1",
+			notes: "",
 		});
+		const noted = await createDemo("a1", "u1", "sg1", { ...upload, notes: "  Chorus idea\n  " });
+		expect(row("demo", (noted as { id: string }).id)?.notes).toBe("Chorus idea");
 		expect(await createDemo("a2", "u1", "sg1", upload)).toBeNull();
 		expect(await createDemo("a1", "u1", "sg2", upload)).toBe("full");
+	});
+	test("setDemoNotes trims, clears with an empty text, refuses over the limit and leaves another account's demo alone", async () => {
+		reset({
+			demo: [demo("d1", { notes: "old" }), demo("d2", { accountId: "a2", notes: "theirs" })],
+		});
+		expect(await setDemoNotes("a1", "d1", "  New take\nlisten for the bass  ")).toBe(true);
+		expect(row("demo", "d1")?.notes).toBe("New take\nlisten for the bass");
+		expect(await setDemoNotes("a1", "d1", "x".repeat(DEMO_NOTES_MAX + 1))).toBe("too-long");
+		expect(row("demo", "d1")?.notes).toBe("New take\nlisten for the bass");
+		expect(await setDemoNotes("a1", "d1", "   ")).toBe(true);
+		expect(row("demo", "d1")?.notes).toBe("");
+		expect(await setDemoNotes("a1", "d2", "mine now")).toBe(false);
+		expect(row("demo", "d2")?.notes).toBe("theirs");
 	});
 	test("the ready report and the webhook backstop ready the uploading row; deleteDemo takes the rendition along", async () => {
 		reset({

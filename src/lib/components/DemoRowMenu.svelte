@@ -8,10 +8,18 @@
 		items: DemoMenuItem[];
 	}
 	let { label, items }: Props = $props();
+
+	let menu = $state<HTMLDetailsElement | null>(null);
+	/** A press outside the open menu closes it, as the page's own menus do. */
+	function closeOutside(e: PointerEvent) {
+		if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
+	}
 </script>
 
+<svelte:window onpointerdown={closeOutside} />
+
 <!-- The row's menu: the downloads, out of the way of Play. -->
-<details class="relative self-center">
+<details bind:this={menu} class="relative self-center">
 	<summary
 		class="button button-xs border-current/10 flex items-center list-none [&::-webkit-details-marker]:hidden"
 		title="Demo menu"

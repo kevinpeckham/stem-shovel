@@ -4,6 +4,7 @@
 	import CommentCard from "#lib/components/CommentCard.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import RecordingCommentPopover from "#lib/components/RecordingCommentPopover.svelte";
+	import DemoNotesBlock from "#lib/components/DemoNotesBlock.svelte";
 	import RecordingReview from "#lib/components/RecordingReview.svelte";
 	import SongSharePopover from "#lib/components/SongSharePopover.svelte";
 	import { DEMO_DEFAULT_VOLUME } from "#lib/constants/demoFormats.js";
@@ -16,8 +17,8 @@
 	/**
 	 * A demo recording's own page, as a mix has one (docs/mixes.md): what
 	 * the demo's share link opens. The song and the demo's name, who
-	 * uploaded it and when, a player (play, seek, volume), the downloads,
-	 * the waveform with the demo's comments (RecordingReview) and, for an
+	 * uploaded it and when, the notes they gave it at upload, a player
+	 * (play, seek, volume), the downloads, the waveform with the demo's comments (RecordingReview) and, for an
 	 * editor, the share popover aimed at the demo (`?open=share`, the
 	 * Demos view's Share…, opens it).
 	 */
@@ -146,6 +147,8 @@
 			</a>
 		</nav>
 	</header>
+	<!-- What the uploader said about the take, typed at upload; an editor changes it in the notes popover. -->
+	<DemoNotesBlock {demo} canEdit={data.canEdit} />
 
 	<audio
 		bind:this={audio}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
+	import RecordingNotes from "#lib/components/RecordingNotes.svelte";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import type { Snippet } from "svelte";
 
@@ -41,6 +42,8 @@
 		/** The selected stretch to loop (the player's, when this recording is the one playing), drawn on the waveform; a drag across it selects (`onloop`). */
 		loop?: { start: number; end: number } | null;
 		onloop?: (region: { start: number; end: number } | null) => void;
+		/** What the uploader said about the recording (a demo's notes), between the waveform and the comments. */
+		notes?: string;
 	}
 	let {
 		label,
@@ -56,6 +59,7 @@
 		heading = "Comments",
 		loop = null,
 		onloop,
+		notes = "",
 	}: Props = $props();
 
 	let located = $derived(
@@ -109,6 +113,7 @@
 			>{formatTime(duration)}</span
 		>
 	</div>
+	<RecordingNotes {notes} />
 	<section class="grid gap-2" aria-label="{heading} on {label}">
 		<div class="flex items-baseline justify-between gap-3">
 			<h3 class="text-12px uppercase tracking-wider text-blue-300 opacity-90">

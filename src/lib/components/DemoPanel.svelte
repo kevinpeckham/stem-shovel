@@ -30,6 +30,8 @@
 		/** Measured in the jobs function after the MP3; null until then. */
 		peaks?: number[] | null;
 		durationSeconds?: number | null;
+		/** What the uploader said about the take, typed at upload; "" for none. */
+		notes?: string;
 	}
 	interface Props {
 		demos: PanelDemo[];
@@ -40,6 +42,8 @@
 		/** An editor may remove a demo from its row's menu (Kevin: there was no way on a song with stems). */
 		canEdit?: boolean;
 		onremove?: (demo: PanelDemo) => Promise<void> | void;
+		/** An editor changes a demo's notes from its row's menu: the page opens its one notes popover. */
+		oneditnotes?: (demo: PanelDemo) => void;
 		/** The demos' comments, every demo's together; the panel keeps the current demo's. */
 		comments?: (ReviewComment & { demoId: string })[];
 		canComment?: boolean;
@@ -60,6 +64,7 @@
 		minHeight = 0,
 		canEdit = false,
 		onremove,
+		oneditnotes,
 		comments = [],
 		canComment = false,
 		card,
@@ -79,14 +84,6 @@
 	let currentTime = $state(0);
 	let duration = $state(0);
 	let volume = $state(DEMO_DEFAULT_VOLUME);
-	let panelEl = $state<HTMLDivElement | null>(null);
-
-	/** A press outside an open row menu closes it, as the page's own menus do. */
-	function closeMenus(e: PointerEvent) {
-		for (const menu of panelEl?.querySelectorAll<HTMLDetailsElement>("details[open]") ?? []) {
-			if (!menu.contains(e.target as Node)) menu.open = false;
-		}
-	}
 
 	/** The demo shown above the list from now on; its new comments are seen. */
 	function makeCurrent(id: string) {
@@ -135,12 +132,13 @@
 		if (demos[index + 1]) step(1);
 		else paused = true;
 	}
-	/** A row's ⋯ menu (demoMenuItems): Remove quiets the demo first when it is the one playing. */
+	/** A row's ⋯ menu (demoMenuItems): Edit notes… asks the page for its notes popover; Remove quiets the demo first when it is the one playing. */
 	const rowItems = (d: PanelDemo) =>
 		demoMenuItems(d, {
 			hrefOf,
 			canEdit,
 			save: saveAs,
+			editNotes: oneditnotes && (() => oneditnotes(d)),
 			remove:
 				onremove &&
 				(() => {
@@ -154,8 +152,6 @@
 		currentTime = at;
 	}
 </script>
-
-<svelte:window onpointerdown={closeMenus} />
 
 {#if track}
 	<!-- svelte-ignore a11y_media_has_caption -->
@@ -172,7 +168,6 @@
 {/if}
 
 <div
-	bind:this={panelEl}
 	class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 grid gap-4 content-start"
 	style:min-height={minHeight ? `${minHeight}px` : undefined}
 	aria-label="Demo recordings"
@@ -256,6 +251,7 @@
 			duration={duration || track.durationSeconds || 0}
 			position={currentTime}
 			comments={trackComments}
+			notes={track.notes}
 			{canComment}
 			{card}
 			onseek={seekTo}

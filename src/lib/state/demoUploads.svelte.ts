@@ -29,6 +29,12 @@ interface DemoJob {
 	error?: string;
 }
 
+/** A picked file waiting for its notes (DemoUploadNotes) before it goes up. */
+interface PendingDemo {
+	file: File;
+	notes: string;
+}
+
 /** Why a pick is refused, checked in order: a format, a size, then the room left on the song. */
 function refusalOf(picked: File[], room: number): string | null {
 	const unsupported = picked.filter((f) => !demoContentType(f.name));
@@ -45,8 +51,9 @@ function refusalOf(picked: File[], room: number): string | null {
 /**
  * Demo recordings uploaded from the song page (the settings' Demos tab, the
  * player's Demos view and the stem actions menu): no decoding, just the file,
- * checked for format, size and room first, then sent one at a time with its
- * progress. They are played and downloaded from the Demos view, and removed
+ * checked for format, size and room first, then held as `pending` while the
+ * page's notes dialog (DemoUploadNotes) asks for a note on each, then sent
+ * one at a time with its notes and its progress. They are played and downloaded from the Demos view, and removed
  * from its row menu.
  */
 export class DemoUploads {
@@ -55,35 +62,51 @@ export class DemoUploads {
 	/** Why a pick was refused (format, size or room), shown until the next pick. */
 	notice = $state<string | null>(null);
 	busy = $state(false);
+	/** A pick that passed the checks, waiting for its notes: Upload (`start`) sends it, Cancel drops it. */
+	pending = $state<PendingDemo[] | null>(null);
+	/** The file input of that pick: the notes dialog opens from it, so a settings popover holding it stays open. */
+	pickedFrom: HTMLElement | null = null;
 	#opts: DemoUploadsOptions;
 
 	constructor(opts: DemoUploadsOptions) {
 		this.#opts = opts;
 	}
 
-	/** Upload the files picked in a file input (the input is cleared for the next pick). */
-	async upload(input: HTMLInputElement) {
+	/** Hold the files picked in a file input for their notes (the input is cleared for the next pick). */
+	upload(input: HTMLInputElement) {
 		const picked = Array.from(input.files ?? []);
 		input.value = "";
 		if (picked.length === 0) return;
-		const song = this.#opts.song();
-		const refusal = refusalOf(picked, Math.max(0, MAX_DEMOS_PER_SONG - song.demos.length));
-		if (refusal) {
-			this.notice = refusal;
-			return;
-		}
-		this.notice = null;
+		const room = Math.max(0, MAX_DEMOS_PER_SONG - this.#opts.song().demos.length);
+		this.notice = refusalOf(picked, room);
+		if (this.notice) return;
+		this.pickedFrom = input;
+		this.pending = picked.map((file) => ({ file, notes: "" }));
+	}
+
+	/** The pick is dropped (the dialog's Cancel, Escape or a press outside it). */
+	cancel() {
+		this.pending = null;
+	}
+
+	/** Upload the pending files, each with its notes, one at a time. */
+	async start() {
+		const batch = this.pending ?? [];
+		this.pending = null;
+		if (batch.length === 0) return;
+		const songId = this.#opts.song().id;
 		this.busy = true;
-		this.jobs = picked.map((f) => ({ name: f.name, percent: 0 }));
-		for (const [i, file] of picked.entries()) {
+		this.jobs = batch.map(({ file }) => ({ name: file.name, percent: 0 }));
+		for (const [i, { file, notes }] of batch.entries()) {
 			try {
 				await uploadDemoFile(
 					file,
 					() =>
 						postJson<DemoReservation>("/api/demos", {
-							songId: song.id,
+							songId,
 							filename: file.name,
 							sizeBytes: file.size,
+							notes: notes.trim(),
 						}),
 					(percent) => (this.jobs[i].percent = percent),
 				);

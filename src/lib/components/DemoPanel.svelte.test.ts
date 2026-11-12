@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { createRawSnippet } from "svelte";
 
 /**
  * The Demos view's row menu: the demo's own page for everyone, Share… there
@@ -46,24 +47,39 @@ describe("DemoPanel row menu", () => {
 		expect(h.saveAs).toHaveBeenLastCalledWith("https://b/d1.m4a", "d1.m4a");
 	});
 
-	test("an editor also gets Share… on the demo's page and Remove", async () => {
+	test("an editor also gets Share… on the demo's page, Add notes… and Remove", async () => {
 		const onremove = vi.fn();
+		const oneditnotes = vi.fn();
 		render(DemoPanel, {
 			demos: [demo("d1", { playbackUrl: null })],
 			hrefOf,
 			canEdit: true,
 			onremove,
+			oneditnotes,
 		});
 		const items = within(menuOf("Take d1")).getAllByRole("menuitem", { hidden: true });
 		expect(items.map((i) => i.textContent?.trim())).toEqual([
 			"Open page",
 			"Share…",
 			"Download file",
+			"Add notes…",
 			"Remove demo",
 		]);
 		expect(items[1].getAttribute("href")).toBe("/acct/projects/lp/song/demos/d1?open=share");
 		await fireEvent.click(items[3]);
+		expect(oneditnotes).toHaveBeenCalledWith(expect.objectContaining({ id: "d1" }));
+		await fireEvent.click(items[4]);
 		expect(onremove).toHaveBeenCalledWith(expect.objectContaining({ id: "d1" }));
+	});
+
+	test("a press outside an open row menu closes it; a press inside keeps it open", async () => {
+		render(DemoPanel, { demos: [demo("d1"), demo("d2")] });
+		const menu = screen.getByText("Take d1").closest("li")!.querySelector("details")!;
+		menu.open = true;
+		await fireEvent.pointerDown(within(menu).getByRole("menu", { hidden: true }));
+		expect(menu.open).toBe(true);
+		await fireEvent.pointerDown(screen.getByText("Take d2"));
+		expect(menu.open).toBe(false);
 	});
 
 	test("without a page to link to, the menu holds only the downloads", () => {
@@ -146,5 +162,42 @@ describe("DemoPanel comment counts", () => {
 		});
 		(component as unknown as { show: (id: string) => void }).show("d1");
 		expect(onseen).toHaveBeenCalledWith({ id: "d1" });
+	});
+});
+
+/**
+ * The notes typed at upload: the open demo shows them above its comments
+ * as plain text; a tile that is not open and carries notes shows an icon
+ * named "Has notes", and none when its notes are empty.
+ */
+describe("DemoPanel notes", () => {
+	const card = createRawSnippet(() => ({ render: () => "<span></span>" }));
+	const tileOf = (label: string) =>
+		within(screen.getByRole("list", { name: "Demos" }))
+			.getByText(label)
+			.closest("li")!;
+
+	beforeEach(() => vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue());
+
+	test("the open demo's notes show as text with their line breaks; its tile drops the icon", async () => {
+		const notes = "The bridge idea\n<b>listen</b> at 1:20";
+		render(DemoPanel, { demos: [demo("d1", { notes }), demo("d2", { notes: "" })], card });
+		expect(within(tileOf("Take d1")).getByRole("img", { name: "Has notes" })).toBeTruthy();
+		expect(within(tileOf("Take d2")).queryByRole("img", { name: "Has notes" })).toBeNull();
+		expect(screen.queryByRole("region", { name: "Notes" })).toBeNull();
+		await fireEvent.click(screen.getByRole("button", { name: "Play Take d1" }));
+		const block = screen.getByRole("region", { name: "Notes" });
+		const text = block.querySelector("p")!;
+		expect(text.textContent).toBe(notes);
+		expect(text.className).toContain("whitespace-pre-wrap");
+		expect(block.querySelector("b")).toBeNull();
+		expect(within(tileOf("Take d1")).queryByRole("img", { name: "Has notes" })).toBeNull();
+	});
+
+	test("an open demo without notes shows no Notes block", async () => {
+		render(DemoPanel, { demos: [demo("d1", { notes: "  " })], card });
+		await fireEvent.click(screen.getByRole("button", { name: "Play Take d1" }));
+		expect(document.querySelector("[data-recording-review]")).not.toBeNull();
+		expect(screen.queryByRole("region", { name: "Notes" })).toBeNull();
 	});
 });

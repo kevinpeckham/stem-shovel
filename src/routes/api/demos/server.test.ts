@@ -17,7 +17,7 @@ import {
 	type Mocks,
 } from "../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../tests/helpers/fakeApiEvent";
-import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { DEMO_NOTES_MAX, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 
 /** Step 1 of a demo upload: an editor of the song's account reserves the row; the formats are the broad demo list. */
@@ -80,6 +80,24 @@ describe("POST /api/demos", () => {
 			filename: "memo.ogg",
 			contentType: "audio/ogg",
 			sizeBytes: 5_000,
+			notes: "",
 		});
+	});
+	it("passes the notes typed at upload through to the row", async () => {
+		await post({ ...body, notes: "The slow verse\nlisten for the harmony" });
+		expect(data.createDemo).toHaveBeenCalledWith(ACCOUNT, USER, SONG, {
+			filename: "memo.ogg",
+			contentType: "audio/ogg",
+			sizeBytes: 5_000,
+			notes: "The slow verse\nlisten for the harmony",
+		});
+	});
+	it(`400 for notes over ${DEMO_NOTES_MAX} characters, or notes that are not text`, async () => {
+		await expect(post({ ...body, notes: "x".repeat(DEMO_NOTES_MAX + 1) })).rejects.toMatchObject({
+			status: 400,
+			body: { message: expect.stringContaining(String(DEMO_NOTES_MAX)) },
+		});
+		await expect(post({ ...body, notes: 42 })).rejects.toMatchObject(httpError(400));
+		expect(data.createDemo).not.toHaveBeenCalled();
 	});
 });

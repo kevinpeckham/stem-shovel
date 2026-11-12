@@ -28,6 +28,8 @@ test("comments on a demo's waveform in the Demos view", async ({ page, errors })
 	const before = Number((await tab.textContent())?.match(/\((\d+)\)/)?.[1] ?? 0);
 	// The Uploads menu's control (the panel's own shows only on a song without stems).
 	await page.getByLabel(/Upload Demos/).setInputFiles("static/stems/keys.wav");
+	// The pick is held for its notes (none here): Upload starts it.
+	await page.locator("#demo-upload-notes").getByRole("button", { name: "Upload" }).click();
 	await expect(tab).toHaveText(`Demos (${before + 1})`, { timeout: 120_000 });
 	await panel.getByRole("button", { name: "Play keys" }).click();
 	// A pause on the heels of play() makes Chrome log an interrupted request; let it start.

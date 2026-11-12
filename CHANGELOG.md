@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Notes on a demo** (docs/mixes.md, "Notes on a demo"; migration 0125,
+  `demo.notes`). Uploading demos now holds the pick in a popover with an
+  optional Notes field per file (`DemoUploadNotes`); the notes show with
+  the open demo, as an icon on a closed tile, and on the demo's page, and
+  "Edit notes…" in the row's menu changes them (`setDemoNotes`,
+  `DemoNotesEditor`). Plain text, 2000 characters, no history.
+
 ## [0.265.0] - 2026-11-12
 
 ### Added

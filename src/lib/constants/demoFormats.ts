@@ -32,3 +32,6 @@ export const DEMO_FORMAT_LIST = Object.keys(DEMO_FORMATS)
 
 /** Where the demo player's volume starts, 0 to 1: a phone memo or a rough take is often hot, so not full (Kevin, 2026-11-11). */
 export const DEMO_DEFAULT_VOLUME = 0.75;
+
+/** The most a demo's notes may hold, in characters: what the uploader says about the take, typed at upload. */
+export const DEMO_NOTES_MAX = 2000;

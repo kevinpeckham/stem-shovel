@@ -48,6 +48,8 @@
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import ArrangementSwitcher from "#lib/components/ArrangementSwitcher.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
+	import DemoUploadNotes from "#lib/components/DemoUploadNotes.svelte";
+	import DemoNotesEditor from "#lib/components/DemoNotesEditor.svelte";
 	import { markDemoCommentsSeen } from "#lib/remote/comments.remote.js";
 	import MixList from "#lib/components/MixList.svelte";
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
@@ -175,6 +177,7 @@
 	// Until the visitor picks, a song with stems opens on them and a song with
 	// demos only on those; the visitor's pick sticks for the visit.
 	let demoPanel = $state<DemoPanel | null>(null);
+	let demoNotesEditor = $state<DemoNotesEditor | null>(null);
 	/** The signed-in person's new comments per demo (the tiles' bubbles), seeded by the load; a demo opened here leaves it at once. */
 	let demoNewComments = $derived(data.demoNewComments);
 	/** A demo with new comments was opened in the Demos view: its bubble goes now, its notifications are read behind it (a convenience: a failure stays quiet). */
@@ -638,6 +641,10 @@
 			{stage}
 			{draftCard}
 		/>
+		<!-- Every Upload demo button's pick asks for its notes here, once for the page. -->
+		<DemoUploadNotes {demos} />
+		<!-- The Demos view's Edit notes… on any row opens this one popover. -->
+		<DemoNotesEditor bind:this={demoNotesEditor} />
 	{/if}
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
@@ -678,6 +685,7 @@
 						minHeight={Math.max(560, layout.stemBoxHeight)}
 						canEdit={data.canEdit}
 						onremove={(d) => demos.remove(d)}
+						oneditnotes={(d) => void demoNotesEditor?.open({ ...d, notes: d.notes ?? "" })}
 						comments={data.demoComments}
 						canComment={data.canComment}
 						card={demoCommentCard}

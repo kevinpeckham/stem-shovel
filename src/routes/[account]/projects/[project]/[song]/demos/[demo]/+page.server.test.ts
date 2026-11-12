@@ -19,6 +19,7 @@ const DEMO = {
 	accountId: ACCOUNT,
 	songId: "song1",
 	label: "Phone memo",
+	notes: "Rough take of the bridge",
 	status: "ready",
 	url: "https://blob/demo1.m4a",
 	filename: "demo1.m4a",
@@ -92,6 +93,7 @@ describe("demo page load", () => {
 			demo: {
 				id: "demo1",
 				label: "Phone memo",
+				notes: "Rough take of the bridge",
 				url: "signed:https://blob/demo1.m4a",
 				playbackUrl: "signed:https://blob/demo1.mp3",
 				peaks: [0.1, 0.5],

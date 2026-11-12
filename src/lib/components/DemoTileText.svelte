@@ -4,8 +4,9 @@
 	/**
 	 * A demo tile's text in the song page's Demos view (DemoPanel): its
 	 * label with a bubble of the signed-in person's new comments, and its
-	 * size with how many comments it has. The open demo's tile passes no
-	 * counts (its comments are above the list).
+	 * size with how many comments it has and a note icon when it carries
+	 * notes. The open demo's tile passes no counts and no icon (its comments
+	 * and notes are above the list).
 	 */
 	interface Props {
 		label: string;
@@ -14,8 +15,10 @@
 		count?: number;
 		/** New comments for the signed-in person (their unread comment notifications). */
 		fresh?: number;
+		/** The demo carries notes from its upload (shown when it is open). */
+		hasNotes?: boolean;
 	}
-	let { label, sizeBytes, count = 0, fresh = 0 }: Props = $props();
+	let { label, sizeBytes, count = 0, fresh = 0, hasNotes = false }: Props = $props();
 	let freshName = $derived(`${fresh} new ${fresh === 1 ? "comment" : "comments"}`);
 	let countText = $derived(`${count} ${count === 1 ? "comment" : "comments"}`);
 </script>
@@ -34,6 +37,12 @@
 	</span>
 	<span class="block truncate text-xs opacity-85"
 		>{formatBytes(sizeBytes)}{#if count > 0}{" · "}<span class="text-dim">{countText}</span
-			>{/if}</span
+			>{/if}{#if hasNotes}{" · "}<span
+				class="i-ph-note inline-block align-[-2px] text-dim"
+				role="img"
+				title="Has notes"
+				aria-label="Has notes"
+				data-demo-has-notes
+			></span>{/if}</span
 	>
 </span>

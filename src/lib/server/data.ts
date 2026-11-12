@@ -106,7 +106,7 @@ import {
 	NOTATION_CONTENT_TYPE_OF,
 	type NotationFormat,
 } from "#lib/constants/notationFormats.js";
-import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { DEMO_NOTES_MAX, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { MAX_SESSIONS_PER_ACCOUNT, type SessionKind } from "#lib/constants/sessionRecordings.js";
 import { MAX_SET_LIST_ITEMS, MAX_SET_LISTS_PER_ACCOUNT } from "#lib/val/SetListSchema.js";
 import {
@@ -4863,13 +4863,14 @@ export async function removeStemMidi(accountId: string, stemId: string) {
 
 /**
  * Step 1 of a demo upload: reserve the row (same lifecycle as a stem, without
- * decoding). Returns null for an unknown song, "full" at MAX_DEMOS_PER_SONG.
+ * decoding), with the notes typed at upload (trimmed; the route checks the
+ * length). Returns null for an unknown song, "full" at MAX_DEMOS_PER_SONG.
  */
 export async function createDemo(
 	accountId: string,
 	userId: string,
 	songId: string,
-	file: NewStemFile,
+	file: NewStemFile & { notes?: string },
 ) {
 	const s = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
@@ -4889,6 +4890,7 @@ export async function createDemo(
 			accountId,
 			songId,
 			label: labelFromFilename(file.filename),
+			notes: file.notes?.trim() ?? "",
 			url: "",
 			pathname: demoPathname(accountId, songId, id, file.filename),
 			filename: file.filename,
@@ -4898,6 +4900,22 @@ export async function createDemo(
 		})
 		.returning();
 	return row;
+}
+
+/**
+ * A demo's notes changed after upload (the Demos view's Edit notes…, the
+ * demo's page): trimmed, an empty text clears them. False for a demo not
+ * in the account; "too-long" over DEMO_NOTES_MAX, nothing written.
+ */
+export async function setDemoNotes(accountId: string, demoId: string, notes: string) {
+	const text = notes.trim();
+	if (text.length > DEMO_NOTES_MAX) return "too-long" as const;
+	const [row] = await db
+		.update(demo)
+		.set({ notes: text })
+		.where(and(eq(demo.accountId, accountId), eq(demo.id, demoId)))
+		.returning({ id: demo.id });
+	return !!row;
 }
 
 // ---- Sessions (docs/uploads-and-blob.md, "Sessions"): the account's practices and shows, and their recordings ----

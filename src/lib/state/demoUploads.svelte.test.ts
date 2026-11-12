@@ -54,7 +54,7 @@ describe("DemoUploads", () => {
 	test("an unsupported format sets the notice and uploads nothing", async () => {
 		const { demos, onuploaded } = setup();
 		const el = input([file("memo.m4a"), file("notes.txt")]);
-		await demos.upload(el);
+		demos.upload(el);
 		expect(demos.notice).toMatch(/^Not a supported format \(.+\): notes\.txt$/);
 		expect(el.value).toBe("");
 		expect(uploadDemoFile).not.toHaveBeenCalled();
@@ -64,21 +64,52 @@ describe("DemoUploads", () => {
 
 	test("a file over the size limit sets the notice and uploads nothing", async () => {
 		const { demos } = setup();
-		await demos.upload(input([file("big.wav", STEM_MAX_BYTES + 1)]));
+		demos.upload(input([file("big.wav", STEM_MAX_BYTES + 1)]));
 		expect(demos.notice).toMatch(/^Over the .+ limit: big\.wav$/);
 		expect(uploadDemoFile).not.toHaveBeenCalled();
 	});
 
 	test("more files than the song has room for sets the notice and uploads nothing", async () => {
 		const { demos } = setup(MAX_DEMOS_PER_SONG - 1);
-		await demos.upload(input([file("a.mp3"), file("b.mp3")]));
+		demos.upload(input([file("a.mp3"), file("b.mp3")]));
 		expect(demos.notice).toBe(`Only 1 more demo fit on this song (${MAX_DEMOS_PER_SONG} max).`);
 		expect(uploadDemoFile).not.toHaveBeenCalled();
 	});
 
-	test("a successful batch tracks each file's percent, then clears the jobs", async () => {
+	test("a valid pick waits as pending, with empty notes, and uploads nothing", async () => {
 		const { demos, onuploaded } = setup();
 		demos.notice = "an earlier refusal";
+		const el = input([file("a.mp3"), file("b.m4a")]);
+		demos.upload(el);
+		expect(el.value).toBe("");
+		expect(demos.notice).toBeNull();
+		expect(demos.pickedFrom).toBe(el);
+		expect(demos.pending?.map((p) => [p.file.name, p.notes])).toEqual([
+			["a.mp3", ""],
+			["b.m4a", ""],
+		]);
+		expect(uploadDemoFile).not.toHaveBeenCalled();
+		expect(onuploaded).not.toHaveBeenCalled();
+	});
+
+	test("a refused pick never becomes pending", () => {
+		const { demos } = setup();
+		demos.upload(input([file("notes.txt")]));
+		expect(demos.pending).toBeNull();
+	});
+
+	test("cancel drops the pick and uploads nothing", async () => {
+		const { demos, onuploaded } = setup();
+		demos.upload(input([file("a.mp3")]));
+		demos.cancel();
+		expect(demos.pending).toBeNull();
+		await demos.start();
+		expect(uploadDemoFile).not.toHaveBeenCalled();
+		expect(onuploaded).not.toHaveBeenCalled();
+	});
+
+	test("start sends each file with its own notes, tracks each file's percent, then clears the jobs", async () => {
+		const { demos, onuploaded } = setup();
 		const seen: number[] = [];
 		uploadDemoFile.mockImplementationOnce(async (_f, reserve, onProgress) => {
 			await reserve();
@@ -86,23 +117,34 @@ describe("DemoUploads", () => {
 			onProgress?.(40);
 			seen.push(demos.jobs[0].percent);
 		});
-		await demos.upload(input([file("a.mp3"), file("b.m4a")]));
+		demos.upload(input([file("a.mp3"), file("b.m4a")]));
+		demos.pending![0].notes = "  The bridge idea\nlisten at 1:20  ";
+		const started = demos.start();
+		expect(demos.pending).toBeNull();
+		await started;
 		expect(seen).toEqual([40]);
-		expect(postJson).toHaveBeenCalledWith("/api/demos", {
+		expect(postJson).toHaveBeenNthCalledWith(1, "/api/demos", {
 			songId: "song1",
 			filename: "a.mp3",
 			sizeBytes: 10,
+			notes: "The bridge idea\nlisten at 1:20",
+		});
+		expect(postJson).toHaveBeenNthCalledWith(2, "/api/demos", {
+			songId: "song1",
+			filename: "b.m4a",
+			sizeBytes: 10,
+			notes: "",
 		});
 		expect(uploadDemoFile).toHaveBeenCalledTimes(2);
 		expect(onuploaded).toHaveBeenCalledOnce();
-		expect(demos.notice).toBeNull();
 		expect(demos.busy).toBe(false);
 		expect(demos.jobs).toEqual([]);
 	});
 
 	test("a failed file keeps its error, the others their percent", async () => {
 		const { demos, onuploaded } = setup();
-		await demos.upload(input([file("a.mp3"), file("bad.mp3")]));
+		demos.upload(input([file("a.mp3"), file("bad.mp3")]));
+		await demos.start();
 		expect(onuploaded).toHaveBeenCalledOnce();
 		expect(demos.busy).toBe(false);
 		expect(demos.jobs).toEqual([

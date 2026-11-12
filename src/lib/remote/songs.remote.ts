@@ -10,6 +10,7 @@ import { ChartColumnsChangeSchema } from "#lib/val/ChartColumnsChangeSchema.js";
 import { SongSectionsSaveSchema } from "#lib/val/SongSectionSchema.js";
 import { ShareSongSchema } from "#lib/val/ShareSongSchema.js";
 import { StemOrderSchema } from "#lib/val/StemOrderSchema.js";
+import { DEMO_NOTES_TOO_LONG, DemoNotesSchema } from "#lib/val/DemoNotesSchema.js";
 import { sendShareEmail } from "#lib/server/email.js";
 import { songShareAim } from "#lib/server/songShareAim.js";
 import { scheduleMix } from "#lib/server/jobs.js";
@@ -30,6 +31,7 @@ import {
 	deleteSong as removeSong,
 	deleteStem as removeStem,
 	deleteDemo as removeDemo,
+	setDemoNotes as saveDemoNotes,
 	projectSlugs,
 	removeStemMidi as dropMidi,
 	renameStem as rename,
@@ -251,6 +253,16 @@ export const removeDemoById = command(IdSchema, async ({ id }) => {
 	const { accountId } = await memberOf(locals, accountOfDemo, id);
 	if (!(await removeDemo(accountId, id))) error(404, "Demo not found");
 	return { deleted: true };
+});
+
+/** A demo's notes changed after upload (the Demos view's row menu, the demo's page): editors, as removing one; empty clears them. */
+export const setDemoNotes = form(DemoNotesSchema, async ({ id, notes }, issue) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfDemo, id);
+	const saved = await saveDemoNotes(accountId, id, notes);
+	if (saved === "too-long") invalid(issue.notes(DEMO_NOTES_TOO_LONG));
+	if (!saved) error(404, "Demo not found");
+	return { saved: true };
 });
 
 /** Sets the song's version, e.g. after the "stems changed — bump?" offer. A command. */

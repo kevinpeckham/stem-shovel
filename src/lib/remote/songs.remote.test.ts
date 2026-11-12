@@ -36,6 +36,8 @@ import {
  * the request; the private note goes by who may view the song.
  */
 import { DraftStoppedError, draftStopNotice } from "#lib/utils/draftStopped.js";
+import { DEMO_NOTES_MAX } from "#lib/constants/demoFormats.js";
+import { DEMO_NOTES_TOO_LONG } from "#lib/val/DemoNotesSchema.js";
 
 const songs = await import("./songs.remote");
 
@@ -158,6 +160,15 @@ describe("editor-gated functions", () => {
 			dataFn: "deleteDemo",
 			args: [ACCOUNT, DEMO],
 			outcome: { deleted: true },
+		},
+		{
+			name: "setDemoNotes",
+			fn: songs.setDemoNotes,
+			input: { id: DEMO, notes: "  Rough take\nlisten for the bass  " },
+			arrange: () => data.setDemoNotes.mockResolvedValue(true),
+			dataFn: "setDemoNotes",
+			args: [ACCOUNT, DEMO, "Rough take\nlisten for the bass"],
+			outcome: { saved: true },
 		},
 		{
 			name: "setSongVersion",
@@ -1310,5 +1321,28 @@ describe("setChartTimingUse", () => {
 			httpError(404),
 		);
 		await expect(call(songs.setChartTimingUse, { id: SONG, use: "yes" })).rejects.toThrow();
+	});
+});
+
+describe("setDemoNotes", () => {
+	it("notes over the limit are a field error on notes, from the schema or the data layer", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(
+			call(songs.setDemoNotes, { id: DEMO, notes: "x".repeat(DEMO_NOTES_MAX + 1) }),
+		).rejects.toMatchObject({ issues: [{ message: DEMO_NOTES_TOO_LONG }] });
+		data.setDemoNotes.mockResolvedValue("too-long");
+		await expect(call(songs.setDemoNotes, { id: DEMO, notes: "ok" })).rejects.toMatchObject({
+			issues: [{ path: ["notes"], message: DEMO_NOTES_TOO_LONG }],
+		});
+	});
+	it("an empty field clears the notes; 404 when the data layer finds no demo", async () => {
+		asEditorOf(ACCOUNT);
+		data.setDemoNotes.mockResolvedValue(true);
+		await expect(call(songs.setDemoNotes, { id: DEMO })).resolves.toEqual({ saved: true });
+		expect(data.setDemoNotes).toHaveBeenCalledWith(ACCOUNT, DEMO, "");
+		data.setDemoNotes.mockResolvedValue(false);
+		await expect(call(songs.setDemoNotes, { id: DEMO, notes: "x" })).rejects.toMatchObject(
+			httpError(404),
+		);
 	});
 });

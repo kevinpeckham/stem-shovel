@@ -53,6 +53,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		demo: {
 			id: demo.id,
 			label: demo.label,
+			notes: demo.notes,
 			filename: demo.filename,
 			sizeBytes: demo.sizeBytes,
 			url: url ?? demo.url,

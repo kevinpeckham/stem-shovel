@@ -13,15 +13,23 @@ export interface DemoMenuItem {
 
 /**
  * A demo row's ⋯ menu: its own page (`hrefOf`; Share… there for an editor),
- * the MP3 when there is one, the original file, and Remove when the editor's
- * page passes `remove`.
+ * the MP3 when there is one, the original file, and, when the editor's page
+ * passes them, Edit notes… (Add notes… while it has none) and Remove.
  */
 export function demoMenuItems(
-	d: { id: string; label: string; url: string; filename: string; playbackUrl: string | null },
+	d: {
+		id: string;
+		label: string;
+		url: string;
+		filename: string;
+		playbackUrl: string | null;
+		notes?: string;
+	},
 	opts: {
 		hrefOf?: (id: string) => string;
 		canEdit: boolean;
 		save: (url: string, filename: string) => unknown;
+		editNotes?: () => void;
 		remove?: () => void;
 	},
 ): DemoMenuItem[] {
@@ -53,6 +61,13 @@ export function demoMenuItems(
 			title: d.filename,
 			action: () => opts.save(d.url, d.filename),
 			when: true,
+		},
+		{
+			label: d.notes ? "Edit notes…" : "Add notes…",
+			icon: "i-ph-note-pencil",
+			title: "What this take is, what to listen for",
+			action: opts.editNotes,
+			when: opts.canEdit && !!opts.editNotes,
 		},
 		{
 			label: "Remove demo",

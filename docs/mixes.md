@@ -194,3 +194,28 @@ or a mix clears the id on the links made for it, so they open the song:
 Turso runs no `set null`, and a mix's links used to keep a dead id and
 land on a 404. Comment notifications for a demo still link to the song
 page.
+
+## Notes on a demo (2026-11-12)
+
+A demo carries plain-text notes (`demo.notes`, migration 0125, at most
+`DEMO_NOTES_MAX` characters): what the take is, what to listen for.
+Kevin asked for notes at upload and no full editor, then for a small one.
+
+- **At upload.** `DemoUploads.upload` holds a pick that passed its checks
+  (`pending`) instead of starting; `DemoUploadNotes`, one popover the song
+  page renders for all three upload buttons, lists the files with a Notes
+  field each, and Upload sends each file's notes in the reserve
+  (`POST /api/demos`, `notes`). With no notes typed it is one more click.
+  The popover opens with the file input as its source, so the Song
+  settings popover it may have been opened from stays open under it.
+- **Shown.** The open demo's notes sit between its waveform and its
+  comments (`RecordingNotes` in `RecordingReview`); a tile that is not
+  open carries a note icon; the demo's own page shows them under its
+  header (`DemoNotesBlock`). Always as text, line breaks kept.
+- **Changed.** "Edit notes…" (or "Add notes…") in the row's ⋯ menu and on
+  the demo's page, for those who may remove a demo: one shared
+  `DemoNotesEditor` popover and the `setDemoNotes` form. An empty save
+  clears them. No history.
+- Demos made another way (Record Demo, the drum machine, "Use as demo", a
+  session recording copied in) start with no notes and can be given some
+  from the menu.
