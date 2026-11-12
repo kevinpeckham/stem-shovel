@@ -222,7 +222,7 @@ the tracker's.
 
 **A perfect grid does not change the notes.** On the composer's grid
 the share of notes right in slot and pitch (a slot-level F) is within
-0.01 of the tracker's on every song: 0.75, 0.80, 0.90, 0.77, 0.75,
+0.01 of the tracker's on every song: 0.76, 0.80, 0.90, 0.77, 0.74,
 0.77. Mean bars entirely right, 45.3 % on the tracker's grid, 44.7 % on
 the composer's. The written bass line is limited by the transcription,
 not by the beats under it.
