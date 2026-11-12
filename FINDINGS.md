@@ -3450,6 +3450,22 @@ removes most of that for free. What remains is onsets: one note in five
 missed and a fifth to a half again as many extra onsets as the part has,
 so only 25 % to 39 % of bars are entirely right on five songs and 71 % on
 the one steady eighth-note part. pYIN fixes the octave and loses notes;
-not a fix. Next lever: merging same-pitch re-triggers inside a sixteenth
-and a ghost-note floor (docs/bench-brief-bass-transcription-2026-11-12.md,
-the bench's answer).
+not a fix. (Corrected 2026-11-12: this entry first named merging
+same-pitch re-triggers and a ghost-note floor as the next lever; Study
+49 tested both and recommends neither, next entry.)
+(docs/bench-brief-bass-transcription-2026-11-12.md, the bench's answer).
+
+## Basic Pitch's chord thresholds are right for bass; no filter rescues the bass line (2026-11-12)
+
+stem-bench Study 49, same six songs: 32 settings of `outputToNotesPoly`
+from one set of posteriors. Lowering the onset threshold, the frame
+threshold or the minimum note length makes the written bass line worse
+on every song (a 6-frame minimum finds the short notes and adds more
+extras than it finds). `melodiaTrick: false` helps on all six songs and
+`inferOnsets: false` slightly; together 39.0 % to 45.2 % of bars right
+on the mean, under the 10 points the bench registered for a
+recommendation. A re-trigger merge and an amplitude floor each help one
+song and cost another real notes: neither recommended. The extras are
+not mostly re-triggers (30 %; nothing sounding 23 %, wrong subdivision
+18 %). What is left is the grid and short legato notes
+(docs/bench-brief-bass-transcription-2026-11-12.md, follow-up).

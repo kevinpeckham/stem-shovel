@@ -107,7 +107,11 @@ error rate is 12 % to 38 %, every error upward (the second harmonic),
 worst in E1 to A1 on four of six songs. The rest of the loss is onsets:
 one in six to one in four of the part's notes get no onset, and the
 transcription adds a fifth to a half again as many onsets as the part
-has, mostly re-triggers inside a sustained or decaying note.
+has. *(Corrected 2026-11-12: this sentence first ended "mostly
+re-triggers inside a sustained or decaying note", which the bench had
+not measured. Study 49 classed them: re-triggers 30 %, onsets with
+nothing sounding 23 %, bars on the wrong subdivision 18 %, tails 13 %.
+See the follow-up below.)*
 
 **Ask B.** The cheap constraint (pitch 28 to 60, one note at a time
 keeping the lowest, none under 60 ms) lifts exact F to 0.70 to 0.85 and
@@ -139,13 +143,65 @@ the app could measure a proxy without truth (transcribed notes starting
 within a sixteenth of another of the same pitch class). The bench has
 not tested that proxy.
 
-**What would have to change.** The onsets, not the pitch: a rule that
-merges a re-trigger of the same pitch inside a sixteenth of a sounding
-note, and a ghost-note floor by loudness, would address the largest
-failure class, and the bench can measure both against the same truth
-on request. The stems here are Logic's rendering of the MIDI by a
+**What would have to change.** The onsets, not the pitch. *(Corrected
+2026-11-12: the bench first offered a merge of same-pitch re-triggers
+and a ghost-note floor here as the lever for "the largest failure
+class". Study 49 tested both and recommends neither; see the follow-up
+below.)* The stems here are Logic's rendering of the MIDI by a
 sampled bass, clean and exact; a miked bass would do worse on every row.
 The written `Bs` lines for every song and pipeline, and the truth's,
 are in stem-bench results/study48-lines/ and parse in barmark 0.17 with
 no error, so what the app would show from perfect notes sits beside what
 it would show today.
+
+---
+
+## Follow-up: what the wrong onsets are, and the app's own knobs (2026-11-12; stem-bench Study 49, docs/BRIEF-STUDY49.md, $0)
+
+The bench ran the two rules it offered above, and Basic Pitch's own
+note-creation knobs, against the same six songs. **Nothing here is a
+recommendation by the registered rules, and one sentence above was
+wrong.**
+
+**The extras are not mostly re-triggers.** Classed mechanically, of 582
+extra onsets under the app's settings (bass-constrained): 30 % start
+while a note of the same pitch class is sounding, 23 % where the part
+has nothing sounding, 18 % are in bars the tracker's grid puts on the
+other subdivision, 13 % are tails, 10 % are a real note one slot off.
+Re-triggers are the largest class on two songs of six.
+
+**The misses are the grid and short, legato notes.** Of 332 missed
+onsets, 25 % are in bars on the other subdivision, 30 % have no
+transcribed note of their pitch class at all, 18 % are one slot off,
+17 % were joined to the note before. A note under 130 ms is missed 48 %
+to 68 % of the time against 6 % to 25 % for longer ones; `minNoteLen`
+of 11 frames is that 130 ms.
+
+**Do not loosen the thresholds for bass.** From the same cached
+posteriors, 32 settings of `outputToNotesPoly`: an onset threshold of
+0.35 costs 14 to 45 points of bars right on every song; a minimum note
+of 6 frames finds the short notes and adds more extras than it finds,
+1 to 22 points worse on every song; a frame threshold of 0.2 is 1 to 8
+points worse on every song. The chord settings (0.5, 0.3, 11) are right
+for bass.
+
+**The one consistent gain is small.** `inferOnsets: false` and
+`melodiaTrick: false` together, at the app's thresholds: bars entirely
+right go 34 → 35 %, 26 → 32 %, 71 → 76 %, 35 → 42 %, 29 → 46 %,
+39 → 40 % (mean 39.0 → 45.2 %). The melodia pass off helps on all six
+songs and loses none; inferred onsets off is under 2 points. The bench
+registered 10 points for a recommendation and this is 6.2, so by its
+own rule it does not recommend it; the numbers are the app's to use.
+
+**No filter.** Merging a same-pitch note within a sixteenth of the last
+lifts Eat All the Clocks 35 → 45 % and drops Letter Lands 71 → 59 % by
+swallowing real repeated notes; within an eighth it swallows 13 % to
+25 % of four songs' notes. An amplitude floor lifts Downline 29 → 44 %
+and costs every other song 1 % to 7 % of its notes for nothing.
+
+**The line is still not showable**: best case 32 % to 46 % of bars
+right on five songs and 76 % on Letter Lands. What is left is not a
+threshold. Next from the bench, on this evidence: a grid for the line
+taken from the bass stem's own onsets inside the tracker's bars, then
+whether the app can tell without truth which bars to trust and show
+only those.
