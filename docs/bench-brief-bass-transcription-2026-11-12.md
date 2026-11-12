@@ -126,8 +126,12 @@ triplet per beat chosen per bar from the line's own onsets (triplet only
 when it fits the onsets under 0.8 of the straight grid's residual, two
 onsets at least), and notes under 0.4 of a sixteenth dropped: 74 % to
 95 % of the part's notes land on the right slot on the five 4/4 and 3/4
-songs, 64 % on Downline, whose 5/4 and 3/4 bars the tracker reads on the
-other subdivision 23 times in 186. Quantization is not where the line is
+songs, 64 % on Downline, where in 23 bars of 186 the truth's onsets and
+the transcription's choose different subdivisions (sixteenths against
+triplets). *(Corrected 2026-11-12: this first said the tracker reads
+those bars on the other subdivision; the choice is the bench's per-bar
+rule above, and the tracker's part in it has not been measured.)*
+Quantization is not where the line is
 lost.
 
 **Ask D.** Bars entirely right (every pitch, octave and slot, no extra
@@ -166,12 +170,14 @@ wrong.**
 **The extras are not mostly re-triggers.** Classed mechanically, of 582
 extra onsets under the app's settings (bass-constrained): 30 % start
 while a note of the same pitch class is sounding, 23 % where the part
-has nothing sounding, 18 % are in bars the tracker's grid puts on the
-other subdivision, 13 % are tails, 10 % are a real note one slot off.
+has nothing sounding, 18 % are in bars where the truth and the
+transcription chose different subdivisions (sixteenths against triplets,
+the bench's per-bar choice from each line's onsets; cause not yet
+measured), 13 % are tails, 10 % are a real note one slot off.
 Re-triggers are the largest class on two songs of six.
 
 **The misses are the grid and short, legato notes.** Of 332 missed
-onsets, 25 % are in bars on the other subdivision, 30 % have no
+onsets, 25 % are in such bars, 30 % have no
 transcribed note of their pitch class at all, 18 % are one slot off,
 17 % were joined to the note before. A note under 130 ms is missed 48 %
 to 68 % of the time against 6 % to 25 % for longer ones; `minNoteLen`
