@@ -3469,3 +3469,15 @@ song and cost another real notes: neither recommended. The extras are
 not mostly re-triggers (30 %; nothing sounding 23 %, wrong subdivision
 18 %). What is left is the grid and short legato notes
 (docs/bench-brief-bass-transcription-2026-11-12.md, follow-up).
+
+## The bass line is limited by the transcription, not the beat grid (2026-11-12)
+
+stem-bench Study 50: the same Basic Pitch notes graded on the composer's
+own grid (from Kevin's session MIDI) score the same as on the tracker's,
+slot-level F within 0.01 on all six songs. The tracker's beats are in
+the right place; it drops 6 % to 16 % of them and misplaces bar lines in
+5/4 and 3/4 (Downline 48 % right, Mop Heart 18 %), which matters to a
+readable chart and not to the notes. A per-bar sixteenth-or-triplet
+choice invents triplet bars at fast tempos; choosing once per line does
+not (docs/bench-brief-bass-transcription-2026-11-12.md, second
+follow-up).

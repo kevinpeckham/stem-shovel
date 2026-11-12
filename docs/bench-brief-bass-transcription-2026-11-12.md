@@ -211,3 +211,50 @@ threshold. Next from the bench, on this evidence: a grid for the line
 taken from the bass stem's own onsets inside the tracker's bars, then
 whether the app can tell without truth which bars to trust and show
 only those.
+
+---
+
+## Second follow-up: it is not the grid (2026-11-12; stem-bench Study 50, docs/BRIEF-STUDY50.md, $0)
+
+Kevin's session MIDI carries the composer's own tempo and signature
+map, so the bench graded the same notes on the composer's grid beside
+the tracker's.
+
+**A perfect grid does not change the notes.** On the composer's grid
+the share of notes right in slot and pitch (a slot-level F) is within
+0.01 of the tracker's on every song: 0.75, 0.80, 0.90, 0.77, 0.75,
+0.77. Mean bars entirely right, 45.3 % on the tracker's grid, 44.7 % on
+the composer's. The written bass line is limited by the transcription,
+not by the beats under it.
+
+**What the tracker gets wrong on these songs, for the chart's sake.**
+Its beats are in the right place (100 % within 50 ms of a composer's
+beat on five songs, 84 % on Interbellum). It drops 6 % to 16 % of them
+on five songs (double-length beats, mostly in intros and sparse
+passages). Its bar lines are the composer's on Peaceful Dreams and
+Letter Lands, 92 % and 76 % on Eat All the Clocks and Interbellum, and
+wrong on the odd meters: 48 % on Downline (5/4 and 3/4), 18 % on Mop
+Heart (3/4 at 224). None of that moves note accuracy; a 5/4 song in
+bars of one to six beats is its own problem for a reader.
+
+**Triplets: choose once per song, if the app wants a rule.** The
+bench's per-bar choice between sixteenths and triplets wrote triplet
+bars the parts do not have, even on the composer's grid (19 of 597
+bars; at 180 bpm the second sixteenth and the second triplet of a beat
+are 28 ms apart). Choosing once for the whole line removed every such
+bar and never lowered a score. It did not raise bars entirely right, so
+by the bench's registered condition it is not a recommendation; and
+this corpus has no shuffle to test the other side.
+
+**Corrections.** Two earlier statements in this file blamed the tracker
+for the subdivision disagreements (corrected in place above), and the
+bench told Kevin the tracker reads Letter Lands and Peaceful Dreams at
+half tempo: it reads them at 130 and 143 and holds the half-note only
+for stretches.
+
+**Where this leaves the bass line.** Three studies have now tried
+Basic Pitch's settings, filters on its notes, and the grid. None moves
+the line past about three notes in four and under half the bars
+(Letter Lands, 78 % of bars, is the exception). What remains is to show
+only the bars that can be trusted, or to transcribe bass with something
+other than Basic Pitch; the bench takes those next.
