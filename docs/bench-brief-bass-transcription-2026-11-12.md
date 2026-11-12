@@ -107,11 +107,11 @@ error rate is 12 % to 38 %, every error upward (the second harmonic),
 worst in E1 to A1 on four of six songs. The rest of the loss is onsets:
 one in six to one in four of the part's notes get no onset, and the
 transcription adds a fifth to a half again as many onsets as the part
-has. *(Corrected 2026-11-12: this sentence first ended "mostly
+has. _(Corrected 2026-11-12: this sentence first ended "mostly
 re-triggers inside a sustained or decaying note", which the bench had
 not measured. Study 49 classed them: re-triggers 30 %, onsets with
 nothing sounding 23 %, bars on the wrong subdivision 18 %, tails 13 %.
-See the follow-up below.)*
+See the follow-up below.)_
 
 **Ask B.** The cheap constraint (pitch 28 to 60, one note at a time
 keeping the lowest, none under 60 ms) lifts exact F to 0.70 to 0.85 and
@@ -128,9 +128,9 @@ onsets at least), and notes under 0.4 of a sixteenth dropped: 74 % to
 95 % of the part's notes land on the right slot on the five 4/4 and 3/4
 songs, 64 % on Downline, where in 23 bars of 186 the truth's onsets and
 the transcription's choose different subdivisions (sixteenths against
-triplets). *(Corrected 2026-11-12: this first said the tracker reads
+triplets). _(Corrected 2026-11-12: this first said the tracker reads
 those bars on the other subdivision; the choice is the bench's per-bar
-rule above, and the tracker's part in it has not been measured.)*
+rule above, and the tracker's part in it has not been measured.)_
 Quantization is not where the line is
 lost.
 
@@ -147,11 +147,11 @@ the app could measure a proxy without truth (transcribed notes starting
 within a sixteenth of another of the same pitch class). The bench has
 not tested that proxy.
 
-**What would have to change.** The onsets, not the pitch. *(Corrected
+**What would have to change.** The onsets, not the pitch. _(Corrected
 2026-11-12: the bench first offered a merge of same-pitch re-triggers
 and a ghost-note floor here as the lever for "the largest failure
 class". Study 49 tested both and recommends neither; see the follow-up
-below.)* The stems here are Logic's rendering of the MIDI by a
+below.)_ The stems here are Logic's rendering of the MIDI by a
 sampled bass, clean and exact; a miked bass would do worse on every row.
 The written `Bs` lines for every song and pipeline, and the truth's,
 are in stem-bench results/study48-lines/ and parse in barmark 0.17 with
@@ -268,12 +268,12 @@ trust? The bench trusted a bar only when another reading of the same
 stem wrote it identically (same pitches in the same slots), with no
 truth involved, and then graded the trusted bars.
 
-| a bar is shown when it matches | bars shown | shown bars entirely right | wrong |
-|---|---|---|---|
-| (every bar) | 100 % | 41 % | 41 % |
-| the app's own Basic Pitch settings | 79 % | 43 % | 39 % |
-| two loosened Basic Pitch settings | 65 % | 48 % | 31 % |
-| pYIN, a second transcriber | 26 % | 64 % | 20 % |
+| a bar is shown when it matches     | bars shown | shown bars entirely right | wrong |
+| ---------------------------------- | ---------- | ------------------------- | ----- |
+| (every bar)                        | 100 %      | 41 %                      | 41 %  |
+| the app's own Basic Pitch settings | 79 %       | 43 %                      | 39 %  |
+| two loosened Basic Pitch settings  | 65 %       | 48 %                      | 31 %  |
+| pYIN, a second transcriber         | 26 %       | 64 %                      | 20 %  |
 
 **Not recommended.** No rule shows bars that are 70 % right and at most
 10 % wrong on every song. Agreement with a second transcriber is the
