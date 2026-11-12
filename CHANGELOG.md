@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.264.2] - 2026-11-12
+
 ### Fixed
 
 - **The click no longer drops out for a pass of a loop.** At a loop's

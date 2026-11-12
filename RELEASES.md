@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.264.2] - 2026-11-12
+
 ### Fixed
 
 - **The metronome no longer cuts out while looping a section.** With the
