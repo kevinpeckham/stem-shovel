@@ -3481,3 +3481,14 @@ readable chart and not to the notes. A per-bar sixteenth-or-triplet
 choice invents triplet bars at fast tempos; choosing once per line does
 not (docs/bench-brief-bass-transcription-2026-11-12.md, second
 follow-up).
+
+## Showing only "trusted" bass bars does not rescue the line yet (2026-11-12)
+
+stem-bench Study 51: trusting a bar when a second reading writes it
+identically. Agreement between Basic Pitch settings barely filters (the
+bars that survive are 48 % right; they share one model output).
+Agreement with pYIN lifts shown bars from 41 % to 64 % entirely right
+but shows a quarter of the bars and fails where both miss the same
+notes. Trust by agreement is bounded by the second reader's own
+accuracy (docs/bench-brief-bass-transcription-2026-11-12.md, third
+follow-up).

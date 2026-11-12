@@ -258,3 +258,34 @@ the line past about three notes in four and under half the bars
 (Letter Lands, 78 % of bars, is the exception). What remains is to show
 only the bars that can be trusted, or to transcribe bass with something
 other than Basic Pitch; the bench takes those next.
+
+---
+
+## Third follow-up: showing only trusted bars (2026-11-12; stem-bench Study 51, docs/BRIEF-STUDY51.md, $0)
+
+If the whole line cannot be shown, can the app show the bars it can
+trust? The bench trusted a bar only when another reading of the same
+stem wrote it identically (same pitches in the same slots), with no
+truth involved, and then graded the trusted bars.
+
+| a bar is shown when it matches | bars shown | shown bars entirely right | wrong |
+|---|---|---|---|
+| (every bar) | 100 % | 41 % | 41 % |
+| the app's own Basic Pitch settings | 79 % | 43 % | 39 % |
+| two loosened Basic Pitch settings | 65 % | 48 % | 31 % |
+| pYIN, a second transcriber | 26 % | 64 % | 20 % |
+
+**Not recommended.** No rule shows bars that are 70 % right and at most
+10 % wrong on every song. Agreement with a second transcriber is the
+only signal with real lift, and it worked on one song (Peaceful Dreams:
+30 % of bars shown, 76 % right, 3 % wrong). Elsewhere it shows 2 % to
+20 % of the bars, because pYIN's own line is rarely right, and on
+Interbellum the bars both readers agree on are wrong more often than
+right: they miss the same notes. Re-running Basic Pitch's note creation
+with other settings and comparing costs nothing and tells the app
+little, since the readings share one model output.
+
+**The principle holds; the second reader is missing.** A bar can be
+confirmed only by something that also gets it right. The bench's last
+planned step is a different transcriber for bass, judged both as the
+line and as the second reader.
