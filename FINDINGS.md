@@ -3450,6 +3450,45 @@ removes most of that for free. What remains is onsets: one note in five
 missed and a fifth to a half again as many extra onsets as the part has,
 so only 25 % to 39 % of bars are entirely right on five songs and 71 % on
 the one steady eighth-note part. pYIN fixes the octave and loses notes;
-not a fix. Next lever: merging same-pitch re-triggers inside a sixteenth
-and a ghost-note floor (docs/bench-brief-bass-transcription-2026-11-12.md,
-the bench's answer).
+not a fix. (Corrected 2026-11-12: this entry first named merging
+same-pitch re-triggers and a ghost-note floor as the next lever; Study
+49 tested both and recommends neither, next entry.)
+(docs/bench-brief-bass-transcription-2026-11-12.md, the bench's answer).
+
+## Basic Pitch's chord thresholds are right for bass; no filter rescues the bass line (2026-11-12)
+
+stem-bench Study 49, same six songs: 32 settings of `outputToNotesPoly`
+from one set of posteriors. Lowering the onset threshold, the frame
+threshold or the minimum note length makes the written bass line worse
+on every song (a 6-frame minimum finds the short notes and adds more
+extras than it finds). `melodiaTrick: false` helps on all six songs and
+`inferOnsets: false` slightly; together 39.0 % to 45.2 % of bars right
+on the mean, under the 10 points the bench registered for a
+recommendation. A re-trigger merge and an amplitude floor each help one
+song and cost another real notes: neither recommended. The extras are
+not mostly re-triggers (30 %; nothing sounding 23 %, wrong subdivision
+18 %). What is left is the grid and short legato notes
+(docs/bench-brief-bass-transcription-2026-11-12.md, follow-up).
+
+## The bass line is limited by the transcription, not the beat grid (2026-11-12)
+
+stem-bench Study 50: the same Basic Pitch notes graded on the composer's
+own grid (from Kevin's session MIDI) score the same as on the tracker's,
+slot-level F within 0.01 on all six songs. The tracker's beats are in
+the right place; it drops 6 % to 16 % of them and misplaces bar lines in
+5/4 and 3/4 (Downline 48 % right, Mop Heart 18 %), which matters to a
+readable chart and not to the notes. A per-bar sixteenth-or-triplet
+choice invents triplet bars at fast tempos; choosing once per line does
+not (docs/bench-brief-bass-transcription-2026-11-12.md, second
+follow-up).
+
+## Showing only "trusted" bass bars does not rescue the line yet (2026-11-12)
+
+stem-bench Study 51: trusting a bar when a second reading writes it
+identically. Agreement between Basic Pitch settings barely filters (the
+bars that survive are 48 % right; they share one model output).
+Agreement with pYIN lifts shown bars from 41 % to 64 % entirely right
+but shows a quarter of the bars and fails where both miss the same
+notes. Trust by agreement is bounded by the second reader's own
+accuracy (docs/bench-brief-bass-transcription-2026-11-12.md, third
+follow-up).
