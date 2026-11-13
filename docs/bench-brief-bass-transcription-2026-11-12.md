@@ -342,7 +342,7 @@ limit.
 `hf_midi_transcription` (github.com/xavriley/hf_midi_transcription;
 code and model card MIT) ships a bass checkpoint, a note-level CRNN
 that by its name was trained on jazz double bass. Run as shipped on the
-same six stems, on a CPU, about one second per four seconds of audio:
+same six stems, on a CPU, about one second per three seconds of audio:
 
 | song | Basic Pitch at its best: bars right · wrong | this model: bars right · wrong | notes, exact F: Basic Pitch → this model |
 |---|---|---|---|
