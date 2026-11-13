@@ -18,12 +18,10 @@
 	interface Props {
 		/** A Dawn song (the admin's choice), or the featured song's stems as one (utils/studioFromStems.ts). */
 		song: { title: string; current: StudioArrangement | null; sources: StudioSourceView[] };
-		/** Where "Open Dawn" goes: the recorder for a member, sign-in for a visitor. */
-		href: string;
 		/** Space and Home drive the transport while this demo is the one in view. */
 		keyboard?: boolean;
 	}
-	let { song, href, keyboard = true }: Props = $props();
+	let { song, keyboard = true }: Props = $props();
 	// The dev hook the browser tests read, as the Dawn page sets it (tests/e2e/home-dawn.spec.ts).
 	if (import.meta.env.DEV && typeof window !== "undefined")
 		Object.assign(window, { __studio: studio });
@@ -63,11 +61,9 @@
 	aria-label="Dawn demo"
 	data-studio-demo
 >
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<div class="min-w-0 truncate text-15px font-600 text-oxford text-shadow">
-			Dawn · {song.title}
-		</div>
-		<a class="device-button-sm px-3 text-accent" {href}>Open Dawn</a>
+	<!-- The way to Dawn itself is the "Free standalone version" link above the demo, as the other tools have (Kevin, 2026-11-13). -->
+	<div class="min-w-0 truncate text-15px font-600 text-oxford text-shadow">
+		Dawn · {song.title}
 	</div>
 	<div class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-4 py-3">
 		<div class="min-w-0 grow">
@@ -150,6 +146,6 @@
 	<StudioTimeline bind:selected bind:selectedIds bind:pxPerSecond />
 	<p class="text-12px text-dark">
 		Play, mute and solo the tracks, drag a clip, loop a stretch of the ruler: it is the real Dawn on
-		a song of ours. Nothing here is saved; Open Dawn for your own.
+		a song of ours. Nothing here is saved; the standalone Dawn is for your own.
 	</p>
 </section>

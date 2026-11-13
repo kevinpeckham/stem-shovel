@@ -88,6 +88,18 @@
 	{/each}
 {/snippet}
 
+{#snippet tryIt(standalone?: string)}
+	<!-- Under a feature's words: the demo's lead-in, and the tool's own page where there is one. -->
+	<div class="flex flex-wrap items-center gap-x-5">
+		<div class="marketing-demo-cta">Try the working demo below.</div>
+		{#if standalone}
+			<a class="link inline-flex items-center gap-1.5 text-14px" href={standalone}
+				>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
+			>
+		{/if}
+	</div>
+{/snippet}
+
 <main class="home-page-x-padding pt-4 pb-16 min-h-full">
 	<div class="border-b border-b-current/10 pt-6 pb-2 mb-8">
 		<!-- <h1 class="heading-2 mb-2">Introducing Stem Shovel</h1> -->
@@ -119,7 +131,7 @@
 				<!-- Song Demo: A live song, chosen on /admin/home: the player as visitors get it. -->
 				<section>
 					{@render feature("player")}
-					<div class="marketing-demo-cta">Try the working demo below.</div>
+					{@render tryIt()}
 					<!-- Full bleed on a phone (the page padding is px-4 there), a card from sm up. -->
 					<div
 						class="marketing-demo-container mt-8"
@@ -138,7 +150,7 @@
 				<section class="mt-12 scroll-mt-6" id="idea-recorder">
 					{@render feature("recorder")}
 					<!-- The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
-					<div class="marketing-demo-cta">Try the working demo below.</div>
+					{@render tryIt()}
 					<div class=" mt-8">
 						<IdeaRecorderDemo
 							signedIn={!!data.user}
@@ -151,15 +163,9 @@
 				{#if data.studioDemo}
 					<section class="mt-12 scroll-mt-6" id="dawn">
 						{@render feature("dawn")}
-						<div class="marketing-demo-cta">Try the working demo below.</div>
+						{@render tryIt("/multitrack-recorder")}
 						<div class="mt-8" {@attach visibleShare((s) => (dawnShare = s))}>
-							<StudioDemo
-								song={data.studioDemo}
-								href={data.currentSlug
-									? "/multitrack-recorder"
-									: "/sign-in?next=%2Fmultitrack-recorder"}
-								keyboard={spaceTarget === "dawn"}
-							/>
+							<StudioDemo song={data.studioDemo} keyboard={spaceTarget === "dawn"} />
 						</div>
 					</section>
 				{/if}
@@ -177,7 +183,7 @@
 		<div class="grid grid-cols-1 gap-y-12 lg-grid-cols-2 gap-x-12">
 			<section class="mt-12">
 				{@render feature("docs")}
-				<div class="marketing-demo-cta">Try the working demo below.</div>
+				{@render tryIt()}
 				<div class="mt-8">
 					{#if data.demo}
 						<SongDocsDemo
@@ -194,7 +200,7 @@
 
 			<section class="mt-12">
 				{@render feature("tools")}
-				<div class="marketing-demo-cta">Try the working demo below.</div>
+				{@render tryIt()}
 				<!-- One demo at a time: the tabs swap the tuner for the metronome. The tuner's microphone opens only from its On / Off button: opening it on scroll asked for permission again and again as the page went up and down. -->
 				<div
 					class="mt-8 flex gap-1 rounded bg-dark/40 p-1 w-fit"
@@ -226,12 +232,7 @@
 		<!-- Drum Machine Demo -->
 		<section class="mt-12">
 			{@render feature("drums")}
-			<div class="flex flex-wrap items-center gap-x-5">
-				<div class="marketing-demo-cta">Try the working demo below.</div>
-				<a class="link inline-flex items-center gap-1.5 text-14px" href="/drum-machine"
-					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
-				>
-			</div>
+			{@render tryIt("/drum-machine")}
 			<!-- Space plays and stops only while this is the demo in view (see spaceTarget): elsewhere the page needs space for scrolling. -->
 			<!-- The kit's samples are fetched as the demo scrolls into view, not at load: a visitor who never gets here downloads nothing. -->
 			<div
@@ -254,12 +255,7 @@
 		<!-- Piano Demo -->
 		<section class="mt-12">
 			{@render feature("piano")}
-			<div class="flex flex-wrap items-center gap-x-5">
-				<div class="marketing-demo-cta">Try the working demo below.</div>
-				<a class="link inline-flex items-center gap-1.5 text-14px" href="/piano"
-					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
-				>
-			</div>
+			{@render tryIt("/piano")}
 			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget). -->
 			<!-- The Grand Piano's demo samples (3.4 MB) are fetched as the demo scrolls into view, so the first touch finds them in. -->
 			<div
@@ -276,12 +272,7 @@
 		<!-- Chord Player Demo -->
 		<section class="mt-12">
 			{@render feature("chords")}
-			<div class="flex flex-wrap items-center gap-x-5">
-				<div class="marketing-demo-cta">Try the working demo below.</div>
-				<a class="link inline-flex items-center gap-1.5 text-14px" href="/chord-player"
-					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
-				>
-			</div>
+			{@render tryIt("/chord-player")}
 			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget). The chord player has its own engine, so its sound is its own; the samples are cached per module, so the piano demo's prefetch serves it too. -->
 			<div
 				class="mt-8"
