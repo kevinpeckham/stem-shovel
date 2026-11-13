@@ -96,7 +96,7 @@
 	 * Our rules in the score element's shadow root: its own Grid / Score
 	 * switch hidden (ours is in the toolbar), and its loading and
 	 * "couldn't be drawn" notes on the look's paper, as the grid is, since
-	 * they take the ink's colour and would otherwise sit dark on the page.
+	 * they take the ink's color and would otherwise sit dark on the page.
 	 */
 	const SCORE_SHADOW_RULES =
 		".bms-switch{display:none}.bms-loading,.bms-note{background:var(--barmark-paper,#fff);padding:1em 1.2em}";

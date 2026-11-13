@@ -1108,7 +1108,7 @@ and key menus, a two-way group like the toolbar's others. The view is
 attribute once drawn and on every change, and adds a stylesheet to its
 open shadow root's `adoptedStyleSheets` that hides the element's own
 switch and puts its loading and "couldn't be drawn" notes on the look's
-paper (they take the ink's colour, navy since the paper chart, and sat
+paper (they take the ink's color, navy since the paper chart, and sat
 dark on the page); the element never writes that list and replaces only
 its grid pane on a redraw, so the sheet stays. The element's `viewchange` (bubbles,
 composed) comes back through `onviewchange`, so the toggle follows the
