@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.266.1] - 2026-11-13
+
 ### Fixed
 
 - **A long demo name no longer pushes its menu button off the panel.**
