@@ -168,7 +168,7 @@
 {/if}
 
 <div
-	class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 grid gap-4 content-start"
+	class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 grid grid-cols-1 gap-4 content-start"
 	style:min-height={minHeight ? `${minHeight}px` : undefined}
 	aria-label="Demo recordings"
 >
@@ -204,7 +204,7 @@
 				<span class="i-ph-skip-forward-fill" aria-hidden="true"></span>
 			</button>
 		</div>
-		<div class="min-w-0 grow">
+		<div class="min-w-0 flex-1">
 			{#if track}
 				<p class="truncate font-500">{track.label}</p>
 				<p class="text-sm text-dim tabular-nums">
@@ -260,11 +260,12 @@
 		/>
 	{/if}
 	{#if demos.length > 0}
-		<ul class="grid gap-2 content-start" aria-label="Demos">
+		<!-- One column that may shrink (grid-cols-1), so a long demo name truncates in its tile instead of widening the list past the panel. -->
+		<ul class="grid grid-cols-1 gap-2 content-start" aria-label="Demos">
 			{#each demos as d (d.id)}
 				{@const playing = current === d.id && !paused}
 				<li
-					class="group bg-black/5 hover-bg-black/10 flex items-center gap-x-4 rounded-md border border-current/40 px-3 py-2 shadow {current ===
+					class="group bg-black/5 hover-bg-black/10 flex min-w-0 items-center gap-x-4 rounded-md border border-current/40 px-3 py-2 shadow {current ===
 					d.id
 						? 'bg-white/5'
 						: 'border-white/10'}"

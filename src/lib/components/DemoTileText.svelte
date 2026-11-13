@@ -47,8 +47,8 @@
 	aria-current={current === id ? "true" : undefined}
 	onclick={() => onopen?.(id)}
 >
-	<span class="flex items-center gap-2 font-500">
-		<span class="truncate">{label}</span>
+	<span class="flex min-w-0 items-center gap-2 font-500">
+		<span class="min-w-0 truncate">{label}</span>
 		{#if fresh > 0}
 			<span
 				class="inline-flex shrink-0 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-11px font-700 leading-none text-oxford"

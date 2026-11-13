@@ -10,6 +10,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **A long demo name truncates instead of pushing its menu out of the
+  panel.** The Demos view's list and panel were grids with an implicit
+  content-sized column, so a tile grew with its label; they are one
+  shrinkable column now (`grid-cols-1`), the tile and its label may
+  shrink (`min-w-0`), and the transport's label truncates on its line
+  (`flex-1`). Seen at phone width.
 - **Clicking a comment's icon on a demo's waveform no longer fails.** The
   comment's card was drawn in the review's list and in the icon's bubble
   with the same `deleteComment.for()` key, which SvelteKit refuses

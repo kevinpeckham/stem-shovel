@@ -6,6 +6,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ### Fixed
 
+- **A long demo name no longer pushes its menu button off the panel.**
+  The name is shortened with an ellipsis instead.
 - **Clicking a comment marker on a demo's waveform showed an error.** It
   now opens the comment as it should.
 
