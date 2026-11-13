@@ -3527,3 +3527,18 @@ bench's rules (one song lower because the model hears editing debris
 the sampler rendered into the stem, one where every reader fails), but the direction is clear: a
 monophonic note model for bass stems
 (docs/bench-brief-bass-transcription-2026-11-12.md, fourth follow-up).
+
+## MuScriptor reads bass stems best of all; two note models now beat Basic Pitch (2026-11-13)
+
+stem-bench Study 52, arm 2: MuScriptor `medium` constrained to electric
+bass writes 55, 48, 85, 70, 75, 89 % of bars entirely right (mean
+70.5 %) against the `hf_midi_transcription` bass model's 64.3 % and
+Basic Pitch's 48.4 %, with one octave error in 1,973 notes, and passes
+the bench's registered test for replacing Basic Pitch as the bass
+reader. Not showable on every song yet (Peaceful Dreams, Interbellum).
+Its weights are non-commercial and it runs at four times real time on
+CPU; Mirelo's paid successor is untested. The E1 floor in the bench's
+bass constraint removed real notes on a part that goes to C1: these
+readers do not need it
+(docs/bench-brief-bass-transcription-2026-11-12.md, fifth follow-up).
+
