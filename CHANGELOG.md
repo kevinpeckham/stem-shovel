@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.267.0] - 2026-11-13
+
 ### Added
 
 - **An info tip on the arrangement row** (`InfoTip` in

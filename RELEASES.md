@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.267.0] - 2026-11-13
+
 ### Added
 
 - **An explanation beside the arrangement buttons.** The ⓘ at the end of
