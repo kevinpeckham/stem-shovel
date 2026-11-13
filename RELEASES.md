@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **The arrangement buttons are tidier.** The row has an "Arrangements"
+  heading with its explanation beside it, and the arrangement you are on
+  carries its own menu on a small arrow: rename, duplicate or delete.
+
 ## [0.267.0] - 2026-11-13
 
 ### Added

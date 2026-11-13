@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The arrangement row has a heading, and the arrangement shown is a
+  split button** (`ArrangementSwitcher.svelte`). "Arrangements" sits above
+  the row with the info tip beside it; for an editor the active
+  arrangement is its link plus a caret that opens its menu (Rename,
+  Duplicate, Delete; Duplicate alone on Main), in place of the separate ⋯.
+  The help page says so: production owes
+  `db:update-docs stems-and-playback`.
+
 ## [0.267.0] - 2026-11-13
 
 ### Added

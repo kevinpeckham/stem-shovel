@@ -70,6 +70,11 @@ Asked for by users; designed with Kevin on 2026-11-11.
   on an alternate, a ⋯ menu to rename, duplicate or delete
   (`ArrangementRenamePopover`). A viewer sees the row only when the song
   has an alternate.
+- **The row since 2026-11-13** (Kevin): a small "Arrangements" heading
+  with the info tip beside it (`ArrangementTip`), and for an editor the
+  arrangement shown is a split button, as the chord player's Arp is: its
+  link, and a caret that opens its menu (Rename, Duplicate and Delete on
+  an alternate; Duplicate on Main). The separate ⋯ is gone.
 - **Switching** is a navigation to `?arrangement=<id>` that keeps the
   scroll position; the stems view is keyed on the arrangement, so the
   player is torn down and built again and nothing of the last one plays

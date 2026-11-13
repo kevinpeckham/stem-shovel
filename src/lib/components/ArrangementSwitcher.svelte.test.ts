@@ -75,13 +75,14 @@ describe("ArrangementSwitcher", () => {
 		);
 	});
 
-	test("an info tip says what the row is; an editor is also told about + and ⋯", () => {
+	test("a heading with an info tip says what the row is; an editor is also told about + and the menu", () => {
 		const { unmount } = render(ArrangementSwitcher, { props: props({ canEdit: true }) });
+		expect(screen.getByRole("heading", { name: "Arrangements" })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "About arrangements" })).toBeInTheDocument();
 		const tip = screen.getByRole("note", { hidden: true });
 		expect(tip).toHaveTextContent("Arrangements are sets of stems for this song.");
 		expect(tip).toHaveTextContent("makes a new arrangement");
-		expect(tip).toHaveTextContent("renames, duplicates or deletes");
+		expect(tip).toHaveTextContent("opens its menu: rename, duplicate or delete an alternate");
 		unmount();
 		render(ArrangementSwitcher, { props: props({ canEdit: false }) });
 		const viewers = screen.getByRole("note", { hidden: true });
@@ -89,14 +90,31 @@ describe("ArrangementSwitcher", () => {
 		expect(viewers).not.toHaveTextContent("makes a new arrangement");
 	});
 
-	test("on Main, Main is current and no ⋯ menu shows", () => {
+	test("the arrangement shown is a split button: its link, and a caret with its menu; Main's menu only duplicates", async () => {
+		const user = userEvent.setup();
 		render(ArrangementSwitcher, { props: props() });
-		expect(within(nav()).getByRole("link", { name: "Main" })).toHaveAttribute(
+		const group = screen.getByRole("group", { name: "Main: the arrangement shown" });
+		expect(within(group).getByRole("link", { name: "Main" })).toHaveAttribute(
 			"aria-current",
 			"page",
 		);
-		expect(screen.queryByRole("button", { name: /options/ })).toBeNull();
+		// The other arrangements are plain links, with no menu of their own.
+		expect(screen.queryByRole("button", { name: "Acoustic: options" })).toBeNull();
+		await user.click(within(group).getByRole("button", { name: "Main: options" }));
+		expect(screen.getByRole("button", { name: "Duplicate…" })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Rename…" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Delete…" })).toBeNull();
 		expect(screen.getByRole("button", { name: "New arrangement" })).toBeEnabled();
+	});
+
+	test("a viewer gets the plain link for the arrangement shown, with no caret", () => {
+		render(ArrangementSwitcher, { props: props({ canEdit: false, arrangementId: "alt1" }) });
+		expect(screen.queryByRole("group")).toBeNull();
+		expect(screen.queryByRole("button", { name: /options/ })).toBeNull();
+		expect(within(nav()).getByRole("link", { name: "Acoustic" })).toHaveAttribute(
+			"aria-current",
+			"page",
+		);
 	});
 
 	test("a viewer sees nothing without alternates, and no editing controls with them", () => {

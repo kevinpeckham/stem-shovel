@@ -25,8 +25,10 @@
 	 * The arrangement switcher at the top of the song player's Stems view
 	 * (docs/arrangements.md): Main and each alternate as links (the
 	 * arrangement rides in the URL), the shown one's note and creator, and
-	 * for an editor + (New arrangement) and, on an alternate, ⋯ with Rename,
-	 * Duplicate and Delete. A viewer sees the row only when there is an
+	 * for an editor + (New arrangement), and the arrangement shown as a split
+	 * button whose caret opens its menu: Rename, Duplicate and Delete on an
+	 * alternate, Duplicate on Main. A small heading with the info tip sits
+	 * above the row. A viewer sees the row only when there is an
 	 * alternate to switch to.
 	 */
 	interface Props {
@@ -75,41 +77,62 @@
 		}
 	}
 
-	const menuItems = (a: Arrangement) => [
-		{
-			id: "rename",
-			label: "Rename…",
-			iconClass: "i-ph-pencil-simple",
-			action: () => renamePopover?.openRename(),
-		},
-		{
-			id: "duplicate",
-			label: "Duplicate…",
-			iconClass: "i-ph-copy",
-			disabled: atMax,
-			title: atMax ? maxTitle : "A new arrangement starting from this one",
-			action: () => creatorPopover?.openNew(a.id),
-		},
-		{ id: "delete", label: "Delete…", iconClass: "i-ph-trash", action: () => void remove(a) },
-	];
+	/** New arrangement starting from the one shown (null, Main). */
+	const duplicate = (from: string | null) => ({
+		id: "duplicate",
+		label: "Duplicate…",
+		iconClass: "i-ph-copy",
+		disabled: atMax,
+		title: atMax ? maxTitle : "A new arrangement starting from this one",
+		action: () => creatorPopover?.openNew(from ?? "main"),
+	});
+	/** The active arrangement's menu (the caret of its split button): Main can only be duplicated. */
+	const menuItems = (a: Arrangement | null) =>
+		a
+			? [
+					{
+						id: "rename",
+						label: "Rename…",
+						iconClass: "i-ph-pencil-simple",
+						action: () => renamePopover?.openRename(),
+					},
+					duplicate(a.id),
+					{ id: "delete", label: "Delete…", iconClass: "i-ph-trash", action: () => void remove(a) },
+				]
+			: [duplicate(null)];
+	const ACTIVE =
+		"bg-blue-300 text-oxford border-blue-300 opacity-100 hover-bg-blue-200 hover-border-blue-200";
+	const IDLE = "border-current/40 opacity-80 hover-bg-blue-200 hover-border-blue-200";
 </script>
 
 {#if canEdit || arrangements.length > 0}
 	<div class="mb-3 grid gap-1" data-arrangement-switcher>
+		<div class="flex items-center gap-1.5">
+			<h3 class="text-12px uppercase tracking-wider text-blue-300 opacity-90">Arrangements</h3>
+			<ArrangementTip {canEdit} />
+		</div>
 		<div class="flex items-stretch gap-2">
 			<nav class="min-w-0 overflow-x-auto" aria-label="Arrangements">
 				<ul class="flex w-max items-center gap-1.5 py-0.5">
 					{#each tabs as a (a.id ?? "main")}
+						{@const active = a.id === arrangementId}
 						<li>
-							<a
-								href={arrangementHref(page.url, a.id)}
-								data-sveltekit-reset="false"
-								aria-current={a.id === arrangementId ? "page" : undefined}
-								class="button button-xs whitespace-nowrap {a.id === arrangementId
-									? 'bg-blue-300 text-oxford border-blue-300 opacity-100 hover-bg-blue-200 hover-border-blue-200'
-									: 'border-current/40 opacity-80 hover-bg-blue-200 hover-border-blue-200'}"
-								>{a.name}</a
-							>
+							{#if active && canEdit}
+								<!-- A split button (Kevin, as the chord player's Arp): the arrangement shown, and on the caret its menu. -->
+								<div class="flex gap-px" role="group" aria-label="{a.name}: the arrangement shown">
+									{@render pill(a, true, "rounded-r-none")}
+									<ContextMenu
+										ariaLabel="{a.name}: options"
+										title="{a.name}: options"
+										buttonBaseClasses="button button-xs px-1.5 !min-w-0 rounded-l-none {ACTIVE}"
+										iconClass="i-ph-caret-down"
+										position="bottom left"
+										items={menuItems(current)}
+									/>
+								</div>
+							{:else}
+								{@render pill(a, active, "")}
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -117,13 +140,21 @@
 			{#if canEdit}
 				{@render editorControls()}
 			{/if}
-			<ArrangementTip {canEdit} />
 		</div>
 		{#if about}
 			<p class="text-12px text-dim">{about}</p>
 		{/if}
 	</div>
 {/if}
+
+{#snippet pill(a: { id: string | null; name: string }, active: boolean, extra: string)}
+	<a
+		href={arrangementHref(page.url, a.id)}
+		data-sveltekit-reset="false"
+		aria-current={active ? "page" : undefined}
+		class="button button-xs whitespace-nowrap {extra} {active ? ACTIVE : IDLE}">{a.name}</a
+	>
+{/snippet}
 
 {#snippet editorControls()}
 	<span class="flex shrink-0 py-0.5" title={atMax ? maxTitle : "New arrangement"}>
@@ -138,14 +169,6 @@
 		</button>
 	</span>
 	{#if current}
-		<ContextMenu
-			ariaLabel="{current.name}: options"
-			title="{current.name}: options"
-			buttonBaseClasses="button button-xs border-current/40 shrink-0"
-			iconClass="i-ph-dots-three-bold"
-			position="bottom left"
-			items={menuItems(current)}
-		/>
 		<ArrangementRenamePopover bind:this={renamePopover} arrangement={current} />
 	{/if}
 	<ArrangementNewPopover
