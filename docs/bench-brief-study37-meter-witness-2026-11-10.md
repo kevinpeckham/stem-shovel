@@ -90,8 +90,7 @@ same 261 songs (see "part 2" below when it lands).
 
 **Ask A, item 3 (the harmonic-rhythm witness): do not build it.** Study
 37 part C (stem-bench REPORT.md) ran the chord-change period witness
-over the 261 songs on four base systems. It is net negative on every
-base: on Beat This's 223 songs in 4/4 it fixes 1 folded bar and breaks
+over the 261 songs on four base systems. It is net negative in 4/4 on every base (corrected 2026-11-13: first "on every base"; it helps on the 6/8 bases of madmom and production): on Beat This's 223 songs in 4/4 it fixes 1 folded bar and breaks
 30 correct ones; on production's base it fixes 13 and breaks 16. The
 chord reader emits 60 to 124 changes per song, mostly inside the bar,
 so any stability term votes for the shorter bar. Its only gain is on

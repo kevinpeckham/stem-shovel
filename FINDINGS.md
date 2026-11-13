@@ -190,8 +190,7 @@ docs/BRIEF-STUDY37.md there) tested the two ways of closing the gap
 between a tracker's 70 percent strict bar and its 90 percent folded bar.
 
 1. A harmonic-rhythm period witness (score candidate bars by how often
-   chord changes fall on bar lines and how rarely inside them) is net
-   negative on every base system: on Beat This's 223 songs in 4/4 it fixes
+   chord changes fall on bar lines and how rarely inside them) is net negative in 4/4 on every base system (corrected 2026-11-13: first "on every base system"; it helps on the 6/8 bases of madmom and production): on Beat This's 223 songs in 4/4 it fixes
    1 folded reading and breaks 30 correct ones. ChordMini's segments carry
    60 to 124 changes per song, mostly inside-the-bar flicker, so any
    stability term votes for the shorter bar. Do not build this witness
@@ -3354,7 +3353,7 @@ size matters more than the postprocessor.
 
 stem-bench Study 41 drafted the ten modern songs on Beat This's bars as
 read. The small checkpoint's drafts are within two roots of madmom's on
-all ten (seven identical, two better) with none confidently wrong, so
+all ten (eight identical, two better; corrected 2026-11-13 from seven) with none confidently wrong, so
 the app's one-tracker rule passes and the automatic chart ships on
 Beat This small alone for full-band material. Two of its ten bars were
 half bars and cost nothing. The label rule needs one change: beats per
@@ -3452,8 +3451,7 @@ sentence to be tested in a paired study
 ## Telling the model the hint's quality is advisory changes nothing (2026-11-12)
 
 stem-bench Study 47 put Study 46's finding into the hint sentence and
-drafted the 22 paired items again: 19 of 22 drafts unchanged in root and
-quality counts, the half-diminished in the same seven of twelve, the
+drafted the 22 paired items again: 17 of 22 drafts unchanged in root and quality counts (corrected 2026-11-13 from 19; four moved by one position and one by two), the half-diminished in the same seven of twelve, the
 modern songs unmoved. The quality lost on jazz-shaped guitar is not lost
 by deferring to the hint; the prompt studies have moved what a prompt can
 move, and the remaining gap is in the transcribed notes.
