@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.269.0] - 2026-11-13
+
 ### Changed
 
 - **Charts on paper.** Chord charts now draw as dark ink on a soft white
