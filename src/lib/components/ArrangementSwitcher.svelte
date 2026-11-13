@@ -3,8 +3,8 @@
 	import { page } from "$app/state";
 	import ArrangementNewPopover from "#lib/components/ArrangementNewPopover.svelte";
 	import ArrangementRenamePopover from "#lib/components/ArrangementRenamePopover.svelte";
+	import ArrangementTip from "#lib/components/ArrangementTip.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
-	import InfoTip from "#lib/components/InfoTip.svelte";
 	import { MAX_ARRANGEMENTS } from "#lib/constants/arrangements.js";
 	import { deleteArrangement } from "#lib/remote/arrangements.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
@@ -117,25 +117,7 @@
 			{#if canEdit}
 				{@render editorControls()}
 			{/if}
-			<!-- What the row is and does, for whoever meets it first; an editor is told about + and ⋯ too. -->
-			<InfoTip label="About arrangements" class="self-center" width="w-80">
-				<p>
-					Arrangements are sets of stems for this song. <strong>Main</strong> is the song's own. Each
-					other one is an alternate: a different treatment, or one member's ideas for the band to hear.
-					Click one to switch to its stems.
-				</p>
-				{#if canEdit}
-					<p class="mt-2">
-						<strong>+</strong> makes a new arrangement, copied from an existing one or empty. A copy shares
-						its audio, so it takes no extra storage. From there you can mute, remove, replace or add stems
-						without changing the arrangement it came from.
-					</p>
-					<p class="mt-2">
-						<strong>⋯</strong> renames, duplicates or deletes the alternate you are on. An alternate can
-						have its own tempo and start of bar 1, set in the song's settings.
-					</p>
-				{/if}
-			</InfoTip>
+			<ArrangementTip {canEdit} />
 		</div>
 		{#if about}
 			<p class="text-12px text-dim">{about}</p>
