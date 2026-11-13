@@ -19,7 +19,8 @@ import {
 	type DrumVoiceId,
 } from "#lib/constants/expressionDrums.js";
 import type { DrumPreset } from "#lib/constants/drumPresets.js";
-import { decodeDrumProject } from "#lib/utils/decodeDrumProject.js";
+// TODO: expression drums need their own share-link encoder/decoder (cells are objects, not numbers).
+// import { decodeDrumProject } from "#lib/utils/decodeDrumProject.js";
 import {
 	loadExpressionDrumsPreferences as loadDrumMachinePreferences,
 	loadExpressionDrumsTempoFollow as loadDrumTempoFollow,
@@ -36,7 +37,8 @@ import { emptyExpressionPattern as emptyDrumPattern } from "#lib/utils/emptyExpr
 import { encodeDrumMidi } from "#lib/utils/encodeDrumMidi.js";
 import { generateDrumPattern } from "#lib/utils/generateDrumPattern.js";
 import type { DrumGeneratorStyle } from "#lib/constants/drumGenerator.js";
-import { encodeDrumProject } from "#lib/utils/encodeDrumProject.js";
+// TODO: expression drums need their own share-link encoder.
+// import { encodeDrumProject } from "#lib/utils/encodeDrumProject.js";
 import { resizeExpressionPattern as resizeDrumPattern } from "#lib/utils/resizeExpressionPattern.js";
 import { startingExpressionProject as startingDrumProject } from "#lib/utils/startingExpressionProject.js";
 import { tapTempo } from "#lib/utils/tapTempo.js";
@@ -140,11 +142,12 @@ class ExpressionDrumsEngine {
 		const remembered = loadDrumMachinePreferences();
 		if (remembered) this.project = remembered;
 		else if (starting) this.project = starting;
-		const hash = window.location.hash.slice(1);
-		const shared = hash ? decodeDrumProject(hash) : null;
-		if (shared) this.project = shared;
+		// TODO: share links need an expression-aware encoder/decoder.
+		// const hash = window.location.hash.slice(1);
+		// const shared = hash ? decodeDrumProject(hash) : null;
+		// if (shared) this.project = shared;
 		// A beat the page brought (the home demo, a share link) sets the session; the remembered project does not: the session's own memory is the newer one, and the beat is kept in step with it below.
-		if (starting || shared) this.#adoptTempo();
+		if (starting) this.#adoptTempo();
 		metronome.listen(() => {
 			if (!this.followTempo) return;
 			this.project.bpm = this.bpm;
@@ -621,7 +624,7 @@ class ExpressionDrumsEngine {
 	}
 	setSteps(steps: DrumSteps) {
 		if (!drumStepsFor(this.pattern.meter).includes(steps)) return;
-		this.project.patterns[this.current] = resizeDrumPattern($state.snapshot(this.pattern), steps);
+		this.project.patterns[this.current] = resizeDrumPattern($state.snapshot(this.pattern), steps, this.current);
 		this.#save();
 	}
 	/** The open pattern's meter; the steps become a bar of it, or two bars if it had two. */
@@ -635,6 +638,7 @@ class ExpressionDrumsEngine {
 		this.project.patterns[this.current] = resizeDrumPattern(
 			{ ...$state.snapshot(pattern), meter },
 			steps,
+			this.current,
 		);
 		this.#save();
 	}
@@ -972,7 +976,8 @@ class ExpressionDrumsEngine {
 	// ---- out ----
 	/** The project as a link to this page. */
 	shareUrl(): string {
-		return `${window.location.origin}/drum-machine#${encodeDrumProject($state.snapshot(this.project))}`;
+		// TODO: expression drums need their own share-link encoder.
+		return `${window.location.origin}/expression-drums`;
 	}
 	/** The song once through, or the open pattern as one seamless cycle, of stereo WAV. */
 	wav(): Promise<Blob> {

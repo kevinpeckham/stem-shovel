@@ -244,7 +244,7 @@ export default defineConfig({
 			`text-blue-100/80
 			flex
 			h-auto
-			min-h-28px
+			min-h-40px
 			items-center
 			justify-center
 			gap-2

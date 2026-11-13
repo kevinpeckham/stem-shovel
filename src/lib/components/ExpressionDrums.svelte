@@ -35,6 +35,7 @@
 	import { textToBeat as askForBeat } from "#lib/remote/textToBeat.remote.js";
 	import type { ExpressionProject as DrumProject } from "#lib/val/ExpressionDrumSchema.js";
 	import { cellActive, EMPTY_CELL, type ExpressionCell } from "#lib/val/ExpressionDrumSchema.js";
+	import ExpressionDrumsKey from "#lib/components/ExpressionDrumsKey.svelte";
 	import { drumTutorial as tutorial } from "#lib/state/drumTutorial.svelte.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
@@ -121,7 +122,8 @@
 		}
 		saving = true;
 		try {
-			const data = $state.snapshot(expressionDrums.project);
+			// TODO: saveBeat expects original DrumProject; expression drums need their own version.
+			const data = $state.snapshot(expressionDrums.project) as any;
 			const row = await saveBeat({
 				accountId: account.id,
 				id,
@@ -254,7 +256,8 @@
 						title: "What the home page's drum machine opens with for a first-time visitor",
 						action: async () => {
 							try {
-								await setHomeBeat({ data: $state.snapshot(expressionDrums.project) });
+								// TODO: setHomeBeat expects original DrumProject; expression drums need their own version.
+								await setHomeBeat({ data: $state.snapshot(expressionDrums.project) as any });
 								notify("Home page beat saved");
 							} catch (e) {
 								notify(errorMessage(e), { kind: "error" });
@@ -432,6 +435,8 @@
 	// Painting: press a cell and drag across others to set them all the same way.
 	// A long press (or a right click, or shift) on a sounding cell steps its velocity instead.
 	const LONG_PRESS_MS = 450;
+	const DOUBLE_TAP_MS = 300;
+	let lastTap = { row: -1, step: -1, time: 0 };
 	let painting = $state<boolean | null>(null);
 	let pressTimer: ReturnType<typeof setTimeout> | null = null;
 	function paintAt(x: number, y: number) {
@@ -442,8 +447,12 @@
 	}
 	function press(e: PointerEvent, row: number, step: number, cell: ExpressionCell) {
 		if (e.button !== 0) return;
-		// Ctrl+click (Cmd+click on Mac) opens the sub-hit popover.
-		if (e.ctrlKey || e.metaKey) {
+		// Ctrl/Cmd+click or double-tap opens the sub-hit popover.
+		const now = Date.now();
+		const doubleTap =
+			now - lastTap.time < DOUBLE_TAP_MS && lastTap.row === row && lastTap.step === step;
+		lastTap = { row, step, time: now };
+		if (e.ctrlKey || e.metaKey || doubleTap) {
 			e.preventDefault();
 			openSubHitPopover(row, step, e.currentTarget as HTMLElement);
 			return;
@@ -566,10 +575,11 @@
 	);
 	/** Sixteenths to a beat for the shading (6 in 6/8), and cells to a line: a beat pair on a phone, a bar from sm up. */
 	let group = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.group ?? 4);
+	let desktopCols = $derived(
+		(DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16) === 16 ? 16 : 12,
+	);
 	let lineClasses = $derived(
-		(DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16) === 16
-			? "grid-cols-8 @xl-grid-cols-16"
-			: "grid-cols-6 @xl-grid-cols-12",
+		desktopCols === 16 ? "grid-cols-8 @4xl-grid-cols-16" : "grid-cols-6 @4xl-grid-cols-12",
 	);
 	let stepsLabel = (n: number) => {
 		const bar = DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16;
@@ -614,7 +624,8 @@
 				steps: pattern.steps,
 				voices: pattern.rows.map((r) => r.voice),
 			});
-			const index = expressionDrums.placePattern(reply.pattern, beatAsNew ? "add" : "replace", {
+			// TODO: Text-to-Beat returns original DrumPattern (cells: number[]); convert to ExpressionCell.
+			const index = expressionDrums.placePattern(reply.pattern as any, beatAsNew ? "add" : "replace", {
 				bpm: reply.bpm,
 				swing: reply.swing,
 				humanize: reply.humanize,
@@ -1597,6 +1608,19 @@
 					</button>
 				</div>
 			</div>
+			<div class="
+				bg-dark/60
+				col-span-4
+				mt-5
+				px-4
+				py-2
+				rounded-md
+				text-16px 
+				text-white
+				w-fit
+				[&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono)">
+				<kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>click</kbd> any step button for advanced options
+			</div>
 		</div>
 
 		<!-- the timeline: bars, each a pattern, making a song; in song mode Play follows it, in pattern mode it loops the open pattern.
@@ -1698,13 +1722,13 @@
 						grid-cols-1
 						items-center
 						w-full
-						@xl-grid-cols-[auto_1fr]
-						@xl-gap-x-4"
+						@4xl-grid-cols-[172px_1fr]
+						@4xl-gap-x-4"
 					aria-label={voiceLabel(row.voice)}
 				>
 					<!-- voice & controls -->
 					<div
-						class="gap-2 grid grid-cols-[1fr_auto] items-center @xl-grid @xl-grid-cols-[100px_auto] @xl-gap-1 @xl-gap-x-2 @2xl-gap-y-3 @2xl-gap-x-4 @2xl-grid-cols-[120px_auto] @4xl-grid-cols-[120px_auto_auto]"
+						class="gap-2 grid grid-cols-[1fr_auto] items-center @xl-grid @xl-grid-cols-[100px_auto_1fr] @xl-gap-1 @xl-gap-x-2 @2xl-gap-y-3 @2xl-gap-x-4 @2xl-grid-cols-[120px_auto_1fr] @4xl-flex @4xl-flex-col @4xl-items-start @4xl-gap-1"
 					>
 						<!-- voice -->
 						<ComboBox
@@ -1749,7 +1773,7 @@
 							<!-- below lg the row's level and pan live in a menu (the sliders show from lg up) -->
 							{#snippet rowMix()}
 								<div class="grid gap-3 px-3 py-2 w-56">
-									<label class="grid gap-1 text-13px @4xl-hidden">
+									<label class="hidden">
 										<span>Level · {Math.round(row.level * 100)}%</span>
 										<input
 											class="w-full accent-maximumYellow"
@@ -1762,7 +1786,7 @@
 											aria-label="Level of {voiceLabel(row.voice)}"
 										/>
 									</label>
-									<label class="grid gap-1 text-13px @4xl-hidden">
+									<label class="hidden">
 										<span
 											>Pan · {row.pan === 0
 												? "centre"
@@ -1823,10 +1847,37 @@
 							</div>
 						</div>
 
-						<!-- volume & pan  > md -->
-						<div class="hidden @4xl-grid grid-cols-2 gap-3 @xl-w-112px">
+						<!-- volume & pan under the buttons at desktop -->
+						<div class="hidden @4xl-grid grid-cols-2 gap-2 w-full">
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="1"
+								step="0.01"
+								value={row.level}
+								oninput={(e) => expressionDrums.setLevel(r, Number(e.currentTarget.value))}
+								aria-label="Level of {voiceLabel(row.voice)}"
+								title="Level"
+							/>
+							<input
+								class="w-full accent-blue-300"
+								type="range"
+								min="-1"
+								max="1"
+								step="0.01"
+								value={row.pan}
+								oninput={(e) => expressionDrums.setPan(r, Number(e.currentTarget.value))}
+								ondblclick={() => expressionDrums.setPan(r, 0)}
+								aria-label="Pan of {voiceLabel(row.voice)}"
+								title="Pan (double-click for the center)"
+							/>
+						</div>
+
+						<!-- volume & pan — visible in the controls row below desktop -->
+						<div class="grid grid-cols-2 gap-3 min-w-80px @xl-min-w-112px @4xl-hidden">
 							<!-- volume -->
-							<div class="h-38.5px flex items-center relative w-full overflow-visible">
+							<div class="h-28px @xl-h-38.5px flex items-center relative w-full overflow-visible">
 								<input
 									class="w-full accent-maximumYellow"
 									type="range"
@@ -1841,9 +1892,9 @@
 							</div>
 
 							<!--pan -->
-							<div class="h-38.5px flex items-center relative w-full overflow-visible">
+							<div class="h-28px @xl-h-38.5px flex items-center relative w-full overflow-visible">
 								<input
-									class="hidden @xl-block w-full accent-blue-300"
+									class="w-full accent-blue-300"
 									type="range"
 									min="-1"
 									max="1"
@@ -1861,61 +1912,25 @@
 					<!-- events. A sounding cell stays lit under the pointer (a touch less opaque, so the hover reads): the device button's hover color is for the empty ones. -->
 					<div class="grid {lineClasses} gap-1 @2xl-gap-6px @4xl-gap-2 touch-pan-y">
 						{#each row.cells as cell, s (s)}
-							{@const now = expressionDrums.step === s && expressionDrums.playing === expressionDrums.current}
-							{@const offBeat = Math.floor(s / group) % 2 === 1}
 							{@const sel =
 								cursor !== null &&
 								cursor.row === r &&
 								s >= cursor.start &&
 								s < cursor.start + WINDOW}
-							<button
-								class="device-button-expression-drums !min-w-auto transition-colors duration-75 text-10px font-600 {cell.main
-									? 'text-oxford'
-									: 'text-blue-200'} {sel
-									? 'outline outline-2 outline-blue-400 outline-offset-1 z-1'
-									: ''} {cell.main >= 5
-									? 'bg-red-600 text-white hover-!bg-red-500/65'
-									: cell.main === 4
-									? 'bg-orange-300 hover-!bg-orange-300/65'
-									: cell.main === 3
-									? 'bg-accent hover-!bg-accent/85'
-									: cell.main === 2
-										? 'bg-teal-400 border-accent hover-!bg-teal-300/85'
-										: cell.main === 1
-											? 'bg-sky-300 border-accent/50 hover-!bg-sky-300/50'
-											: offBeat
-												? 'bg-dark/60 border-white/10'
-												: 'bg-dark/30 border-white/10'} {now
-									? 'ring-2 ring-blue-100 ring-inset'
-									: ''} {hintedCells?.has(`${row.voice}:${s}`) ? HINT : ''}"
-								type="button"
-								aria-pressed={cellActive(cell)}
-								aria-label="{voiceLabel(row.voice)}, step {s + 1}{cell.main === 3
-									? ', accent'
-									: cell.main === 1
-										? ', ghost'
-										: ''}"
-								title={cellActive(cell) ? "Hold, shift-click or right-click for the velocity" : undefined}
-								data-row={r}
-								data-step={s}
-								onpointerdown={(e) => press(e, r, s, cell)}
-								oncontextmenu={(e) => {
-									e.preventDefault();
-									expressionDrums.cycleVelocity(r, s);
-								}}>
-									<div class="flex flex-col items-center">
-										<div class="text-20px md:text-13px">{sel ? `${s - cursor!.start + 1}` : ""}</div>
-										<div class="h-13px">{cell.main ? `V${cell.main}` : ""}</div>
-										{#if cell.t1 || cell.half || cell.t2}
-											<div class="flex gap-1px text-7px leading-none font-700 {cell.main ? 'text-oxford/60' : 'text-blue-300'}">
-												{#if cell.t1}<span>3</span>{/if}
-												{#if cell.half}<span>2</span>{/if}
-												{#if cell.t2}<span>3</span>{/if}
-											</div>
-										{/if}
-									</div>
-								</button
-							>
+							<ExpressionDrumsKey
+								{cell}
+								row={r}
+								step={s}
+								voiceLabel={voiceLabel(row.voice)}
+								offBeat={Math.floor(s / group) % 2 === 1}
+								now={expressionDrums.step === s && expressionDrums.playing === expressionDrums.current}
+								selected={sel}
+								selIndex={sel ? s - cursor!.start + 1 : null}
+								hinted={hintedCells?.has(`${row.voice}:${s}`) ?? false}
+								lightsBelow={pattern.steps > desktopCols && s >= desktopCols}
+								onpress={(e) => press(e, r, s, cell)}
+								oncyclevelocity={() => expressionDrums.cycleVelocity(r, s)}
+							/>
 						{/each}
 					</div>
 				</div>
