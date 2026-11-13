@@ -3492,3 +3492,21 @@ but shows a quarter of the bars and fails where both miss the same
 notes. Trust by agreement is bounded by the second reader's own
 accuracy (docs/bench-brief-bass-transcription-2026-11-12.md, third
 follow-up).
+
+## Correction: the bass truth was missing notes; and a bass model that reads far better than Basic Pitch (2026-11-13)
+
+The four bass entries above (2026-11-12) were measured against MIDI
+truth that had lost back-to-back notes of one pitch to a bench parser
+defect, 1 % to 18 % of each song's notes. Re-run on the corrected truth
+their verdicts hold and their numbers move: Basic Pitch's best line is
+48.4 % of bars right (not 45.2 %), its extra onsets are 8 % to 32 % of
+the part's (not a fifth to a half), half of them re-triggers, and the
+"nothing sounding" extras were real notes. stem-bench Study 52 then ran
+`hf_midi_transcription`'s bass checkpoint on the same stems: no octave
+errors at all, a third of the extra onsets, bars right 53, 39, 51, 82,
+74, 87 % against Basic Pitch's 36, 32, 76, 42, 63, 40 %, three songs
+over the bench's bar for showing the line. Not yet recommended by the
+bench's rules (one song pending a question about 4 ms notes in its
+MIDI, one where every reader fails), but the direction is clear: a
+monophonic note model for bass stems
+(docs/bench-brief-bass-transcription-2026-11-12.md, fourth follow-up).
