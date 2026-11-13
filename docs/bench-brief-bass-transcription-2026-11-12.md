@@ -360,8 +360,11 @@ same six stems, on a CPU, about one second per three seconds of audio:
 - **Letter Lands is open.** Its MIDI holds 20 notes that are 4 ms long,
   on the fourth beat of the riff's bars. The bench's grader treats a
   note that short as not meant; the model writes a note there. Forgive
-  those and Letter Lands is 79 %, above Basic Pitch. Kevin has been
-  asked what those notes are.
+  those and Letter Lands is 79 %, above Basic Pitch. *Kevin, 2026-11-13:
+  they are editing debris and should be discarded.* So the truth is
+  right and 51 % stands; the model was hearing about twenty sounds the
+  sampler made from the debris, which a bass played by hand would not
+  contain.
 - **Interbellum is the hard song for every reader**: runs of short
   legato notes that all three transcribers join or drop.
 - **Showing only bars two readers agree on**: where this model and
@@ -371,7 +374,7 @@ same six stems, on a CPU, about one second per three seconds of audio:
 
 **By the bench's registered rules this is not yet a recommendation**:
 the line is not showable on every song, and one song scores lower than
-Basic Pitch pending the question above. It is the first thing in five
+Basic Pitch, for the reason above. It is the first thing in five
 studies that moves the line, and the bench's reading is that bass
 stems want a monophonic note model, not Basic Pitch with different
 settings. Before the app builds on it: the checkpoint is a pickle that
