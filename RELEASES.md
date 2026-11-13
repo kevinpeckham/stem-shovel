@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **A sign-in link on the home page.** "Already have an account? Sign
+  In" sits under the "Sign Up For Free" button, and the sign-up button
+  in the header reads "Sign Up".
+
 ## [0.268.0] - 2026-11-13
 
 ### Changed

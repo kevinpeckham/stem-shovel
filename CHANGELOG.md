@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **"Sign Up" in the nav and on the pricing page; a sign-in link under
+  the home page's call to action.** The nav's button and the pricing
+  page's invite-code link read "Sign Up" like the home page's button,
+  and "Already have an account? Sign In" sits under "Sign Up For Free"
+  on the home page (`HomeCallToAction.svelte`, the hero's way-in block
+  moved out of `+page.svelte` for Fallow's template length).
+
 ## [0.268.0] - 2026-11-13
 
 ### Changed

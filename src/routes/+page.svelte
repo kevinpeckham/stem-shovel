@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import SongDocsDemo from "#lib/components/SongDocsDemo.svelte";
+	import HomeCallToAction from "#lib/components/HomeCallToAction.svelte";
 	import SongPlayerDemo from "#lib/components/SongPlayerDemo.svelte";
 	import IdeaRecorderDemo from "#lib/components/IdeaRecorderDemo.svelte";
 	import StudioDemo from "#lib/components/StudioDemo.svelte";
@@ -92,24 +93,7 @@
 		<!-- <h1 class="heading-2 mb-2">Introducing Stem Shovel</h1> -->
 		<h1 class="block marketing-headline">{copy.title}</h1>
 		<div class="mt-8 flex flex-wrap gap-4 items-baseline">
-			{#if data.user}
-				<!-- {#each data.memberships as m (m.accountId)}
-					<a class="button-accent" href="/{m.slug}/projects">{m.name} →</a>
-				{/each} -->
-			{:else if data.signUpOpen}
-				<a class="button-accent-solid button-sm" href="/sign-up">Sign Up For Free</a>
-				<span class="text-0.85em opacity-90">No credit card required. No ads, no trackers.</span>
-			{:else}
-				<!-- Invitation-only (the signUpMode app setting): the waitlist is the way in. -->
-				<a class="button-accent-solid button-sm" href="/waitlist">Join the Waitlist</a>
-				<div class="text-0.85em">
-					<span class="opacity-90">Already have an invite code?</span>
-					<a
-						class="inline-block ml-2 underline underline-offset-3 opacity-90 hover-opacity-100 hover-text-accent"
-						href="/sign-up">Sign Up</a
-					>
-				</div>
-			{/if}
+			<HomeCallToAction user={data.user} signUpOpen={data.signUpOpen} />
 			{#if copy.canEdit}
 				<a class="button button-xs" href={copy.editHref} title="Edit this page's words">
 					<span class="i-ph-pencil-simple" aria-hidden="true"></span>

@@ -91,7 +91,7 @@
 							<a class="button-accent-solid button-sm" href="/waitlist">Join the Waitlist</a>
 							<p class="mt-2 text-13px opacity-80">
 								No credit card required. Have an invite code? <a class="link-dim" href="/sign-up"
-									>Sign up</a
+									>Sign Up</a
 								>.
 							</p>
 						{/if}

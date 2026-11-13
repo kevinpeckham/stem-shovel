@@ -639,7 +639,7 @@
 				<span class="hidden sm-inline">Sign In</span>
 			</a>
 			<!-- The call to action: a small solid accent button. A phone has room for one link beside the logo, so Pricing and Sign up hide there (both are in the footer and on the front page). -->
-			<a class="button-accent-solid button-sm hidden sm-flex" href="/sign-up"> Sign up </a>
+			<a class="button-accent-solid button-sm hidden sm-flex" href="/sign-up"> Sign Up </a>
 		{/if}
 	</nav>
 </header>
