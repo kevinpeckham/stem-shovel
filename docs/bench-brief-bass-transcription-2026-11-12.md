@@ -394,15 +394,15 @@ MuScriptor (github.com/muscriptor/muscriptor; Kyutai and Mirelo), the
 `medium` model, constrained to its `electric_bass` instrument, greedy
 decoding as shipped, on the same six stems and the same graders.
 
-| song | Basic Pitch at its best: bars right · wrong | the bass model (fourth follow-up) | MuScriptor |
-|---|---|---|---|
-| Peaceful Dreams | 36 · 38 % | 53 · 25 % | 55 · 25 % |
-| Interbellum | 32 · 49 % | 39 · 54 % | 48 · 42 % |
-| Letter Lands | 76 · 13 % | 51 · 9 % | 85 · 3 % |
-| Eat All the Clocks | 42 · 35 % | 82 · 7 % | 70 · 6 % |
-| Downline | 63 · 20 % | 74 · 8 % | 75 · 8 % |
-| Mop Heart | 40 · 47 % | 87 · 9 % | 89 · 8 % |
-| mean bars right | 48.4 % | 64.3 % | 70.5 % |
+| song               | Basic Pitch at its best: bars right · wrong | the bass model (fourth follow-up) | MuScriptor |
+| ------------------ | ------------------------------------------- | --------------------------------- | ---------- |
+| Peaceful Dreams    | 36 · 38 %                                   | 53 · 25 %                         | 55 · 25 %  |
+| Interbellum        | 32 · 49 %                                   | 39 · 54 %                         | 48 · 42 %  |
+| Letter Lands       | 76 · 13 %                                   | 51 · 9 %                          | 85 · 3 %   |
+| Eat All the Clocks | 42 · 35 %                                   | 82 · 7 %                          | 70 · 6 %   |
+| Downline           | 63 · 20 %                                   | 74 · 8 %                          | 75 · 8 %   |
+| Mop Heart          | 40 · 47 %                                   | 87 · 9 %                          | 89 · 8 %   |
+| mean bars right    | 48.4 %                                      | 64.3 %                            | 70.5 %     |
 
 - **The best reader the bench has measured.** More bars right than
   Basic Pitch on every song, one octave error in 1,973 matched notes,

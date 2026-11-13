@@ -3541,4 +3541,3 @@ CPU; Mirelo's paid successor is untested. The E1 floor in the bench's
 bass constraint removed real notes on a part that goes to C1: these
 readers do not need it
 (docs/bench-brief-bass-transcription-2026-11-12.md, fifth follow-up).
-
