@@ -69,6 +69,8 @@ import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
  */
 class ExpressionDrumsEngine {
 	project = $state<DrumProject>(startingDrumProject());
+	/** The velocity placed when a cell is toggled on (1–5). */
+	defaultVelocity = $state(DRUM_VELOCITY_NORMAL);
 	/** The pattern open in the grid. */
 	current = $state(0);
 	/** The pattern sounding; -1 between runs. */
@@ -474,7 +476,7 @@ class ExpressionDrumsEngine {
 		if (!cells) return;
 		const cell = cells[step];
 		if (!cell) return;
-		cells[step] = { ...cell, main: cell.main ? 0 : DRUM_VELOCITY_NORMAL };
+		cells[step] = { ...cell, main: cell.main ? 0 : this.defaultVelocity };
 		this.#save();
 	}
 	setCell(row: number, step: number, on: boolean) {
@@ -482,7 +484,7 @@ class ExpressionDrumsEngine {
 		if (!cells) return;
 		const cell = cells[step];
 		if (!cell || Boolean(cell.main) === on) return;
-		cells[step] = { ...cell, main: on ? DRUM_VELOCITY_NORMAL : 0 };
+		cells[step] = { ...cell, main: on ? this.defaultVelocity : 0 };
 		this.#save();
 	}
 	/** Cycle the main hit's velocity: normal → accent → ghost → … */
@@ -516,7 +518,7 @@ class ExpressionDrumsEngine {
 		if (!cells) return;
 		const cell = cells[step];
 		if (!cell) return;
-		cells[step] = { ...cell, [slot]: cell[slot] ? 0 : DRUM_VELOCITY_NORMAL };
+		cells[step] = { ...cell, [slot]: cell[slot] ? 0 : this.defaultVelocity };
 		this.#save();
 	}
 	/** The tempo the beat plays at: the session's (the metronome's) at the ratio while following, else the beat's own. */

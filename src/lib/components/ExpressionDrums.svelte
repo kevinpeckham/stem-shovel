@@ -1451,7 +1451,7 @@
 
 		<!-- kit, steps, meter and patterns -->
 		<div
-			class="gap-x-4 gap-y-2 @2xl-pt-4 @4xl-pt-8 @xl-grid @xl-grid-cols-[auto_auto_auto_1fr] @xl-gap-x-3 @2xl-gap-x-4 mb-4"
+			class="gap-x-4 gap-y-3 @2xl-pt-4 @4xl-pt-8 @xl-grid @xl-grid-cols-[auto_auto_auto_1fr] @xl-gap-x-3 @2xl-gap-x-4 mb-4"
 		>
 			<!-- kit selector -->
 			<div class="@xl-grid grid-cols-1" title="Kit">
@@ -1608,18 +1608,45 @@
 					</button>
 				</div>
 			</div>
+			<div class="w-full @xl-w-auto gap-5 mt-5 @xl-mt-0 @xl-ml-auto" title="Default velocity">
+				<div class="device-button-group-label">Default velocity</div>
+					<div class="flex items-center">
+						<ComboBox
+							ariaLabel="Default velocity"
+							clearDefaultButtonClasses={true}
+							popoverClasses="min-w-fit"
+							buttonClasses="device-button-drum-combo"
+							options={[
+								{ value: "1", label: "V1 — Ghost" },
+								{ value: "2", label: "V2 — Soft" },
+								{ value: "3", label: "V3 — Normal" },
+								{ value: "4", label: "V4 — Hard" },
+								{ value: "5", label: "V5 — Accent" },
+							]}
+							value={String(expressionDrums.defaultVelocity)}
+							onchange={(v) => { expressionDrums.defaultVelocity = Number(v); }}
+						/>
+			</div>
+			</div>
 			<div class="
 				bg-dark/60
-				col-span-4
+				col-span-3
+				flex
+				flex-col
+				gap-1
 				mt-5
 				px-4
 				py-2
 				rounded-md
-				text-16px 
+				text-16px
 				text-white
 				w-fit
+				@xl-mx-auto
 				[&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono)">
+				<div>
 				<kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>click</kbd> any step button for advanced options
+				</div>
+				<div>or double-tap on mobile</div>
 			</div>
 		</div>
 
@@ -1710,7 +1737,7 @@
 
 		<!-- the grid -->
 		<div
-			class="grid grid-cols-1 gap-y-6 mb-8 w-full"
+			class="grid grid-cols-1 gap-y-4 mb-8 w-full"
 			aria-label="Pattern {expressionDrums.current + 1}"
 		>
 			{#each pattern.rows as row, r (r)}

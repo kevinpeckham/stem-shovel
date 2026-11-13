@@ -46,8 +46,8 @@
 			{!cell.t1 && !cell.half && !cell.t2 ? 'invisible' : ''}">
 		{#each Object.keys(cell).slice(1) as cellKey, i}
 			<div
-				class="w-18px h-18px rounded-full flex items-center justify-center text-11px font-800 leading-none {cell[cellKey as keyof ExpressionCell]
-					? 'bg-[radial-gradient(circle,theme(colors.sky.100),theme(colors.sky.400),theme(colors.blue.600))] text-black shadow-[0_0_6px_#d0e2ee]'
+				class="w-20px h-20px rounded flex items-center justify-center text-11px font-800 leading-none {cell[cellKey as keyof ExpressionCell]
+					? 'bg-[radial-gradient(circle,theme(colors.sky.100),theme(colors.sky.200),theme(colors.sky.400),theme(colors.blue.600))] text-black shadow-[0_0_4px_#d0e2ee]'
 					: 'bg-dark-700 text-white/60'}"
 			>
 				{i % 2 === 0 ? "3" : "2"}
@@ -110,8 +110,8 @@
 				">
 			{#each Object.keys(cell).slice(1) as cellKey, i}
 				<div
-					class="w-16px h-16px rounded-full flex items-center justify-center text-10px font-800 leading-none mb-0.2 {cell[cellKey as keyof ExpressionCell]
-						? 'bg-[radial-gradient(circle,theme(colors.sky.100),theme(colors.sky.400),theme(colors.blue.600))] text-black shadow-[0_0_6px_#d0e2ee]'
+					class="w-16px h-16px rounded flex items-center justify-center text-10px font-800 leading-none mb-0.2 {cell[cellKey as keyof ExpressionCell]
+						? 'bg-[radial-gradient(circle,theme(colors.sky.100),theme(colors.sky.200),theme(colors.sky.400),theme(colors.blue.600))] text-black shadow-[0_0_4px_#d0e2ee]'
 						: 'bg-dark-700 text-white/60'}"
 				>
 					{i % 2 === 0 ? "3" : "2"}
@@ -131,8 +131,8 @@
 					{!cell.t1 && !cell.half && !cell.t2 ? 'invisible' : ''}">
 			{#each Object.keys(cell).slice(1) as cellKey, i}
 				<div
-					class="w-18px h-18px rounded-full flex items-center justify-center text-11px font-800 leading-none {cell[cellKey as keyof ExpressionCell]
-						? 'bg-[radial-gradient(circle,theme(colors.sky.100),theme(colors.sky.400),theme(colors.blue.600))] text-black shadow-[0_0_6px_#d0e2ee]'
+					class="w-20px h-20px rounded flex items-center justify-center text-11px font-800 leading-none {cell[cellKey as keyof ExpressionCell]
+						? 'bg-[radial-gradient(circle,theme(colors.sky.100),theme(colors.sky.200),theme(colors.sky.400),theme(colors.blue.600))] text-black shadow-[0_0_4px_#d0e2ee]'
 						: 'bg-dark-700 text-white/60'}"
 				>
 					{i % 2 === 0 ? "3" : "2"}
