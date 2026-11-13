@@ -37,6 +37,7 @@ function setup({
 	canEdit = true,
 	draftBusy = false,
 	chartColumns = "shared" as "shared" | "row",
+	hasScoreFile = undefined as (() => boolean) | undefined,
 } = {}) {
 	const chordDraft = {
 		draftBusy,
@@ -60,6 +61,7 @@ function setup({
 		hasGrid: () => true,
 		onhistory,
 		onsaved,
+		hasScoreFile,
 	});
 	return { d, chordDraft, onhistory, onsaved };
 }
@@ -76,6 +78,12 @@ beforeEach(() => {
 });
 
 describe("SongDocs", () => {
+	test("the chart opens on Grid; on Score when it was read from a file still attached", () => {
+		expect(setup().d.chartView).toBe("grid");
+		expect(setup({ hasScoreFile: () => false }).d.chartView).toBe("grid");
+		expect(setup({ hasScoreFile: () => true }).d.chartView).toBe("score");
+	});
+
 	test("starts on the first document with content, lyrics first when both", () => {
 		expect(setup().d.panel).toBe("chart");
 		expect(setup({ docs: { chart: "<p>c</p>", lyrics: "<p>l</p>", notes: null } }).d.panel).toBe(

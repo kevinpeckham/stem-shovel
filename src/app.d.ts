@@ -45,5 +45,9 @@ declare module "svelte/elements" {
 		onscoreerror?: (
 			event: CustomEvent<{ reason?: string }> & { currentTarget: EventTarget & T },
 		) => void;
+		/** `@barmark/score`'s `viewchange` (bubbles, composed): the view it now shows, from its own switch or from script. */
+		onviewchange?: (
+			event: CustomEvent<{ view?: string }> & { currentTarget: EventTarget & T },
+		) => void;
 	}
 }

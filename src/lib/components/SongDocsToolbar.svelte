@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ChartViewSwitch from "#lib/components/ChartViewSwitch.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import { DOC_VIEWS, type SongDocs } from "#lib/state/songDocs.svelte.js";
 
@@ -56,6 +57,10 @@
 {/snippet}
 
 {#snippet chartTools()}
+	<!-- Grid / Score, ours in place of the element's own switch (hidden in ChartHtml); the editor's preview is the plain grid. -->
+	{#if !docs.editing}
+		<ChartViewSwitch view={docs.chartView} onpick={(v) => (docs.chartView = v)} />
+	{/if}
 	<!-- How the chart spells chords: a syntax choice within chords, so a menu on the view (Kevin). -->
 	<div class="pointer-events-auto rounded shadow-md shadow-black/40">
 		<ContextMenu
@@ -81,7 +86,7 @@
 {/snippet}
 
 {#if docs.panel === "chart" || (docs.panel === "notes" && docs.canHaveNote) || docs.editing}
-	<!-- Stuck to the panel's top right: the editor's pane while a document is edited, the spelling and key menus on the Chart tab, Project / Mine on the Notes tab (Kevin). -->
+	<!-- Stuck to the panel's top right: the editor's pane while a document is edited, Grid / Score and the spelling and key menus on the Chart tab, Project / Mine on the Notes tab (Kevin). -->
 	<div
 		class="sticky top-0 z-10 flex items-start justify-end gap-2 h-0 overflow-visible pointer-events-none"
 	>

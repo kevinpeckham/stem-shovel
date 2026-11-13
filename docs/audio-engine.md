@@ -1099,6 +1099,26 @@ switch, whose Score shows the file's pages and is the view it opens on,
 since that file is the band's approved chart and an engraving of the read
 would only double it.
 
+Since 2026-11-13 the Grid / Score choice is the app's own:
+`ChartViewSwitch.svelte` in the chart toolbar (`SongDocsToolbar`, and
+`SongDocsDemoChartTools` on the home page's demo), beside the spelling
+and key menus, a two-way group like the toolbar's others. The view is
+`SongDocs.chartView` (the demo keeps its own); `SongDocPanel` hands it to
+`ChartHtml` as `view`, which sets it on the element as its `view`
+attribute once drawn and on every change, and adds a stylesheet to its
+open shadow root's `adoptedStyleSheets` that hides the element's own
+switch and puts its loading and "couldn't be drawn" notes on the look's
+paper (they take the ink's colour, navy since the paper chart, and sat
+dark on the page); the element never writes that list and replaces only
+its grid pane on a redraw, so the sheet stays. The element's `viewchange` (bubbles,
+composed) comes back through `onviewchange`, so the toggle follows the
+element's own return to the grid when a score fails. A chart read from a
+file (`ChartScoreFile`) takes the same view, its own switch gone, and
+`SongDocs` still starts on Score when the song has such a file
+(`hasScoreFile`). The demo's panel is a container: its document tabs give
+way to the picker below 672 px so the row fits beside the chart tools,
+and at phone width the toggle hides (the grid stays).
+
 The same day the Chart panel was redesigned around the one chart: the
 Chords / Engraving split is gone, and uploaded scores (MusicXML in
 `song_notation`, PDFs and images marked as notation in `song_pdf`) are

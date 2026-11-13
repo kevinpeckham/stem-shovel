@@ -7,6 +7,27 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A control inside a third-party element's open shadow root can be hidden with `adoptedStyleSheets` (2026-11-13)
+
+`<barmark-score>` (`@barmark/score` 0.5) draws its Grid / Score switch
+inside its shadow root with no `part` and no attribute to leave it out,
+so page CSS cannot reach it. Its root is open, though, and the element
+never writes `shadowRoot.adoptedStyleSheets` and only replaces its grid
+pane's `innerHTML` on a redraw, so a constructable stylesheet appended
+to that list from outside (`new CSSStyleSheet()`, `replaceSync(".bms-switch{display:none}")`)
+survives every redraw where a `<style>` appended to the root would not
+be safe. The view is then driven by the element's `view` attribute (an
+attribute, not the property: set before upgrade a property would shadow
+the accessor) and read back from its `viewchange` event. jsdom has no
+constructable stylesheets, so the call is feature-checked and wrapped
+(`ChartHtml.svelte`, `styleShadow`; the same sheet puts the element's
+loading and "couldn't be drawn" notes on the look's paper, since they
+take the ink's colour and sat dark on the dark page). Fragile by nature: a package release
+that adopts its own sheets or re-renders its root breaks it, so the
+element's switch would reappear beside ours rather than anything
+failing. Asked of the barmark agent as a `part` or a `switch="none"`
+attribute would be the clean fix.
+
 ## A remote form keyed with `.for()` throws when its key is on the page twice (2026-11-13)
 
 SvelteKit attaches a remote form instance to one `<form>`; rendering a

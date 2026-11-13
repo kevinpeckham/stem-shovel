@@ -363,6 +363,7 @@
 		hasGrid: () => !!posCtx.grid,
 		onhistory: (target) => history.open(target),
 		onsaved: refreshAll,
+		hasScoreFile: () => !!data.song.chartScoreFile,
 	});
 	/** Scan stems, the uploader's detection and the AI's song check (the Tempo & key tab). */
 	const check = new SongCheck({

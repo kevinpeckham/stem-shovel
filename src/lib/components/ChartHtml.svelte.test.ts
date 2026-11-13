@@ -160,6 +160,39 @@ describe("ChartHtml", () => {
 	});
 });
 
+describe("ChartHtml's Grid / Score", () => {
+	test("the view lands on the <barmark-score> as its attribute, and a change follows it", async () => {
+		const { container, rerender } = render(ChartHtml, { html: SCORE });
+		await settle();
+		const score = container.querySelector("barmark-score")!;
+		expect(score.getAttribute("view")).toBe("grid");
+		await rerender({ view: "score" });
+		await settle();
+		expect(container.querySelector("barmark-score")?.getAttribute("view")).toBe("score");
+	});
+
+	test("a score asked for before the chart is drawn is set on it", async () => {
+		const { container } = render(ChartHtml, { html: SCORE, view: "score" });
+		await settle();
+		expect(container.querySelector("barmark-score")?.getAttribute("view")).toBe("score");
+	});
+
+	test("the element's viewchange reaches onviewchange", async () => {
+		const onviewchange = vi.fn();
+		const { container } = render(ChartHtml, { html: SCORE, onviewchange });
+		await settle();
+		const score = container.querySelector("barmark-score")!;
+		score.dispatchEvent(
+			new CustomEvent("viewchange", { bubbles: true, composed: true, detail: { view: "score" } }),
+		);
+		expect(onviewchange).toHaveBeenLastCalledWith("score");
+		score.dispatchEvent(
+			new CustomEvent("viewchange", { bubbles: true, composed: true, detail: { view: "grid" } }),
+		);
+		expect(onviewchange).toHaveBeenLastCalledWith("grid");
+	});
+});
+
 // Last: it loads the score module, which the flags above remember.
 describe("ChartHtml when the score cannot be drawn", () => {
 	test("the element's scoreerror becomes an error notification with the reason and the way out", async () => {

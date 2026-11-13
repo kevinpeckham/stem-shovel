@@ -49,10 +49,14 @@
 		numerals?: "nashville" | "roman" | null;
 		/** The chart drawn in another key (the Chords view's Key menu), null in the original key; the editor's preview stays in the original. */
 		chartText?: string | null;
-		/** The chart's background in place of the look's paper: the home page's demo draws it transparent on its own panel. */
+		/** The chart's background in place of the look's paper (`--barmark-paper`); null for the look's own. */
 		chartPaper?: string | null;
 		/** The PDF or image the chart was read from: the chart's Score view shows it (`ChartScoreFile`). */
 		scoreFile?: ScoreFile | null;
+		/** The chart's view, the toolbar's Grid / Score: the element draws it, or the score file shows. */
+		chartView?: "grid" | "score";
+		/** The view the chart element now shows (it falls back to the grid when the score cannot be drawn). */
+		onchartview?: (view: "grid" | "score") => void;
 		/** How the chart sizes its columns: the editor's preview draws it the way the saved chart is drawn. */
 		chartColumns?: ChartColumns;
 	}
@@ -77,6 +81,8 @@
 		chartText = null,
 		chartPaper = null,
 		scoreFile = null,
+		chartView = "grid",
+		onchartview,
 		chartColumns,
 	}: Props = $props();
 
@@ -266,8 +272,16 @@
 		<article class={readBox}>
 			{@render above?.()}
 			{#if kind === "chart"}
-				<ChartScoreFile file={scoreFile}>
-					<ChartHtml {html} {markdown} {numerals} text={chartText} paper={chartPaper} />
+				<ChartScoreFile file={scoreFile} view={chartView}>
+					<ChartHtml
+						{html}
+						{markdown}
+						{numerals}
+						text={chartText}
+						paper={chartPaper}
+						view={chartView}
+						onviewchange={onchartview}
+					/>
 				</ChartScoreFile>
 			{:else}
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->

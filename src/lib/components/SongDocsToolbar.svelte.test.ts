@@ -45,12 +45,19 @@ afterEach(() => {
 });
 
 describe("SongDocsToolbar", () => {
-	test("the Chart tab: one chart, the spelling and the key, no Chords / Engraving choice", () => {
+	test("the Chart tab: Grid / Score, the spelling and the key, no Chords / Engraving choice", () => {
 		setup();
-		expect(groups()).toEqual([]);
+		expect(groups()).toEqual(["View"]);
+		expect(screen.getByRole("radio", { name: "Grid" })).toHaveAttribute("aria-checked", "true");
 		expect(screen.queryByRole("radio", { name: /Engraving/ })).toBeNull();
 		expect(screen.getByTitle("Chord spelling")).toBeInTheDocument();
 		expect(screen.getByLabelText(/^Key: /)).toBeInTheDocument();
+	});
+
+	test("the chart, editing: no Grid / Score (the preview is the plain grid); the menus stay", () => {
+		setup({ editing: true });
+		expect(groups()).toEqual([]);
+		expect(screen.getByTitle("Chord spelling")).toBeInTheDocument();
 	});
 
 	test("the lyrics, read: no toolbar", () => {

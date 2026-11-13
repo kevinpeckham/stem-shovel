@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
+	import SongDocsDemoChartTools from "#lib/components/SongDocsDemoChartTools.svelte";
 	import SongDocsDemoComments from "#lib/components/SongDocsDemoComments.svelte";
 	import type { DemoComment } from "#lib/constants/demoComments.js";
 	import type { SongView } from "#lib/server/songView.js";
@@ -36,6 +36,8 @@
 	/** How the chart spells chords, the same remembered choice as the song page. */
 	const spelling = new ChordDialectChoice();
 	onMount(() => spelling.load());
+	/** The chart's Grid / Score, this page's choice. */
+	let chartView = $state<"grid" | "score">("grid");
 	/** The chart readout's defaults: the demo carries no song settings, and a tempo in the chart's own text wins over these. */
 	const DEMO_CHART_DEFAULTS = { tempo: 120, meter: "4/4" };
 	/** The phone's document picker (a <details>): closed on a choice, a click elsewhere or Escape. */
@@ -91,7 +93,10 @@
 	}}
 />
 
-<div class="grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full relative min-h-540px">
+<!-- A container: the panel is half the page from lg, so its tools size to it, not the viewport. -->
+<div
+	class="@container grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full relative min-h-540px"
+>
 	{#if panel === "comments"}
 		<SongDocsDemoComments {comments} {onremove} />
 	{:else}
@@ -110,24 +115,22 @@
 				onlocalsave={(md) => keepLocal(doc, md)}
 				chartDefaults={DEMO_CHART_DEFAULTS}
 				numerals={spelling.numerals}
-				chartPaper="transparent"
+				{chartView}
+				onchartview={(v) => (chartView = v)}
 			/>
 		{/key}
 	{/if}
-	<div class="absolute top-2 right-3 flex items-stretch gap-4">
+	<div class="absolute top-2 right-3 flex items-stretch gap-3">
 		{#if panel === "chart"}
-			<!-- How the chart spells chords: the same remembered choice as the song page. -->
-			<ContextMenu
-				ariaLabel="Chord spelling: {spelling.short}"
-				title="Chord spelling"
-				buttonBaseClasses="button button-xs gap-1 border-white/15 bg-oxford/95 opacity-80 hover-opacity-100"
-				iconClass="i-ph-list-numbers"
-				label={spelling.short}
-				items={spelling.items}
+			<SongDocsDemoChartTools
+				{spelling}
+				{editing}
+				view={chartView}
+				onpick={(v) => (chartView = v)}
 			/>
 		{/if}
-		<!-- A dropdown on a phone (our own, so it opens downward), the segmented control from sm up. -->
-		<details class="relative sm:hidden" bind:this={pickerEl}>
+		<!-- A dropdown in a narrow panel (our own, so it opens downward), the segmented control once the panel is wide enough for it beside the chart tools (@2xl, 672px). -->
+		<details class="relative @2xl:hidden" bind:this={pickerEl}>
 			<summary
 				class="button button-xs flex items-center gap-2 list-none [&::-webkit-details-marker]:hidden"
 				aria-label="Document"
@@ -157,7 +160,7 @@
 			</div>
 		</details>
 		<div
-			class="hidden overflow-hidden rounded border border-white/15 items-center sm:flex"
+			class="hidden overflow-hidden rounded border border-white/15 items-center @2xl:flex"
 			role="tablist"
 			aria-label="Document"
 		>

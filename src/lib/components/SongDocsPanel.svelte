@@ -184,6 +184,8 @@
 				numerals={docs.numerals}
 				chartText={docs.chartKey.text(song.chartMarkdown)}
 				{scoreFile}
+				chartView={docs.chartView}
+				onchartview={(v) => (docs.chartView = v)}
 				chartColumns={song.chartColumns}
 			/>
 		{/key}

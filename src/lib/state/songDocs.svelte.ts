@@ -88,6 +88,8 @@ export interface SongDocsOptions {
 	onhistory: (target: DocHistoryTarget) => void;
 	/** After the chart's column sizing is saved: the page's data again (refreshAll), so the server-drawn chart redraws. */
 	onsaved: () => Promise<void>;
+	/** The chart was read from a PDF or image still attached: its Score view shows that file, so the chart opens on it (Kevin, 2026-11-10). */
+	hasScoreFile?: () => boolean;
 }
 
 /**
@@ -110,6 +112,8 @@ export class SongDocs {
 	mode = $state<PanelMode>("docked");
 	/** Mine picked on the Notes tab. */
 	notesChoice = $state(false);
+	/** The chart's view, this page's choice; Score engraves on the first press, so it is not remembered. */
+	chartView = $state<"grid" | "score">("grid");
 	editor: SongDocPanel | null = null;
 	/** The Chords view's spelling, this browser's choice (shared with the home page's demo). */
 	#spelling = new ChordDialectChoice();
@@ -124,6 +128,7 @@ export class SongDocs {
 		// Start on the first document with content.
 		const docs = opts.docs();
 		this.panel = DOC_KINDS.find((k) => docs[k]) ?? "lyrics";
+		this.chartView = opts.hasScoreFile?.() ? "score" : "grid";
 	}
 
 	get doc() {
