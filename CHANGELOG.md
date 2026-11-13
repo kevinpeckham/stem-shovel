@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.269.1] - 2026-11-13
+
 ### Changed
 
 - **The chart's muted colour is the ink at 90%.** `--barmark-muted`

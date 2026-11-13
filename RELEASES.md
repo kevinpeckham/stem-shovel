@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.269.1] - 2026-11-13
+
 ### Changed
 
 - **Chart details in the same ink.** The chart's key line, bar numbers
