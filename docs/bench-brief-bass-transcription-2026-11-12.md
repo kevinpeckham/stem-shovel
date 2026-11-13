@@ -319,15 +319,15 @@ test, the MIDI re-read, the offsets confirmed, and Studies 48 to 51
 re-run. **Every verdict above stands. These numbers replace the ones
 above:**
 
-| | first reported | corrected |
-|---|---|---|
-| Basic Pitch as the app runs it, note-level exact F | 0.57 to 0.79 | 0.60 to 0.79 |
-| with the bass constraint | 0.70 to 0.85 | 0.72 to 0.89 |
-| extra onsets, as a share of the part's | a fifth to a half again | 8 % to 32 % |
-| bars entirely right, the app's settings | 34, 25, 71, 35, 29, 38 % | 35, 25, 72, 35, 40, 38 % |
-| with `inferOnsets` and `melodiaTrick` off | 35, 32, 76, 42, 46, 40 % (mean 45.2) | 36, 32, 76, 42, 63, 40 % (mean 48.4) |
-| what the extra onsets are | re-triggers 30 %, "nothing sounding" 23 % | re-triggers 49 %, "nothing sounding" 3 % |
-| bars confirmed by pYIN: right · wrong | 64 % · 20 % | 76 % · 13 % |
+|                                                    | first reported                            | corrected                                |
+| -------------------------------------------------- | ----------------------------------------- | ---------------------------------------- |
+| Basic Pitch as the app runs it, note-level exact F | 0.57 to 0.79                              | 0.60 to 0.79                             |
+| with the bass constraint                           | 0.70 to 0.85                              | 0.72 to 0.89                             |
+| extra onsets, as a share of the part's             | a fifth to a half again                   | 8 % to 32 %                              |
+| bars entirely right, the app's settings            | 34, 25, 71, 35, 29, 38 %                  | 35, 25, 72, 35, 40, 38 %                 |
+| with `inferOnsets` and `melodiaTrick` off          | 35, 32, 76, 42, 46, 40 % (mean 45.2)      | 36, 32, 76, 42, 63, 40 % (mean 48.4)     |
+| what the extra onsets are                          | re-triggers 30 %, "nothing sounding" 23 % | re-triggers 49 %, "nothing sounding" 3 % |
+| bars confirmed by pYIN: right · wrong              | 64 % · 20 %                               | 76 % · 13 %                              |
 
 Two things to take from the table. The "nothing sounding" extras were
 Basic Pitch hearing real notes the truth had lost, so Basic Pitch is a
@@ -344,14 +344,14 @@ code and model card MIT) ships a bass checkpoint, a note-level CRNN
 that by its name was trained on jazz double bass. Run as shipped on the
 same six stems, on a CPU, about one second per three seconds of audio:
 
-| song | Basic Pitch at its best: bars right · wrong | this model: bars right · wrong | notes, exact F: Basic Pitch → this model |
-|---|---|---|---|
-| Peaceful Dreams | 36 · 38 % | 53 · 25 % | 0.76 → 0.88 |
-| Interbellum | 32 · 49 % | 39 · 54 % | 0.77 → 0.83 |
-| Letter Lands | 76 · 13 % | 51 · 9 % | 0.89 → 0.91 |
-| Eat All the Clocks | 42 · 35 % | 82 · 7 % | 0.72 → 0.95 |
-| Downline | 63 · 20 % | 74 · 8 % | 0.80 → 0.94 |
-| Mop Heart | 40 · 47 % | 87 · 9 % | 0.85 → 0.99 |
+| song               | Basic Pitch at its best: bars right · wrong | this model: bars right · wrong | notes, exact F: Basic Pitch → this model |
+| ------------------ | ------------------------------------------- | ------------------------------ | ---------------------------------------- |
+| Peaceful Dreams    | 36 · 38 %                                   | 53 · 25 %                      | 0.76 → 0.88                              |
+| Interbellum        | 32 · 49 %                                   | 39 · 54 %                      | 0.77 → 0.83                              |
+| Letter Lands       | 76 · 13 %                                   | 51 · 9 %                       | 0.89 → 0.91                              |
+| Eat All the Clocks | 42 · 35 %                                   | 82 · 7 %                       | 0.72 → 0.95                              |
+| Downline           | 63 · 20 %                                   | 74 · 8 %                       | 0.80 → 0.94                              |
+| Mop Heart          | 40 · 47 %                                   | 87 · 9 %                       | 0.85 → 0.99                              |
 
 - **No octave errors**, 0 in 1,962 matched notes, with no constraint
   applied. A third of Basic Pitch's extra onsets.
@@ -377,7 +377,7 @@ stems want a monophonic note model, not Basic Pitch with different
 settings. Before the app builds on it: the checkpoint is a pickle that
 the library loads without torch's safe unpickler (the bench loaded it
 through the safe one, allowing numpy arrays only, and it loads); the
-weights' licence should be confirmed with the author beyond the model
+weights' license should be confirmed with the author beyond the model
 card; and these stems are a sampled bass, so a miked bass is untested.
 
 MuScriptor (Kyutai and Mirelo; weights non-commercial) is registered as
