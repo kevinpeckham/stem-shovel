@@ -7,6 +7,23 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## A remote form keyed with `.for()` throws when its key is on the page twice (2026-11-13)
+
+SvelteKit attaches a remote form instance to one `<form>`; rendering a
+second element from the same instance throws
+`remote_form_multiple_elements` (a 500 to the reader, STEM-SHOVEL-7X).
+`deleteComment.for(key)` is one instance per key, so two cards for the
+same comment with the same key are two elements on one instance. A
+demo's located comment is drawn twice at once: in the review's list and
+in the bubble its waveform icon opens (`RecordingReview` hands the same
+`card` snippet to `CommentTimeline`). Both used `demo:<id>`, so clicking
+the icon threw for anyone allowed to delete that comment, since the
+Sessions review shipped on 2026-10-19; the song's own timeline never
+did, because its panel and its bubble already keyed apart. The card
+snippet now takes where it is drawn ("list" or "marker") and keys by it.
+Wherever a snippet with a keyed form can be on screen twice, the key
+must say where.
+
 ## A click track is not a test signal for Beat This, and a traced ONNX export is only its traced length (2026-11-11)
 
 Two lessons from wiring the tracker (stem-bench Studies 41 and 42). The

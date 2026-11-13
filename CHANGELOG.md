@@ -8,6 +8,22 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Clicking a comment's icon on a demo's waveform no longer fails.** The
+  comment's card was drawn in the review's list and in the icon's bubble
+  with the same `deleteComment.for()` key, which SvelteKit refuses
+  (`remote_form_multiple_elements`, STEM-SHOVEL-7X); it failed for anyone
+  who could delete that comment, since 2026-10-19. `RecordingReview`'s
+  `card` snippet now says where it is drawn and the page keys by it
+  (FINDINGS).
+
+### Changed
+
+- **A demo tile's body opens the demo without playing it**: its notes
+  and comments show above the list, and Play stays the button beside it
+  (`DemoPanel.svelte`).
+
 ## [0.266.0] - 2026-11-13
 
 ### Added

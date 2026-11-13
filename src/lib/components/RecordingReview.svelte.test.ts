@@ -1,11 +1,11 @@
-import { render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { createRawSnippet } from "svelte";
 import { describe, expect, test, vi } from "vite-plus/test";
 import RecordingReview from "./RecordingReview.svelte";
 
-const card = createRawSnippet((id: () => string) => ({
-	render: () => `<p data-testid="card">comment ${id()}</p>`,
+const card = createRawSnippet((id: () => string, where: () => string | undefined) => ({
+	render: () => `<p data-testid="card" data-where="${where?.() ?? ""}">comment ${id()}</p>`,
 }));
 const comments = [
 	{ id: "c1", title: "Tempo drags", at: 30 },
@@ -30,6 +30,23 @@ describe("RecordingReview", () => {
 		expect(screen.queryByRole("button", { name: "Comment: Great solo" })).toBeNull();
 		expect(screen.getByRole("region", { name: "Comments on Take 3" })).toBeInTheDocument();
 		expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent("Comments (2)");
+	});
+	test("a located comment's card is drawn in the list and in its bubble, told apart, so a keyed form in it is not attached twice", async () => {
+		render(RecordingReview, {
+			props: {
+				label: "Take 3",
+				peaks: [0.2, 0.8, 0.4],
+				duration: 120,
+				position: 10,
+				comments,
+				card,
+				onseek: vi.fn(),
+			},
+		});
+		expect(screen.getAllByTestId("card").map((c) => c.dataset.where)).toEqual(["list", "list"]);
+		await fireEvent.click(screen.getByRole("button", { name: "Comment: Tempo drags" }));
+		const bubble = within(screen.getByRole("dialog", { name: "Tempo drags" })).getByTestId("card");
+		expect(bubble.dataset.where).toBe("marker");
 	});
 	test("says the waveform is coming while the peaks are null, and how to comment when there are none", () => {
 		render(RecordingReview, {

@@ -153,6 +153,29 @@ describe("DemoPanel comment counts", () => {
 		expect(tileOf("Take d2").textContent).toContain("1 comment");
 	});
 
+	test("the tile's body opens the demo with its notes and comments, without playing it", async () => {
+		const onseen = vi.fn();
+		// The describe's spy (beforeEach) stands in for the audio element's play.
+		const play = vi.mocked(HTMLMediaElement.prototype.play);
+		render(DemoPanel, {
+			demos: [{ ...demo("d1"), notes: "Capo 2" }, demo("d2")],
+			newComments: { d1: 2 },
+			onseen,
+			card: createRawSnippet(() => ({ render: () => "<span></span>" })),
+		});
+		expect(screen.queryByText("Capo 2")).toBeNull();
+		await fireEvent.click(screen.getByRole("button", { name: "Open Take d1" }));
+		// Open above the list: its notes show, its new comments are seen, and nothing plays.
+		expect(screen.getByText("Capo 2")).toBeInTheDocument();
+		expect(onseen).toHaveBeenCalledWith({ id: "d1" });
+		expect(play).not.toHaveBeenCalled();
+		expect(screen.getByRole("button", { name: "Play Take d1" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Open Take d1" })).toHaveAttribute(
+			"aria-current",
+			"true",
+		);
+	});
+
 	test("show() (a ?demo= link) opens the demo and reports it seen", async () => {
 		const onseen = vi.fn();
 		const { component } = render(DemoPanel, {

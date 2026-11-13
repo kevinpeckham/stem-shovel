@@ -854,12 +854,13 @@
 	/>
 {/if}
 
-{#snippet demoCommentCard(id: string)}
+<!-- A located comment's card is drawn in the demo's list and in its waveform bubble at once: the delete form is keyed by where. -->
+{#snippet demoCommentCard(id: string, where: "list" | "marker" = "list")}
 	{@const c = data.demoComments.find((x) => x.id === id)}
 	{#if c}<SongCommentCard
 			comment={c}
 			{comments}
-			list="demo"
+			list={where === "marker" ? "demo-marker" : "demo"}
 			pos={(s) => formatTime(s, 1)}
 			onseek={(s) => demoPanel?.seekTo(s)}
 			onedit={() => comments.editDemo(c)}

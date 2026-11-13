@@ -277,7 +277,7 @@
 					>
 						<span class={playing ? "i-ph-pause-fill" : "i-ph-play-fill"} aria-hidden="true"></span>
 					</button>
-					<DemoTileText label={d.label} sizeBytes={d.sizeBytes} {...tileCounts.get(d.id)} />
+					<DemoTileText {...d} {...tileCounts.get(d.id)} {current} onopen={show} />
 					<DemoRowMenu label={d.label} items={rowItems(d)} />
 				</li>
 			{/each}

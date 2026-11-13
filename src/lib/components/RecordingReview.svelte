@@ -31,7 +31,13 @@
 		position: number;
 		comments: ReviewComment[];
 		canComment?: boolean;
-		card: Snippet<[string]>;
+		/**
+		 * A comment's card. It is drawn twice for a located comment: in the list,
+		 * and in the bubble its icon on the waveform opens (`where` "marker"). A
+		 * card that carries a remote form keyed with `.for()` must key the two
+		 * apart, or SvelteKit refuses the second (`remote_form_multiple_elements`).
+		 */
+		card: Snippet<[string, ("list" | "marker")?]>;
 		onseek: (seconds: number) => void;
 		/** Add a comment about the recording in general (the heading's button). */
 		oncomment?: () => void;
@@ -89,6 +95,11 @@
 	});
 </script>
 
+<!-- The bubble's card, told it is the marker's so its forms are keyed apart from the list's. -->
+{#snippet markerCard(id: string)}
+	{@render card(id, "marker")}
+{/snippet}
+
 <div class="grid gap-3" data-recording-review>
 	<div class="relative rounded bg-blue-300/5">
 		<CommentTimeline
@@ -96,7 +107,7 @@
 			engine={source}
 			comments={located}
 			heading=""
-			{card}
+			card={markerCard}
 			{canComment}
 			{oncontext}
 			showTip={false}
@@ -142,7 +153,7 @@
 						class="rounded-md border border-white/10 bg-light/10 px-3 py-2 text-sm"
 						data-review-comment={c.id}
 					>
-						{@render card(c.id)}
+						{@render card(c.id, "list")}
 					</li>
 				{/each}
 			</ol>

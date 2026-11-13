@@ -6,9 +6,11 @@
 	 * label with a bubble of the signed-in person's new comments, and its
 	 * size with how many comments it has and a note icon when it carries
 	 * notes. The open demo's tile passes no counts and no icon (its comments
-	 * and notes are above the list).
+	 * and notes are above the list). The whole text is a button that opens
+	 * the demo.
 	 */
 	interface Props {
+		id: string;
 		label: string;
 		sizeBytes: number;
 		/** Comments on the demo. */
@@ -17,13 +19,34 @@
 		fresh?: number;
 		/** The demo carries notes from its upload (shown when it is open). */
 		hasNotes?: boolean;
+		/** The demo open above the list, if any. */
+		current?: string | null;
+		/** The tile's body was pressed: open this demo without playing it. */
+		onopen?: (id: string) => void;
 	}
-	let { label, sizeBytes, count = 0, fresh = 0, hasNotes = false }: Props = $props();
+	let {
+		id,
+		label,
+		sizeBytes,
+		count = 0,
+		fresh = 0,
+		hasNotes = false,
+		current = null,
+		onopen,
+	}: Props = $props();
 	let freshName = $derived(`${fresh} new ${fresh === 1 ? "comment" : "comments"}`);
 	let countText = $derived(`${count} ${count === 1 ? "comment" : "comments"}`);
 </script>
 
-<span class="min-w-0 grow">
+<!-- The tile's body opens the demo above the list (its notes and comments) without playing it; Play is the button beside it (Kevin). -->
+<button
+	type="button"
+	class="block min-w-0 grow cursor-pointer bg-transparent text-left"
+	title="Show this demo's notes and comments"
+	aria-label="Open {label}"
+	aria-current={current === id ? "true" : undefined}
+	onclick={() => onopen?.(id)}
+>
 	<span class="flex items-center gap-2 font-500">
 		<span class="truncate">{label}</span>
 		{#if fresh > 0}
@@ -45,4 +68,4 @@
 				data-demo-has-notes
 			></span>{/if}</span
 	>
-</span>
+</button>

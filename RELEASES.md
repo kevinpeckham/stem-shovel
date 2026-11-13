@@ -4,6 +4,16 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Clicking a comment marker on a demo's waveform showed an error.** It
+  now opens the comment as it should.
+
+### Changed
+
+- **Click a demo to open it without playing.** Clicking a demo's tile
+  shows its notes and comments; the play button starts it.
+
 ## [0.266.0] - 2026-11-13
 
 ### Added
