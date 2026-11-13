@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.268.0] - 2026-11-13
+
 ### Changed
 
 - **A sitting's saves to one document are one line in the dashboard's

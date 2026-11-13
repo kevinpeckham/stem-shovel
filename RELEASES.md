@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.268.0] - 2026-11-13
+
 ### Changed
 
 - **Activity no longer fills up with edits to one chart.** A run of saves
