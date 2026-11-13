@@ -92,15 +92,14 @@
 	<div class="border-b border-b-current/10 pt-6 pb-2 mb-8">
 		<!-- <h1 class="heading-2 mb-2">Introducing Stem Shovel</h1> -->
 		<h1 class="block marketing-headline">{copy.title}</h1>
-		<div class="mt-8 flex flex-wrap gap-4 items-baseline">
-			<HomeCallToAction user={data.user} signUpOpen={data.signUpOpen} />
+		<HomeCallToAction user={data.user} signUpOpen={data.signUpOpen}>
 			{#if copy.canEdit}
 				<a class="button button-xs" href={copy.editHref} title="Edit this page's words">
 					<span class="i-ph-pencil-simple" aria-hidden="true"></span>
 					Edit
 				</a>
 			{/if}
-		</div>
+		</HomeCallToAction>
 		<!-- {#if !data.user}
 			<div class="mt-6">
 				<p class="mb-2 text-15px opacity-90">
