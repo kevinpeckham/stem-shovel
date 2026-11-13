@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.267.1] - 2026-11-13
+
 ### Changed
 
 - **The arrangement buttons are tidier.** The row has an "Arrangements"
