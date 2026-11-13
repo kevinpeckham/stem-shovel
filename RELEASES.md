@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **Chart details in the same ink.** The chart's key line, bar numbers
+  and repeat counts are drawn in the chart's own ink, a little lighter,
+  instead of brown.
+
 ## [0.269.0] - 2026-11-13
 
 ### Changed

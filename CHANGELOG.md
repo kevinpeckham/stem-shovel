@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The chart's muted colour is the ink at 90%.** `--barmark-muted`
+  (the meta line, holds, bar numbers, braces) in `barmark-look`, in place
+  of the light palette's brown.
+
 ## [0.269.0] - 2026-11-13
 
 ### Changed

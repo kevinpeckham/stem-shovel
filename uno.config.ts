@@ -712,6 +712,8 @@ export default defineConfig({
 			"barmark-look",
 			[
 				"[--barmark-size:15.5px] [--barmark-paper:oklch(97.8%_0.02_258.51)] [--barmark-ink:#00061A]",
+				// The muted colour (meta line, holds, bar numbers, braces) is the ink at 90%, not the palette's brown (Kevin, 2026-11-13).
+				"[--barmark-muted:rgb(0_6_26/0.9)]",
 				'[--barmark-text-font:"Noto_Serif",Georgia,serif] [--barmark-label-font:"Noto_Sans",system-ui,sans-serif]',
 			].join(" "),
 		],

@@ -29,8 +29,11 @@ Rules:
   `uno.config.ts` carries the look (15.5px chords, Noto Serif for lyrics
   and note lines, Noto Sans for labels, chosen by Kevin on barmark.dev
   2026-11-01; since 2026-11-13 a paper chart: `#00061A` ink on a soft
-  white paper, `oklch(97.8% 0.02 258.51)`, over the renderer's light
-  palette, which `chartHtml.ts` draws with `theme: "light"`), on
+  white paper, `oklch(97.8% 0.02 258.51)`, and the muted colour of the
+  meta line, holds, bar numbers and braces the ink at 90%, over the
+  renderer's light palette, which `chartHtml.ts` draws with
+  `theme: "light"`; the renderer's README lists every `--barmark-*`
+  property the look may set), on
   `ChartHtml`'s wrapper and the editor's live `ChartPreview`; both take a
   `paper` prop that sets `--barmark-paper` inline on that wrapper, over
   the shortcut's paper (`SongDocPanel`'s `chartPaper`; nothing sets it
