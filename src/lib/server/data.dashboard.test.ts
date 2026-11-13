@@ -959,6 +959,34 @@ describe("accountActivity: a super admin's acting work", () => {
 		});
 		expect(rows.find((r) => r.id === "stem:st1")?.who).toBe("Kev");
 	});
+
+	test("a sitting's saves to one chart are one event, the newest; a save after a break is another", async () => {
+		const save = (id: string, iso: string, createdBy = K) => ({
+			id,
+			songId: "s1",
+			kind: "chart",
+			userId: null,
+			createdBy,
+			createdAt: at(iso),
+		});
+		reset({
+			user: fake.rows("user"),
+			accountMember: fake.rows("accountMember"),
+			project: fake.rows("project"),
+			song: fake.rows("song"),
+			songDocVersion: [
+				save("a1", "2026-10-22T14:00:00Z"),
+				save("a2", "2026-10-22T14:02:00Z"),
+				save("a3", "2026-10-22T14:04:00Z"),
+				save("s1", "2026-10-22T14:03:00Z", S),
+				save("b1", "2026-10-22T16:00:00Z"),
+			],
+		});
+		const docs = (await accountActivity(A, "band", since, 50))
+			.filter((r) => r.id.startsWith("doc:"))
+			.map((r) => r.id);
+		expect(docs).toEqual(["doc:b1", "doc:a3", "doc:s1"]);
+	});
 });
 
 describe("activityItemOf and deleteSongDocVersion", () => {

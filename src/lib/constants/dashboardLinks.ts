@@ -90,6 +90,16 @@ export const DASHBOARD_LIST_CAP = 50;
 export const DASHBOARD_ACTIVITY_DAYS = 7;
 /** The most activity events the dashboard loads per account. */
 export const DASHBOARD_ACTIVITY_CAP = 30;
+/**
+ * Saves to one document by one person this close together are one edit in
+ * the Activity (utils/collapseDocEdits.ts), measured from save to save.
+ * Half an hour: long enough that a sitting on a chart, with its pauses to
+ * listen, is one line, short enough that coming back to it after a
+ * rehearsal or a meal is news again.
+ */
+export const ACTIVITY_DOC_EDIT_GAP_MS = 30 * 60_000;
+/** How many times the cap of doc revisions the Activity reads before collapsing them, so a burst of saves does not crowd out the edits before it. */
+export const ACTIVITY_DOC_EDIT_OVERSCAN = 8;
 /** A member counts as active on the account tile when they used Stem Shovel within this many days. */
 export const DASHBOARD_ACTIVE_DAYS = 14;
 /** A song nobody has changed in this many days gets a nudge on the dashboard. */

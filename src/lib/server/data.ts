@@ -157,6 +157,11 @@ import {
 } from "#lib/val/SongDocKindSchema.js";
 import type { ChartSource } from "#lib/val/ChartSourceSchema.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import {
+	ACTIVITY_DOC_EDIT_GAP_MS,
+	ACTIVITY_DOC_EDIT_OVERSCAN,
+} from "#lib/constants/dashboardLinks.js";
+import { collapseDocEdits } from "#lib/utils/collapseDocEdits.js";
 import { effectiveSongSettings, type SongTimeSettings } from "#lib/utils/effectiveSongSettings.js";
 import type { SongSection } from "#lib/val/SongSectionSchema.js";
 import type { MemberRole } from "#lib/val/MemberRoleSchema.js";
@@ -6039,7 +6044,8 @@ const mixLabel = (m: { version: number; label: string }) => `v${m.version} ${m.l
  * Everything that happened in the account after `since`, newest first, at
  * most `limit` events, for the dashboard's Activity (docs/dashboard-plan.md,
  * "Step 3"): ready stems, demos, mixes and session recordings, shared doc
- * revisions (a private note's are nobody else's business), chat messages
+ * revisions (a private note's are nobody else's business; a run of saves
+ * to one document by one person is one event, `collapseDocEdits`), chat messages
  * and comments on songs and sessions, and new songs and projects. Each
  * source reads its own newest `limit` in parallel, the merge keeps the
  * newest `limit` of all; a row whose song or project is not active is left
@@ -6057,7 +6063,7 @@ export async function accountActivity(
 		demos,
 		mixes,
 		recordings,
-		docs,
+		docRevisions,
 		chats,
 		sessionChats,
 		comments,
@@ -6133,7 +6139,7 @@ export async function accountActivity(
 				),
 			)
 			.orderBy(desc(songDocVersion.createdAt))
-			.limit(limit),
+			.limit(limit * ACTIVITY_DOC_EDIT_OVERSCAN),
 		db.query.chatMessage.findMany({
 			where: and(eq(chatMessage.accountId, accountId), gt(chatMessage.createdAt, since)),
 			orderBy: desc(chatMessage.createdAt),
@@ -6189,6 +6195,8 @@ export async function accountActivity(
 		}),
 	]);
 
+	// A sitting's saves to one document are one edit (utils/collapseDocEdits.ts), then the feed's cap.
+	const docs = collapseDocEdits(docRevisions, ACTIVITY_DOC_EDIT_GAP_MS).slice(0, limit);
 	const docSongIds = [...new Set(docs.map((d) => d.songId))];
 	const userIds = [
 		...new Set(

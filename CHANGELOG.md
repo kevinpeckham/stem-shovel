@@ -8,6 +8,26 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **A sitting's saves to one document are one line in the dashboard's
+  Activity.** `accountActivity` collapses revisions of the same document
+  of the same song by the same person that fall within 30 minutes of the
+  next (`collapseDocEdits`, `ACTIVITY_DOC_EDIT_GAP_MS`), keeping the
+  newest; the gap runs from save to save, so a long sitting is one event
+  and a return after a break is another. It reads eight times the cap of
+  revisions first, so a burst does not crowd out the edits before it.
+  Nothing stored changes: History still holds every revision.
+
+### Changed
+
+- **A run of saves to one document is one Activity event.** The
+  dashboard's Activity listed every saved revision of a chart, lyrics or
+  notes; saves by one person to one document within half an hour of each
+  other, save to save, are now one event, the newest
+  (`collapseDocEdits`, `ACTIVITY_DOC_EDIT_GAP_MS`; docs/dashboard-plan.md).
+  The revisions themselves are untouched.
+
 ## [0.267.1] - 2026-11-13
 
 ### Changed

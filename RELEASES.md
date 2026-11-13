@@ -4,6 +4,19 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **Activity no longer fills up with edits to one chart.** A run of saves
+  to the same chart, lyrics or notes by one person now shows as a single
+  line on your dashboard. Coming back to it more than half an hour later
+  shows as a new one.
+
+### Changed
+
+- **Activity no longer fills up with saves of the same chart.** A run of
+  edits to one chart, lyrics or notes by the same person now shows as a
+  single item, until there is a break of half an hour.
+
 ## [0.267.1] - 2026-11-13
 
 ### Changed
