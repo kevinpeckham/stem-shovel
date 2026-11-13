@@ -383,6 +383,55 @@ through the safe one, allowing numpy arrays only, and it loads); the
 weights' license should be confirmed with the author beyond the model
 card; and these stems are a sampled bass, so a miked bass is untested.
 
-MuScriptor (Kyutai and Mirelo; weights non-commercial) is registered as
-a second arm and has not run: its weights need Kevin's Hugging Face
-login.
+MuScriptor (Kyutai and Mirelo; weights non-commercial) was registered
+as a second arm and has since run: see the fifth follow-up.
+
+---
+
+## Fifth follow-up: MuScriptor (2026-11-13; stem-bench Study 52, arm 2, $0)
+
+MuScriptor (github.com/muscriptor/muscriptor; Kyutai and Mirelo), the
+`medium` model, constrained to its `electric_bass` instrument, greedy
+decoding as shipped, on the same six stems and the same graders.
+
+| song | Basic Pitch at its best: bars right · wrong | the bass model (fourth follow-up) | MuScriptor |
+|---|---|---|---|
+| Peaceful Dreams | 36 · 38 % | 53 · 25 % | 55 · 25 % |
+| Interbellum | 32 · 49 % | 39 · 54 % | 48 · 42 % |
+| Letter Lands | 76 · 13 % | 51 · 9 % | 85 · 3 % |
+| Eat All the Clocks | 42 · 35 % | 82 · 7 % | 70 · 6 % |
+| Downline | 63 · 20 % | 74 · 8 % | 75 · 8 % |
+| Mop Heart | 40 · 47 % | 87 · 9 % | 89 · 8 % |
+| mean bars right | 48.4 % | 64.3 % | 70.5 % |
+
+- **The best reader the bench has measured.** More bars right than
+  Basic Pitch on every song, one octave error in 1,973 matched notes,
+  a quarter of Basic Pitch's extra onsets, and four songs over the
+  bench's bar for showing the line.
+- **It passes the bench's registered test for replacing Basic Pitch as
+  the bass reader**: 22 points more bars right on the mean, no song
+  lower. That is the first "yes" of this whole brief.
+- **Still not a line to show on every song.** Peaceful Dreams and
+  Interbellum fall short for both new readers, and showing only the
+  bars two readers agree on does not rescue those two songs: the readers
+  are wrong together there.
+- **Drop the E1 floor for these readers.** Peaceful Dreams' part goes
+  down to C1 (29 notes below E1). MuScriptor heard all 29 and the
+  bench's bass constraint, written for Basic Pitch's octave errors,
+  removed them; without it MuScriptor is 62 % right and 18 % wrong on
+  that song. Neither new reader makes octave errors, so neither needs
+  the constraint. (Basic Pitch as the app calls it cannot hear below
+  40 Hz at all.)
+- **What it costs.** About four times the audio's length on a 16-core
+  CPU, against a third for the bass model; a GPU would change that. The
+  weights are CC BY-NC 4.0 and gated, so the app cannot ship them.
+  Mirelo sells a successor, Audio-to-MIDI Pro, by API at roughly $0.30
+  per minute of audio by its pricing page; the bench has not tested it,
+  and a good score for MuScriptor is a reason to, not a result for Pro.
+
+**The choice this leaves the app**: a free, fast, MIT model that is
+right in about two bars of three (`hf_midi_transcription`'s bass
+checkpoint); a slower non-commercial one that is right in about seven
+of ten (MuScriptor), or its paid successor, untested. Either is a large
+step from Basic Pitch at about one in two, and neither is yet good
+enough to show unqualified on every song.
