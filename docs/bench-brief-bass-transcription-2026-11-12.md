@@ -360,8 +360,8 @@ same six stems, on a CPU, about one second per three seconds of audio:
 - **Letter Lands is open.** Its MIDI holds 20 notes that are 4 ms long,
   on the fourth beat of the riff's bars. The bench's grader treats a
   note that short as not meant; the model writes a note there. Forgive
-  those and Letter Lands is 79 %, above Basic Pitch. *Kevin, 2026-11-13:
-  they are editing debris and should be discarded.* So the truth is
+  those and Letter Lands is 79 %, above Basic Pitch. _Kevin, 2026-11-13:
+  they are editing debris and should be discarded._ So the truth is
   right and 51 % stands; the model was hearing about twenty sounds the
   sampler made from the debris, which a bass played by hand would not
   contain.
