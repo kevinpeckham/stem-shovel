@@ -705,15 +705,13 @@ export default defineConfig({
 		["tab-idle", "tab hover-current/80"],
 
 		// barmark's chart look: the renderer's custom properties on the chart's
-		// container (chosen by Kevin on barmark.dev, 2026-11-01; the same
-		// shortcut as barmark.dev's site/uno.config.ts).
+		// container. Since 2026-11-13 a paper chart: a soft white paper and the
+		// site's navy as ink on the renderer's light palette (chartHtml.ts draws
+		// with theme "light"), chosen by Kevin over the earlier dark look.
 		[
 			"barmark-look",
 			[
-				"[--barmark-size:15.5px] [--barmark-paper:oklch(96.89%_0.01_251.56/0.12)]",
-				"[--barmark-ink:#fff] [--barmark-note:#ece8e0] [--barmark-accent:#e8a56a]",
-				"[--barmark-muted:oklch(98.51%_0_0/0.8)] [--barmark-rule:oklch(98.51%_0_0/0.8)]",
-				"[--barmark-directive:oklch(98.51%_0_0/0.8)]",
+				"[--barmark-size:15.5px] [--barmark-paper:oklch(97.8%_0.02_258.51)] [--barmark-ink:#00061A]",
 				'[--barmark-text-font:"Noto_Serif",Georgia,serif] [--barmark-label-font:"Noto_Sans",system-ui,sans-serif]',
 			].join(" "),
 		],

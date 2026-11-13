@@ -8,6 +8,30 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The chart on paper.** Charts draw on `@barmark/render`'s light palette
+  (`theme: "light"` in `chartHtml.ts`) with a soft white paper,
+  `oklch(97.8% 0.02 258.51)`, and the site's navy `#00061A` as ink
+  (`barmark-look` in uno.config.ts), on the song page, its previews and the
+  home page's chart demo (its transparent paper is gone); chosen by Kevin
+  over the dark look.
+- **Our own Grid / Score toggle.** `ChartViewSwitch.svelte` in the chart
+  toolbar beside the spelling and key menus replaces `<barmark-score>`'s
+  built-in switch, which `ChartHtml.svelte` hides with a stylesheet added
+  to the element's open shadow root; the view flows `SongDocs.chartView` →
+  `SongDocPanel` → `ChartHtml` → the element's `view` attribute, and its
+  `viewchange` comes back. A file-sourced chart (`ChartScoreFile`) takes
+  the same view, its own switch gone; the page still opens on Score when
+  the song has such a file (`hasScoreFile`). The home demo's toolbar is
+  `SongDocsDemoChartTools.svelte`; the demo panel is a container whose
+  document tabs become the picker below 672 px, and the toggle hides at
+  phone width (docs/audio-engine.md "The chart as a score").
+- **The Dawn demo's way in is a link.** "Free standalone version" above
+  the home page's Dawn demo, as the drum machine, piano and chord player
+  have (one `tryIt` snippet for every demo's lead-in), in place of the
+  Open Dawn button on the demo's face (`StudioDemo` loses its `href`).
+
 ## [0.268.1] - 2026-11-13
 
 ### Changed

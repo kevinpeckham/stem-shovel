@@ -28,15 +28,15 @@ function columnsOption(options: ChartHtmlOptions | undefined) {
  * registered once per page by src/app.html's `<style data-barmark-font>`,
  * because a browser ignores @font-face inside a shadow root (and the element
  * leaves a page's own registration alone). Drawn the way barmark.dev does:
- * the dark palette with rehearsal letters (`@barmark/render` 0.19 leaves
+ * the light palette with rehearsal letters (the look's paper and ink, uno.config.ts) (`@barmark/render` 0.19 leaves
  * them off a chart that writes its own marks), carried as attributes
- * (`theme="dark" rehearsal-letters`) so the element keeps them when it loads. "" for a blank
+ * (`theme="light" rehearsal-letters`) so the element keeps them when it loads. "" for a blank
  * chart. `options.columns` is the song's column sizing (`ChartColumnsSchema`).
  */
 export function renderChartHtml(markdown: string, options?: ChartHtmlOptions): string {
 	if (!markdown.trim()) return "";
 	return renderChart(markdown, {
-		theme: "dark",
+		theme: "light",
 		rehearsalLetters: true,
 		...columnsOption(options),
 	});
@@ -59,7 +59,7 @@ export function renderChartHtml(markdown: string, options?: ChartHtmlOptions): s
 export function renderScoreChartHtml(markdown: string, options?: ChartHtmlOptions): string {
 	if (!markdown.trim()) return "";
 	const html = renderScoreHtml(markdown, {
-		theme: "dark",
+		theme: "light",
 		rehearsalLetters: true,
 		...columnsOption(options),
 	});

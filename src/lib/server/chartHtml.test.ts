@@ -8,7 +8,7 @@ const { ENGRAVER_URL, renderChartHtml, renderDocHtml, renderScoreChartHtml } =
 describe("renderChartHtml", () => {
 	it("draws a barmark chart as <barmark-chart> with a declarative shadow root", () => {
 		const html = renderChartHtml("## Verse\n| D | A |");
-		expect(html).toMatch(/^<barmark-chart theme="dark" rehearsal-letters>/); // the renderer carries its options as attributes (0.2.1)
+		expect(html).toMatch(/^<barmark-chart theme="light" rehearsal-letters>/); // the renderer carries its options as attributes (0.2.1)
 		expect(html).toContain('<template shadowrootmode="open">');
 		expect(html).toContain("Verse");
 	});
@@ -35,7 +35,7 @@ describe("renderDocHtml", () => {
 	it("draws the song's chart as <barmark-score>: the grid and the Grid / Score switch in a declarative shadow root", () => {
 		const html = renderDocHtml("chart", "## Verse\n| D | A |");
 		expect(html).toMatch(
-			/^<barmark-score verovio-url="\/engraver\/[\d.]+\/verovio-module\.mjs" verovio-integrity="sha384-[^"]+" verovio-wasm-integrity="sha384-[^"]+" theme="dark" rehearsal-letters>/,
+			/^<barmark-score verovio-url="\/engraver\/[\d.]+\/verovio-module\.mjs" verovio-integrity="sha384-[^"]+" verovio-wasm-integrity="sha384-[^"]+" theme="light" rehearsal-letters>/,
 		);
 		expect(html).toContain('<template shadowrootmode="open">');
 		expect(html).toContain('role="radiogroup"');

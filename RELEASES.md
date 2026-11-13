@@ -4,6 +4,17 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Changed
+
+- **Charts on paper.** Chord charts now draw as dark ink on a soft white
+  paper, on the song page and the home page's chart demo.
+- **A tidier Grid / Score switch.** The chart's Grid / Score choice sits
+  in the chart's toolbar beside the Names and key menus, styled like the
+  other toggles.
+- **Dawn's standalone link.** The Dawn demo on the home page has a "Free
+  standalone version" link above it like the other tools, instead of an
+  Open Dawn button on the demo itself.
+
 ## [0.268.1] - 2026-11-13
 
 ### Changed
