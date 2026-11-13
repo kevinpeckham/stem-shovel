@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.268.1] - 2026-11-13
+
 ### Changed
 
 - **"Sign Up" in the nav and on the pricing page; a sign-in link under

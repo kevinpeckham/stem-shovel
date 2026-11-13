@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.268.1] - 2026-11-13
+
 ### Changed
 
 - **A sign-in link on the home page.** "Already have an account? Sign
