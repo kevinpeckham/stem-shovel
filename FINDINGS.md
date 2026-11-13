@@ -3523,7 +3523,7 @@ the part's (not a fifth to a half), half of them re-triggers, and the
 errors at all, a third of the extra onsets, bars right 53, 39, 51, 82,
 74, 87 % against Basic Pitch's 36, 32, 76, 42, 63, 40 %, three songs
 over the bench's bar for showing the line. Not yet recommended by the
-bench's rules (one song pending a question about 4 ms notes in its
-MIDI, one where every reader fails), but the direction is clear: a
+bench's rules (one song lower because the model hears editing debris
+the sampler rendered into the stem, one where every reader fails), but the direction is clear: a
 monophonic note model for bass stems
 (docs/bench-brief-bass-transcription-2026-11-12.md, fourth follow-up).
