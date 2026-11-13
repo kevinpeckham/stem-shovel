@@ -4,6 +4,12 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **An explanation beside the arrangement buttons.** The ⓘ at the end of
+  the row in the Stems view says what arrangements are and what the
+  buttons do.
+
 ## [0.266.1] - 2026-11-13
 
 ### Fixed

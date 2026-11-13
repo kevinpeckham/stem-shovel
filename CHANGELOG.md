@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **An info tip on the arrangement row** (`InfoTip` in
+  `ArrangementSwitcher.svelte`): what arrangements are and how to switch,
+  and for editors what + and ⋯ do.
+
 ## [0.266.1] - 2026-11-13
 
 ### Fixed

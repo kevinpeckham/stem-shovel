@@ -75,6 +75,20 @@ describe("ArrangementSwitcher", () => {
 		);
 	});
 
+	test("an info tip says what the row is; an editor is also told about + and ⋯", () => {
+		const { unmount } = render(ArrangementSwitcher, { props: props({ canEdit: true }) });
+		expect(screen.getByRole("button", { name: "About arrangements" })).toBeInTheDocument();
+		const tip = screen.getByRole("note", { hidden: true });
+		expect(tip).toHaveTextContent("Arrangements are sets of stems for this song.");
+		expect(tip).toHaveTextContent("makes a new arrangement");
+		expect(tip).toHaveTextContent("renames, duplicates or deletes");
+		unmount();
+		render(ArrangementSwitcher, { props: props({ canEdit: false }) });
+		const viewers = screen.getByRole("note", { hidden: true });
+		expect(viewers).toHaveTextContent("Click one to switch to its stems.");
+		expect(viewers).not.toHaveTextContent("makes a new arrangement");
+	});
+
 	test("on Main, Main is current and no ⋯ menu shows", () => {
 		render(ArrangementSwitcher, { props: props() });
 		expect(within(nav()).getByRole("link", { name: "Main" })).toHaveAttribute(
