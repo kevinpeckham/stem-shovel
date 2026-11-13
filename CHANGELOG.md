@@ -19,15 +19,6 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   revisions first, so a burst does not crowd out the edits before it.
   Nothing stored changes: History still holds every revision.
 
-### Changed
-
-- **A run of saves to one document is one Activity event.** The
-  dashboard's Activity listed every saved revision of a chart, lyrics or
-  notes; saves by one person to one document within half an hour of each
-  other, save to save, are now one event, the newest
-  (`collapseDocEdits`, `ACTIVITY_DOC_EDIT_GAP_MS`; docs/dashboard-plan.md).
-  The revisions themselves are untouched.
-
 ## [0.267.1] - 2026-11-13
 
 ### Changed

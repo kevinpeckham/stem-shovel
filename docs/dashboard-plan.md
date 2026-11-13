@@ -239,3 +239,17 @@ Pure helpers in `src/lib/utils/` with tests; `data.ts` helpers mocked as
 the other data tests do; a browser test per step in
 `tests/e2e/dashboard.spec.ts`; the smoke route list updated with every
 new route.
+
+## A sitting's saves are one edit (2026-11-13)
+
+Every save that changes a shared document keeps a revision, and the
+Activity listed each: Kevin's last ten items were ten saves of one chart
+inside five minutes. `collapseDocEdits` (`src/lib/utils/`) now makes a
+run of saves to one document of one song by one person a single event,
+the newest of the run. The gap is `ACTIVITY_DOC_EDIT_GAP_MS`, half an
+hour, measured from save to save: a long sitting with its pauses is one
+line, and coming back after a break is news again. Another person's
+saves, another document or another song are their own events.
+`accountActivity` reads `ACTIVITY_DOC_EDIT_OVERSCAN` times the cap of
+revisions before collapsing, so a burst does not crowd out the edits
+before it. Nothing is deleted: the revisions stay for History.
