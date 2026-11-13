@@ -1451,7 +1451,7 @@
 
 		<!-- kit, steps, meter and patterns -->
 		<div
-			class="gap-x-4 gap-y-3 @2xl-pt-4 @4xl-pt-8 @xl-grid @xl-grid-cols-[auto_auto_auto_1fr] @xl-gap-x-3 @2xl-gap-x-4 mb-4"
+			class="gap-x-4 gap-y-3 @2xl-pt-4 @4xl-pt-8 @xl-grid @xl-grid-cols-[auto_auto_auto_1fr] @xl-gap-x-8 @2xl-gap-x-12 mb-4"
 		>
 			<!-- kit selector -->
 			<div class="@xl-grid grid-cols-1" title="Kit">
@@ -1628,108 +1628,121 @@
 						/>
 			</div>
 			</div>
-			<div class="
-				bg-dark/60
-				col-span-3
-				flex
-				flex-col
-				gap-1
-				mt-5
-				px-4
-				py-2
-				rounded-md
-				text-16px
-				text-white
-				w-fit
-				@xl-mx-auto
-				[&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono)">
-				<div>
-				<kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>click</kbd> any step button for advanced options
-				</div>
-				<div>or double-tap on mobile</div>
-			</div>
-		</div>
 
-		<!-- the timeline: bars, each a pattern, making a song; in song mode Play follows it, in pattern mode it loops the open pattern.
-		     Hidden for now (Kevin is refining its design); everything behind it works, and a link or beat with a timeline still plays as a song. -->
-		<div class="mt-4 hidden flex-wrap items-center gap-x-4 gap-y-2">
-			<div class="device-button-group-label !mb-0">Timeline</div>
-			<div class="flex items-stretch gap-1" role="group" aria-label="Play mode">
-				<button
-					class="device-button-xs px-2 {expressionDrums.playsSong ? '' : 'text-accent'}"
-					type="button"
-					aria-pressed={!expressionDrums.playsSong}
-					title="Loop the open pattern"
-					onclick={() => expressionDrums.setSongMode(false)}>Pattern</button
-				>
-				<button
-					class="device-button-xs px-2 {expressionDrums.playsSong ? 'text-accent' : ''}"
-					type="button"
-					disabled={p.timeline.length === 0}
-					aria-pressed={expressionDrums.playsSong}
-					title="Play the timeline, bar after bar"
-					onclick={() => expressionDrums.setSongMode(true)}>Song</button
-				>
-			</div>
-			<div class="flex flex-wrap items-center gap-1" role="group" aria-label="Bars">
-				{#each p.timeline as bar, i (i)}
-					{@const sounding = expressionDrums.playsSong && expressionDrums.bar === i}
-					{@const next = expressionDrums.queuedBar === i}
-					<span
-						class="flex items-stretch overflow-hidden rounded-md {sounding
-							? 'ring-1 ring-green-400'
-							: next
-								? 'ring-1 ring-accent'
-								: ''}"
+			<!-- Timeline / sequencer -->
+			<div class="col-span-3 mt-5 @xl-mt-0">
+				<div class="device-button-group-label">Timeline</div>
+				<div class="flex items-center gap-2 mb-2">
+					<button
+						class="device-button-xs px-2 {expressionDrums.playsSong ? 'text-accent' : ''}"
+						type="button"
+						aria-pressed={expressionDrums.playsSong}
+						title={expressionDrums.playsSong ? "Deactivate the timeline" : "Activate the timeline"}
+						onclick={() => {
+							if (p.timeline.length === 0) expressionDrums.appendBar();
+							else expressionDrums.setSongMode(!expressionDrums.playsSong);
+						}}>Activate</button
 					>
-						<button
-							class="device-button-xs !rounded-none px-2 {expressionDrums.current === bar
-								? 'text-accent'
-								: ''}"
-							type="button"
-							aria-label="Bar {i + 1}, pattern {bar + 1}{sounding ? ', playing' : ''}{next
-								? ', next'
-								: ''}"
-							title="Go to this bar and open its pattern · shift + arrow keys move the bar"
-							onclick={() => expressionDrums.goToBar(i)}
-							onkeydown={(e) => {
-								if (!e.shiftKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
-								e.preventDefault();
-								expressionDrums.moveBar(i, e.key === "ArrowLeft" ? -1 : 1);
-							}}>{bar + 1}</button
+
+						<div class="bg-white/50 flex gap-2 items-center px-2 py-1 rounded-md {expressionDrums.playsSong ? "" : "invisible"}">
+							<span class="text-black text-12px whitespace-nowrap">Timeline Mode: </span>
+							<div class="flex items-stretch gap-1" role="group" aria-label="Timeline mode">
+								<button
+									class="device-button-xs px-2 {!expressionDrums.songLoop ? 'text-accent' : ''}"
+									type="button"
+									aria-pressed={!expressionDrums.songLoop}
+									title="Play the timeline once then stop"
+									onclick={() => { expressionDrums.songLoop = false; }}>Song</button
+								>
+								<button
+									class="device-button-xs font-thin px-2 text-22px {expressionDrums.songLoop ? 'text-accent' : ''}"
+									type="button"
+									aria-pressed={expressionDrums.songLoop}
+									title="Loop the timeline endlessly"
+									onclick={() => { expressionDrums.songLoop = true; }}>∞</button
+								>
+							</div>
+						</div>
+				</div>
+				<div class="flex flex-wrap items-center gap-1" role="group" aria-label="Bars">
+					{#each p.timeline as bar, i (i)}
+						{@const sounding = expressionDrums.playsSong && expressionDrums.bar === i}
+						{@const next = expressionDrums.queuedBar === i}
+						<span
+							class="flex items-stretch overflow-hidden rounded-md {sounding
+								? 'ring-1 ring-green-400'
+								: next
+									? 'ring-1 ring-accent'
+									: ''}"
 						>
-						<button
-							class="device-button-xs !min-w-auto !rounded-none px-1.5 opacity-60 hover-opacity-100"
-							type="button"
-							aria-label="Remove bar {i + 1}"
-							title="Remove this bar"
-							onclick={() => expressionDrums.removeBar(i)}
-						>
-							<span class="i-ph-x text-10px" aria-hidden="true"></span>
-						</button>
-					</span>
-				{/each}
-				<button
-					class="device-button-xs px-2"
-					type="button"
-					disabled={p.timeline.length >= MAX_DRUM_TIMELINE}
-					aria-label="Add pattern {expressionDrums.current + 1} as a bar"
-					title="The open pattern as the next bar"
-					onclick={() => expressionDrums.appendBar()}
-				>
-					<span class="i-ph-plus" aria-hidden="true"></span>
-					{expressionDrums.current + 1}
-				</button>
-				{#if p.timeline.length}
+							<button
+								class="device-button-xs !rounded-none px-2 {expressionDrums.current === bar
+									? 'text-accent'
+									: ''}"
+								type="button"
+								aria-label="Bar {i + 1}, pattern {bar + 1}{sounding ? ', playing' : ''}{next
+									? ', next'
+									: ''}"
+								title="Go to this bar and open its pattern · shift + arrow keys move the bar"
+								onclick={() => expressionDrums.goToBar(i)}
+								onkeydown={(e) => {
+									if (!e.shiftKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+									e.preventDefault();
+									expressionDrums.moveBar(i, e.key === "ArrowLeft" ? -1 : 1);
+								}}>{bar + 1}</button
+							>
+							<button
+								class="device-button-xs !min-w-auto !rounded-none px-1.5 opacity-60 hover-opacity-100"
+								type="button"
+								aria-label="Remove bar {i + 1}"
+								title="Remove this bar"
+								onclick={() => expressionDrums.removeBar(i)}
+							>
+								<span class="i-ph-x text-10px" aria-hidden="true"></span>
+							</button>
+						</span>
+					{/each}
 					<button
 						class="device-button-xs px-2"
 						type="button"
-						title="Empty the timeline; the patterns stay"
-						onclick={() => expressionDrums.clearTimeline()}>Clear</button
+						disabled={p.timeline.length >= MAX_DRUM_TIMELINE}
+						aria-label="Add pattern {expressionDrums.current + 1} as a bar"
+						title="The open pattern as the next bar"
+						onclick={() => expressionDrums.appendBar()}
 					>
-				{:else}
-					<span class="text-12px opacity-60">Add bars of the open pattern to arrange a song.</span>
-				{/if}
+						<span class="i-ph-plus" aria-hidden="true"></span>
+						{expressionDrums.current + 1}
+					</button>
+					{#if p.timeline.length}
+						<button
+							class="device-button-xs px-2"
+							type="button"
+							title="Empty the timeline; the patterns stay"
+							onclick={() => expressionDrums.clearTimeline()}>Clear</button
+						>
+					{:else}
+						<span class="text-16px @2xl-text-12px opacity-70">Select one of your patterns and add it here.</span>
+					{/if}
+				</div>
+				
+			</div>
+			</div>
+				<div class="
+					bg-dark/60
+					col-span-full
+					flex
+					flex-col
+					gap-1
+					px-4
+					py-2
+					rounded-md
+					text-16px
+					text-white/85
+					w-fit
+					@xl-mx-auto
+					[&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono)">
+				<div>
+				<kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>click</kbd> any step button for advanced options, or double-tap on mobile
 			</div>
 		</div>
 

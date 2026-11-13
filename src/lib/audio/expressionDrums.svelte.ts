@@ -79,6 +79,8 @@ class ExpressionDrumsEngine {
 	queued = $state<number | null>(null);
 	/** Song mode: play the timeline's bars in order rather than looping the open pattern. On whenever a project with a timeline loads; off again when the timeline empties. */
 	songMode = $state(false);
+	/** Song mode loops the timeline endlessly (true, ∞) or stops at the end (false, song). */
+	songLoop = $state(true);
 	/** Song mode: the timeline position sounding, 0-based; -1 between runs or in pattern mode. */
 	bar = $state(-1);
 	/** Song mode: a bar chosen while playing; the song jumps there at the end of the cycle. */
@@ -200,6 +202,11 @@ class ExpressionDrumsEngine {
 					if (this.queuedBar !== null) {
 						this.#nextBar = this.queuedBar;
 						this.queuedBar = null;
+					}
+					// Song mode (not looping): stop when the timeline is done.
+					if (!this.songLoop && this.#nextBar >= timeline.length) {
+						this.stop();
+						return;
 					}
 					bar = this.#nextBar % timeline.length;
 					this.playing = Math.min(timeline[bar]!, this.project.patterns.length - 1);
