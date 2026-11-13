@@ -42,7 +42,7 @@ import type { DrumGeneratorStyle } from "#lib/constants/drumGenerator.js";
 import { resizeExpressionPattern as resizeDrumPattern } from "#lib/utils/resizeExpressionPattern.js";
 import { startingExpressionProject as startingDrumProject } from "#lib/utils/startingExpressionProject.js";
 import { tapTempo } from "#lib/utils/tapTempo.js";
-import type { ExpressionDrumFx as DrumFx, ExpressionPattern as DrumPattern, ExpressionProject as DrumProject } from "#lib/val/ExpressionDrumSchema.js";
+import type { ExpressionDrumFx as DrumFx, ExpressionPattern as DrumPattern, ExpressionProject as DrumProject, TimelineBar } from "#lib/val/ExpressionDrumSchema.js";
 import { EMPTY_CELL, type ExpressionCell } from "#lib/val/ExpressionDrumSchema.js";
 import { createDrumBus, type DrumBus } from "./drumBus";
 import {
@@ -56,6 +56,11 @@ import { drumKit, hasDrumKit } from "./kits/expressionIndex";
 import { startLookahead } from "./lookahead";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
+
+/** Migrate v1 number[] timeline entries to v2 { pattern, reps } objects. */
+function normalizeTimeline(timeline: (number | TimelineBar)[]): TimelineBar[] {
+	return timeline.map((entry) => (typeof entry === "number" ? { pattern: entry, reps: 1 } : entry));
+}
 
 /**
  * The one drum machine on the page (docs/drum-machine.md): a project of
@@ -120,6 +125,10 @@ class ExpressionDrumsEngine {
 	#nextStep = 0;
 	/** Song mode: the timeline position the next cycle plays. */
 	#nextBar = 0;
+	/** Song mode: how many reps of the current bar have played (0-based). */
+	#barRep = 0;
+	/** Song mode: reps remaining for the sounding bar (for the UI countdown). */
+	barRemaining = $state(0);
 	#queuedSteps: { step: number; time: number; pattern: number; bar: number }[] = [];
 	#play: DrumPlayState = { openHat: null };
 	#taps: number[] = [];
@@ -160,6 +169,8 @@ class ExpressionDrumsEngine {
 			this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
 		});
 		this.current = 0;
+		// Migrate v1 number[] timeline entries to v2 objects.
+		this.project.timeline = normalizeTimeline(this.project.timeline as (number | TimelineBar)[]);
 		this.songMode = this.project.timeline.length > 0;
 		this.#resetSolo();
 		if (warm) drumKit(this.project.kit).warm();
@@ -192,7 +203,7 @@ class ExpressionDrumsEngine {
 		const ctx = this.#ctx;
 		const bus = this.#bus;
 		if (!ctx || !bus) return;
-		const timeline = this.project.timeline;
+		const timeline = this.project.timeline as TimelineBar[];
 		const song = this.songMode && timeline.length > 0;
 		let bar = -1;
 		while (this.#nextTime < until) {
@@ -201,16 +212,26 @@ class ExpressionDrumsEngine {
 				if (song) {
 					if (this.queuedBar !== null) {
 						this.#nextBar = this.queuedBar;
+						this.#barRep = 0;
 						this.queuedBar = null;
 					}
-					// Song mode (not looping): stop when the timeline is done.
-					if (!this.songLoop && this.#nextBar >= timeline.length) {
-						this.stop();
-						return;
+					// Advance past reps: if the current bar's reps are spent, move to the next bar.
+					while (timeline[this.#nextBar % timeline.length]) {
+						const entry = timeline[this.#nextBar % timeline.length]!;
+						if (this.#barRep < entry.reps) break;
+						this.#barRep = 0;
+						this.#nextBar += 1;
+						// Song mode (not looping): stop when the timeline is done.
+						if (!this.songLoop && this.#nextBar >= timeline.length) {
+							this.stop();
+							return;
+						}
 					}
 					bar = this.#nextBar % timeline.length;
-					this.playing = Math.min(timeline[bar]!, this.project.patterns.length - 1);
-					this.#nextBar = bar + 1;
+					const entry = timeline[bar]!;
+					this.playing = Math.min(entry.pattern, this.project.patterns.length - 1);
+					this.barRemaining = entry.reps - this.#barRep;
+					this.#barRep += 1;
 					this.queued = null;
 				} else if (this.queued !== null) {
 					this.playing = this.queued;
@@ -357,6 +378,7 @@ class ExpressionDrumsEngine {
 		}
 		this.startedAt = this.#nextTime;
 		this.#nextBar = 0;
+		this.#barRep = 0;
 		this.queuedBar = null;
 		this.#queuedSteps = [];
 		this.#stopLoop = startLookahead(ctx, this.#queue);
@@ -371,6 +393,7 @@ class ExpressionDrumsEngine {
 		this.#queuedSteps = [];
 		this.step = -1;
 		this.bar = -1;
+		this.barRemaining = 0;
 		this.playing = -1;
 		this.queued = null;
 		this.queuedBar = null;
@@ -410,9 +433,9 @@ class ExpressionDrumsEngine {
 		}
 		this.current = Math.min(this.current > index ? this.current - 1 : this.current, last);
 		// The timeline loses that pattern's bars; later patterns shift down.
-		this.project.timeline = this.project.timeline
-			.filter((bar) => bar !== index)
-			.map((bar) => (bar > index ? bar - 1 : bar));
+		this.project.timeline = (this.project.timeline as TimelineBar[])
+			.filter((bar) => bar.pattern !== index)
+			.map((bar) => (bar.pattern > index ? { ...bar, pattern: bar.pattern - 1 } : bar));
 		this.#nextBar = 0;
 		this.queuedBar = null;
 		if (this.project.timeline.length === 0) this.songMode = false;
@@ -421,10 +444,15 @@ class ExpressionDrumsEngine {
 	}
 
 	// ---- the timeline: a song of bars ----
-	/** The pattern at each bar, an index past the end standing for the last pattern (as the player treats it). */
+	/** Every bar expanded by reps, for rendering and MIDI export. */
 	get bars(): DrumPattern[] {
 		const last = this.project.patterns.length - 1;
-		return this.project.timeline.map((bar) => this.project.patterns[Math.min(bar, last)]!);
+		const result: DrumPattern[] = [];
+		for (const entry of this.project.timeline as TimelineBar[]) {
+			const p = this.project.patterns[Math.min(entry.pattern, last)]!;
+			for (let i = 0; i < entry.reps; i++) result.push(p);
+		}
+		return result;
 	}
 	/** Song mode, when there is a song to play: what Play does, and what the downloads and a demo carry. */
 	get playsSong(): boolean {
@@ -433,6 +461,8 @@ class ExpressionDrumsEngine {
 	setSongMode(on: boolean) {
 		this.songMode = on;
 		this.#nextBar = 0;
+		this.#barRep = 0;
+		this.barRemaining = 0;
 		this.queuedBar = null;
 		this.queued = null;
 		if (!on) this.bar = -1;
@@ -441,7 +471,7 @@ class ExpressionDrumsEngine {
 	appendBar(pattern = this.current) {
 		if (this.project.timeline.length >= MAX_DRUM_TIMELINE || !this.project.patterns[pattern])
 			return;
-		this.project.timeline.push(pattern);
+		(this.project.timeline as TimelineBar[]).push({ pattern, reps: 1 });
 		if (this.project.timeline.length === 1) this.setSongMode(true);
 		this.#save();
 	}
@@ -455,9 +485,9 @@ class ExpressionDrumsEngine {
 	}
 	/** A bar one place earlier or later. */
 	moveBar(position: number, delta: -1 | 1) {
-		const t = this.project.timeline;
+		const t = this.project.timeline as TimelineBar[];
 		const to = position + delta;
-		if (!t[position] && t[position] !== 0) return;
+		if (!t[position]) return;
 		if (to < 0 || to >= t.length) return;
 		[t[position], t[to]] = [t[to]!, t[position]!];
 		this.#save();
@@ -467,13 +497,24 @@ class ExpressionDrumsEngine {
 		this.setSongMode(false);
 		this.#save();
 	}
-	/** Go to a bar: while the song plays, at the end of the cycle; otherwise it is where Play starts. Opens its pattern. */
+	/** Go to a bar: while the song plays, at the end of the cycle; otherwise it is where Play starts. Opens its pattern and restarts its rep counter. */
 	goToBar(position: number) {
-		const pattern = this.project.timeline[position];
-		if (pattern === undefined) return;
-		this.select(Math.min(pattern, this.project.patterns.length - 1));
-		if (this.running && this.playsSong) this.queuedBar = position;
-		else this.#nextBar = position;
+		const entry = (this.project.timeline as TimelineBar[])[position];
+		if (!entry) return;
+		this.select(Math.min(entry.pattern, this.project.patterns.length - 1));
+		if (this.running && this.playsSong) {
+			this.queuedBar = position;
+		} else {
+			this.#nextBar = position;
+			this.#barRep = 0;
+		}
+	}
+	/** Update the reps for a timeline bar. */
+	setBarReps(position: number, reps: number) {
+		const entry = (this.project.timeline as TimelineBar[])[position];
+		if (!entry) return;
+		entry.reps = Math.max(1, Math.min(99, reps));
+		this.#save();
 	}
 
 	// ---- the open pattern ----
@@ -1007,7 +1048,7 @@ class ExpressionDrumsEngine {
 	/** "beat-2-100bpm", or "song-8-bars-100bpm": for the file names. */
 	fileStem(): string {
 		return this.playsSong
-			? `song-${this.project.timeline.length}-bars-${this.bpm}bpm`
+			? `song-${(this.project.timeline as TimelineBar[]).reduce((n, b) => n + b.reps, 0)}-bars-${this.bpm}bpm`
 			: `beat-${this.current + 1}-${this.bpm}bpm`;
 	}
 }

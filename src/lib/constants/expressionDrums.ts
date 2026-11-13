@@ -33,7 +33,7 @@ export const DRUM_KIT_IDS = DRUM_KITS.map((k) => k.id) as DrumKitId[];
  * (8, 16, 32), a bar or two of 3/4 or 6/8 (12, 24). The order is what a
  * share link encodes (version 3 on); it only ever grows at the end.
  */
-export const DRUM_STEP_CHOICES = [8, 16, 32, 12, 24] as const;
+export const DRUM_STEP_CHOICES = [8, 16, 32, 12, 24, 20, 28] as const;
 export type DrumSteps = (typeof DRUM_STEP_CHOICES)[number];
 /** What version 1 and 2 links could say, in their order. */
 export const DRUM_STEP_CHOICES_V2 = [8, 16, 32] as const;
@@ -42,6 +42,8 @@ export const DRUM_STEP_CHOICES_V2 = [8, 16, 32] as const;
 export const DRUM_METERS = [
 	{ id: "4/4", label: "4/4", barSteps: 16, group: 4 },
 	{ id: "3/4", label: "3/4", barSteps: 12, group: 4 },
+	{ id: "5/4", label: "5/4", barSteps: 20, group: 4 },
+	{ id: "7/4", label: "7/4", barSteps: 28, group: 4 },
 	{ id: "6/8", label: "6/8", barSteps: 12, group: 6 },
 ] as const;
 export type DrumMeterId = (typeof DRUM_METERS)[number]["id"];

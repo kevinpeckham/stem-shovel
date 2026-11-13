@@ -127,15 +127,16 @@
 	// (absolute would measure from the top of the document, and a menu near the top of a scrolled
 	// page would open off screen instead of flipping).
 	const positionClasses: Record<Position, string> = {
-		// flip-block: a menu that does not fit on its side of the button opens on the other.
+		// flip-block: vertical flip when the menu doesn't fit on its side of the button.
+		// flip-inline: horizontal flip when the menu would overflow the viewport edge.
 		"bottom left":
-			"[position-area:bottom_span-left] [margin:0.25rem_0_0] [position-try-fallbacks:flip-block]",
+			"[position-area:bottom_span-left] [margin:0.25rem_0_0] [position-try-fallbacks:flip-block,flip-inline,flip-block_flip-inline]",
 		"bottom right":
-			"[position-area:bottom_span-right] [margin:0.25rem_0_0] [position-try-fallbacks:flip-block]",
+			"[position-area:bottom_span-right] [margin:0.25rem_0_0] [position-try-fallbacks:flip-block,flip-inline,flip-block_flip-inline]",
 		"top left":
-			"[position-area:top_span-left] [margin:0_0_0.25rem] [position-try-fallbacks:flip-block]",
+			"[position-area:top_span-left] [margin:0_0_0.25rem] [position-try-fallbacks:flip-block,flip-inline,flip-block_flip-inline]",
 		"top right":
-			"[position-area:top_span-right] [margin:0_0_0.25rem] [position-try-fallbacks:flip-block]",
+			"[position-area:top_span-right] [margin:0_0_0.25rem] [position-try-fallbacks:flip-block,flip-inline,flip-block_flip-inline]",
 	};
 
 	async function run(item: ContextMenuItem) {

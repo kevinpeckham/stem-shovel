@@ -13,7 +13,7 @@ import {
 	MAX_DRUM_PATTERNS,
 	MAX_DRUM_TIMELINE,
 	MAX_DRUM_ROWS,
-} from "#lib/constants/drumMachine.js";
+} from "#lib/constants/expressionDrums.js";
 
 /**
  * Expression drums cell: each step can have up to four independently toggled
@@ -86,8 +86,14 @@ export const ExpressionDrumFxSchema = v.object({
 });
 export type ExpressionDrumFx = v.InferOutput<typeof ExpressionDrumFxSchema>;
 
+export const TimelineBarSchema = v.object({
+	pattern: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(MAX_DRUM_PATTERNS - 1)),
+	reps: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(99)),
+});
+export type TimelineBar = v.InferOutput<typeof TimelineBarSchema>;
+
 export const ExpressionProjectSchema = v.object({
-	v: v.literal(1),
+	v: v.picklist([1, 2]),
 	bpm: v.pipe(v.number(), v.integer(), v.minValue(DRUM_BPM_MIN), v.maxValue(DRUM_BPM_MAX)),
 	swing: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	swingGrid: v.optional(v.picklist(DRUM_SWING_GRIDS), 16),
@@ -97,7 +103,10 @@ export const ExpressionProjectSchema = v.object({
 	patterns: v.pipe(v.array(ExpressionPatternSchema), v.minLength(1), v.maxLength(MAX_DRUM_PATTERNS)),
 	timeline: v.optional(
 		v.pipe(
-			v.array(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(MAX_DRUM_PATTERNS - 1))),
+			v.array(v.union([
+				TimelineBarSchema,
+				v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(MAX_DRUM_PATTERNS - 1)),
+			])),
 			v.maxLength(MAX_DRUM_TIMELINE),
 		),
 		() => [],

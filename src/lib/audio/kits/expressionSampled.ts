@@ -42,7 +42,7 @@ export class SampledKit implements DrumKit {
 			for (let v = 1; v <= 5; v++) {
 				const group: Promise<ArrayBuffer | null>[] = [];
 				for (let rr = 1; rr <= 5; rr++) {
-					const url = `/kits/${this.id}/${voice} V${v} RR${rr}.wav`;
+					const url = `/kits/${this.id}/${voice} V${v} RR${rr}.flac`;
 					group.push(
 						fetch(url).then((r) => (r.ok ? r.arrayBuffer() : null)),
 					);
@@ -89,7 +89,7 @@ export class SampledKit implements DrumKit {
 		velocityLayer = 3,
 	): DrumHit | null {
 		const buffer = this.#rrSwitcher(voice, velocityLayer);
-		console.log("play:", voice, "V" + velocityLayer, "RR" + (this.#lastRR.get(voice) ?? "?"));
+		// console.log("play:", voice, "V" + velocityLayer, "RR" + (this.#lastRR.get(voice) ?? "?"));
 		if (!buffer) {
 			void this.#decodeLayer(velocityLayer);
 			return null;

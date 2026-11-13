@@ -26,12 +26,13 @@ export function placePopover(
 		const p = popover.getBoundingClientRect();
 		// The top layer uses position: fixed, so viewport coordinates work directly.
 		const top = side === "bottom" ? t.bottom + gap : t.top - p.height - gap;
-		const left = align === "end" ? t.right - p.width : t.left;
+		const rawLeft = align === "end" ? t.right - p.width : t.left;
+		const left = Math.min(Math.max(gap, rawLeft), window.innerWidth - p.width - gap);
 		popover.style.setProperty("position", "fixed");
 		popover.style.setProperty("inset", "auto");
 		popover.style.setProperty("margin", "0");
 		popover.style.setProperty("top", `${Math.max(gap, top)}px`);
-		popover.style.setProperty("left", `${Math.max(gap, left)}px`);
+		popover.style.setProperty("left", `${left}px`);
 	};
 	place();
 	window.addEventListener("scroll", place, true);

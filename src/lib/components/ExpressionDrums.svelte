@@ -20,7 +20,6 @@
 		DRUM_SWING_GRIDS,
 		DRUM_VOICES,
 		MAX_DRUM_PATTERNS,
-		MAX_DRUM_TIMELINE,
 		MAX_DRUM_ROWS,
 		drumStepsFor,
 		type DrumDelayTime,
@@ -36,6 +35,7 @@
 	import type { ExpressionProject as DrumProject } from "#lib/val/ExpressionDrumSchema.js";
 	import { cellActive, EMPTY_CELL, type ExpressionCell } from "#lib/val/ExpressionDrumSchema.js";
 	import ExpressionDrumsKey from "#lib/components/ExpressionDrumsKey.svelte";
+	import ExpressionDrumsTimelineWidget from "#lib/components/ExpressionDrumsTimelineWidget.svelte";
 	import { drumTutorial as tutorial } from "#lib/state/drumTutorial.svelte.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
@@ -414,6 +414,11 @@
 	}
 	function positionAndShowPopover(node: HTMLElement) {
 		if (!subHitAnchorRect) return;
+		// Show first so the node has layout dimensions for clamping.
+		node.style.left = "0";
+		node.style.top = "0";
+		node.style.visibility = "hidden";
+		node.showPopover();
 		const rect = subHitAnchorRect;
 		const pw = node.offsetWidth;
 		const ph = node.offsetHeight;
@@ -424,7 +429,7 @@
 		if (top + ph > window.innerHeight - 8) top = rect.top - ph - 6;
 		node.style.left = `${left}px`;
 		node.style.top = `${top}px`;
-		node.showPopover();
+		node.style.visibility = "";
 	}
 	function closeSubHitPopover() {
 		subHitEl?.hidePopover();
@@ -459,6 +464,12 @@
 		}
 		if (cursor) cursor = { row, start: Math.floor(step / WINDOW) * WINDOW };
 		const active = cell.main > 0;
+		// "After" cell (sub-hits only, no main): clear everything.
+		if (!active && (cell.t1 > 0 || cell.half > 0 || cell.t2 > 0)) {
+			expressionDrums.pattern.rows[row]!.cells[step] = { ...EMPTY_CELL };
+			painting = null;
+			return;
+		}
 		if (e.shiftKey && active) {
 			expressionDrums.cycleVelocity(row, step);
 			return;
@@ -575,12 +586,14 @@
 	);
 	/** Sixteenths to a beat for the shading (6 in 6/8), and cells to a line: a beat pair on a phone, a bar from sm up. */
 	let group = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.group ?? 4);
-	let desktopCols = $derived(
-		(DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16) === 16 ? 16 : 12,
-	);
-	let lineClasses = $derived(
-		desktopCols === 16 ? "grid-cols-8 @4xl-grid-cols-16" : "grid-cols-6 @4xl-grid-cols-12",
-	);
+	let barSteps = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16);
+	let desktopCols = $derived(barSteps === 28 ? 12 : barSteps);
+	const LINE_CLASSES: Record<number, string> = {
+		12: "grid-cols-8 @4xl-grid-cols-12",
+		16: "grid-cols-8 @4xl-grid-cols-16",
+		20: "grid-cols-10 @4xl-grid-cols-20",
+	};
+	let lineClasses = $derived(LINE_CLASSES[desktopCols] ?? "grid-cols-8 @4xl-grid-cols-16");
 	let stepsLabel = (n: number) => {
 		const bar = DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16;
 		return n < bar ? "½ bar" : n === bar ? "1 bar" : "2 bars";
@@ -799,7 +812,7 @@
 					{#if expressionDrums.running && !expressionDrums.kitReady}
 						loading the kit…
 					{:else if expressionDrums.running && expressionDrums.playsSong}
-						bar {Math.max(1, expressionDrums.bar + 1)} of {p.timeline.length}{expressionDrums.queuedBar !==
+						tile {Math.max(1, expressionDrums.bar + 1)} of {p.timeline.length}{expressionDrums.queuedBar !==
 						null
 							? ` then ${expressionDrums.queuedBar + 1}`
 							: ""} · pattern {expressionDrums.playing + 1} · step {expressionDrums.step + 1}
@@ -1629,103 +1642,7 @@
 			</div>
 			</div>
 
-			<!-- Timeline / sequencer -->
-			<div class="col-span-3 mt-5 @xl-mt-0">
-				<div class="device-button-group-label">Timeline</div>
-				<div class="flex items-center gap-2 mb-2">
-					<button
-						class="device-button-xs px-2 {expressionDrums.playsSong ? 'text-accent' : ''}"
-						type="button"
-						aria-pressed={expressionDrums.playsSong}
-						title={expressionDrums.playsSong ? "Deactivate the timeline" : "Activate the timeline"}
-						onclick={() => {
-							if (p.timeline.length === 0) expressionDrums.appendBar();
-							else expressionDrums.setSongMode(!expressionDrums.playsSong);
-						}}>Activate</button
-					>
-
-						<div class="bg-white/50 flex gap-2 items-center px-2 py-1 rounded-md {expressionDrums.playsSong ? "" : "invisible"}">
-							<span class="text-black text-12px whitespace-nowrap">Timeline Mode: </span>
-							<div class="flex items-stretch gap-1" role="group" aria-label="Timeline mode">
-								<button
-									class="device-button-xs px-2 {!expressionDrums.songLoop ? 'text-accent' : ''}"
-									type="button"
-									aria-pressed={!expressionDrums.songLoop}
-									title="Play the timeline once then stop"
-									onclick={() => { expressionDrums.songLoop = false; }}>Song</button
-								>
-								<button
-									class="device-button-xs font-thin px-2 text-22px {expressionDrums.songLoop ? 'text-accent' : ''}"
-									type="button"
-									aria-pressed={expressionDrums.songLoop}
-									title="Loop the timeline endlessly"
-									onclick={() => { expressionDrums.songLoop = true; }}>∞</button
-								>
-							</div>
-						</div>
-				</div>
-				<div class="flex flex-wrap items-center gap-1" role="group" aria-label="Bars">
-					{#each p.timeline as bar, i (i)}
-						{@const sounding = expressionDrums.playsSong && expressionDrums.bar === i}
-						{@const next = expressionDrums.queuedBar === i}
-						<span
-							class="flex items-stretch overflow-hidden rounded-md {sounding
-								? 'ring-1 ring-green-400'
-								: next
-									? 'ring-1 ring-accent'
-									: ''}"
-						>
-							<button
-								class="device-button-xs !rounded-none px-2 {expressionDrums.current === bar
-									? 'text-accent'
-									: ''}"
-								type="button"
-								aria-label="Bar {i + 1}, pattern {bar + 1}{sounding ? ', playing' : ''}{next
-									? ', next'
-									: ''}"
-								title="Go to this bar and open its pattern · shift + arrow keys move the bar"
-								onclick={() => expressionDrums.goToBar(i)}
-								onkeydown={(e) => {
-									if (!e.shiftKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
-									e.preventDefault();
-									expressionDrums.moveBar(i, e.key === "ArrowLeft" ? -1 : 1);
-								}}>{bar + 1}</button
-							>
-							<button
-								class="device-button-xs !min-w-auto !rounded-none px-1.5 opacity-60 hover-opacity-100"
-								type="button"
-								aria-label="Remove bar {i + 1}"
-								title="Remove this bar"
-								onclick={() => expressionDrums.removeBar(i)}
-							>
-								<span class="i-ph-x text-10px" aria-hidden="true"></span>
-							</button>
-						</span>
-					{/each}
-					<button
-						class="device-button-xs px-2"
-						type="button"
-						disabled={p.timeline.length >= MAX_DRUM_TIMELINE}
-						aria-label="Add pattern {expressionDrums.current + 1} as a bar"
-						title="The open pattern as the next bar"
-						onclick={() => expressionDrums.appendBar()}
-					>
-						<span class="i-ph-plus" aria-hidden="true"></span>
-						{expressionDrums.current + 1}
-					</button>
-					{#if p.timeline.length}
-						<button
-							class="device-button-xs px-2"
-							type="button"
-							title="Empty the timeline; the patterns stay"
-							onclick={() => expressionDrums.clearTimeline()}>Clear</button
-						>
-					{:else}
-						<span class="text-16px @2xl-text-12px opacity-70">Select one of your patterns and add it here.</span>
-					{/if}
-				</div>
-				
-			</div>
+			<ExpressionDrumsTimelineWidget />
 			</div>
 				<div class="
 					bg-dark/60

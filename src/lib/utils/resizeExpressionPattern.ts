@@ -1,4 +1,4 @@
-import type { DrumSteps } from "#lib/constants/drumMachine.js";
+import type { DrumSteps } from "#lib/constants/expressionDrums.js";
 import type { ExpressionCell, ExpressionPattern } from "#lib/val/ExpressionDrumSchema.js";
 import { EMPTY_CELL } from "#lib/val/ExpressionDrumSchema.js";
 

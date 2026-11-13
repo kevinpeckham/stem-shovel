@@ -42,7 +42,7 @@ export function playDrumStep(
 	pattern.rows.forEach((row, i) => {
 		const cell = row.cells[step];
 		if (!cell || !cellActive(cell) || row.mute || (anySolo && !solo[i])) return;
-		if (cell.t1 || cell.half || cell.t2) console.log("sub-hits on step", step, row.voice, { t1: cell.t1, half: cell.half, t2: cell.t2, stepDuration });
+		// if (cell.t1 || cell.half || cell.t2) console.log("sub-hits on step", step, row.voice, { t1: cell.t1, half: cell.half, t2: cell.t2, stepDuration });
 		const scatter = project.humanize;
 
 		// Main hit (on the grid)
