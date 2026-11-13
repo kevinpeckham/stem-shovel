@@ -113,7 +113,7 @@ census (Study 36b, strict 180 of 261 against final0's 182) and in Study
 the 1933 recording. So the bench drafted on both.
 
 **Ask A.** Your rule passes for Beat This small0: within two roots of
-madmom on 10 of 10 (seven identical, two better by two roots), none
+madmom on 10 of 10 (eight identical, two better by two roots; corrected 2026-11-13 from seven), none
 confidently-wrong; 8 good, 2 saved-below-threshold, the same two as on
 every grid (let it in 18/21, same boat 16/18). final0 misses the rule
 on one song, i'm letting go, 30/33 against 33/33 (still good), where

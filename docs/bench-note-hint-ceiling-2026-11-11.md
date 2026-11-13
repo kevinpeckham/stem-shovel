@@ -50,8 +50,7 @@ notes plainly contradict it. Its quality is advisory: it hears major and
 minor well, hears a seventh as a plain triad more often than not, and
 almost never hears a diminished or half-diminished chord, so decide the
 quality from the notes and the key") and drafted the same 22 items on the
-same bars against the quality-clause drafts. Nineteen of 22 drafts kept
-the same counts; the half-diminished was spelled in the same seven of
+same bars against the quality-clause drafts. Seventeen of 22 drafts kept the same counts (corrected 2026-11-13 from nineteen: four moved by one position and one by two); the half-diminished was spelled in the same seven of
 twelve; no class moved on the modern songs. Reported without a
 recommendation. The bench's reading: the quality the drafts lose on the
 dense sheet is not lost by deferring to the hint, so no sentence about
