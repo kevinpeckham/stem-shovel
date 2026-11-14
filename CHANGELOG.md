@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The home demo's toolbar sat on the chart's paper.** The chart demo's
+  button row is flush with the panel's top like the song page's toolbar
+  (`top-0`), inside the read box's 32px of top padding from xl, instead
+  of 8px down and over the paper's edge (Kevin's screenshot, 2026-11-14).
+
 ## [0.269.1] - 2026-11-13
 
 ### Changed

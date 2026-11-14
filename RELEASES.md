@@ -4,6 +4,11 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **The home page's chart demo** no longer has its buttons sitting on the
+  chart's top edge.
+
 ## [0.269.1] - 2026-11-13
 
 ### Changed

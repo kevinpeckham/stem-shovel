@@ -120,7 +120,8 @@
 			/>
 		{/key}
 	{/if}
-	<div class="absolute top-2 right-3 flex items-stretch gap-3">
+	<!-- Flush with the panel's top, as the song page's toolbar is: the read box's top padding (32px from xl) holds one row of buttons, and a lower row sat on the chart's paper (Kevin, 2026-11-14). -->
+	<div class="absolute top-0 right-3 flex items-stretch gap-3">
 		{#if panel === "chart"}
 			<SongDocsDemoChartTools
 				{spelling}
