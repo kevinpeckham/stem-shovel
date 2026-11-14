@@ -75,10 +75,12 @@ describe("DemoNotesEditor", () => {
 		});
 		render(DemoPanel, { demos: [take("1", ""), take("2", "Second")], canEdit: true, oneditnotes });
 		const row = screen.getByText("Take 2").closest("li")!;
-		await fireEvent.click(within(row).getByRole("menuitem", { name: /Edit notes…/, hidden: true }));
+		// The row's menu is a ContextMenu popover (DemoRowMenu): its items are buttons, hidden until the ⋯ is pressed.
+		await fireEvent.click(within(row).getByRole("button", { name: "Menu for Take 2" }));
+		await fireEvent.click(within(row).getByRole("button", { name: /Edit notes…/ }));
 		expect(oneditnotes).toHaveBeenCalledWith(expect.objectContaining({ id: "2", notes: "Second" }));
 		const first = screen.getByText("Take 1").closest("li")!;
-		expect(within(first).getByRole("menuitem", { name: /Add notes…/, hidden: true })).toBeTruthy();
+		expect(within(first).getByRole("button", { name: /Add notes…/, hidden: true })).toBeTruthy();
 	});
 });
 
