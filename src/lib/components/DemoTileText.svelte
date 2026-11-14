@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
 
 	/**
 	 * A demo tile's text in the song page's Demos view (DemoPanel): its
 	 * label with a bubble of the signed-in person's new comments, and its
-	 * size with how many comments it has and a note icon when it carries
-	 * notes. The open demo's tile passes no counts and no icon (its comments
+	 * size, the date it was uploaded (Kevin, 2026-11-14), how many comments
+	 * it has and a note icon when it carries notes. The open demo's tile passes no counts and no icon (its comments
 	 * and notes are above the list). The whole text is a button that opens
 	 * the demo.
 	 */
@@ -13,6 +14,8 @@
 		id: string;
 		label: string;
 		sizeBytes: number;
+		/** When the demo was uploaded; nothing shown without it. */
+		createdAt?: Date | null;
 		/** Comments on the demo. */
 		count?: number;
 		/** New comments for the signed-in person (their unread comment notifications). */
@@ -28,6 +31,7 @@
 		id,
 		label,
 		sizeBytes,
+		createdAt = null,
 		count = 0,
 		fresh = 0,
 		hasNotes = false,
@@ -59,7 +63,11 @@
 		{/if}
 	</span>
 	<span class="block truncate text-xs opacity-85"
-		>{formatBytes(sizeBytes)}{#if count > 0}{" · "}<span class="text-dim">{countText}</span
+		>{formatBytes(sizeBytes)}{#if createdAt}{" · "}<span
+				class="tabular-nums"
+				title="Uploaded {formatDate(createdAt)}"
+				data-demo-uploaded>{formatDate(createdAt)}</span
+			>{/if}{#if count > 0}{" · "}<span class="text-dim">{countText}</span
 			>{/if}{#if hasNotes}{" · "}<span
 				class="i-ph-note inline-block align-[-2px] text-dim"
 				role="img"

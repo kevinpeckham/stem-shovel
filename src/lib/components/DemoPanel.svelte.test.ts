@@ -105,6 +105,16 @@ describe("DemoPanel comment counts", () => {
 
 	beforeEach(() => vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue());
 
+	test("a tile shows the demo's upload date after its size; none without a date", () => {
+		render(DemoPanel, {
+			demos: [demo("d1", { createdAt: new Date("2026-10-09T18:49:00Z") }), demo("d2")],
+		});
+		const dated = within(tileOf("Take d1")).getByTitle("Uploaded Oct 9, 2026");
+		expect(dated.textContent).toBe("Oct 9, 2026");
+		expect(tileOf("Take d1").textContent).toContain("1 KB · Oct 9, 2026");
+		expect(within(tileOf("Take d2")).queryByTitle(/^Uploaded /)).toBeNull();
+	});
+
 	test("a tile counts its demo's comments, singular and plural; none without comments", () => {
 		render(DemoPanel, {
 			demos: [demo("d1"), demo("d2"), demo("d3")],

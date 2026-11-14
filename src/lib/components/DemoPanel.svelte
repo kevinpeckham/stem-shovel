@@ -32,6 +32,8 @@
 		durationSeconds?: number | null;
 		/** What the uploader said about the take, typed at upload; "" for none. */
 		notes?: string;
+		/** When it was uploaded (the row's createdAt): the tile's date. */
+		createdAt?: Date;
 	}
 	interface Props {
 		demos: PanelDemo[];

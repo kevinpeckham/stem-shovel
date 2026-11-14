@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The upload date on a demo's tile.** The song page's Demos view shows
+  when each demo was uploaded after its size (`DemoTileText`, the row's
+  `createdAt`).
+
 ## [0.269.2] - 2026-11-14
 
 ### Fixed

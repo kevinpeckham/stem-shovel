@@ -4,6 +4,11 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **When a demo was uploaded** now shows on its tile in the song page's
+  Demos view, after its size.
+
 ## [0.269.2] - 2026-11-14
 
 ### Fixed

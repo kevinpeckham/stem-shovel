@@ -210,7 +210,8 @@ Kevin asked for notes at upload and no full editor, then for a small one.
   settings popover it may have been opened from stays open under it.
 - **Shown.** The open demo's notes sit between its waveform and its
   comments (`RecordingNotes` in `RecordingReview`); a tile that is not
-  open carries a note icon; the demo's own page shows them under its
+  open carries a note icon, and every tile its size and, since
+  2026-11-14, its upload date (`DemoTileText`); the demo's own page shows them under its
   header (`DemoNotesBlock`). Always as text, line breaks kept.
 - **Changed.** "Edit notes…" (or "Add notes…") in the row's ⋯ menu and on
   the demo's page, for those who may remove a demo: one shared
