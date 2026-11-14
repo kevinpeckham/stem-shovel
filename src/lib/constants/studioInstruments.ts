@@ -6,7 +6,7 @@ import type { StudioInputSource } from "#lib/val/StudioSchema.js";
  * an adapter in `src/lib/audio/instruments.ts`; this list is what the
  * schema and the pickers read.
  */
-export const STUDIO_INSTRUMENTS = ["piano", "chords", "drums", "sampler"] as const;
+export const STUDIO_INSTRUMENTS = ["piano", "chords", "drums", "expressionDrums", "sampler"] as const;
 export type StudioInstrument = (typeof STUDIO_INSTRUMENTS)[number];
 export const isInstrument = (s: string): s is StudioInstrument =>
 	(STUDIO_INSTRUMENTS as readonly string[]).includes(s);
@@ -18,6 +18,7 @@ export const STUDIO_INPUT_LABELS: Record<StudioInputSource, string> = {
 	piano: "Piano",
 	chords: "Chord player",
 	drums: "Drum machine",
+	expressionDrums: "Expression drums",
 	sampler: "Sampler",
 	amp: "Practice amp",
 };

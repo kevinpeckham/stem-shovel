@@ -251,6 +251,28 @@ export default defineConfig({
 			hover-bg-slate-900`,
 		],
 		[
+			"device-button-expression-drums",
+			`text-blue-100/80
+			flex
+			h-auto
+			min-h-40px
+			items-center
+			justify-center
+			gap-2
+			rounded-md
+			px-1
+			py-2
+			bg-slate-800
+			select-none
+			text-center
+			text-shadow
+			text-current
+			text-13px
+			shadow
+			min-w-32px
+			hover-bg-slate-900`,
+		],
+		[
 			"device-button-sm",
 			`text-blue-100/80
 			flex

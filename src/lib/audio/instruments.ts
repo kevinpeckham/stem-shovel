@@ -8,8 +8,11 @@ import type { NoteEvent } from "#lib/utils/pairNoteEvents.js";
 import type { StudioTrack } from "#lib/val/StudioSchema.js";
 import { createDrumBus } from "./drumBus";
 import { drumMachine } from "./drumMachine.svelte";
+import { expressionDrums } from "./expressionDrums.svelte";
 import { playDrumHit, type DrumPlayState } from "./drumRender";
+import { playDrumHit as playExpressionDrumHit, type DrumPlayState as ExpressionPlayState } from "./expressionDrumRender";
 import { drumKit } from "./kits";
+import { drumKit as expressionDrumKit } from "./kits/expressionIndex";
 import { chordPiano, piano, type PianoEngine } from "./piano.svelte";
 import { createPianoFx } from "./pianoFx";
 import { startSampledVoice } from "./pianoSamples";
@@ -174,6 +177,43 @@ const drumsAdapter: InstrumentAdapter = {
 	},
 };
 
+const expressionDrumsAdapter: InstrumentAdapter = {
+	id: "expressionDrums",
+	latency: "none",
+	host: (c) => expressionDrums.hostContext(c),
+	prepare: () => expressionDrums.readyKit(),
+	output: () => expressionDrums.output(),
+	scheduleNote(n) {
+		const voice = DRUM_MIDI_IN_NOTES[n.pitch];
+		return voice ? expressionDrums.scheduleHit(voice, n.velocity, n.at) : null;
+	},
+	audition(n) {
+		const voice = DRUM_MIDI_IN_NOTES[n.pitch];
+		if (voice) void expressionDrums.hit(voice, n.velocity);
+	},
+	// A hit has no length of its own: a tenth of a second, the pad's blink.
+	onNote: (push) =>
+		expressionDrums.onHit((h) => {
+			const pitch = DRUM_GM_NOTES[h.voice];
+			push({ on: true, pitch, velocity: h.velocity, time: h.time });
+			push({ on: false, pitch, velocity: 0, time: h.time + 0.1 });
+		}),
+	cancelScheduled() {},
+	async renderOffline(off, into, events, bpm) {
+		const kit = expressionDrumKit(expressionDrums.project.kit);
+		await kit.load(off);
+		const bus = createDrumBus(off, structuredClone(expressionDrums.project.fx), bpm);
+		bus.master.disconnect();
+		bus.master.connect(into);
+		const state: ExpressionPlayState = { openHat: null };
+		for (const e of events) {
+			const voice = DRUM_MIDI_IN_NOTES[e.pitch];
+			if (!voice) continue;
+			playExpressionDrumHit(off, kit, bus, expressionDrums.rowFor(voice), e.velocity, e.at, state);
+		}
+	},
+};
+
 /** The sampler: a track's own recording across the keys (samplerVoice.ts); it has no keys of its own, so it records nothing by hand. */
 function samplerAdapter(): InstrumentAdapter {
 	let ctx: AudioContext | null = null;
@@ -221,6 +261,7 @@ export const INSTRUMENTS: Record<StudioInstrument, InstrumentAdapter> = {
 	piano: pianoAdapter("piano", piano),
 	chords: pianoAdapter("chords", chordPiano),
 	drums: drumsAdapter,
+	expressionDrums: expressionDrumsAdapter,
 	sampler: samplerAdapter(),
 };
 
