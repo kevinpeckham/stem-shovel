@@ -4,6 +4,8 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.270.0] - 2026-11-14
+
 ### Fixed
 
 - **A demo's ⋯ menu** no longer gets cut off at the bottom of the Demos

@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.270.0] - 2026-11-14
+
 ### Fixed
 
 - **A demo tile's ⋯ menu was cut off by the player's box.** The row's
