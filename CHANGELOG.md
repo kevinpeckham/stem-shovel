@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.269.2] - 2026-11-14
+
 ### Fixed
 
 - **The home demo's toolbar sat on the chart's paper.** The chart demo's
