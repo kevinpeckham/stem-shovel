@@ -220,3 +220,7 @@ Kevin asked for notes at upload and no full editor, then for a small one.
 - Demos made another way (Record Demo, the drum machine, "Use as demo", a
   session recording copied in) start with no notes and can be given some
   from the menu.
+- **The row's ⋯ menu is a `ContextMenu`** (`DemoRowMenu`, 2026-11-14): a
+  native popover in the top layer, anchor-positioned by the button. It
+  was a `<details>` drawn inside the player's scrolling box, which cut
+  the last row's menu off at the box's edge.

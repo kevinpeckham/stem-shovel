@@ -4,6 +4,11 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Fixed
+
+- **A demo's ⋯ menu** no longer gets cut off at the bottom of the Demos
+  view on the song page.
+
 ### Added
 
 - **When a demo was uploaded** now shows on its tile in the song page's

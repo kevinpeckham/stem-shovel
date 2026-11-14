@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A demo tile's ⋯ menu was cut off by the player's box.** The row's
+  menu was a `<details>` drawn inside the scrolling box, so the last row's
+  opened under its edge; `DemoRowMenu` is now a `ContextMenu` (a native
+  popover in the top layer, anchor-positioned), the same items.
+
 ### Added
 
 - **The upload date on a demo's tile.** The song page's Demos view shows

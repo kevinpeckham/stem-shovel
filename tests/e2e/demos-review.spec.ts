@@ -22,7 +22,7 @@ test("comments on a demo's waveform in the Demos view", async ({ page, errors })
 	while (await panel.getByLabel("Menu for keys").count()) {
 		await panel.getByLabel("Menu for keys").first().click();
 		page.once("dialog", (d) => d.accept());
-		await panel.getByRole("menuitem", { name: "Remove demo" }).first().click();
+		await panel.getByRole("button", { name: "Remove demo" }).first().click();
 		await page.waitForTimeout(1500);
 	}
 	const before = Number((await tab.textContent())?.match(/\((\d+)\)/)?.[1] ?? 0);
@@ -63,7 +63,7 @@ test("comments on a demo's waveform in the Demos view", async ({ page, errors })
 	// The demo goes from its row's menu, the file with it.
 	await panel.getByLabel("Menu for keys").click();
 	page.once("dialog", (d) => d.accept());
-	await panel.getByRole("menuitem", { name: "Remove demo" }).click();
+	await panel.getByRole("button", { name: "Remove demo" }).click();
 	await expect(tab).toHaveText(`Demos (${before})`, { timeout: 30_000 });
 	expect(errors).toEqual([]);
 });

@@ -1,5 +1,6 @@
+import { installFakePopover } from "../../../tests/helpers/fakePopover";
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
-import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { createRawSnippet } from "svelte";
 
 /**
@@ -23,18 +24,22 @@ const demo = (id: string, over: Record<string, unknown> = {}) => ({
 });
 const hrefOf = (id: string) => `/acct/projects/lp/song/demos/${id}`;
 
+/** The row's menu: a ContextMenu's popover (DemoRowMenu), closed until its ⋯ is pressed. */
 function menuOf(label: string) {
 	const row = screen.getByText(label).closest("li")!;
-	return within(row).getByRole("menu", { hidden: true });
+	return row.querySelector<HTMLElement>("[popover]")!;
 }
+/** The menu's items in order: a link to the demo's page, buttons for the rest. */
+const itemsOf = (menu: HTMLElement) => [...menu.querySelectorAll<HTMLElement>("a, button")];
+
+beforeAll(installFakePopover);
 
 describe("DemoPanel row menu", () => {
 	beforeEach(() => vi.clearAllMocks());
 
 	test("everyone gets the demo's page and both downloads; no Share… or Remove", async () => {
 		render(DemoPanel, { demos: [demo("d1")], hrefOf });
-		const menu = menuOf("Take d1");
-		const items = within(menu).getAllByRole("menuitem", { hidden: true });
+		const items = itemsOf(menuOf("Take d1"));
 		expect(items.map((i) => i.textContent?.trim())).toEqual([
 			"Open page",
 			"Download MP3",
@@ -57,7 +62,7 @@ describe("DemoPanel row menu", () => {
 			onremove,
 			oneditnotes,
 		});
-		const items = within(menuOf("Take d1")).getAllByRole("menuitem", { hidden: true });
+		const items = itemsOf(menuOf("Take d1"));
 		expect(items.map((i) => i.textContent?.trim())).toEqual([
 			"Open page",
 			"Share…",
@@ -72,19 +77,22 @@ describe("DemoPanel row menu", () => {
 		expect(onremove).toHaveBeenCalledWith(expect.objectContaining({ id: "d1" }));
 	});
 
-	test("a press outside an open row menu closes it; a press inside keeps it open", async () => {
+	test("the ⋯ opens the row's menu as a popover (the top layer, so the box cannot cut it off); an item or a press outside closes it", async () => {
 		render(DemoPanel, { demos: [demo("d1"), demo("d2")] });
-		const menu = screen.getByText("Take d1").closest("li")!.querySelector("details")!;
-		menu.open = true;
-		await fireEvent.pointerDown(within(menu).getByRole("menu", { hidden: true }));
-		expect(menu.open).toBe(true);
+		const menu = menuOf("Take d1");
+		await fireEvent.click(screen.getByRole("button", { name: "Menu for Take d1" }));
+		expect(menu.style.display).toBe("block");
 		await fireEvent.pointerDown(screen.getByText("Take d2"));
-		expect(menu.open).toBe(false);
+		expect(menu.style.display).toBe("none");
+		await fireEvent.click(screen.getByRole("button", { name: "Menu for Take d1" }));
+		await fireEvent.click(within(menu).getByRole("button", { name: "Download MP3" }));
+		expect(menu.style.display).toBe("none");
+		expect(h.saveAs).toHaveBeenCalledWith("https://b/d1.mp3", "Take d1.mp3");
 	});
 
 	test("without a page to link to, the menu holds only the downloads", () => {
 		render(DemoPanel, { demos: [demo("d1")] });
-		const items = within(menuOf("Take d1")).getAllByRole("menuitem", { hidden: true });
+		const items = itemsOf(menuOf("Take d1"));
 		expect(items.map((i) => i.textContent?.trim())).toEqual(["Download MP3", "Download original"]);
 	});
 });

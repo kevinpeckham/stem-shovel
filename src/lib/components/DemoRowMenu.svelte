@@ -1,7 +1,14 @@
 <script lang="ts">
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import type { DemoMenuItem } from "#lib/utils/demoMenuItems.js";
 
-	/** A demo tile's ⋯ menu in the song page's Demos view (DemoPanel): its page, its downloads and, for an editor, Share… and Remove (demoMenuItems). */
+	/**
+	 * A demo tile's ⋯ menu in the song page's Demos view (DemoPanel): its
+	 * page, its downloads and, for an editor, Share…, the notes and Remove
+	 * (demoMenuItems). A ContextMenu, so the menu is a native popover in the
+	 * top layer: the player's box scrolls, and a menu drawn inside it was
+	 * cut off at the box's edge on the last row (Kevin, 2026-11-14).
+	 */
 	interface Props {
 		/** The demo's label, for the menu's accessible name. */
 		label: string;
@@ -9,46 +16,26 @@
 	}
 	let { label, items }: Props = $props();
 
-	let menu = $state<HTMLDetailsElement | null>(null);
-	/** A press outside the open menu closes it, as the page's own menus do. */
-	function closeOutside(e: PointerEvent) {
-		if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
-	}
+	/** The row's items as the menu takes them: a link to its page, a button for the rest. */
+	let menuItems = $derived(
+		items.map((item) => ({
+			id: item.label,
+			label: item.label,
+			iconClass: item.icon,
+			title: item.title ?? null,
+			href: item.href ?? null,
+			action: item.action,
+		})),
+	);
 </script>
 
-<svelte:window onpointerdown={closeOutside} />
-
 <!-- The row's menu: the downloads, out of the way of Play. -->
-<details bind:this={menu} class="relative self-center">
-	<summary
-		class="button button-xs border-current/10 flex items-center list-none [&::-webkit-details-marker]:hidden"
+<div class="self-center">
+	<ContextMenu
+		ariaLabel="Menu for {label}"
 		title="Demo menu"
-		aria-label="Menu for {label}"
-	>
-		<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"></span>
-	</summary>
-	<div
-		class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm font-400 shadow-lg"
-		role="menu"
-		tabindex="-1"
-		onclick={(e) => ((e.currentTarget.parentElement as HTMLDetailsElement).open = false)}
-		onkeydown={(e) => {
-			if (e.key === "Escape") (e.currentTarget.parentElement as HTMLDetailsElement).open = false;
-		}}
-	>
-		{#each items as item (item.label)}
-			<svelte:element
-				this={item.element}
-				type={item.type}
-				class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-				role="menuitem"
-				tabindex="0"
-				href={item.href}
-				title={item.title}
-				onclick={item.action}
-			>
-				<span class={item.icon} aria-hidden="true"></span>{item.label}
-			</svelte:element>
-		{/each}
-	</div>
-</details>
+		buttonBaseClasses="button button-xs border-current/10 flex items-center"
+		iconClass="i-ph-dots-three-outline-vertical-fill"
+		items={menuItems}
+	/>
+</div>
