@@ -262,3 +262,15 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   where the lesson came from. Conventions go to this file or docs/;
   findings go there.
 - Do not record in memory what the repo already documents.
+
+## Agent tooling
+
+What an agent gets in this repository is declared here, not in anyone's
+personal Claude Code settings (the rule is in `~/projects/CLAUDE.md`,
+"Agent tooling"):
+
+- `.claude/settings.json`: the approval of the servers in `.mcp.json` (this project uses no plugins)
+- `.mcp.json`: MCP servers: `fallow` (dead code and complexity); `playwright` (a headless browser); `svelte` (Svelte's documentation and autofixer)
+
+Add or remove a tool by editing these files in a pull request. Never install
+one at user level for this project's sake.
