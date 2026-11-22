@@ -168,7 +168,7 @@ public by URL; editing needs a signed-in member.
   adapter maps by property). `rpID` is the domain a credential is bound to:
   `stemshovel.com` in production (www and the bare domain share keys),
   `staging.stemshovel.dev` on the preview, the proxy name
-  `stem-shovel.wr.lj.dev` in dev; the origin is checked against the request
+  `stem-shovel.bench.lj.dev` in dev; the origin is checked against the request
   (gated by `trustedOrigins`). `residentKey: "preferred"` asks for a
   discoverable credential so `/sign-in` can offer "Sign in with a passkey"
   and browser autofill (`autocomplete="username webauthn"`, conditional

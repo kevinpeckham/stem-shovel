@@ -28,6 +28,15 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
   schema keys off it, and varlock also loads `.env.<APP_ENV>.local`, which
   is how the VM addresses staging: `APP_ENV=preview bunx varlock run -- <cmd>`
   with staging's `OP_ENV_ID` in `.env.preview.local`.
+- **The dev VM.** lj-bench, since 2026-11-22 (wandering-rodeo before it).
+  The dev server binds localhost; Caddy on 443 serves it as
+  `https://stem-shovel.bench.lj.dev` (an A record in the `bench.lj.dev`
+  zone on DigitalOcean DNS pointing at the VM's tailnet address, a
+  Let's Encrypt cert by DNS-01), so only tailnet devices reach it. The
+  name is Better Auth's dev origin and passkey id (`src/lib/auth.ts`),
+  the Playwright base URL and the swing check's default; everything
+  else talks to localhost. The setup is in
+  `docs/bench-brief-dev-on-lj-bench-2026-11-22.md`.
 - **Stages.** dev (the VM), staging (`https://staging.stemshovel.dev`,
   the preview deployment of the `staging` branch) and production each load
   their own 1Password environment with their own Turso database, Blob

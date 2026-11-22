@@ -19,7 +19,7 @@ export default defineConfig({
 	reporter: [["list"]],
 	outputDir: ".screenshots/e2e",
 	use: {
-		baseURL: process.env.E2E_BASE ?? "https://stem-shovel.wr.lj.dev",
+		baseURL: process.env.E2E_BASE ?? "https://stem-shovel.bench.lj.dev",
 		viewport: { width: 1500, height: 1000 },
 		permissions: ["microphone"],
 		trace: "retain-on-failure",

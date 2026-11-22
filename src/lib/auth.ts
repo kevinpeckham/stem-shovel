@@ -57,9 +57,12 @@ const baseURL = dev || ENV.VERCEL_ENV === "preview" ? undefined : PRODUCTION_URL
  * registrable domain in production (so www and the bare domain share the
  * keys), the preview's own host on staging, and the proxy name Kevin
  * previews on in dev (a passkey made on localhost would not match it).
+ * Dev moved from the wandering-rodeo VM to lj-bench on 2026-11-22
+ * (`stem-shovel.bench.lj.dev`, Caddy on the tailnet; docs/environment.md);
+ * dev passkeys made under the old name are bound to it and get re-registered.
  */
 const PASSKEY_RP_ID = dev
-	? "stem-shovel.wr.lj.dev"
+	? "stem-shovel.bench.lj.dev"
 	: ENV.VERCEL_ENV === "preview"
 		? "staging.stemshovel.dev"
 		: new URL(PRODUCTION_URL).hostname.replace(/^www\./, "");
@@ -73,9 +76,7 @@ const trustedOrigins = [
 	"https://www.stem-shovel.com",
 	"https://stem-shovel.com",
 	"http://localhost:5173",
-	...(dev
-		? ["https://stem-shovel.wr.lj.dev", "https://wandering-rodeo.tail59777f.ts.net:8444"]
-		: []),
+	...(dev ? ["https://stem-shovel.bench.lj.dev"] : []),
 
 	// Preview deployments: staging's domain and Vercel's own names
 	...(ENV.VERCEL_ENV === "preview"

@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Dev moves to the lj-bench VM.** The dev stage's name is
+  `stem-shovel.bench.lj.dev` (Caddy on the tailnet, as `barmark.bench.lj.dev`
+  is): Better Auth's dev origin and passkey relying-party id, the Playwright
+  base URL and the swing check's default follow; the Tailscale-name origin on
+  8444 is gone (lj-bench's 8444 serves another app). The VM setup is the
+  brief `docs/bench-brief-dev-on-lj-bench-2026-11-22.md`, for the agent
+  already on that machine.
+
 ## [0.270.0] - 2026-11-14
 
 ### Fixed

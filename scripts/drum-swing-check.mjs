@@ -14,7 +14,7 @@
  */
 import { chromium } from "playwright";
 
-const base = process.env.SMOKE_BASE ?? "https://stem-shovel.wr.lj.dev";
+const base = process.env.SMOKE_BASE ?? "https://stem-shovel.bench.lj.dev";
 const browser = await chromium.launch();
 const page = await browser.newPage();
 page.setDefaultTimeout(60_000);
