@@ -427,10 +427,10 @@ what each night found. `workflows/workflow-sentry-triage.yaml` runs it
 mode=scan` to list only) and carries `trigger.schedule: "30 9 * * *"`,
 which `swamp serve` fires on the VM: the systemd user unit
 `swamp-serve-stem-shovel.service` (`/home/exedev/bin/swamp-serve-stem-shovel`,
-token auth on localhost:9094, through varlock, with a collective token that
+token auth on localhost:9095 (lj-bench's own daemons hold 9090 to 9094; 9094 on the wandering-rodeo VM before 2026-11-22), through varlock, with a collective token that
 carries the `serve:*` scope) runs it; `swamp workflow schedule
 list|pause|resume sentry-triage` manages the schedule, and
-`curl localhost:9094/health` shows the next run. Phase two, merging a PR
+`curl localhost:9095/health` shows the next run. Phase two, merging a PR
 the gates and a reviewer accept, and a page in the app to approve from, is
 not built.
 

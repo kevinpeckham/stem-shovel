@@ -7,6 +7,22 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## An older bun downgrades a version 2 `bun.lock` and re-resolves every range (2026-11-22)
+
+`bun install` with bun 1.3.14 in a repo whose `bun.lock` is version 2
+(written by the pinned bun 1.4.2) does not refuse: it rewrites the file
+as version 1 and resolves every range afresh, some 200 packages moved
+(`@ai-sdk/gateway` 4.0.127 → 4.0.152, say) with no warning. Seen on the
+lj-bench VM while setting up the dev stage (the reply in
+`docs/bench-brief-dev-on-lj-bench-2026-11-22.md`): the lockfile was
+restored from git and installed with a copy of 1.4.2 kept beside the
+VM's bun, `--frozen-lockfile`. The `packageManager` pin in package.json
+does not stop an older bun. On a machine whose bun is behind the pin,
+install only with the pinned copy on PATH, and treat an unexpected
+`bun.lock` diff after an install as this. The same gap bit Vercel's
+build earlier (its bundled bun ignored the v2 file; the entry on
+`vercel.json` installing with `npx bun@<pinned>`).
+
 ## A control inside a third-party element's open shadow root can be hidden with `adoptedStyleSheets` (2026-11-13)
 
 `<barmark-score>` (`@barmark/score` 0.5) draws its Grid / Score switch

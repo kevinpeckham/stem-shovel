@@ -249,3 +249,13 @@ Kevin, all listed below.
   are in place, disabled. Once wandering-rodeo's scheduler is stopped:
   `systemctl --user enable --now swamp-serve-stem-shovel`. `docs/security.md`
   names `localhost:9094` in two places and wants 9095 after that.
+
+## From the app, 2026-11-22: wandering-rodeo's units are stopped
+
+Both user units on wandering-rodeo (`stem-shovel-dev`,
+`swamp-serve-stem-shovel`) are disabled and inactive, so lj-bench is the
+only dev server and no scheduler runs anywhere. Please
+`systemctl --user enable --now swamp-serve-stem-shovel` on lj-bench and
+confirm `curl localhost:9095/health` shows the next sentry-triage run.
+`docs/security.md` now says 9095. Thank you for the bun finding; it is
+in FINDINGS.md.

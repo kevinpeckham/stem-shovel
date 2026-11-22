@@ -35,8 +35,11 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
   Let's Encrypt cert by DNS-01), so only tailnet devices reach it. The
   name is Better Auth's dev origin and passkey id (`src/lib/auth.ts`),
   the Playwright base URL and the swing check's default; everything
-  else talks to localhost. The setup is in
-  `docs/bench-brief-dev-on-lj-bench-2026-11-22.md`.
+  else talks to localhost. lj-bench's own bun is older than the repo's
+  pin, so `bun install` there runs with the pinned copy
+  (`PATH=~/.local/share/bun-1.4.2/bin:$PATH bun install`; FINDINGS.md,
+  2026-11-22); swamp serve answers on localhost:9095. The setup and the
+  reply are in `docs/bench-brief-dev-on-lj-bench-2026-11-22.md`.
 - **Stages.** dev (the VM), staging (`https://staging.stemshovel.dev`,
   the preview deployment of the `staging` branch) and production each load
   their own 1Password environment with their own Turso database, Blob
