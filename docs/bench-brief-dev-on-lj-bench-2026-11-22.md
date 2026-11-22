@@ -162,3 +162,90 @@ and shared by both, which is fine for reads and ordinary use. Once the
 reply says lj-bench serves and tests pass, the app-side agent disables
 the two units on wandering-rodeo and Kevin retires the
 `stem-shovel.wr.lj.dev` record and Caddy block.
+
+## Reply (lj-bench, 2026-11-22)
+
+lj-bench serves: `https://stem-shovel.bench.lj.dev/` answers 200 with the
+"DEV | Stem Shovel" title, tests, check and lint are green, and
+wandering-rodeo's two units can be stopped. Three things differ from the
+brief (bun, the swamp port, the clone's remote) and three are left for
+Kevin, all listed below.
+
+### Ask 1: the clone and the toolchain
+
+- The clone was already at `/home/exedev/projects/stem-shovel` on `dev`,
+  its own working tree; fast-forwarded to `b507f50b`. Its origin is the
+  exe.dev GitHub proxy (`https://github.int.exe.xyz/kevinpeckham/stem-shovel.git`),
+  not github.com, so `gh` does not recognize the remote: pass
+  `-R kevinpeckham/stem-shovel` to `gh pr …` here.
+- **bun differs.** The VM's bun is 1.3.14 and the repo pins `bun@1.4.2`.
+  1.3.14 cannot keep a version 2 `bun.lock`: `bun install` rewrote it as
+  version 1 and re-resolved every range (`@ai-sdk/gateway` 4.0.127 →
+  4.0.152 and some 200 others). I restored the lockfile, put bun 1.4.2
+  beside the VM's copy at `~/.local/share/bun-1.4.2/bin/bun` (release
+  zip, checksum verified) and ran `bun install --frozen-lockfile` with
+  it. I did not upgrade the VM's bun: every other repo here has a version
+  1 lockfile and no pin, and a newer bun would start rewriting theirs.
+  **In this repo, install only with the pinned copy:**
+  `PATH=~/.local/share/bun-1.4.2/bin:$PATH bun install`. Running scripts
+  with either bun is fine. `~/.local/bin/bun` is linked to the VM's bun
+  as asked.
+- Chromium: Playwright 1.64.1's build (`chromium-1248`) was already in
+  `~/.cache/ms-playwright` and launches, so the system deps are there and
+  I did not run `install-deps`.
+- `ffmpeg` 6.1.1, `node` v22.23.1, `python3` 3.12.3 are on PATH.
+  `bun run stems` wrote the four stems and the manifest.
+- `swamp` is on PATH (`~/.local/bin/swamp`, 20261022.021804.0, deno
+  under `~/.swamp`); it reports itself 31 days old.
+
+### Ask 2: the port and the dev server unit
+
+- Port **5173**; nothing else on lj-bench listens on it.
+- `~/bin/stem-shovel-dev` and the `stem-shovel-dev` user unit are as
+  written in the brief, with one added line in the wrapper that puts the
+  pinned bun first on PATH. Enabled and running; linger was already on.
+
+### Ask 3: the name and Caddy
+
+- DNS: created the A record `stem-shovel.bench.lj.dev` → 100.98.247.92
+  (TTL 300) in the `bench.lj.dev` zone, with the token Caddy already uses.
+- Caddy: the block is appended as written (the TLS stanza matches
+  barmark's), the config validated and Caddy reloaded; Let's Encrypt
+  issued the certificate at once. The file as it was is
+  `/etc/caddy/Caddyfile.before-stem-shovel`.
+
+### Ask 4: secrets and sign-ins
+
+- `.env.local` and `.env.preview.local` arrived from Kevin while I
+  worked; varlock resolves with them.
+- `gh` is signed in as kevinpeckham and the git identity is the noreply
+  address. `vercel` is signed in as kevinpeckham.
+- **Left for Kevin:** `vercel link` in the clone (there is no `.vercel/`).
+- **Left for Kevin:** the Claude Code memory. This repository's sessions
+  on lj-bench run from the personal configuration folder, so the path is
+  `~/.claude-personal/projects/-home-exedev-projects-stem-shovel/memory/`,
+  not `~/.claude/…`. It is empty.
+- `.claude/settings.json` is now committed (#19, the servers approved in
+  `.mcp.json`), so wandering-rodeo's untracked copy is not needed here.
+  If that copy is still untracked there, a pull of `dev` will stop on it:
+  move it aside first.
+
+### Ask 5: verify, then swamp serve
+
+- `http://localhost:5173/` and `https://stem-shovel.bench.lj.dev/` both
+  give `<title>DEV | Stem Shovel | Stem Sharing &amp; Collaboration tool
+  for musicians, bands and producers`.
+- `SKIP_VARLOCK=1 bun run test`: 734 files, 5940 tests, all passed.
+  `bun run check`: 0 errors, 7 warnings. `bun run lint`: 0 errors, 1
+  warning.
+- `bun run shot /` wrote `.screenshots/home.png`, signed in as the bot
+  (the account menu and the Edit button show). The first capture after a
+  restart logged a 504 "Outdated Optimize Dep" for
+  `@barmark/score-element` while Vite re-optimized; the second was clean.
+- `bunx varlock run -- swamp workflow validate site-audit`: 12 passed.
+- **swamp serve is written but not started.** Port **9095**, not 9094:
+  lj-bench's own daemons hold 9090 to 9094.
+  `~/bin/swamp-serve-stem-shovel` and the `swamp-serve-stem-shovel` unit
+  are in place, disabled. Once wandering-rodeo's scheduler is stopped:
+  `systemctl --user enable --now swamp-serve-stem-shovel`. `docs/security.md`
+  names `localhost:9094` in two places and wants 9095 after that.
