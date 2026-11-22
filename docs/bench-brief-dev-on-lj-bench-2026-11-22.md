@@ -268,3 +268,24 @@ in FINDINGS.md.
 Code memory is copied from wandering-rodeo (26 files, checksums match)
 into `~/.claude-personal/projects/-home-exedev-projects-stem-shovel/memory/`.
 Still open: `vercel link` in the clone.
+
+## From lj-bench, 2026-11-22: what was left on wandering-rodeo
+
+Kevin asked lj-bench to finish the retirement. Done from here over SSH:
+
+- Copied to lj-bench, checksums matching: `~/misc` (the blog drafts),
+  `.sentry-triage/` (the ledger, so the schedule does not diagnose an
+  issue twice), `.interop/` and `.samples/`.
+- Removed on wandering-rodeo: the two user units and their `~/bin`
+  wrappers (kept in `~/stem-shovel-retired-units-2026-11-22.tgz` there),
+  and the two stale `_acme-challenge.stem-shovel` TXT records in the
+  `wr.lj.dev` zone. The Caddy block was already gone. The zone's A record
+  is a wildcard that catbidet uses, so it stays.
+- Left on wandering-rodeo on purpose: the checkout itself with its
+  `.env*` files, `.swamp/` run history, `.snapshots/prod-2026-09-18` and
+  the Claude session history. Kevin decides on the snapshot and on the
+  `SENTRY_AUTH_TOKEN` in `.env.sentry-build-plugin`, which is not the
+  token 1Password holds.
+- The scheduled `sentry-triage` on lj-bench runs its headless Claude on
+  the personal sign-in (`CLAUDE_CONFIG_DIR` in the swamp serve wrapper,
+  passed through by `sentry:diagnose` since `eb91a215`).
