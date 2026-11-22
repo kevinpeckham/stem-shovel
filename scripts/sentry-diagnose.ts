@@ -43,8 +43,8 @@
  *
  * Env: SENTRY data comes from the scan file only (no Sentry call here);
  * CLAUDE_BIN (default `claude`). The agent and the gates get only the
- * variables in CHILD_ENV_ALLOWLIST (CLAUDE_CODE_OAUTH_TOKEN and
- * ANTHROPIC_API_KEY passed through when set for the sign-in, SKIP_VARLOCK=1;
+ * variables in CHILD_ENV_ALLOWLIST (CLAUDE_CONFIG_DIR, CLAUDE_CODE_OAUTH_TOKEN
+ * and ANTHROPIC_API_KEY passed through when set for the sign-in, SKIP_VARLOCK=1;
  * CLAUDECODE and CLAUDE_CODE_ENTRYPOINT, which make a nested session refuse,
  * are simply absent), never the varlock-resolved secrets; this script's own
  * git and gh calls keep the full env. git and gh must be signed in for the
@@ -112,6 +112,9 @@ const CHILD_ENV_ALLOWLIST = [
 	"XDG_DATA_HOME",
 	"XDG_RUNTIME_DIR",
 	"CI",
+	// Which Claude Code configuration folder, so which sign-in and plan: a path, not a secret.
+	// Unset means ~/.claude; lj-bench keeps this project's sign-in in ~/.claude-personal.
+	"CLAUDE_CONFIG_DIR",
 	// The Claude sign-in, when given by env rather than ~/.claude.
 	"CLAUDE_CODE_OAUTH_TOKEN",
 	"ANTHROPIC_API_KEY",
