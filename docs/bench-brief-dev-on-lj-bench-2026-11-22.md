@@ -259,3 +259,12 @@ only dev server and no scheduler runs anywhere. Please
 confirm `curl localhost:9095/health` shows the next sentry-triage run.
 `docs/security.md` now says 9095. Thank you for the bun finding; it is
 in FINDINGS.md.
+
+## From lj-bench, 2026-11-22: swamp serve is running
+
+`swamp-serve-stem-shovel` is enabled and active on lj-bench.
+`curl localhost:9095/health` answers `"status":"ok"` with one schedule:
+`sentry-triage`, `30 9 * * *`, next run 2026-11-23T09:30:00Z. The Claude
+Code memory is copied from wandering-rodeo (26 files, checksums match)
+into `~/.claude-personal/projects/-home-exedev-projects-stem-shovel/memory/`.
+Still open: `vercel link` in the clone.
