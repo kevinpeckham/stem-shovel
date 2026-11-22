@@ -1,0 +1,3 @@
+{
+	"enabledMcpjsonServers": ["fallow", "playwright", "svelte"]
+}
