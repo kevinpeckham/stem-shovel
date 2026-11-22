@@ -34,6 +34,13 @@ install only with the pinned copy on PATH, and treat an unexpected
 build earlier (its bundled bun ignored the v2 file; the entry on
 `vercel.json` installing with `npx bun@<pinned>`).
 
+Later the same day lj-bench's bun was raised to 1.4.5 (the old binary
+kept as `~/.bun/bin/bun-1.3.14`). 1.4.5 reads the version 2 file as it
+is: `bun install`, frozen and plain, reports no changes and leaves
+`bun.lock` untouched. So the hazard is a bun older than the lockfile's
+version, not any bun other than the pin. The pinned 1.4.2 stays beside
+it and the two user units still run it.
+
 ## A control inside a third-party element's open shadow root can be hidden with `adoptedStyleSheets` (2026-11-13)
 
 `<barmark-score>` (`@barmark/score` 0.5) draws its Grid / Score switch
