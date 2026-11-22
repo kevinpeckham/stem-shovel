@@ -7,6 +7,17 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## `vercel link` appends `.env*` to `.gitignore` and rewrites `.env.local` (2026-11-22)
+
+`vercel link --yes` (CLI 65.2.0) does more than write `.vercel/`: it
+downloads a fresh `VERCEL_OIDC_TOKEN` into `.env.local` and appends a
+`.env*` line to `.gitignore`, although the file already ignores
+`.env.*`. Seen twice on the lj-bench VM while moving the dev stage
+there. The other keys in `.env.local` are kept. The appended rule is
+broader than ours (it would ignore a new file such as `.env.schema`),
+so after a link: `git checkout -- .gitignore`, and restart the dev
+server because `.env.local` changed.
+
 ## An older bun downgrades a version 2 `bun.lock` and re-resolves every range (2026-11-22)
 
 `bun install` with bun 1.3.14 in a repo whose `bun.lock` is version 2
