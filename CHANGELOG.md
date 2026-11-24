@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.271.1] - 2026-11-24
+
 ### Changed
 
 - **A note where the Join button is hidden.** A super admin viewing a
