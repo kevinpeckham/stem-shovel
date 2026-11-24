@@ -2911,6 +2911,55 @@ export function pendingInvitations(accountId: string) {
 	});
 }
 
+/**
+ * The invitations waiting for a person, for their dashboard: sent to their
+ * address, still open (not accepted, revoked or expired) and not to an
+ * account they already belong to or a project they are already on. Newest
+ * first, each with its account, its project (a viewer's) and who sent it.
+ * Sign-in needs a verified address (docs/auth.md), so the address is theirs.
+ */
+export async function invitationsForUser(person: { id: string; email: string }) {
+	const rows = await db.query.invitation.findMany({
+		where: and(
+			eq(invitation.email, person.email.toLowerCase()),
+			isNull(invitation.acceptedAt),
+			isNull(invitation.revokedAt),
+		),
+		orderBy: [desc(invitation.createdAt)],
+		columns: {
+			id: true,
+			token: true,
+			role: true,
+			expiresAt: true,
+			accountId: true,
+			projectId: true,
+		},
+		with: {
+			account: { columns: { name: true, slug: true } },
+			project: { columns: { name: true } },
+			inviter: { columns: { name: true } },
+		},
+	});
+	const now = Date.now();
+	const open = rows.filter((r) => r.expiresAt.getTime() > now);
+	if (open.length === 0) return [];
+	const [accounts, projects] = await Promise.all([
+		db.query.accountMember.findMany({
+			where: eq(accountMember.userId, person.id),
+			columns: { accountId: true },
+		}),
+		db.query.projectMember.findMany({
+			where: eq(projectMember.userId, person.id),
+			columns: { projectId: true },
+		}),
+	]);
+	const inAccount = new Set(accounts.map((m) => m.accountId));
+	const onProject = new Set(projects.map((m) => m.projectId));
+	return open
+		.filter((r) => (r.projectId ? !onProject.has(r.projectId) : !inAccount.has(r.accountId)))
+		.map(({ accountId: _accountId, projectId: _projectId, ...row }) => row);
+}
+
 export async function revokeInvitation(accountId: string, id: string) {
 	const [row] = await db
 		.update(invitation)

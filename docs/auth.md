@@ -32,6 +32,10 @@ public by URL; editing needs a signed-in member.
   with a role from account settings; the email carries `/invite/<token>`
   (14-day expiry). Accepting needs a signed-in user whose address matches and
   creates the membership; the settings page lists and revokes pending ones.
+  Someone who already has a sign-in also finds the invitation at the top of
+  their dashboard with a Join button (`invitationsForUser`,
+  `DashboardInvitations.svelte`): the same `acceptInvitation` form, matched
+  on the address, which is theirs because sign-in needs it verified.
 - **Several accounts per user**: memberships carry a role each. The
   "current" account for neutral pages (home, docs, admin, the `/projects`
   and `/settings` shortcuts, the post-verification landing) is the

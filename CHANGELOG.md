@@ -8,6 +8,23 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Invitations on the dashboard.** Someone who already has a sign-in and
+  is invited to another account (or to a project as a viewer) sees the
+  invitation at the top of their User Dashboard, above everything else on
+  a phone and a wide screen alike: who sent it, the account and the role
+  (or the project), when it expires, and a **Join** button that does what
+  the emailed link does and lands them in the account. Until now the email
+  was the only way in. `invitationsForUser` (data.ts) reads the open
+  invitations sent to the person's address (sign-in needs a verified
+  address, so it is theirs), leaving out an account they already belong to
+  and a project they are already on; `DashboardInvitations.svelte` submits
+  the existing `acceptInvitation` form. One account's dashboard
+  (`?account=`) leaves the section out; a super admin viewing a user's
+  dashboard (`?user=`) sees that user's invitations without the tokens and
+  without buttons. No migration.
+
 ### Technical
 
 - **Dev moves to the lj-bench VM.** The dev stage's name is

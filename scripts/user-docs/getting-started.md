@@ -8,7 +8,7 @@ Stem Shovel is a place for a band or a producer to keep the working versions of 
 
 You can also arrive through someone else's account:
 
-- **An invitation email** from someone in an account. Open the link, create your account with the address the invitation was sent to, and you join that account as soon as your email is verified.
+- **An invitation email** from someone in an account. Open the link, create your account with the address the invitation was sent to, and you join that account as soon as your email is verified. If you already have an account with that address, the invitation also waits at the top of your User Dashboard, with a button to join.
 - **An invite code** someone hands you. Type it on the sign-up page (dashes and capitals do not matter) and you join their account as well.
 
 When sign-up is invitation-only, as it was during the early beta, one of those two is required and the waitlist collects everyone else. Forgot your password? The sign-in page has a reset link.

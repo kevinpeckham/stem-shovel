@@ -2,6 +2,7 @@
 	import DashboardAccount from "#lib/components/DashboardAccount.svelte";
 	import DashboardConversations from "#lib/components/DashboardConversations.svelte";
 	import DashboardIdeas from "#lib/components/DashboardIdeas.svelte";
+	import DashboardInvitations from "#lib/components/DashboardInvitations.svelte";
 	import DashboardNew from "#lib/components/DashboardNew.svelte";
 	import DashboardNudges from "#lib/components/DashboardNudges.svelte";
 	import DashboardPending from "#lib/components/DashboardPending.svelte";
@@ -110,6 +111,8 @@
 	{#if data.viewing}
 		<DashboardViewing viewing={data.viewing} />
 	{/if}
+	<!-- Above the grid: an invitation is waiting on the person, so it comes before everything on a phone and on a wide screen alike. -->
+	<DashboardInvitations invitations={data.invitations} />
 
 	<!-- Three grid children: Latest, the content, the widgets. One column on a phone in that order, so what is new comes first; from lg the content takes the left column over two rows and Latest sits above the widgets on the right. The rows are auto then 1fr: the content's height goes to the second row alone, so the widgets sit right under Latest instead of halfway down (the spanning column would otherwise be shared into both rows). -->
 	<div

@@ -16,6 +16,7 @@ const {
 	deleteAccount,
 	inviteCodeByCode,
 	invitationByToken,
+	invitationsForUser,
 	listInviteCodes,
 	logAudit,
 	memberHeadroom,
@@ -639,6 +640,77 @@ const code = (id: string, over: Record<string, unknown> = {}) => ({
 	revokedAt: null,
 	createdAt: at(NOW),
 	...over,
+});
+
+describe("invitationsForUser", () => {
+	const bob = { id: "u2", email: "Bob@Example.com" };
+	const a2 = { ...a1, id: "a2", name: "Other Band", slug: "other" };
+	const tables = {
+		account: [a1, a2],
+		user: [u1, u2],
+		project: [
+			{ id: "p1", accountId: "a1", name: "P", slug: "p" },
+			{ id: "p2", accountId: "a1", name: "Q", slug: "q" },
+		],
+	};
+	test("the open invitations sent to the person's address, newest first, with the account, the project and who sent each", async () => {
+		reset({
+			...tables,
+			invitation: [
+				{ ...openInvitation, createdAt: at(NOW - 3000) },
+				{
+					...openInvitation,
+					id: "i2",
+					token: "viewer",
+					projectId: "p1",
+					role: "viewer",
+					invitedBy: null,
+					createdAt: at(NOW - 2000),
+				},
+				{ ...openInvitation, id: "i3", token: "other", accountId: "a2", createdAt: at(NOW - 1000) },
+			],
+		});
+		const rows = await invitationsForUser(bob);
+		expect(rows.map((r) => r.id)).toEqual(["i3", "i2", "i1"]);
+		expect(rows[2]).toEqual({
+			id: "i1",
+			token: "t".repeat(32),
+			role: "member",
+			expiresAt: at(NOW + 1000),
+			account: { name: "Band", slug: "band" },
+			project: null,
+			inviter: { name: "Ann" },
+		});
+		expect(rows[1].project).toEqual({ name: "P" });
+		expect(rows[1].inviter).toBeNull();
+	});
+	test("leaves out an invitation that is accepted, revoked, expired or for another address", async () => {
+		reset({
+			...tables,
+			invitation: [
+				{ ...openInvitation, id: "i2", token: "accepted", acceptedAt: at(1) },
+				{ ...openInvitation, id: "i3", token: "revoked", revokedAt: at(1) },
+				{ ...openInvitation, id: "i4", token: "expired", expiresAt: at(NOW - 1) },
+				{ ...openInvitation, id: "i5", token: "eve", email: "eve@example.com" },
+			],
+		});
+		expect(await invitationsForUser(bob)).toEqual([]);
+	});
+	test("leaves out an account the person already belongs to and a project they are already on", async () => {
+		reset({
+			...tables,
+			accountMember: [member("m1", "u2", "member", "a2")],
+			projectMember: [{ id: "pm1", projectId: "p1", userId: "u2", role: "viewer" }],
+			invitation: [
+				{ ...openInvitation, id: "i1", token: "in-a2", accountId: "a2" },
+				{ ...openInvitation, id: "i2", token: "on-p1", projectId: "p1", role: "viewer" },
+				{ ...openInvitation, id: "i3", token: "new-p2", projectId: "p2", role: "viewer" },
+				{ ...openInvitation, id: "i4", token: "new-a1" },
+			],
+		});
+		const rows = await invitationsForUser(bob);
+		expect(rows.map((r) => r.id).sort()).toEqual(["i3", "i4"]);
+	});
 });
 
 describe("createInviteCode", () => {

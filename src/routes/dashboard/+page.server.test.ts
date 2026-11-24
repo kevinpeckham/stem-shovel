@@ -186,6 +186,7 @@ beforeEach(() => {
 	data.accountNudges.mockResolvedValue([]);
 	data.pendingInvitations.mockResolvedValue([]);
 	data.listInviteCodes.mockResolvedValue([]);
+	data.invitationsForUser.mockResolvedValue([]);
 	calendar.upcomingEvents.mockResolvedValue([]);
 });
 
@@ -873,5 +874,44 @@ describe("dashboard load: upcoming shows and practices", () => {
 	it("with no accounts, asks with none", async () => {
 		expect((await run([])).upcoming).toEqual([]);
 		expect(calendar.upcomingEvents).toHaveBeenCalledWith([], expect.any(String));
+	});
+});
+
+describe("dashboard load: invitations waiting for the person", () => {
+	const row = {
+		id: "inv1",
+		token: "t".repeat(32),
+		role: "member",
+		expiresAt: day(20),
+		account: { name: "Two", slug: "two" },
+		project: null,
+		inviter: { name: "Pat" },
+	};
+
+	it("the person's own dashboard lists them, each with the token its Join button sends", async () => {
+		data.invitationsForUser.mockResolvedValue([row]);
+		const user = fakeUser();
+		const r = await run([member(ACCOUNT)], user);
+		expect(r.invitations).toEqual([row]);
+		expect(data.invitationsForUser).toHaveBeenCalledWith({ id: USER, email: user.email });
+	});
+
+	it("a dashboard narrowed to one account (?account=) leaves them out", async () => {
+		data.invitationsForUser.mockResolvedValue([row]);
+		const own = member(ACCOUNT);
+		const r = await run([own], fakeUser(), `?account=${own.slug}`);
+		expect(r.invitations).toEqual([]);
+		expect(data.invitationsForUser).not.toHaveBeenCalled();
+	});
+
+	it("a super admin viewing a user (?user=) sees that user's, without the tokens", async () => {
+		const target = { id: fakeId("user-target"), name: "Target", email: "target@example.com" };
+		data.userById.mockResolvedValue(target);
+		data.membershipsOfUser.mockResolvedValue([]);
+		data.invitationsForUser.mockResolvedValue([row]);
+		const admin = fakeUser(fakeId("user-admin"), { isSuperAdmin: true });
+		const r = await run([], admin, `?user=${target.id}`);
+		expect(r.invitations).toEqual([{ ...row, token: null }]);
+		expect(data.invitationsForUser).toHaveBeenCalledWith({ id: target.id, email: target.email });
 	});
 });

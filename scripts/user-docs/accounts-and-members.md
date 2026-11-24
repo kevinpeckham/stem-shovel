@@ -12,7 +12,7 @@ Anyone can view any public song by its link regardless of role. People who shoul
 
 ## Inviting by email
 
-Enter an address and a role and send. The person gets an email with a link; if they do not have an account yet, the link lets them create one with that address and joins them straight away. Pending invitations are listed and can be revoked.
+Enter an address and a role and send. The person gets an email with a link; if they do not have an account yet, the link lets them create one with that address and joins them straight away. Someone who already has an account also finds the invitation at the top of their User Dashboard, with a button to join. Pending invitations are listed and can be revoked.
 
 ## Invite codes
 

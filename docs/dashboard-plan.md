@@ -253,3 +253,19 @@ saves, another document or another song are their own events.
 `accountActivity` reads `ACTIVITY_DOC_EDIT_OVERSCAN` times the cap of
 revisions before collapsing, so a burst does not crowd out the edits
 before it. Nothing is deleted: the revisions stay for History.
+
+## Invitations waiting for the person (2026-11-24)
+
+Someone who already had a sign-in could join another account only from
+the invitation email. The dashboard now lists the invitations sent to
+their address above the grid (`DashboardInvitations.svelte`), so it is
+the first thing on a phone and on a wide screen: who sent it, the account
+and the role (or, for a viewer's invitation, the project and its
+account), the expiry, and a Join button that submits the same
+`acceptInvitation` form as `/invite/<token>` and lands in the account.
+`invitationsForUser` (data.ts) reads the open ones (not accepted, revoked
+or expired) and leaves out an account the person already belongs to and
+a project they are already on. One account's dashboard (`?account=`)
+leaves the section out. A super admin viewing a user (`?user=`) sees that
+user's invitations without the tokens, so without buttons. There is no
+decline: the invitation expires, or the sender revokes it. No migration.

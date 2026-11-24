@@ -24,6 +24,7 @@ import {
 	accountPendingWork,
 	accountQuota,
 	dashboardSeenAtOf,
+	invitationsForUser,
 	listDashboardPins,
 	listEvents,
 	listInviteCodes,
@@ -464,6 +465,23 @@ function chosenAccount(locals: App.Locals, slug: string | null) {
 }
 
 /**
+ * The invitations waiting for the person whose dashboard this is, each with
+ * the token its Join button sends. One account's dashboard (`?account=`)
+ * leaves them out: they are not that account's. A super admin viewing a
+ * user sees that user's without the tokens, which are the invitee's alone.
+ */
+async function invitationsFor({
+	user,
+	target,
+	viewing,
+}: Awaited<ReturnType<typeof whoseDashboard>>) {
+	if (viewing?.kind === "account") return [];
+	if (!target) return invitationsForUser({ id: user.id, email: user.email });
+	const rows = await invitationsForUser({ id: target.id, email: target.email });
+	return rows.map((r) => ({ ...r, token: null }));
+}
+
+/**
  * The visit before this one is what "since your last visit" means; this one
  * is recorded now. Someone else's account (acting) neither moves the marker
  * nor uses it; someone else's dashboard (?user) reads theirs and leaves it.
@@ -488,8 +506,9 @@ function seenAtFor({
  * across those accounts; their own ideas, loops and multitrack recordings, newest
  * first; what is new in their inbox; the chats, comments and mentions
  * waiting for them; what happened in their accounts this week; what the
- * server has not finished; and, on each tile, who has been active lately
- * and (for an admin) the invitations still open.
+ * server has not finished; the invitations waiting for them to accept;
+ * and, on each tile, who has been active lately and (for an admin) the
+ * invitations still open.
  *
  * `?account=<slug>` narrows the account parts to that one account, real or
  * acting: a super admin opens an account's dashboard from /admin/accounts
@@ -508,21 +527,32 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const since = new Date(Date.now() - DASHBOARD_ACTIVITY_DAYS * DAY);
 	// Today by UTC (the server knows no viewer's zone): in an evening in the Americas the date has already turned, so that day's events leave the list a few hours early.
 	const today = new Date().toISOString().slice(0, 10);
-	const [inbox, ideaRows, loopRows, multitrackRows, tiles, ideaNudges, pins, seenAt, upcoming] =
-		await Promise.all([
-			listInbox(id),
-			recentUserIdeas(id, "idea", DASHBOARD_LIST_CAP),
-			recentUserIdeas(id, "loop", DASHBOARD_LIST_CAP),
-			recentUserIdeas(id, "song", DASHBOARD_LIST_CAP),
-			Promise.all(memberships.map((m) => dashboardAccount(m, id, since))),
-			userIdeaNudges(id),
-			listDashboardPins(id),
-			seenAtFor(who),
-			upcomingEvents(
-				memberships.map((m) => m.accountId),
-				today,
-			),
-		]);
+	const [
+		inbox,
+		ideaRows,
+		loopRows,
+		multitrackRows,
+		tiles,
+		ideaNudges,
+		pins,
+		seenAt,
+		upcoming,
+		invitations,
+	] = await Promise.all([
+		listInbox(id),
+		recentUserIdeas(id, "idea", DASHBOARD_LIST_CAP),
+		recentUserIdeas(id, "loop", DASHBOARD_LIST_CAP),
+		recentUserIdeas(id, "song", DASHBOARD_LIST_CAP),
+		Promise.all(memberships.map((m) => dashboardAccount(m, id, since))),
+		userIdeaNudges(id),
+		listDashboardPins(id),
+		seenAtFor(who),
+		upcomingEvents(
+			memberships.map((m) => m.accountId),
+			today,
+		),
+		invitationsFor(who),
+	]);
 	return {
 		accounts: tiles.map(({ accountId, slug, name, role, counts, quota, band, invites }) => ({
 			accountId,
@@ -542,6 +572,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		pinned: pinnedEntries(tiles, pins),
 		seenAt,
 		viewing,
+		invitations,
 		upcoming,
 		today,
 		comments: inbox

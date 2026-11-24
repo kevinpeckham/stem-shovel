@@ -4,6 +4,13 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+### Added
+
+- **Invitations on your dashboard.** When someone invites you to another
+  band, or to listen to one of their projects, the invitation now waits at
+  the top of your User Dashboard with a **Join** button, so you no longer
+  need to find the email.
+
 ## [0.270.0] - 2026-11-14
 
 ### Fixed
