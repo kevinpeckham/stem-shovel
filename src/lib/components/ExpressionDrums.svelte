@@ -7,12 +7,14 @@
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
 	import DrumKitManager, { type KitRow } from "#lib/components/DrumKitManager.svelte";
-	import { isOverridableKit, type DrumKitManifest } from "#lib/constants/drumKits.js";
-	import { hasDrumKit, registerDrumKits } from "#lib/audio/kits/expressionIndex.js";
-	import { drumKitManifests, listDrumKits } from "#lib/remote/drumKits.remote.js";
+	import DrumKitBuilder from "#lib/components/DrumKitBuilder.svelte";
+	import { isOverridableKit, type MultisampledKitManifest } from "#lib/constants/drumKits.js";
+	import { hasDrumKit, registerDrumKits } from "#lib/audio/kits/multisampledIndex.js";
+	import { multisampledKitManifests, listDrumKits } from "#lib/remote/drumKits.remote.js";
 	import {
 		DRUM_BPM_MAX,
 		DRUM_BPM_MIN,
+		DEFAULT_MULTISAMPLED_KIT,
 		DRUM_KITS,
 		DRUM_METERS,
 		DRUM_DELAY_TIMES,
@@ -33,7 +35,7 @@
 	import { setHomeBeat } from "#lib/remote/admin.remote.js";
 	import { textToBeat as askForBeat } from "#lib/remote/textToBeat.remote.js";
 	import type { ExpressionProject as DrumProject } from "#lib/val/ExpressionDrumSchema.js";
-	import { cellActive, EMPTY_CELL, type ExpressionCell } from "#lib/val/ExpressionDrumSchema.js";
+	import { cellActive, type ExpressionCell } from "#lib/val/ExpressionDrumSchema.js";
 	import ExpressionDrumsKey from "#lib/components/ExpressionDrumsKey.svelte";
 	import ExpressionDrumsTimelineWidget from "#lib/components/ExpressionDrumsTimelineWidget.svelte";
 	import { drumTutorial as tutorial } from "#lib/state/drumTutorial.svelte.js";
@@ -74,7 +76,7 @@
 		/** Text-to-Beat is on (the AI Gateway is configured): a menu asks a model for a beat from a description. */
 		textToBeat?: boolean;
 		/** The custom kits this page may play (docs/drum-machine.md, "Custom kits"): the site's, then the account's. */
-		kits?: DrumKitManifest[];
+		kits?: MultisampledKitManifest[];
 	}
 	interface SavedBeat {
 		id: string;
@@ -122,8 +124,7 @@
 		}
 		saving = true;
 		try {
-			// TODO: saveBeat expects original DrumProject; expression drums need their own version.
-			const data = $state.snapshot(expressionDrums.project) as any;
+			const data = $state.snapshot(expressionDrums.project);
 			const row = await saveBeat({
 				accountId: account.id,
 				id,
@@ -310,7 +311,7 @@
 	const midiSupported = typeof navigator !== "undefined" && "requestMIDIAccess" in navigator;
 	const VOICE_OPTIONS = DRUM_VOICES.map((v) => ({ value: v.id, label: v.label }));
 	/** The custom kits as they stand: the page's to start with, refreshed after the manager changes them. */
-	let kitList = $state<DrumKitManifest[]>(kits);
+	let kitList = $state<MultisampledKitManifest[]>(kits);
 	registerDrumKits(kitList);
 	const KIT_OPTIONS = $derived([
 		...DRUM_KITS.map((k) => ({ value: k.id as string, label: k.label })),
@@ -324,7 +325,15 @@
 	]);
 	/** The manager's rows (every sample with its state), fetched as it opens. */
 	let managerKits = $state<KitRow[]>([]);
-	let managerOpen: "open" | "closed" = $state("closed");
+	/**
+	 * The Kits menu is rendered twice (inline from @xl, in the folded section below it), so each
+	 * copy has its own open state: one shared state would have the hidden copy open whenever the
+	 * shown one did, each auto popover closing the other, the menu blinking in and out.
+	 */
+	let managerOpen = $state<Record<"inline" | "folded", "open" | "closed">>({
+		inline: "closed",
+		folded: "closed",
+	});
 	async function loadManager() {
 		if (!account) return;
 		try {
@@ -338,14 +347,26 @@
 		if (!account) return;
 		// A remote query answers from its cache: ask for both again.
 		const rows = listDrumKits({ accountId: account.id });
-		const manifests = drumKitManifests({ accountId: account.id });
+		const manifests = multisampledKitManifests({ accountId: account.id });
 		await Promise.all([rows.refresh(), manifests.refresh()]);
 		managerKits = await rows;
 		kitList = await manifests;
 		registerDrumKits(kitList);
 		// The kit in use was replaced or removed: the machine reloads it, or falls back.
-		if (!hasDrumKit(p.kit)) expressionDrums.setKit("acoustic");
+		if (!hasDrumKit(p.kit)) expressionDrums.setKit(DEFAULT_MULTISAMPLED_KIT);
 		else expressionDrums.reloadKit();
+	}
+	/** The multisampled kit builder, opened from the kit manager (a modal of its own, outside the menu). */
+	let builder = $state<ReturnType<typeof DrumKitBuilder> | null>(null);
+	function openBuilder() {
+		managerOpen.inline = "closed";
+		managerOpen.folded = "closed";
+		builder?.open();
+	}
+	/** The builder closed: the kits again, and the kit just made in play. */
+	async function built(kitId: string | null) {
+		await kitsChanged();
+		if (kitId && hasDrumKit(kitId)) expressionDrums.setKit(kitId);
 	}
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && expressionDrums.running));
 
@@ -437,57 +458,110 @@
 		subHitAnchorRect = null;
 	}
 
-	// Painting: press a cell and drag across others to set them all the same way.
-	// A long press (or a right click, or shift) on a sounding cell steps its velocity instead.
-	const LONG_PRESS_MS = 450;
-	const DOUBLE_TAP_MS = 300;
-	let lastTap = { row: -1, step: -1, time: 0 };
-	let painting = $state<boolean | null>(null);
-	let pressTimer: ReturnType<typeof setTimeout> | null = null;
-	function paintAt(x: number, y: number) {
-		if (painting === null) return;
-		const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-row][data-step]");
-		if (!el) return;
-		expressionDrums.setCell(Number(el.dataset.row), Number(el.dataset.step), painting);
-	}
-	function press(e: PointerEvent, row: number, step: number, cell: ExpressionCell) {
+	// Interaction: pointerdown starts a drag gesture; click (mouseup on same element) is the fallback toggle.
+	// Horizontal drag paints cells on/off; vertical drag changes velocity (activating the cell if off).
+	const DRAG_THRESHOLD = 8; // px before a drag is recognised
+	const VELOCITY_DRAG_PX = 24; // vertical px per velocity step (generous to avoid accidental changes)
+	let dragState: {
+		row: number;
+		step: number;
+		startX: number;
+		startY: number;
+		painting: boolean | null; // true = on, false = off, null = not yet determined
+		velocityDrag: boolean;
+		baseVelocity: number;
+		committed: boolean; // true once a drag was recognised (suppresses the click)
+	} | null = null;
+	let velocityTooltip = $state<{ x: number; y: number; value: number } | null>(null);
+
+	function pointerDown(e: PointerEvent, row: number, step: number, cell: ExpressionCell) {
 		if (e.button !== 0) return;
-		// Ctrl/Cmd+click or double-tap opens the sub-hit popover.
-		const now = Date.now();
-		const doubleTap =
-			now - lastTap.time < DOUBLE_TAP_MS && lastTap.row === row && lastTap.step === step;
-		lastTap = { row, step, time: now };
-		if (e.ctrlKey || e.metaKey || doubleTap) {
+		if (e.ctrlKey || e.metaKey) return; // let click handle Ctrl/Cmd
+		dragState = {
+			row, step,
+			startX: e.clientX, startY: e.clientY,
+			painting: null,
+			velocityDrag: false,
+			baseVelocity: cell.main || expressionDrums.defaultVelocity,
+			committed: false,
+		};
+	}
+	function pointerMove(e: PointerEvent) {
+		if (!dragState) return;
+		const dx = e.clientX - dragState.startX;
+		const dy = e.clientY - dragState.startY;
+		// Not yet past threshold?
+		if (!dragState.committed && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+		// Determine drag axis on first threshold crossing.
+		if (!dragState.committed) {
+			dragState.committed = true;
+			if (Math.abs(dy) > Math.abs(dx)) {
+				// Vertical drag: velocity mode. Activate the cell if it was off.
+				dragState.velocityDrag = true;
+				const cell = expressionDrums.pattern.rows[dragState.row]?.cells[dragState.step];
+				if (cell && !cellActive(cell)) {
+					expressionDrums.setCell(dragState.row, dragState.step, true);
+				}
+			} else {
+				// Horizontal drag: painting mode.
+				const cell = expressionDrums.pattern.rows[dragState.row]?.cells[dragState.step];
+				const active = cell ? cellActive(cell) : false;
+				dragState.painting = !active;
+				// Toggle the origin cell to start the paint stroke.
+				if (active) {
+					expressionDrums.clearCell(dragState.row, dragState.step);
+				} else {
+					expressionDrums.setCell(dragState.row, dragState.step, true);
+				}
+			}
+		}
+		if (dragState.velocityDrag) {
+			// Drag up = louder, down = softer. Negate dy so up is positive.
+			const steps = Math.round(-dy / VELOCITY_DRAG_PX);
+			const v = Math.max(1, Math.min(5, dragState.baseVelocity + steps));
+			const current = expressionDrums.pattern.rows[dragState.row]?.cells[dragState.step]?.main;
+			if (v !== current) {
+				expressionDrums.setMainVelocity(dragState.row, dragState.step, v);
+			}
+			velocityTooltip = { x: dragState.startX, y: e.clientY - 30, value: v };
+		} else if (dragState.painting !== null) {
+			const el = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-row][data-step]");
+			if (!el) return;
+			expressionDrums.setCell(Number(el.dataset.row), Number(el.dataset.step), dragState.painting);
+		}
+	}
+	function pointerUp() {
+		velocityTooltip = null;
+		// Defer clearing dragState so the click event (which fires after pointerup)
+		// can still see committed=true and suppress the toggle.
+		if (dragState?.committed) {
+			const ref = dragState;
+			requestAnimationFrame(() => { if (dragState === ref) dragState = null; });
+		} else {
+			dragState = null;
+		}
+	}
+	function cellClick(e: MouseEvent, row: number, step: number, cell: ExpressionCell) {
+		// If a drag was committed, suppress the click.
+		if (dragState?.committed) return;
+		// Ctrl/Cmd+click opens the sub-hit popover.
+		if (e.ctrlKey || e.metaKey) {
 			e.preventDefault();
 			openSubHitPopover(row, step, e.currentTarget as HTMLElement);
 			return;
 		}
 		if (cursor) cursor = { row, start: Math.floor(step / WINDOW) * WINDOW };
-		const active = cell.main > 0;
-		// "After" cell (sub-hits only, no main): clear everything.
-		if (!active && (cell.t1 > 0 || cell.half > 0 || cell.t2 > 0)) {
-			expressionDrums.pattern.rows[row]!.cells[step] = { ...EMPTY_CELL };
-			painting = null;
-			return;
-		}
+		const active = cellActive(cell);
 		if (e.shiftKey && active) {
 			expressionDrums.cycleVelocity(row, step);
 			return;
 		}
-		painting = !active;
-		expressionDrums.setCell(row, step, painting);
+		// Toggle the cell.
 		if (active) {
-			// Held: the cell comes back at its next velocity and the paint is off.
-			pressTimer = setTimeout(() => {
-				painting = null;
-				expressionDrums.setMainVelocity(row, step, (cell.main % 5) + 1);
-			}, LONG_PRESS_MS);
+			expressionDrums.clearCell(row, step);
+		} else {
+			expressionDrums.setCell(row, step, true);
 		}
-	}
-	function release() {
-		painting = null;
-		if (pressTimer) clearTimeout(pressTimer);
-		pressTimer = null;
 	}
 
 	// Keyboard editing (Kevin): a window of eight steps on one row, outlined in blue with a digit in
@@ -505,7 +579,7 @@
 			return;
 		}
 		const row = Math.min(rows - 1, Math.max(0, cursor.row + dRow));
-		const steps = pattern.rows[row].cells.length;
+		const steps = pattern.steps;
 		const last = Math.floor((steps - 1) / WINDOW) * WINDOW;
 		const start = Math.min(last, Math.max(0, cursor.start + dStep * WINDOW));
 		cursor = { row, start };
@@ -515,7 +589,7 @@
 		if (!m || !cursor || e.repeat) return false;
 		const step = cursor.start + Number(m[1]) - 1;
 		const cells = pattern.rows[cursor.row]?.cells;
-		if (!cells || step >= cells.length) return false;
+		if (!cells || step >= pattern.steps) return false;
 		if (e.shiftKey) expressionDrums.cycleVelocity(cursor.row, step);
 		else expressionDrums.setCell(cursor.row, step, !cells[step].main);
 		return true;
@@ -587,13 +661,14 @@
 	/** Sixteenths to a beat for the shading (6 in 6/8), and cells to a line: a beat pair on a phone, a bar from sm up. */
 	let group = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.group ?? 4);
 	let barSteps = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16);
-	let desktopCols = $derived(barSteps === 28 ? 12 : barSteps);
-	const LINE_CLASSES: Record<number, string> = {
-		12: "grid-cols-8 @4xl-grid-cols-12",
-		16: "grid-cols-8 @4xl-grid-cols-16",
-		20: "grid-cols-10 @4xl-grid-cols-20",
+	let desktopCols = $derived(barSteps === 28 ? 12 : barSteps === 20 ? 16 : barSteps);
+	const LINE_CLASSES: Record<string, string> = {
+		"12:12": "grid-cols-8 @4xl-grid-cols-12",
+		"12:24": "grid-cols-8 @4xl-grid-cols-12 @8xl-grid-cols-24",
+		"16:16": "grid-cols-8 @4xl-grid-cols-16",
+		"16:32": "grid-cols-8 @4xl-grid-cols-16",
 	};
-	let lineClasses = $derived(LINE_CLASSES[desktopCols] ?? "grid-cols-8 @4xl-grid-cols-16");
+	let lineClasses = $derived(LINE_CLASSES[`${desktopCols}:${pattern.steps}`] ?? "grid-cols-8 @4xl-grid-cols-16");
 	let stepsLabel = (n: number) => {
 		const bar = DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16;
 		return n < bar ? "½ bar" : n === bar ? "1 bar" : "2 bars";
@@ -680,12 +755,12 @@
 	}
 </script>
 
-<!-- The full view's listeners: the space bar, and the paint following the pointer across cells. -->
+<!-- The full view's listeners: space bar, and drag gestures across cells. -->
 <svelte:window
 	{onkeydown}
-	onpointermove={(e) => paintAt(e.clientX, e.clientY)}
-	onpointerup={release}
-	onpointercancel={release}
+	onpointermove={pointerMove}
+	onpointerup={pointerUp}
+	onpointercancel={pointerUp}
 />
 
 {#if compact}
@@ -1464,11 +1539,10 @@
 
 		<!-- kit, steps, meter and patterns -->
 		<div
-			class="gap-x-4 gap-y-3 @2xl-pt-4 @4xl-pt-8 @xl-grid @xl-grid-cols-[auto_auto_auto_1fr] @xl-gap-x-8 @2xl-gap-x-12 mb-4"
+			class="gap-x-4 gap-y-3 @2xl-pt-4 @4xl-pt-8 @xl-grid @xl-grid-cols-[auto_auto_auto_auto_auto_1fr] @xl-gap-x-8 @2xl-gap-x-12 mb-4"
 		>
-			<!-- kit selector -->
-			<div class="@xl-grid grid-cols-1" title="Kit">
-				<div class="device-button-group-label">Kit</div>
+			<!-- kit selector: inline at @xl+, collapsible below -->
+			{#snippet kitBody(place: "inline" | "folded")}
 				<div class="flex items-center gap-1">
 					<ComboBox
 						ariaLabel="Kit"
@@ -1489,7 +1563,7 @@
 								position="bottom right"
 								buttonBaseClasses="device-button-xs px-2 border"
 								popoverClasses="min-w-80 @xl-min-w-[28rem] max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-								bind:openState={managerOpen}
+								bind:openState={managerOpen[place]}
 								items={[
 									{ id: "kits-heading", kind: "heading", label: `Kits in ${account.name}` },
 									{ id: "kits-body", kind: "snippet", snippet: kitManagerBlock },
@@ -1498,64 +1572,244 @@
 						</div>
 					{/if}
 				</div>
-			</div>
-
-			<!-- steps -->
-			<!-- put steps in context menu in mobile -->
-			<div class="hidden @xl-block">
-				<div class="device-button-group-label">Steps</div>
-				<div
-					class="flex items-center gap-2 @xl-gap-x-1 @2xl-gap-x-2"
-					role="group"
-					aria-label="Steps"
-				>
-					{#each drumStepsFor(pattern.meter) as n (n)}
-						<button
-							class="device-button-xs @2xl-device-button-sm {pattern.steps === n
-								? 'text-accent'
-								: ''}"
-							type="button"
-							aria-pressed={pattern.steps === n}
-							title="{n} steps, {stepsLabel(n)}"
-							onclick={() => expressionDrums.setSteps(n)}
-						>
-							{n}
-						</button>
-					{/each}
+			{/snippet}
+			<div class="hidden @xl-contents" title="Kit">
+				<div class="@xl-grid grid-cols-1">
+					<div class="device-button-group-label">Kit</div>
+					{@render kitBody("inline")}
 				</div>
 			</div>
-
-			<!-- meters -->
-			<!-- put meters in context menu in mobile -->
-			<div class="hidden @xl-block">
-				<div class="device-button-group-label">Meters</div>
-				<div
-					class="flex items-center gap-2 @xl-gap-x-1 @2xl-gap-x-2"
-					role="group"
-					aria-label="Meter"
+			<details class="group @xl-hidden w-full">
+				<summary
+					class="flex items-center gap-2 pb-1 mb-2 border-b border-current/50 cursor-pointer select-none font-500 opacity-80 text-dark text-20px sm-text-16px md-text-17px list-none [&::-webkit-details-marker]-hidden"
 				>
-					{#each DRUM_METERS as m (m.id)}
-						<button
-							class="device-button-xs @2xl-device-button-sm {pattern.meter === m.id
-								? 'text-accent'
-								: ''}"
-							type="button"
-							aria-pressed={pattern.meter === m.id}
-							title="{m.label} time"
-							onclick={() => expressionDrums.setMeter(m.id)}
+					<span>Kit</span>
+					<span
+						class="i-ph-caret-right-fill text-18px opacity-70 transition-transform group-open-rotate-90"
+						aria-hidden="true"
+					></span>
+				</summary>
+				<div class="pb-2">
+					{@render kitBody("folded")}
+				</div>
+			</details>
+
+			<!-- advanced features: inline at @xl+, collapsible below. A switch with nothing behind it yet. -->
+			{#snippet advancedBody()}
+				<div class="flex items-center gap-2">
+					<button
+						class="device-button-xs @2xl-device-button-sm aspect-[7/4] !p-4px {expressionDrums.advanced
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={expressionDrums.advanced}
+						aria-label="Advanced features"
+						title="Advanced features"
+						onclick={() => expressionDrums.setAdvanced(!expressionDrums.advanced)}
+					>
+						<!-- a circuit board: a chip, and buses of traces that run together, then fan apart to vias -->
+						<svg
+							class="w-full h-full max-w-70px max-h-40px"
+							viewBox="0 0 42 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
 						>
-							{m.label}
-						</button>
-					{/each}
+							<rect x="1.5" y="1.5" width="39" height="21" rx="2" />
+							<rect x="18" y="6" width="6" height="6" rx="0.75" />
+							<!-- three traces leave the chip's left side together, then spread -->
+							<path d="M18 7.5H14L11.5 5H7M18 9H7M18 10.5H14L11.5 13H7" />
+							<circle cx="6" cy="5" r="1" />
+							<circle cx="6" cy="9" r="1" />
+							<circle cx="6" cy="13" r="1" />
+							<!-- two leave its bottom together, then split -->
+							<path d="M19.5 12V14.5L16.5 17.5V18M22.5 12V14.5L25.5 17.5V18" />
+							<circle cx="16.5" cy="19" r="1" />
+							<circle cx="25.5" cy="19" r="1" />
+							<!-- two leave its right side together, one up, one down -->
+							<path d="M24 7.5H28L30.5 5H35M24 10.5H28L33 15.5V16" />
+							<circle cx="36" cy="5" r="1" />
+							<circle cx="33" cy="17" r="1" />
+							<!-- a jumper between two vias -->
+							<path d="M7 17.5H11.5" />
+							<circle cx="6" cy="17.5" r="1" />
+							<circle cx="12.5" cy="17.5" r="1" />
+						</svg>
+					</button>
+					<!-- the state in words; the button's aria-pressed says it to a screen reader -->
+					<span
+						class="text-16px {expressionDrums.advanced ? 'text-accent' : 'text-dark'}"
+						aria-hidden="true">{expressionDrums.advanced ? "ON" : "Off"}</span
+					>
+				</div>
+			{/snippet}
+			<div class="hidden @xl-contents">
+				<div>
+					<div class="device-button-group-label">Advanced Features</div>
+					{@render advancedBody()}
 				</div>
 			</div>
+			<details class="group @xl-hidden w-full">
+				<summary
+					class="flex items-center gap-2 pb-1 mb-2 border-b border-current/50 cursor-pointer select-none font-500 opacity-80 text-dark text-20px sm-text-16px md-text-17px list-none [&::-webkit-details-marker]-hidden"
+				>
+					<span>Advanced Features</span>
+					<span
+						class="i-ph-caret-right-fill text-18px opacity-70 transition-transform group-open-rotate-90"
+						aria-hidden="true"
+					></span>
+				</summary>
+				<div class="pb-2">
+					{@render advancedBody()}
+				</div>
+			</details>
 
-			<!-- Patterns -->
-			<div class="w-full @xl-w-auto gap-5 mt-5 @xl-mt-0 @xl-ml-auto">
-				<div class="device-button-group-label">Patterns</div>
+			<!-- save / load: inline at @xl+, collapsible below -->
+			{#snippet saveLoadBody()}
+				<ContextMenu
+					ariaLabel="User Projects"
+					position="bottom left"
+					title="Save, share and download"
+					iconClass="i-ph-floppy-disk-light @2xl-i-ph-floppy-disk-thin !w-full !h-full max-w-40px max-h-40px"
+					buttonBaseClasses="device-button-xs @2xl-device-button-sm aspect-square !p-4px"
+					popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
+					items={moreItems}
+				/>
+			{/snippet}
+			<div class="hidden @xl-contents">
+				<div>
+					<div class="device-button-group-label">User Projects</div>
+					{@render saveLoadBody()}
+				</div>
+			</div>
+			<details class="group @xl-hidden w-full">
+				<summary
+					class="flex items-center gap-2 pb-1 mb-2 border-b border-current/50 cursor-pointer select-none font-500 opacity-80 text-dark text-20px sm-text-16px md-text-17px list-none [&::-webkit-details-marker]-hidden"
+				>
+					<span>User Projects</span>
+					<span
+						class="i-ph-caret-right-fill text-18px opacity-70 transition-transform group-open-rotate-90"
+						aria-hidden="true"
+					></span>
+				</summary>
+				<div class="pb-2">
+					{@render saveLoadBody()}
+				</div>
+			</details>
+
+			<!-- steps & meters: inline at @xl+, collapsible below -->
+			<div class="hidden @xl-contents">
+				<div>
+					<div class="device-button-group-label">Steps</div>
+					<div
+						class="flex items-center gap-2 @xl-gap-x-1 @2xl-gap-x-2"
+						role="group"
+						aria-label="Steps"
+					>
+						{#each drumStepsFor(pattern.meter) as n (n)}
+							<button
+								class="device-button-xs @2xl-device-button-sm {pattern.steps === n
+									? 'text-accent'
+									: ''}"
+								type="button"
+								aria-pressed={pattern.steps === n}
+								title="{n} steps, {stepsLabel(n)}"
+								onclick={() => expressionDrums.setSteps(n)}
+							>
+								{n}
+							</button>
+						{/each}
+					</div>
+				</div>
+				<div>
+					<div class="device-button-group-label">Meters</div>
+					<div
+						class="flex items-center gap-2 @xl-gap-x-1 @2xl-gap-x-2"
+						role="group"
+						aria-label="Meter"
+					>
+						{#each DRUM_METERS as m (m.id)}
+							<button
+								class="device-button-xs @2xl-device-button-sm {pattern.meter === m.id
+									? 'text-accent'
+									: ''}"
+								type="button"
+								aria-pressed={pattern.meter === m.id}
+								title="{m.label} time"
+								onclick={() => expressionDrums.setMeter(m.id)}
+							>
+								{m.label}
+							</button>
+						{/each}
+					</div>
+				</div>
+			</div>
+			<details class="group @xl-hidden w-full">
+				<summary
+					class="flex items-center gap-2 pb-1 mb-2 border-b border-current/50 cursor-pointer select-none font-500 opacity-80 text-dark text-20px sm-text-16px md-text-17px list-none [&::-webkit-details-marker]-hidden"
+				>
+					<span>Steps & Meter</span>
+					<span
+						class="i-ph-caret-right-fill text-18px opacity-70 transition-transform group-open-rotate-90"
+						aria-hidden="true"
+					></span>
+				</summary>
+				<div class="flex flex-wrap gap-4 pb-2">
+					<div>
+						<div class="device-button-group-label">Steps</div>
+						<div
+							class="flex items-center gap-2"
+							role="group"
+							aria-label="Steps"
+						>
+							{#each drumStepsFor(pattern.meter) as n (n)}
+								<button
+									class="device-button-xs {pattern.steps === n
+										? 'text-accent'
+										: ''}"
+									type="button"
+									aria-pressed={pattern.steps === n}
+									title="{n} steps, {stepsLabel(n)}"
+									onclick={() => expressionDrums.setSteps(n)}
+								>
+									{n}
+								</button>
+							{/each}
+						</div>
+					</div>
+					<div>
+						<div class="device-button-group-label">Meters</div>
+						<div
+							class="flex items-center gap-2"
+							role="group"
+							aria-label="Meter"
+						>
+							{#each DRUM_METERS as m (m.id)}
+								<button
+									class="device-button-xs {pattern.meter === m.id
+										? 'text-accent'
+										: ''}"
+									type="button"
+									aria-pressed={pattern.meter === m.id}
+									title="{m.label} time"
+									onclick={() => expressionDrums.setMeter(m.id)}
+								>
+									{m.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+				</div>
+			</details>
+
+			<!-- Patterns: inline at @xl+, collapsible below -->
+			{#snippet patternsBody()}
 				<!-- the patterns: tabs, one open for editing; while playing, a chosen one waits for the end of the cycle -->
 				<div
-					class="ml-auto flex flex-wrap items-center gap-2 @xl-ml-0 @xl-gap-1 @2xl-gap-2"
+					class="flex flex-wrap items-center gap-2 @xl-gap-1 @2xl-gap-2"
 					role="group"
 					aria-label="Patterns"
 				>
@@ -1620,30 +1874,206 @@
 						<span class="i-ph-trash" aria-hidden="true"></span>
 					</button>
 				</div>
+			{/snippet}
+			<div class="hidden @xl-contents">
+				<div class="w-full @xl-w-auto gap-5 mt-5 @xl-mt-0 @xl-ml-auto">
+					<div class="device-button-group-label">Patterns</div>
+					{@render patternsBody()}
+				</div>
 			</div>
-			<div class="w-full @xl-w-auto gap-5 mt-5 @xl-mt-0 @xl-ml-auto" title="Default velocity">
-				<div class="device-button-group-label">Default velocity</div>
-					<div class="flex items-center">
-						<ComboBox
-							ariaLabel="Default velocity"
-							clearDefaultButtonClasses={true}
-							popoverClasses="min-w-fit"
-							buttonClasses="device-button-drum-combo"
-							options={[
-								{ value: "1", label: "V1 — Ghost" },
-								{ value: "2", label: "V2 — Soft" },
-								{ value: "3", label: "V3 — Normal" },
-								{ value: "4", label: "V4 — Hard" },
-								{ value: "5", label: "V5 — Accent" },
-							]}
-							value={String(expressionDrums.defaultVelocity)}
-							onchange={(v) => { expressionDrums.defaultVelocity = Number(v); }}
-						/>
+			<details class="group @xl-hidden w-full mt-3">
+				<summary
+					class="flex items-center gap-2 pb-1 mb-2 border-b border-current/50 cursor-pointer select-none font-500 opacity-80 text-dark text-20px sm-text-16px md-text-17px list-none [&::-webkit-details-marker]-hidden"
+				>
+					<span>Patterns</span>
+					<span
+						class="i-ph-caret-right-fill text-18px opacity-70 transition-transform group-open-rotate-90"
+						aria-hidden="true"
+					></span>
+				</summary>
+				<div class="pb-2">
+					{@render patternsBody()}
+				</div>
+			</details>
+
+			<!-- Default velocity: inline at @xl+, collapsible below -->
+			{#snippet velocityBody()}
+				<div class="flex items-center">
+					<ComboBox
+						ariaLabel="Default velocity"
+						clearDefaultButtonClasses={true}
+						popoverClasses="min-w-fit"
+						buttonClasses="device-button-drum-combo"
+						options={[
+							{ value: "1", label: "V1 — Ghost" },
+							{ value: "2", label: "V2 — Soft" },
+							{ value: "3", label: "V3 — Normal" },
+							{ value: "4", label: "V4 — Hard" },
+							{ value: "5", label: "V5 — Accent" },
+						]}
+						value={String(expressionDrums.defaultVelocity)}
+						onchange={(v) => { expressionDrums.defaultVelocity = Number(v); }}
+					/>
+				</div>
+			{/snippet}
+			<div class="hidden @xl-contents">
+				<div class="w-full @xl-w-auto gap-5 justify-self-start mt-5 @xl-mt-0" title="Default velocity">
+					<div class="device-button-group-label">Default velocity</div>
+					{@render velocityBody()}
+				</div>
 			</div>
-			</div>
+			<details class="group @xl-hidden w-full mt-3">
+				<summary
+					class="flex items-center gap-2 pb-1 mb-2 border-b border-current/50 cursor-pointer select-none font-500 opacity-80 text-dark text-20px sm-text-16px md-text-17px list-none [&::-webkit-details-marker]-hidden"
+				>
+					<span>Default Velocity</span>
+					<span
+						class="i-ph-caret-right-fill text-18px opacity-70 transition-transform group-open-rotate-90"
+						aria-hidden="true"
+					></span>
+				</summary>
+				<div class="pb-2">
+					{@render velocityBody()}
+				</div>
+			</details>
 
 			<ExpressionDrumsTimelineWidget />
 			</div>
+
+			<!-- Pattern & Transport (above the grid) -->
+			<div class="grid grid-cols-1 gap-y-5 gap-x-6 @4xl-grid-cols-2">
+				<!-- surface controls -->
+				<div class="flex flex-wrap items-center gap-2 @4xl-gap-x-3">
+					<button
+						class="device-button-xs px-3 @4xl-device-button-sm"
+						type="button"
+						disabled={pattern.rows.length >= MAX_DRUM_ROWS}
+						onclick={() => expressionDrums.addRow()}
+					>
+						<span class="i-ph-plus" aria-hidden="true"></span>
+						Row
+					</button>
+					<button
+						class="device-button-xs px-3 @4xl-device-button-sm"
+						type="button"
+						onclick={() => expressionDrums.clear()}
+						title="Every cell off"
+					>
+						Clear
+					</button>
+					<button
+						class="device-button-xs px-3 @4xl-device-button-sm disabled-opacity-40"
+						type="button"
+						disabled={!expressionDrums.canUndo}
+						onclick={() => expressionDrums.undo()}
+						title="Undo"
+					>
+						<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
+						Undo
+					</button>
+					<button
+						class="device-button-xs px-3 @4xl-device-button-sm disabled-opacity-40"
+						type="button"
+						disabled={!expressionDrums.canRedo}
+						onclick={() => expressionDrums.redo()}
+						title="Redo"
+					>
+						<span class="i-ph-arrow-clockwise" aria-hidden="true"></span>
+						Redo
+					</button>
+					<ContextMenu
+						ariaLabel="Effects"
+						position="bottom right"
+						title="Delay, reverb, fuzz, wah and tone: turn a level up to hear it"
+						iconClass="i-ph-sliders-horizontal"
+						label="Effects"
+						buttonBaseClasses="device-button-xs px-3 @4xl-device-button-sm"
+						buttonClasses="{p.fx.delayReturn > 0 ||
+						p.fx.reverbReturn > 0 ||
+						p.fx.fuzzDrive > 0 ||
+						p.fx.wahMix > 0 ||
+						p.fx.toneTilt !== 0 ||
+						p.fx.toneAir > 0 ||
+						p.fx.toneBottom > 0
+							? 'text-accent'
+							: ''} {tutorial.control === 'reverb' || tutorial.control === 'delay' ? HINT : ''}"
+						popoverClasses="min-w-72 @xl-min-w-140 @2xl-min-w-200 @4xl-min-w-260 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+						items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
+					/>
+					{#if midiSupported}
+						<ContextMenu
+							ariaLabel="MIDI"
+							position="bottom left"
+							title="Play the drums from a MIDI pad or keyboard"
+							iconClass="i-ph-usb"
+							label="MIDI"
+							buttonBaseClasses="device-button-xs px-3 @4xl-device-button-sm"
+							buttonClasses={expressionDrums.midiIn.status === "on" ? "text-accent" : ""}
+							popoverClasses="min-w-72"
+							items={[{ id: "midi", kind: "snippet", snippet: midiItem }]}
+						/>
+					{/if}
+				</div>
+				<!-- transport -->
+				<div
+					class="flex flex-wrap items-center gap-2 @4xl-gap-x-3"
+				>
+					{#if textToBeat}
+						<ContextMenu
+							ariaLabel="Text-to-Beat"
+							position="bottom left"
+							title="Describe the beat you want"
+							iconClass="i-ph-sparkle"
+							label="Text-to-Beat"
+							buttonBaseClasses="device-button-lg @xl-device-button-sm px-3 whitespace-nowrap"
+							popoverClasses="min-w-80"
+							items={[{ id: "text-to-beat", kind: "snippet", snippet: textToBeatItem }]}
+						/>
+					{/if}
+					<ContextMenu
+						ariaLabel="Generate"
+						position="bottom left"
+						title="Generate a pattern from a style"
+						iconClass="i-ph-shuffle"
+						label="Generate"
+						buttonBaseClasses="device-button-lg @xl-device-button-sm px-3 whitespace-nowrap"
+						popoverClasses="min-w-72"
+						items={[{ id: "generator", kind: "snippet", snippet: generatorItem }]}
+					/>
+					<div
+						class=""
+						onpointerdown={(e) => (addPresets = e.shiftKey)}
+						onkeydown={(e) => (addPresets = e.shiftKey)}
+						role="presentation"
+					>
+						<ContextMenu
+							ariaLabel="Presets"
+							position="bottom left"
+							title="Preset beats"
+							iconClass="i-ph-music-notes"
+							label="Presets"
+							buttonBaseClasses="device-button-lg @xl-device-button-sm px-3 whitespace-nowrap"
+							popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
+							items={presetItems}
+						/>
+					</div>
+
+					<button
+						class="device-button-lg @xl-device-button-sm @xl-ml-auto @xl-min-w-100px px-3 @4xl-device-button-lg @4xl-ml-0 {expressionDrums.running
+							? 'text-accent'
+							: ''} {tutorial.control === 'play' ? HINT : ''}"
+						type="button"
+						aria-pressed={expressionDrums.running}
+						title="Play or stop (space)"
+						onclick={togglePlay}
+					>
+						<span class={expressionDrums.running ? "i-ph-stop-fill" : "i-ph-play-fill"} aria-hidden="true"
+						></span>
+						{expressionDrums.running ? "Stop" : "Play"}
+					</button>
+				</div>
+			</div>
+
 				<div class="
 					bg-dark/60
 					col-span-full
@@ -1653,13 +2083,14 @@
 					px-4
 					py-2
 					rounded-md
-					text-16px
-					text-white/85
+					justify-self-center
+					text-14px
+					text-white/70
 					w-fit
 					@xl-mx-auto
 					[&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono)">
 				<div>
-				<kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>click</kbd> any step button for advanced options, or double-tap on mobile
+				Right-click or <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + click any cell for advanced options
 			</div>
 		</div>
 
@@ -1691,16 +2122,20 @@
 						<ComboBox
 							ariaLabel="Voice of row {r + 1}"
 							clearDefaultButtonClasses={true}
-							buttonClasses="device-button-drum-combo"
+							buttonClasses="device-button-drum-combo @4xl-!w-full @4xl-!min-w-0"
 							options={VOICE_OPTIONS}
 							value={row.voice}
 							onchange={(v) => expressionDrums.setVoice(r, v)}
 						/>
 
-						<!-- mute, solo, clear  -->
-						<div class="w-full flex items-center gap-2 @xl-gap-x-1 @2xl-gap-2">
+						<!-- mute, solo, clear, mix: at desktop four equal columns, as wide as the faders below -->
+						<div
+							class="w-full flex items-center gap-2 @xl-gap-x-1 @2xl-gap-2 @4xl-grid @4xl-grid-cols-4"
+						>
 							<button
-								class="device-button-xs @2xl-device-button-sm {row.mute ? 'text-accent' : ''}"
+								class="device-button-xs @2xl-device-button-sm @4xl-w-full {row.mute
+									? 'text-accent'
+									: ''}"
 								type="button"
 								aria-pressed={row.mute}
 								aria-label="Mute {voiceLabel(row.voice)}"
@@ -1708,7 +2143,7 @@
 								onclick={() => expressionDrums.toggleMute(r)}>M</button
 							>
 							<button
-								class="device-button-xs @2xl-device-button-sm {expressionDrums.solo[r]
+								class="device-button-xs @2xl-device-button-sm @4xl-w-full {expressionDrums.solo[r]
 									? 'text-accent'
 									: ''}"
 								type="button"
@@ -1718,7 +2153,7 @@
 								onclick={() => expressionDrums.toggleSolo(r)}>S</button
 							>
 							<button
-								class="device-button-xs @2xl-device-button-sm"
+								class="device-button-xs @2xl-device-button-sm @4xl-w-full"
 								type="button"
 								aria-label="Remove {voiceLabel(row.voice)}"
 								title="Remove the row"
@@ -1798,7 +2233,7 @@
 									ariaLabel="Mix of {voiceLabel(row.voice)}"
 									title="Level, pan and effect sends"
 									iconClass="i-ph-sliders-horizontal"
-									buttonBaseClasses="device-button-xs @2xl-device-button-sm"
+									buttonBaseClasses="device-button-xs @2xl-device-button-sm @4xl-w-full"
 									items={[{ id: "mix", kind: "snippet", snippet: rowMix }]}
 								/>
 							</div>
@@ -1868,7 +2303,8 @@
 
 					<!-- events. A sounding cell stays lit under the pointer (a touch less opaque, so the hover reads): the device button's hover color is for the empty ones. -->
 					<div class="grid {lineClasses} gap-1 @2xl-gap-6px @4xl-gap-2 touch-pan-y">
-						{#each row.cells as cell, s (s)}
+						<!-- only the first `steps` cells: a row may hold more, hidden by a shrink (resizeExpressionPattern) -->
+						{#each row.cells.slice(0, pattern.steps) as cell, s (s)}
 							{@const sel =
 								cursor !== null &&
 								cursor.row === r &&
@@ -1884,15 +2320,25 @@
 								selected={sel}
 								selIndex={sel ? s - cursor!.start + 1 : null}
 								hinted={hintedCells?.has(`${row.voice}:${s}`) ?? false}
-								lightsBelow={pattern.steps > desktopCols && s >= desktopCols}
-								onpress={(e) => press(e, r, s, cell)}
-								oncyclevelocity={() => expressionDrums.cycleVelocity(r, s)}
+								onpointerdown={(e) => pointerDown(e, r, s, cell)}
+								onclick={(e) => cellClick(e, r, s, cell)}
+								onrightclick={(e) => openSubHitPopover(r, s, e.currentTarget as HTMLElement)}
 							/>
 						{/each}
 					</div>
 				</div>
 			{/each}
 		</div>
+
+		<!-- Velocity tooltip (vertical drag) -->
+		{#if velocityTooltip}
+			<div
+				class="fixed z-50 px-2 py-1 rounded-lg bg-dark-100 border border-white/20 text-white/80 text-13px font-600 pointer-events-none"
+				style="left: {velocityTooltip.x}px; top: {velocityTooltip.y}px; transform: translateX(-50%)"
+			>
+				Velocity: {velocityTooltip.value}
+			</div>
+		{/if}
 
 		<!-- Sub-hit popover (Ctrl/Cmd+click on a cell) -->
 		{#if subHitPopover}
@@ -1983,8 +2429,8 @@
 		{/if}
 
 		<!-- Pattern & Transport -->
-		<div class="grid grid-cols-1 gap-y-5 @4xl-flex justify-between">
-			<!-- grid controls -->
+		<div class="grid grid-cols-1 gap-x-12 gap-y-5 @4xl-grid-cols-2">
+			<!-- surface controls -->
 			<div class="flex flex-wrap items-center gap-2 @4xl-gap-x-3">
 				<!-- add row -->
 				<button
@@ -2007,16 +2453,26 @@
 					Clear
 				</button>
 
-				<!-- undo -->
+				<!-- undo / redo -->
 				<button
 					class="device-button-xs px-3 @4xl-device-button-sm disabled-opacity-40"
 					type="button"
-					disabled={!expressionDrums.beforePreset}
-					onclick={() => expressionDrums.undoPreset()}
-					title="Back to the beat you had before a preset or a saved beat loaded"
+					disabled={!expressionDrums.canUndo}
+					onclick={() => expressionDrums.undo()}
+					title="Undo"
 				>
 					<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
 					Undo
+				</button>
+				<button
+					class="device-button-xs px-3 @4xl-device-button-sm disabled-opacity-40"
+					type="button"
+					disabled={!expressionDrums.canRedo}
+					onclick={() => expressionDrums.redo()}
+					title="Redo"
+				>
+					<span class="i-ph-arrow-clockwise" aria-hidden="true"></span>
+					Redo
 				</button>
 
 				<!-- the effects: delay and reverb settings in a menu; a beat is dry until their levels come up, and the button lights while either is up -->
@@ -2053,19 +2509,11 @@
 						items={[{ id: "midi", kind: "snippet", snippet: midiItem }]}
 					/>
 				{/if}
-				<ContextMenu
-					ariaLabel="More"
-					position="top left"
-					title="Save, share and download"
-					buttonBaseClasses="device-button-xs px-3 @4xl-device-button-sm "
-					popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
-					items={moreItems}
-				/>
 			</div>
 
 			<!-- transport -->
 			<div
-				class="grid grid-cols-1 gap-5 @xl-flex @xl-flex-wrap @xl-items-center @xl-gap-2 @4xl-gap-3 mt-5 @4xl-mt-0 mb-8 @4xl-mb-0"
+				class="flex flex-wrap items-center gap-2 @4xl-gap-x-3"
 			>
 				{#if textToBeat}
 					<!-- Text-to-Beat: a description to a model, a pattern back (docs/drum-machine.md) -->
@@ -2127,10 +2575,19 @@
 	</div>
 {/if}
 
+{#if account?.canEdit}
+	<DrumKitBuilder bind:this={builder} accountId={account.id} onchange={built} />
+{/if}
+
 {#snippet kitManagerBlock()}
 	<div class="px-3 pt-3 pb-4">
 		{#if account}
-			<DrumKitManager accountId={account.id} kits={managerKits} onchange={kitsChanged} />
+			<DrumKitManager
+				accountId={account.id}
+				kits={managerKits}
+				onchange={kitsChanged}
+				onbuild={openBuilder}
+			/>
 		{/if}
 	</div>
 {/snippet}

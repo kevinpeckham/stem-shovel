@@ -1,6 +1,7 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type { DrumProject } from "../../../val/DrumPatternSchema";
+import type { ExpressionProject } from "../../../val/ExpressionDrumSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { song } from "./song";
@@ -23,7 +24,8 @@ export const beat = table(
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
 		songId: t.text("song_id").references(() => song.id, { onDelete: "set null" }),
 		name: t.text("name").notNull(),
-		data: t.text("data", { mode: "json" }).$type<DrumProject>().notNull(),
+		/** The drum machine's project, or expression drums' (object cells, velocities to 5). */
+		data: t.text("data", { mode: "json" }).$type<DrumProject | ExpressionProject>().notNull(),
 		...timestamps,
 	},
 	(table) => [

@@ -7,6 +7,10 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## Two copies of a popover menu bound to one `openState` blink in and out (2026-11-23)
+
+Expression drums renders some controls twice and shows one per breakpoint (`hidden @xl-contents` inline, `@xl-hidden` in a folded `<details>`), the markup shared through a `{#snippet}`. The Kits menu (a `ContextMenu` with `bind:openState={managerOpen}`) was in such a snippet, so both copies were bound to the same state. Opening the visible one set it to "open"; the hidden copy's effect saw "open" and opened its own popover; `popover="auto"` closes any other auto popover, so the first closed, set "closed", closed the second, and around again: the menu flickered on and off. Hidden by `display: none` is still in the DOM and still reacts. Give each rendered copy its own state (a snippet parameter picking `managerOpen[place]`), or keep stateful controls out of rendered-twice snippets. Surfaced in ExpressionDrums.svelte's Kit section.
+
 ## SvelteKit remote forms refuse a field they did not make: `form_field_unbound` (2026-10-28)
 
 A plain `<input type="hidden" name="venueId">` inside a remote `form` (the venue picker's, posted with the New show form) made the submit throw `SvelteKit error: form_field_unbound: Form contained a field that wasn't created with form.fields.as(...)` in the browser, and the page showed its 500 error view without any request reaching the server. Every field a remote form posts has to come from `form.fields.<name>.as(type, value)`, hidden ones included (`<input {...form.fields.venueId.as("hidden", venueId)} />`, re-evaluated as the state changes), so a reusable picker component leaves the hidden field to the form that owns it. Surfaced by the events browser test; the dev server log was silent, the Playwright trace's console had the error.

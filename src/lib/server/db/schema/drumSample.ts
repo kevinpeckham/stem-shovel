@@ -27,6 +27,12 @@ export const drumSample = table(
 		/** Null for a site kit's sample. */
 		accountId: t.text("account_id").references(() => account.id, { onDelete: "cascade" }),
 		voice: t.text("voice").$type<DrumVoiceId>().notNull(),
+		/** The velocity layer, 1 (softest) to 5 (loudest); a single-sample kit's samples are all 5 (docs/drum-machine.md, "Multisampled kits"). */
+		layer: t.integer("layer").notNull().default(5),
+		/** The round-robin slot within the voice's layer, from 1; gaps are fine (a removed file leaves one), the player counts what is there. */
+		rr: t.integer("rr").notNull().default(1),
+		/** The file's maximum momentary loudness (ITU-R BS.1770, 400 ms), LUFS, measured in the browser at upload; null when not measured. The player derives an empty layer's attenuation from it. */
+		loudness: t.real("loudness"),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
 		pathname: t.text("pathname").notNull().unique(),

@@ -1,0 +1,98 @@
+{
+	"clap": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "clap.wav",
+			"loudness": -22.9
+		}
+	],
+	"cowbell": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "cowbell.wav",
+			"loudness": -22.6
+		}
+	],
+	"crash": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "crash.wav",
+			"loudness": -8.53
+		}
+	],
+	"hat-closed": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "hat-closed.wav",
+			"loudness": -14.22
+		}
+	],
+	"hat-open": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "hat-open.wav",
+			"loudness": -13.3
+		}
+	],
+	"kick": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "kick.wav",
+			"loudness": -11.84
+		}
+	],
+	"ride": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "ride.wav",
+			"loudness": -9.98
+		}
+	],
+	"rim": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "rim.wav",
+			"loudness": -23.17
+		}
+	],
+	"snare": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "snare.wav",
+			"loudness": -16.06
+		}
+	],
+	"tom-high": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "tom-high.wav",
+			"loudness": -15.87
+		}
+	],
+	"tom-low": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "tom-low.wav",
+			"loudness": -15.86
+		}
+	],
+	"tom-mid": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "tom-mid.wav",
+			"loudness": -15.79
+		}
+	]
+}

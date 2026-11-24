@@ -26,3 +26,15 @@ export interface DrumKit {
 		out: AudioNode,
 	): DrumHit | null;
 }
+
+/** A kit expression drums plays: a hit also has a velocity layer, 1–5 (docs/drum-machine.md, "Multisampled kits"). */
+export interface LayeredDrumKit extends DrumKit {
+	play(
+		voice: DrumVoiceId,
+		ctx: BaseAudioContext,
+		at: number,
+		gain: number,
+		out: AudioNode,
+		velocityLayer?: number,
+	): DrumHit | null;
+}

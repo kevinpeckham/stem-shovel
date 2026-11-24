@@ -18,6 +18,8 @@ export const drumKit = table(
 		accountId: t.text("account_id").references(() => account.id, { onDelete: "cascade" }),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
 		name: t.text("name").notNull(),
+		/** A multisampled kit: up to 5 velocity layers × 6 round robins per voice, a sample replaced only in its own slot. A single-sample kit keeps one file per voice. */
+		multisampled: t.integer("multisampled", { mode: "boolean" }).notNull().default(false),
 		...timestamps,
 	},
 	(table) => [

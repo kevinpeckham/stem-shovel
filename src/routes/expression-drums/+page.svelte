@@ -6,6 +6,7 @@
 	import PageCopySection from "#lib/components/PageCopySection.svelte";
 	import { TUTORIAL_PROJECT } from "#lib/constants/drumTutorial.js";
 	import { drumTutorial } from "#lib/state/drumTutorial.svelte.js";
+	import { expressionProjectFromDrumProject } from "#lib/utils/expressionProjectFromDrumProject.js";
 
 	let { data } = $props();
 	// Dev only: the engine on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).
@@ -15,7 +16,7 @@
 	/** The walk-through: an empty kit in place of the project (the machine's Undo brings the project back), then the panel. */
 	function startTutorial() {
 		if (expressionDrums.running) expressionDrums.stop();
-		expressionDrums.loadProject(structuredClone(TUTORIAL_PROJECT), "replace");
+		expressionDrums.loadProject(expressionProjectFromDrumProject(structuredClone(TUTORIAL_PROJECT)), "replace");
 		drumTutorial.start();
 	}
 </script>

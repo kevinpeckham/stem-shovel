@@ -50,6 +50,54 @@ export const BUILTIN_SAMPLE_FILES: Record<OverridableKit, Record<DrumVoiceId, st
 	},
 };
 
+/** A multisampled kit (docs/drum-machine.md, "Multisampled kits"): velocity layers 1–5, V5 required before any lower layer. */
+export const DRUM_KIT_LAYERS = [5, 4, 3, 2, 1] as const;
+export type DrumKitLayer = (typeof DRUM_KIT_LAYERS)[number];
+/** Round-robin files per voice per layer in a multisampled kit. */
+export const MAX_DRUM_ROUND_ROBINS = 6;
+/** The least attenuation per layer step below a voice's lowest recorded layer, when its measured average step is smaller (velocityLayerPlan). */
+export const DRUM_LAYER_MIN_STEP_DB = 2.5;
+/** The attenuation per layer step when there is no difference to measure: a voice with only V5, or a loudness unknown (velocityLayerPlan). */
+export const DRUM_LAYER_DEFAULT_STEP_DB = 4;
+/** What a layer is called in the builder, loudest first. */
+export const DRUM_KIT_LAYER_NAMES: Record<DrumKitLayer, string> = {
+	5: "loudest",
+	4: "loud",
+	3: "medium",
+	2: "soft",
+	1: "softest",
+};
+
+/**
+ * The formats a multisampled kit's files may be in, one per kit (the
+ * builder's format selector): those every current browser decodes, so the
+ * kit plays everywhere. Compressed first: a kit is many files.
+ */
+export const MULTISAMPLED_KIT_FORMATS = [
+	{ id: "flac", label: "FLAC", note: "lossless, compressed", extensions: ["flac"] },
+	{ id: "m4a", label: "M4A (AAC)", note: "compressed", extensions: ["m4a"] },
+	{ id: "mp3", label: "MP3", note: "compressed", extensions: ["mp3"] },
+	{ id: "wav", label: "WAV", note: "uncompressed, largest", extensions: ["wav"] },
+] as const;
+export type MultisampledKitFormat = (typeof MULTISAMPLED_KIT_FORMATS)[number]["id"];
+
+/** One file of a multisampled kit: its layer, its round-robin slot, where it is and how loud (max momentary LUFS; null, not measured). */
+export interface MultisampledKitSample {
+	id: string;
+	layer: DrumKitLayer;
+	rr: number;
+	url: string;
+	loudness: number | null;
+}
+/** A kit as the pages hand it to a multisampled player: every ready file of every voice (a single-sample kit's, each played as V5). */
+export interface MultisampledKitManifest {
+	id: string;
+	name: string;
+	scope: "site" | "account";
+	multisampled: boolean;
+	samples: Partial<Record<DrumVoiceId, MultisampledKitSample[]>>;
+}
+
 /** A kit as the pages hand it to the drum machine: where each voice's file is (a voice with no file is silent; for a built-in kit, its own file). */
 export interface DrumKitManifest {
 	id: string;

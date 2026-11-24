@@ -21,12 +21,23 @@ export const DRUM_VOICES = [
 export type DrumVoiceId = (typeof DRUM_VOICES)[number]["id"];
 export const DRUM_VOICE_IDS = DRUM_VOICES.map((v) => v.id) as DrumVoiceId[];
 
-/** Kits, in share-link order too (two bits: room for one more). Sampled kits have a folder under static/kits. */
+/**
+ * The built-in multisampled kits, each a folder under static/kits measured
+ * into kits/multisampled/<id>.json. Acoustic and Room are the drum
+ * machine's single-sample kits, read from the same folders (one file per
+ * voice, played as V5 RR1). Electronic is its synthesized kit, no files
+ * (`synthesized`), each layer the same sound turned down (LayeredSynthKit).
+ */
 export const DRUM_KITS = [
 	{ id: "future", label: "Future" },
+	{ id: "acoustic", label: "Acoustic" },
+	{ id: "electronic", label: "Electronic", synthesized: true },
+	{ id: "room", label: "Room" },
 ] as const;
 export type DrumKitId = (typeof DRUM_KITS)[number]["id"];
 export const DRUM_KIT_IDS = DRUM_KITS.map((k) => k.id) as DrumKitId[];
+/** The kit a new beat starts with, and the one that stands in for a kit this page cannot play: the first of DRUM_KITS. */
+export const DEFAULT_MULTISAMPLED_KIT: DrumKitId = DRUM_KITS[0].id;
 
 /**
  * Steps to the pattern, sixteenths: half a bar, a bar or two bars of 4/4
@@ -64,6 +75,8 @@ export const MAX_DRUM_ROWS = 12;
  * (playback is not true round robin; it is randomized with protection against playing the exact same sample twice consecutively) 
 */
 export const DRUM_VELOCITY_MAX = 5;
+/** The drum machine's velocities (0 off, 1–3) on this scale, by index: soft, medium and loud become the softest, middle and loudest layers. */
+export const DRUM_MACHINE_VELOCITY_MAP = [0, 1, 3, 5] as const;
 /** The kit's usual balance per voice, for a preset or generated row that names no level. */
 export const DRUM_USUAL_LEVEL: Partial<Record<DrumVoiceId, number>> = {
 	kick: 0.9,

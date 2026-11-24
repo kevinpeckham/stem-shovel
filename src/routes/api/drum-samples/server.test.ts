@@ -101,11 +101,14 @@ describe("POST /api/drum-samples", () => {
 			pathname: row.pathname,
 			access: "private",
 		});
-		expect(data.createDrumSample).toHaveBeenCalledWith(ACCOUNT, USER, KIT, "snare", {
-			filename: "Snare.WAV",
-			contentType: "audio/wav",
-			sizeBytes: 50_000,
-		});
+		expect(data.createDrumSample).toHaveBeenCalledWith(
+			ACCOUNT,
+			USER,
+			KIT,
+			"snare",
+			{ filename: "Snare.WAV", contentType: "audio/wav", sizeBytes: 50_000 },
+			{ layer: undefined, loudness: null },
+		);
 		expect(data.ensureBuiltinKitRow).not.toHaveBeenCalled();
 		expect(background).toHaveBeenCalledTimes(1);
 		await (background.mock.calls[0][0] as () => Promise<void>)();
@@ -144,6 +147,7 @@ describe("POST /api/drum-samples", () => {
 					contentType: "audio/wav",
 					sizeBytes: 50_000,
 				},
+				{ layer: undefined, loudness: null },
 			);
 			expect(data.storageRoom).not.toHaveBeenCalled();
 			expect(background).not.toHaveBeenCalled();
@@ -178,6 +182,7 @@ describe("POST /api/drum-samples", () => {
 				BUILTIN,
 				"snare",
 				{ filename: "Snare.WAV", contentType: "audio/wav", sizeBytes: 50_000 },
+				{ layer: undefined, loudness: null },
 			);
 			expect(data.storageRoom).not.toHaveBeenCalled();
 		});

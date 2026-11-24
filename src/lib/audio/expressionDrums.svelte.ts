@@ -30,6 +30,7 @@ import {
 	saveExpressionDrumsVolume as saveDrumVolume,
 } from "#lib/utils/expressionDrumsPreferences.js";
 import { drumPresetProject } from "#lib/utils/drumPresetProject.js";
+import { expressionProjectFromDrumProject } from "#lib/utils/expressionProjectFromDrumProject.js";
 import { drumSwingDelay } from "#lib/utils/drumSwingDelay.js";
 import { metronome } from "./metronome.svelte";
 import type { TempoRatio } from "#lib/constants/tempo.js";
@@ -41,6 +42,7 @@ import type { DrumGeneratorStyle } from "#lib/constants/drumGenerator.js";
 // import { encodeDrumProject } from "#lib/utils/encodeDrumProject.js";
 import { resizeExpressionPattern as resizeDrumPattern } from "#lib/utils/resizeExpressionPattern.js";
 import { startingExpressionProject as startingDrumProject } from "#lib/utils/startingExpressionProject.js";
+import { visibleExpressionPattern } from "#lib/utils/visibleExpressionPattern.js";
 import { tapTempo } from "#lib/utils/tapTempo.js";
 import type { ExpressionDrumFx as DrumFx, ExpressionPattern as DrumPattern, ExpressionProject as DrumProject, TimelineBar } from "#lib/val/ExpressionDrumSchema.js";
 import { EMPTY_CELL, type ExpressionCell } from "#lib/val/ExpressionDrumSchema.js";
@@ -52,7 +54,8 @@ import {
 	renderDrumSongWav,
 	type DrumPlayState,
 } from "./expressionDrumRender";
-import { drumKit, hasDrumKit } from "./kits/expressionIndex";
+import { DEFAULT_MULTISAMPLED_KIT } from "#lib/constants/expressionDrums.js";
+import { drumKit, hasDrumKit } from "./kits/multisampledIndex";
 import { startLookahead } from "./lookahead";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
@@ -86,6 +89,10 @@ class ExpressionDrumsEngine {
 	songMode = $state(false);
 	/** Song mode loops the timeline endlessly (true, ∞) or stops at the end (false, song). */
 	songLoop = $state(true);
+	/** Song mode: the grid opens each bar's pattern as it sounds (a DAW's "follow"); off, the grid stays on the pattern the user opened. */
+	followSong = $state(false);
+	/** Advanced features on (the Advanced Features button). A switch only, for now: nothing reads it yet. */
+	advanced = $state(false);
 	/** Song mode: the timeline position sounding, 0-based; -1 between runs or in pattern mode. */
 	bar = $state(-1);
 	/** Song mode: a bar chosen while playing; the song jumps there at the end of the cycle. */
@@ -97,8 +104,16 @@ class ExpressionDrumsEngine {
 	step = $state(-1);
 	/** The current kit is decoded and ready (the acoustic one takes a moment on the first play). */
 	kitReady = $state(false);
-	/** The project as it was before the last preset loaded, until the next edit; `undoPreset` brings it back. */
-	beforePreset = $state<DrumProject | null>(null);
+	/** Undo/redo history: a stack of project snapshots with a pointer into it. */
+	#history: DrumProject[] = [];
+	#historyIndex = -1;
+	static #HISTORY_MAX = 50;
+	canUndo = $state(false);
+	canRedo = $state(false);
+	#updateHistoryFlags() {
+		this.canUndo = this.#historyIndex > 0;
+		this.canRedo = this.#historyIndex < this.#history.length - 1;
+	}
 	/** The name of the preset or saved beat the project is, untouched; null once edited (the readout then says Custom). */
 	loadedName = $state<string | null>(null);
 
@@ -173,6 +188,9 @@ class ExpressionDrumsEngine {
 		this.project.timeline = normalizeTimeline(this.project.timeline as (number | TimelineBar)[]);
 		this.songMode = this.project.timeline.length > 0;
 		this.#resetSolo();
+		// Seed history with the initial project state.
+		this.#history = [$state.snapshot(this.project)];
+		this.#historyIndex = 0;
 		if (warm) drumKit(this.project.kit).warm();
 	}
 	/** Fetch the kit's samples ahead of the first play (the home page, as the demo scrolls into view). */
@@ -180,9 +198,18 @@ class ExpressionDrumsEngine {
 		drumKit(this.project.kit).warm();
 	}
 	#save() {
-		this.beforePreset = null;
+		const snapshot = $state.snapshot(this.project);
+		// Truncate any redo entries ahead of the pointer, then push.
+		this.#history.length = this.#historyIndex + 1;
+		this.#history.push(snapshot);
+		if (this.#history.length > ExpressionDrumsEngine.#HISTORY_MAX) {
+			this.#history.shift();
+		} else {
+			this.#historyIndex += 1;
+		}
 		this.loadedName = null;
-		saveDrumMachinePreferences($state.snapshot(this.project));
+		this.#updateHistoryFlags();
+		saveDrumMachinePreferences(snapshot);
 	}
 	#resetSolo() {
 		this.solo = this.pattern.rows.map(() => false);
@@ -192,8 +219,8 @@ class ExpressionDrumsEngine {
 		const ctx = this.#ctx;
 		if (!ctx) return;
 		this.kitReady = false;
-		// A custom kit this page was not given (another account's, one since deleted): the acoustic kit stands in.
-		if (!hasDrumKit(this.project.kit)) this.project.kit = "acoustic";
+		// A kit this page was not given (another account's, one since deleted, the original machine's built-ins): Future stands in.
+		if (!hasDrumKit(this.project.kit)) this.project.kit = DEFAULT_MULTISAMPLED_KIT;
 		const kit = drumKit(this.project.kit);
 		await kit.load(ctx);
 		if (kit.id === this.project.kit) this.kitReady = true;
@@ -282,9 +309,27 @@ class ExpressionDrumsEngine {
 			if (due.bar >= 0) bar = due.bar;
 		}
 		if (current !== this.step) this.step = current;
-		if (bar !== this.bar) this.bar = bar;
+		if (bar !== this.bar) {
+			this.bar = bar;
+			this.#openSoundingBar();
+		}
 		this.#frame = requestAnimationFrame(this.#follow);
 	};
+	/** With follow on, open the pattern of the bar sounding now. */
+	#openSoundingBar() {
+		if (!this.followSong || !this.running || !this.playsSong || this.bar < 0) return;
+		const entry = (this.project.timeline as TimelineBar[])[this.bar];
+		if (!entry) return;
+		const index = Math.min(entry.pattern, this.project.patterns.length - 1);
+		if (index !== this.current) this.select(index);
+	}
+	setFollowSong(on: boolean) {
+		this.followSong = on;
+		this.#openSoundingBar();
+	}
+	setAdvanced(on: boolean) {
+		this.advanced = on;
+	}
 
 	/** The context and the bus, made once (the bus brought up to date each time); the async form below resumes the context too. */
 	/**
@@ -535,6 +580,13 @@ class ExpressionDrumsEngine {
 		cells[step] = { ...cell, main: on ? this.defaultVelocity : 0 };
 		this.#save();
 	}
+	/** Clear all hits (main + sub-hits) on a cell. */
+	clearCell(row: number, step: number) {
+		const cells = this.pattern.rows[row]?.cells;
+		if (!cells?.[step]) return;
+		cells[step] = { main: 0, t1: 0, half: 0, t2: 0 };
+		this.#save();
+	}
 	/** Cycle the main hit's velocity: normal → accent → ghost → … */
 	cycleVelocity(row: number, step: number) {
 		const cells = this.pattern.rows[row]?.cells;
@@ -674,7 +726,7 @@ class ExpressionDrumsEngine {
 	}
 	setSteps(steps: DrumSteps) {
 		if (!drumStepsFor(this.pattern.meter).includes(steps)) return;
-		this.project.patterns[this.current] = resizeDrumPattern($state.snapshot(this.pattern), steps, this.current);
+		this.project.patterns[this.current] = resizeDrumPattern($state.snapshot(this.pattern), steps);
 		this.#save();
 	}
 	/** The open pattern's meter; the steps become a bar of it, or two bars if it had two. */
@@ -688,17 +740,15 @@ class ExpressionDrumsEngine {
 		this.project.patterns[this.current] = resizeDrumPattern(
 			{ ...$state.snapshot(pattern), meter },
 			steps,
-			this.current,
 		);
 		this.#save();
 	}
 	/**
 	 * A preset beat: in place of the project, or its patterns added to the
-	 * project (the tempo, swing, feel and kit stay). The project as it was
-	 * is kept for `undoPreset` until the next edit.
+	 * project (the tempo, swing, feel and kit stay).
 	 */
 	loadPreset(preset: DrumPreset, mode: "replace" | "add") {
-		this.loadProject(drumPresetProject(preset), mode, preset.name);
+		this.loadProject(expressionProjectFromDrumProject(drumPresetProject(preset)), mode, preset.name);
 	}
 	/**
 	 * A project from elsewhere (a preset, a saved beat) in place of this one
@@ -719,17 +769,20 @@ class ExpressionDrumsEngine {
 			this.current = first;
 		}
 		this.#afterSwap(before.kit);
-		this.beforePreset = before;
 		this.loadedName = mode === "replace" ? name : null;
 	}
 	/**
 	 * A generated pattern (generateDrumPattern) in place of the open one, or
-	 * added after it, in the open pattern's shape; the project as it was is
-	 * kept for `undoPreset` until the next edit. Returns the pattern's index.
+	 * added after it, in the open pattern's shape. Returns the pattern's index.
 	 */
 	generate(style: DrumGeneratorStyle, density: number, mode: "replace" | "add"): number {
 		const seed = Math.floor(Math.random() * 2 ** 32);
-		const pattern = generateDrumPattern(style, density, $state.snapshot(this.pattern), seed);
+		const pattern = generateDrumPattern(
+			style,
+			density,
+			visibleExpressionPattern($state.snapshot(this.pattern)),
+			seed,
+		);
 		return this.placePattern(pattern, mode, {
 			fx: style.fx,
 			swing: style.swing,
@@ -742,8 +795,7 @@ class ExpressionDrumsEngine {
 	/**
 	 * A pattern from elsewhere (the generator, Text-to-Beat) in place of the
 	 * open one or added after it, with a tempo, swing, humanize and effects
-	 * when they come with it; the project as it was is kept for `undoPreset` until the next
-	 * edit. Returns the pattern's index (the open one when there is no room).
+	 * when they come with it. Returns the pattern's index (the open one when there is no room).
 	 */
 	placePattern(
 		pattern: DrumPattern,
@@ -792,20 +844,37 @@ class ExpressionDrumsEngine {
 		this.#resetSolo();
 		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
-		this.beforePreset = before;
 		return this.current;
 	}
-	undoPreset() {
-		const before = this.beforePreset;
-		if (!before) return;
+	undo() {
+		if (!this.canUndo) return;
+		this.#historyIndex -= 1;
+		const entry = this.#history[this.#historyIndex]!;
 		const kit = this.project.kit;
-		this.project = before;
+		this.project = $state.snapshot(entry) as DrumProject;
 		this.#adoptTempo();
-		this.current = Math.min(this.current, before.patterns.length - 1);
-		this.#afterSwap(kit);
+		this.current = Math.min(this.current, this.project.patterns.length - 1);
+		this.#afterSwapNoSave(kit);
+		this.#updateHistoryFlags();
+	}
+	redo() {
+		if (!this.canRedo) return;
+		this.#historyIndex += 1;
+		const entry = this.#history[this.#historyIndex]!;
+		const kit = this.project.kit;
+		this.project = $state.snapshot(entry) as DrumProject;
+		this.#adoptTempo();
+		this.current = Math.min(this.current, this.project.patterns.length - 1);
+		this.#afterSwapNoSave(kit);
+		this.#updateHistoryFlags();
 	}
 	/** After the project changed under a running machine: solo, the playing pattern and the kit follow. */
 	#afterSwap(previousKit: string) {
+		this.#afterSwapNoSave(previousKit);
+		this.#save();
+	}
+	/** Same as #afterSwap but without pushing to history (used by undo/redo). */
+	#afterSwapNoSave(previousKit: string) {
 		this.#resetSolo();
 		this.songMode = this.project.timeline.length > 0;
 		this.#nextBar = 0;
@@ -814,9 +883,9 @@ class ExpressionDrumsEngine {
 			this.queued = null;
 			this.playing = Math.min(this.current, this.project.patterns.length - 1);
 		}
-		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
 		if (this.#ctx && (this.project.kit !== previousKit || !this.kitReady)) void this.#readyKit();
+		saveDrumMachinePreferences($state.snapshot(this.project));
 	}
 	/** The kit in use again (a sample was replaced: the registry made the kit afresh), without a change of kit. */
 	reloadKit() {
@@ -879,9 +948,10 @@ class ExpressionDrumsEngine {
 		this.solo.splice(row, 1);
 		this.#save();
 	}
-	/** Every cell of the open pattern off; rows, levels and settings stay. */
+	/** Every cell of the open pattern off, hidden ones too (they are dropped); rows, levels and settings stay. */
 	clear() {
-		for (const r of this.pattern.rows) r.cells = r.cells.map(() => ({ ...EMPTY_CELL }));
+		const steps = this.pattern.steps;
+		for (const r of this.pattern.rows) r.cells = Array.from({ length: steps }, () => ({ ...EMPTY_CELL }));
 		this.#save();
 	}
 
@@ -974,7 +1044,7 @@ class ExpressionDrumsEngine {
 				pan: DEFAULT_DRUM_PANS[voice],
 				mute: false,
 				...DEFAULT_DRUM_SENDS[voice],
-				cells: Array.from({ length: pattern.steps }, () => 0),
+				cells: Array.from({ length: pattern.steps }, () => ({ ...EMPTY_CELL })),
 			});
 			if (pattern === this.pattern) this.solo.push(false);
 			index = pattern.rows.length - 1;
@@ -1033,13 +1103,15 @@ class ExpressionDrumsEngine {
 	wav(): Promise<Blob> {
 		const project = $state.snapshot(this.project);
 		return this.playsSong
-			? renderDrumSongWav(project, $state.snapshot(this.bars))
-			: renderDrumPatternWav(project, $state.snapshot(this.pattern));
+			? renderDrumSongWav(project, $state.snapshot(this.bars).map(visibleExpressionPattern))
+			: renderDrumPatternWav(project, visibleExpressionPattern($state.snapshot(this.pattern)));
 	}
 	/** The song, or the open pattern, as a Standard MIDI File. */
 	midi(): Blob {
 		return encodeDrumMidi(
-			this.playsSong ? $state.snapshot(this.bars) : $state.snapshot(this.pattern),
+			this.playsSong
+				? $state.snapshot(this.bars).map(visibleExpressionPattern)
+				: visibleExpressionPattern($state.snapshot(this.pattern)),
 			this.bpm,
 			this.project.swing,
 			this.project.swingGrid,

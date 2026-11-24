@@ -2,7 +2,13 @@ import { isEditor, memberOf, requireSystemAdmin, requireUser } from "#lib/server
 import { accountOfDrumKit, createDrumSample, ensureBuiltinKitRow } from "#lib/server/data.js";
 import { recordingAccess } from "#lib/server/blob.js";
 import { DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
-import { DRUM_SAMPLE_MAX_BYTES, isOverridableKit } from "#lib/constants/drumKits.js";
+import {
+	DRUM_KIT_LAYERS,
+	DRUM_SAMPLE_MAX_BYTES,
+	isOverridableKit,
+	MAX_DRUM_ROUND_ROBINS,
+	type DrumKitLayer,
+} from "#lib/constants/drumKits.js";
 import { DRUM_VOICE_IDS, type DrumVoiceId } from "#lib/constants/drumMachine.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
@@ -25,11 +31,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		voice?: string;
 		filename?: string;
 		sizeBytes?: number;
+		layer?: number;
+		loudness?: number | null;
 	};
-	const { kitId, voice, filename, sizeBytes } = body;
+	const { kitId, voice, filename, sizeBytes, layer, loudness } = body;
 	if (!kitId || !voice || !filename || typeof sizeBytes !== "number") {
 		error(400, "kitId, voice, filename and sizeBytes are required");
 	}
+	// A multisampled kit's file (docs/drum-machine.md, "Multisampled kits"): its velocity layer, and its loudness as the browser measured it.
+	if (layer !== undefined && !(DRUM_KIT_LAYERS as readonly number[]).includes(layer))
+		error(400, "layer must be 1 to 5");
+	if (
+		loudness !== undefined &&
+		loudness !== null &&
+		(typeof loudness !== "number" || !Number.isFinite(loudness) || loudness < -120 || loudness > 20)
+	)
+		error(400, "loudness must be a LUFS value");
 	if (!DRUM_VOICE_IDS.includes(voice as DrumVoiceId)) error(400, `"${voice}" is not a drum voice`);
 	const contentType = demoContentType(filename);
 	if (!contentType)
@@ -51,15 +68,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!isEditor(m.role)) error(404, "Kit not found");
 		await requireStorageRoom(kit.accountId, sizeBytes);
 	} else requireSystemAdmin(locals);
-	const row = await createDrumSample(kit.accountId, user.id, kitId, voice as DrumVoiceId, {
-		filename,
-		contentType,
-		sizeBytes,
-	});
+	const row = await createDrumSample(
+		kit.accountId,
+		user.id,
+		kitId,
+		voice as DrumVoiceId,
+		{ filename, contentType, sizeBytes },
+		{ layer: layer as DrumKitLayer | undefined, loudness: loudness ?? null },
+	);
 	if (!row) error(404, "Kit not found");
+	if (row === "no-top-layer") error(409, "A drum needs a layer 5 sample before any lower layer");
+	if (row === "layer-full")
+		error(409, `A layer holds at most ${MAX_DRUM_ROUND_ROBINS} round-robin samples`);
+	if (row === "not-multisampled") error(400, "Only a multisampled kit has velocity layers");
 	return Response.json({
 		sampleId: row.id,
 		pathname: row.pathname,
 		access: kit.accountId ? recordingAccess() : "public",
+		// Where it landed: a multisampled kit's round robin, and the name it was given for it.
+		layer: row.layer,
+		rr: row.rr,
+		filename: row.filename,
 	});
 };

@@ -10,6 +10,8 @@ export const DrumVoiceSchema = v.picklist(DRUM_VOICE_IDS);
 export const DrumKitCreateSchema = v.object({
 	accountId: v.optional(NanoIdSchema),
 	name: NameSchema,
+	/** A multisampled kit: velocity layers and round robins (docs/drum-machine.md, "Multisampled kits"). */
+	multisampled: v.optional(v.boolean()),
 });
 export type DrumKitCreate = v.InferOutput<typeof DrumKitCreateSchema>;
 

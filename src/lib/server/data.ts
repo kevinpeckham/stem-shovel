@@ -22,6 +22,8 @@ import { STUDIO_FADER_MAX, MAX_STUDIO_TRACKS } from "#lib/constants/studio.js";
 import { WAV_CONTENT_TYPES } from "#lib/constants/wavContentTypes.js";
 import type { StemManifest } from "#lib/audio/types.js";
 import { DrumProjectSchema, type DrumProject } from "#lib/val/DrumPatternSchema.js";
+import type { ExpressionProject } from "#lib/val/ExpressionDrumSchema.js";
+import { readExpressionProject } from "#lib/utils/readExpressionProject.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
 import type { ChordStyleData } from "#lib/val/ChordStyleSchema.js";
 import {
@@ -117,8 +119,11 @@ import { slugify } from "#lib/utils/slugify.js";
 import {
 	isOverridableKit,
 	MAX_DRUM_KITS_PER_ACCOUNT,
+	MAX_DRUM_ROUND_ROBINS,
 	OVERRIDABLE_KITS,
+	type DrumKitLayer,
 	type DrumKitManifest,
+	type MultisampledKitManifest,
 } from "#lib/constants/drumKits.js";
 import { DRUM_KITS } from "#lib/constants/drumMachine.js";
 import type { DrumVoiceId } from "#lib/constants/drumMachine.js";
@@ -9041,8 +9046,9 @@ export async function listDrumKitManifests(accountId: string | null): Promise<Dr
 		orderBy: [asc(drumKit.createdAt)],
 		with: {
 			samples: {
-				where: eq(drumSample.status, "ready"),
-				orderBy: [desc(drumSample.createdAt)],
+				// One file per voice: a multisampled kit plays here as its loudest layer's first round robin.
+				where: and(eq(drumSample.status, "ready"), eq(drumSample.layer, 5)),
+				orderBy: [asc(drumSample.rr), desc(drumSample.createdAt)],
 				columns: { voice: true, url: true },
 			},
 		},
@@ -9051,12 +9057,59 @@ export async function listDrumKitManifests(accountId: string | null): Promise<Dr
 	for (const k of rows) {
 		const samples: DrumKitManifest["samples"] = {};
 		for (const smp of k.samples) {
-			if (samples[smp.voice]) continue; // the newest ready file per voice
+			if (samples[smp.voice]) continue; // the first ready V5 file per voice
 			samples[smp.voice] = k.accountId ? ((await presentUrl(smp.url)) ?? smp.url) : smp.url;
 		}
 		out.push({ id: k.id, name: k.name, scope: k.accountId ? "account" : "site", samples });
 	}
 	// The site's first, then the account's.
+	return out.sort((a, b) => (a.scope === b.scope ? 0 : a.scope === "site" ? -1 : 1));
+}
+
+/**
+ * The kits expression drums may play: like listDrumKitManifests, but every
+ * ready file of every voice, with its layer, round-robin slot and loudness
+ * (docs/drum-machine.md, "Multisampled kits"). A single-sample kit's voice is its
+ * newest file, played as V5.
+ */
+export async function listMultisampledKitManifests(
+	accountId: string | null,
+): Promise<MultisampledKitManifest[]> {
+	const rows = await db.query.drumKit.findMany({
+		where: accountId
+			? or(isNull(drumKit.accountId), eq(drumKit.accountId, accountId))
+			: isNull(drumKit.accountId),
+		orderBy: [asc(drumKit.createdAt)],
+		with: {
+			samples: {
+				where: eq(drumSample.status, "ready"),
+				orderBy: [desc(drumSample.layer), asc(drumSample.rr), desc(drumSample.createdAt)],
+				columns: { id: true, voice: true, layer: true, rr: true, url: true, loudness: true },
+			},
+		},
+	});
+	const out: MultisampledKitManifest[] = [];
+	for (const k of rows) {
+		const samples: MultisampledKitManifest["samples"] = {};
+		for (const smp of k.samples) {
+			const list = (samples[smp.voice] ??= []);
+			if (!k.multisampled && list.length > 0) continue; // a single-sample kit: the newest file per voice
+			list.push({
+				id: smp.id,
+				layer: (k.multisampled ? smp.layer : 5) as DrumKitLayer,
+				rr: smp.rr,
+				url: k.accountId ? ((await presentUrl(smp.url)) ?? smp.url) : smp.url,
+				loudness: smp.loudness,
+			});
+		}
+		out.push({
+			id: k.id,
+			name: k.name,
+			scope: k.accountId ? "account" : "site",
+			multisampled: k.multisampled,
+			samples,
+		});
+	}
 	return out.sort((a, b) => (a.scope === b.scope ? 0 : a.scope === "site" ? -1 : 1));
 }
 
@@ -9098,6 +9151,8 @@ export async function listDrumKitsFor(accountId: string | null) {
 					sizeBytes: true,
 					url: true,
 					source: true,
+					layer: true,
+					rr: true,
 					createdAt: true,
 				},
 				with: { uploader: { columns: { name: true } } },
@@ -9110,6 +9165,7 @@ export async function listDrumKitsFor(accountId: string | null) {
 			name: k.name,
 			scope: (k.accountId ? "account" : "site") as "account" | "site",
 			builtin: isOverridableKit(k.id),
+			multisampled: k.multisampled,
 			samples: await Promise.all(
 				k.samples.map(async ({ uploader, ...smp }) => ({
 					...smp,
@@ -9127,13 +9183,19 @@ export async function listDrumKitsFor(accountId: string | null) {
 				name: DRUM_KITS.find((k) => k.id === id)?.label ?? id,
 				scope: "site" as const,
 				builtin: true,
+				multisampled: false,
 				samples: [],
 			},
 	);
 	return [...builtins, ...listed.filter((k) => !isOverridableKit(k.id))];
 }
 
-export async function createDrumKit(accountId: string | null, userId: string, name: string) {
+export async function createDrumKit(
+	accountId: string | null,
+	userId: string,
+	name: string,
+	multisampled = false,
+) {
 	if (accountId) {
 		const [{ n }] = await db
 			.select({ n: sql<number>`count(*)` })
@@ -9143,7 +9205,7 @@ export async function createDrumKit(accountId: string | null, userId: string, na
 	}
 	const [row] = await db
 		.insert(drumKit)
-		.values({ accountId, createdBy: userId, name: name.trim() })
+		.values({ accountId, createdBy: userId, name: name.trim(), multisampled })
 		.returning();
 	return row;
 }
@@ -9170,19 +9232,44 @@ export async function deleteDrumKit(accountId: string | null, id: string) {
 	await deleteBlobs(kit.samples.map((smp) => smp.url));
 	return true;
 }
-/** Step 1 of a sample upload: the row, reserved; the kit must be the scope's. */
+/**
+ * Step 1 of a sample upload: the row, reserved; the kit must be the scope's.
+ * A single-sample kit's file is V5 (the ready step replaces the voice's older one).
+ * A multisampled kit's takes the next round-robin slot of its layer: at most
+ * MAX_DRUM_ROUND_ROBINS a layer, and a lower layer only once the voice has
+ * a V5 file (docs/drum-machine.md, "Multisampled kits").
+ */
 export async function createDrumSample(
 	accountId: string | null,
 	userId: string,
 	kitId: string,
 	voice: DrumVoiceId,
 	file: NewStemFile,
+	slot: { layer?: DrumKitLayer; loudness?: number | null } = {},
 ) {
 	const kit = await db.query.drumKit.findFirst({
 		where: and(eq(drumKit.id, kitId), kitScope(accountId)),
-		columns: { id: true },
+		columns: { id: true, multisampled: true },
 	});
 	if (!kit) return null;
+	let layer: DrumKitLayer = 5;
+	let rr = 1;
+	if (kit.multisampled) {
+		layer = slot.layer ?? 5;
+		const taken = await db
+			.select({ layer: drumSample.layer, rr: drumSample.rr })
+			.from(drumSample)
+			.where(and(eq(drumSample.kitId, kitId), eq(drumSample.voice, voice)));
+		if (layer < 5 && !taken.some((s) => s.layer === 5)) return "no-top-layer" as const;
+		const inLayer = taken.filter((s) => s.layer === layer);
+		if (inLayer.length >= MAX_DRUM_ROUND_ROBINS) return "layer-full" as const;
+		rr = Math.max(0, ...inLayer.map((s) => s.rr)) + 1;
+	} else if (slot.layer !== undefined && slot.layer !== 5) {
+		return "not-multisampled" as const;
+	}
+	// A multisampled kit's file is named for its place, whatever it was called on the uploader's disk.
+	const ext = file.filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() ?? "";
+	const filename = kit.multisampled ? `${voice} V${layer} RR${rr}${ext ? `.${ext}` : ""}` : file.filename;
 	const id = nanoid();
 	const [row] = await db
 		.insert(drumSample)
@@ -9191,9 +9278,12 @@ export async function createDrumSample(
 			kitId,
 			accountId,
 			voice,
+			layer,
+			rr,
+			loudness: slot.loudness ?? null,
 			url: "",
-			pathname: drumSamplePathname(accountId, kitId, id, file.filename),
-			filename: file.filename,
+			pathname: drumSamplePathname(accountId, kitId, id, filename),
+			filename,
 			contentType: file.contentType,
 			sizeBytes: file.sizeBytes,
 			uploadedBy: userId,
@@ -9213,14 +9303,31 @@ export async function drumSampleOwner(id: string) {
 	});
 	return row ?? null;
 }
-/** Step 3: the file is up; the voice's earlier files go, so a kit keeps one file per voice. */
+/**
+ * Step 3: the file is up, and what it replaces goes: in a single-sample kit the
+ * voice's earlier files (one file per voice); in a multisampled kit only an
+ * earlier file in the same layer and round-robin slot.
+ */
 export async function markDrumSampleReady(id: string, url: string) {
 	const [row] = await db
 		.update(drumSample)
 		.set({ status: "ready", url })
 		.where(eq(drumSample.id, id))
-		.returning({ id: drumSample.id, kitId: drumSample.kitId, voice: drumSample.voice });
+		.returning({
+			id: drumSample.id,
+			kitId: drumSample.kitId,
+			voice: drumSample.voice,
+			layer: drumSample.layer,
+			rr: drumSample.rr,
+		});
 	if (!row) return null;
+	const kit = await db.query.drumKit.findFirst({
+		where: eq(drumKit.id, row.kitId),
+		columns: { multisampled: true },
+	});
+	const sameSlot = kit?.multisampled
+		? [eq(drumSample.layer, row.layer), eq(drumSample.rr, row.rr)]
+		: [];
 	const older = await db
 		.delete(drumSample)
 		.where(
@@ -9228,6 +9335,7 @@ export async function markDrumSampleReady(id: string, url: string) {
 				eq(drumSample.kitId, row.kitId),
 				eq(drumSample.voice, row.voice),
 				ne(drumSample.id, row.id),
+				...sameSlot,
 			),
 		)
 		.returning({ url: drumSample.url });
@@ -9270,12 +9378,27 @@ export async function deleteAccountDrumKits(accountId: string) {
 	await deleteBlobs(samples.map((smp) => smp.url));
 }
 
-export async function listBeats(accountId: string) {
+function allBeats(accountId: string) {
 	return db.query.beat.findMany({
 		where: eq(beat.accountId, accountId),
 		orderBy: [desc(beat.updatedAt)],
 		columns: { id: true, name: true, data: true, songId: true, createdBy: true, updatedAt: true },
 		with: { song: { columns: { id: true, title: true } } },
+	});
+}
+
+/** The account's drum machine beats, newest first: an expression drums beat is left out, since the drum machine cannot play it. */
+export async function listBeats(accountId: string) {
+	const rows = await allBeats(accountId);
+	return rows.flatMap((r) => (v.is(DrumProjectSchema, r.data) ? [{ ...r, data: r.data }] : []));
+}
+
+/** The account's beats for expression drums, newest first: its own, and the drum machine's converted (readExpressionProject); anything unreadable is left out. */
+export async function listExpressionBeats(accountId: string) {
+	const rows = await allBeats(accountId);
+	return rows.flatMap((r) => {
+		const data = readExpressionProject(r.data);
+		return data ? [{ ...r, data }] : [];
 	});
 }
 
@@ -9308,7 +9431,7 @@ export async function createBeat(
 	accountId: string,
 	userId: string,
 	name: string,
-	data: DrumProject,
+	data: DrumProject | ExpressionProject,
 	songId: string | null = null,
 ) {
 	const [row] = await db
@@ -9321,7 +9444,7 @@ export async function createBeat(
 export async function updateBeat(
 	accountId: string,
 	id: string,
-	patch: { name: string; data: DrumProject },
+	patch: { name: string; data: DrumProject | ExpressionProject },
 ) {
 	const [row] = await db
 		.update(beat)

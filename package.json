@@ -29,6 +29,7 @@
 		"audit:seo": "varlock run -- bun run scripts/seo-audit.ts",
 		"audit:effects": "bun run scripts/effect-audit.ts",
 		"check:swing": "varlock run -- node scripts/drum-swing-check.mjs",
+		"measure:multisampled-kit": "bun scripts/measure-multisampled-kit.ts",
 		"interop:bundle": "bun scripts/interop/bundle.ts",
 		"interop:reaper": "node scripts/interop/reaper.mjs",
 		"interop:rpp": "bun scripts/interop/rpp.ts",

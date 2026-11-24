@@ -1,4 +1,5 @@
 import { DEFAULT_DRUM_FX } from "#lib/constants/drumMachine.js";
+import { DEFAULT_MULTISAMPLED_KIT } from "#lib/constants/expressionDrums.js";
 import type { ExpressionCell, ExpressionProject, ExpressionRow } from "#lib/val/ExpressionDrumSchema.js";
 import { EMPTY_CELL } from "#lib/val/ExpressionDrumSchema.js";
 
@@ -44,7 +45,7 @@ export function startingExpressionProject(): ExpressionProject {
 		swingGrid: 16,
 		fx: { ...DEFAULT_DRUM_FX },
 		humanize: 0.14,
-		kit: "future",
+		kit: DEFAULT_MULTISAMPLED_KIT,
 		timeline: [
 			{ pattern: 0, reps: 4 },
 			{ pattern: 1, reps: 2 },

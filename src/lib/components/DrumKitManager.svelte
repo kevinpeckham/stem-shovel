@@ -39,6 +39,9 @@
 		/** Where the file came from, as written by whoever uploaded it (provenance). */
 		source: string;
 		uploadedBy: string | null;
+		/** A multisampled kit's velocity layer and round robin (a single-sample kit's are 5 and 1). */
+		layer?: number;
+		rr?: number;
 		createdAt: Date;
 	}
 	export interface KitRow {
@@ -47,6 +50,8 @@
 		scope: "site" | "account";
 		/** A built-in kit (Acoustic, Room): its own files unless a drum was replaced; never renamed or deleted. */
 		builtin?: boolean;
+		/** Made with the multisampled kit builder: layers and round robins, shown here, changed by building it again. */
+		multisampled?: boolean;
 		samples: KitSample[];
 	}
 	interface Props {
@@ -54,8 +59,10 @@
 		accountId: string | null;
 		kits: KitRow[];
 		onchange: () => void | Promise<void>;
+		/** Opens the multisampled kit builder; without it (a player with no use for layers) there is no such button. */
+		onbuild?: () => void;
 	}
-	let { accountId, kits, onchange }: Props = $props();
+	let { accountId, kits, onchange, onbuild }: Props = $props();
 
 	let newName = $state("");
 	let creating = $state(false);
@@ -67,6 +74,16 @@
 	const ready = (k: KitRow, voice: DrumVoiceId) =>
 		k.samples.find((s) => s.voice === voice && s.status === "ready") ?? null;
 	const voicesFilled = (k: KitRow) => DRUM_VOICES.filter((v) => ready(k, v.id)).length;
+	/** A multisampled kit's drum as layers and their file counts, loudest first: "V5 ×3 · V3 ×1"; a drum is in the kit with a V5 file. */
+	const layersOf = (k: KitRow, voice: DrumVoiceId) => {
+		const counts = new Map<number, number>();
+		for (const s of k.samples)
+			if (s.voice === voice && s.status === "ready")
+				counts.set(s.layer ?? 5, (counts.get(s.layer ?? 5) ?? 0) + 1);
+		return [...counts].sort((a, b) => b[0] - a[0]);
+	};
+	const multisampledDrums = (k: KitRow) =>
+		DRUM_VOICES.filter((v) => layersOf(k, v.id).some(([l]) => l === 5)).length;
 	const full = $derived(accountId !== null && kits.length >= MAX_DRUM_KITS_PER_ACCOUNT);
 
 	async function create(e: SubmitEvent) {
@@ -186,6 +203,19 @@
 			disabled={creating || full || !newName.trim()}>{creating ? "Making…" : "Make kit"}</button
 		>
 	</form>
+	{#if onbuild}
+		<div class="flex items-center gap-2">
+			<button
+				class="device-button-xs px-3 border shrink-0 disabled-opacity-40"
+				type="button"
+				disabled={full}
+				onclick={onbuild}
+			>
+				<span class="i-ph-stack" aria-hidden="true"></span> Build a multisampled kit
+			</button>
+			<span class="text-12px opacity-70">Velocity layers and round robins, a walkthrough.</span>
+		</div>
+	{/if}
 	{#if full}
 		<p class="text-12px opacity-70">
 			This account has {MAX_DRUM_KITS_PER_ACCOUNT} kits, as many as it can hold; delete one to make another.
@@ -216,7 +246,9 @@
 						{k.name}
 					</button>
 					<span class="text-12px opacity-60 tabular-nums"
-						>{#if k.builtin}built in · {voicesFilled(k)} replaced{:else}{voicesFilled(k)} of {DRUM_VOICES.length}
+						>{#if k.builtin}built in · {voicesFilled(k)} replaced{:else if k.multisampled}multisampled · {multisampledDrums(
+								k,
+							)} of {DRUM_VOICES.length} drums{:else}{voicesFilled(k)} of {DRUM_VOICES.length}
 							drums{/if}</span
 					>
 					{#if !k.builtin}
@@ -240,7 +272,27 @@
 						</button>
 					{/if}
 				</div>
-				{#if openKit === k.id}
+				{#if openKit === k.id && k.multisampled}
+					<!-- a multisampled kit is changed by building it again (docs/drum-machine.md, "Multisampled kits") -->
+					<ul class="m-0 p-0 list-none border-t border-current/10 divide-y divide-current/10">
+						{#each DRUM_VOICES as v (v.id)}
+							{@const layers = layersOf(k, v.id)}
+							<li class="grid grid-cols-[6rem_1fr] items-center gap-2 px-3 py-1.5">
+								<span class="opacity-90">{v.label}</span>
+								<span class="text-12px opacity-70 tabular-nums">
+									{#if layers.some(([l]) => l === 5)}
+										{layers.map(([l, n]) => `V${l} ×${n}`).join(" · ")}
+									{:else}
+										not in the kit
+									{/if}
+								</span>
+							</li>
+						{/each}
+						<li class="px-3 py-1.5 text-12px opacity-60">
+							To change a multisampled kit, delete it and build it again.
+						</li>
+					</ul>
+				{:else if openKit === k.id}
 					<ul class="m-0 p-0 list-none border-t border-current/10 divide-y divide-current/10">
 						{#each DRUM_VOICES as v (v.id)}
 							{@const s = ready(k, v.id)}

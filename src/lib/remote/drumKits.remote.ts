@@ -7,6 +7,7 @@ import {
 	deleteDrumSample as removeSample,
 	drumSampleOwner,
 	listDrumKitManifests,
+	listMultisampledKitManifests,
 	listDrumKitsFor,
 	renameDrumKit as rename,
 	setDrumSampleSource as setSource,
@@ -56,14 +57,22 @@ async function kitEditor(id: string) {
 	return kit.accountId;
 }
 
-export const createDrumKit = command(DrumKitCreateSchema, async ({ accountId, name }) => {
+/** The kits a multisampled player may play: every file of every voice, with its velocity layer, round robin and loudness. */
+export const multisampledKitManifests = query(DrumKitListSchema, async ({ accountId }) => {
+	const { locals } = getRequestEvent();
+	requireUser(locals);
+	if (accountId) await memberOf(locals, async () => accountId, accountId, { viewers: true });
+	return listMultisampledKitManifests(accountId ?? null);
+});
+
+export const createDrumKit = command(DrumKitCreateSchema, async ({ accountId, name, multisampled }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	if (accountId) {
 		const m = await memberOf(locals, async () => accountId, accountId);
 		if (!isEditor(m.role)) error(404, "Account not found");
 	} else requireSystemAdmin(locals);
-	const row = await create(accountId ?? null, user.id, name);
+	const row = await create(accountId ?? null, user.id, name, multisampled ?? false);
 	if (row === "full") error(409, "This account has as many kits as it can hold");
 	return { id: row.id, name: row.name };
 });

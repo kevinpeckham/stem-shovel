@@ -1,6 +1,6 @@
 import { aiAvailable } from "#lib/server/aiDetect.js";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
-import { listBeats, listDrumKitManifests, songForBeat } from "#lib/server/data.js";
+import { listExpressionBeats, listMultisampledKitManifests, songForBeat } from "#lib/server/data.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import { realMemberships } from "#lib/utils/actingMemberships.js";
 import copyFallback from "../../../scripts/user-docs/expression-drums-page.md?raw";
@@ -23,9 +23,10 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 		account: member
 			? { id: member.accountId, name: member.name, canEdit: member.role !== "viewer" }
 			: null,
-		beats: member ? await listBeats(member.accountId) : [],
-		// The custom kits the machine may play: the site's, and the account's (docs/drum-machine.md, "Custom kits").
-		kits: await listDrumKitManifests(member?.accountId ?? null),
+		// The account's beats, the drum machine's converted to this format (velocities 1, 2, 3 as 1, 3, 5).
+		beats: member ? await listExpressionBeats(member.accountId) : [],
+		// The custom kits the machine may play, every layer and round robin: the site's, and the account's (docs/drum-machine.md, "Multisampled kits").
+		kits: await listMultisampledKitManifests(member?.accountId ?? null),
 		song: member && songId ? await songForBeat(member.accountId, songId) : null,
 		// Text-to-Beat needs the AI Gateway (docs/drum-machine.md).
 		textToBeat: aiAvailable(),

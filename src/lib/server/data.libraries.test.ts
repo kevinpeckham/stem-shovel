@@ -1,6 +1,9 @@
 import { MAX_DRUM_KITS_PER_ACCOUNT } from "#lib/constants/drumKits.js";
 import type { ChordStyleData } from "#lib/val/ChordStyleSchema.js";
 import type { DrumProject } from "#lib/val/DrumPatternSchema.js";
+import type { ExpressionProject } from "#lib/val/ExpressionDrumSchema.js";
+import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
+import { startingExpressionProject } from "#lib/utils/startingExpressionProject.js";
 import { NamedPianoPresetSchema, type PianoPresetData } from "#lib/val/PianoPresetSchema.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
 import * as v from "valibot";
@@ -50,8 +53,10 @@ const {
 	drumSampleOwner,
 	ensureBuiltinKitRow,
 	listBeats,
+	listExpressionBeats,
 	listChordStyles,
 	listDrumKitManifests,
+	listMultisampledKitManifests,
 	listDrumKitsFor,
 	listPianoPresets,
 	listProgressions,
@@ -80,6 +85,7 @@ const kit = (id: string, accountId: string | null, name: string, minute: number)
 	accountId,
 	createdBy: "u1",
 	name,
+	multisampled: false,
 	createdAt: at(minute),
 	updatedAt: at(minute),
 });
@@ -96,6 +102,9 @@ const sample = (
 	accountId,
 	voice,
 	status,
+	layer: 5,
+	rr: 1,
+	loudness: null,
 	url: `https://blob/${id}.wav`,
 	pathname: `${accountId ? `accounts/${accountId}` : "site"}/kits/${kitId}/${id}.wav`,
 	filename: `${id}.wav`,
@@ -281,13 +290,16 @@ describe("createDrumSample", () => {
 	});
 	it("reserves the row at its pathname, uploading, with no URL yet", async () => {
 		const row = await createDrumSample("a1", "u1", "k1", "rim", file);
+		if (!row || typeof row === "string") throw new Error(`no row: ${row}`);
 		expect(row).toMatchObject({
 			kitId: "k1",
 			accountId: "a1",
 			voice: "rim",
 			status: "uploading",
+			layer: 5,
+			rr: 1,
 			url: "",
-			pathname: `accounts/a1/kits/k1/${row!.id}.wav`,
+			pathname: `accounts/a1/kits/k1/${row.id}.wav`,
 			filename: "Rim.WAV",
 			sizeBytes: 12,
 			uploadedBy: "u1",
@@ -317,6 +329,8 @@ describe("markDrumSampleReady", () => {
 			id: "sm8",
 			kitId: "k1",
 			voice: "kick",
+			layer: 5,
+			rr: 1,
 		});
 		expect(fake.rows("drumSample").find((r) => r.id === "sm8")).toMatchObject({
 			status: "ready",
@@ -324,6 +338,110 @@ describe("markDrumSampleReady", () => {
 		});
 		expect(ids(fake.rows("drumSample"))).toEqual(["sm1", "sm4", "sm5", "sm6", "sm7", "sm8"]);
 		expect(blob.deleteBlobs).toHaveBeenCalledWith(["https://blob/sm2.wav", "https://blob/sm3.wav"]);
+	});
+});
+
+describe("multisampled kits (velocity layers × round robins)", () => {
+	const file = { filename: "Snare.WAV", contentType: "audio/wav", sizeBytes: 12 };
+	const at = (minute: number) => new Date(Date.UTC(2026, 0, 1, 0, minute));
+	const row = (
+		id: string,
+		voice: string,
+		layer: number,
+		rr: number,
+		status = "ready",
+		loudness: number | null = -10,
+	) => ({
+		id,
+		kitId: "adv",
+		accountId: "a1",
+		voice,
+		status,
+		layer,
+		rr,
+		loudness,
+		url: `https://blob/${id}.flac`,
+		pathname: `accounts/a1/kits/adv/${id}.flac`,
+		filename: `${id}.flac`,
+		contentType: "audio/flac",
+		sizeBytes: 100,
+		uploadedBy: "u1",
+		source: "",
+		createdAt: at(rr),
+		updatedAt: at(rr),
+	});
+	const seed = (samples: ReturnType<typeof row>[]) =>
+		fake.reset({
+			user: kits.user,
+			drumKit: [
+				{
+					id: "adv",
+					accountId: "a1",
+					createdBy: "u1",
+					name: "Layers",
+					multisampled: true,
+					createdAt: at(0),
+					updatedAt: at(0),
+				},
+			],
+			drumSample: samples,
+		});
+	const reserve = (layer: 1 | 2 | 3 | 4 | 5, loudness = -12) =>
+		createDrumSample("a1", "u1", "adv", "snare", file, { layer, loudness });
+
+	it("a layer below 5 waits for the voice's V5", async () => {
+		seed([]);
+		expect(await reserve(3)).toBe("no-top-layer");
+		expect(ops("insert", "drum_sample")).toEqual([]);
+	});
+	it("the next round robin of the layer, gaps kept, with the measured loudness", async () => {
+		seed([row("a", "snare", 5, 1), row("b", "snare", 5, 3), row("c", "kick", 5, 1)]);
+		// Named for its place, whatever it was called on the uploader's disk.
+		expect(await reserve(5, -9.5)).toMatchObject({
+			layer: 5,
+			rr: 4,
+			loudness: -9.5,
+			filename: "snare V5 RR4.wav",
+		});
+		expect(await reserve(4)).toMatchObject({ layer: 4, rr: 1, filename: "snare V4 RR1.wav" });
+	});
+	it("a layer holds six round robins, reservations counted", async () => {
+		seed([1, 2, 3, 4, 5].map((n) => row(`s${n}`, "snare", 5, n)).concat(row("u", "snare", 5, 6, "uploading")));
+		expect(await reserve(5)).toBe("layer-full");
+	});
+	it("a single-sample kit takes no layer but 5", async () => {
+		fake.reset(kits);
+		expect(
+			await createDrumSample("a1", "u1", "k1", "rim", file, { layer: 3 }),
+		).toBe("not-multisampled");
+	});
+	it("ready replaces only the same slot; the voice's other files stay", async () => {
+		seed([
+			row("old", "snare", 5, 2),
+			row("keep1", "snare", 5, 1),
+			row("keep2", "snare", 4, 2),
+			row("new", "snare", 5, 2, "uploading"),
+		]);
+		await markDrumSampleReady("new", "https://blob/new.flac");
+		expect(ids(fake.rows("drumSample")).sort()).toEqual(["keep1", "keep2", "new"]);
+		expect(blob.deleteBlobs).toHaveBeenCalledWith(["https://blob/old.flac"]);
+	});
+	it("expression drums gets every ready file; the original machine only the first V5", async () => {
+		seed([
+			row("v5b", "snare", 5, 2, "ready", -8),
+			row("v5a", "snare", 5, 1, "ready", -7),
+			row("v3", "snare", 3, 1, "ready", -20),
+			row("up", "snare", 2, 1, "uploading"),
+		]);
+		const [adv] = await listMultisampledKitManifests("a1");
+		expect(adv).toMatchObject({ id: "adv", multisampled: true });
+		expect(adv!.samples.snare!.map((s) => [s.id, s.layer, s.rr, s.loudness])).toEqual([
+			["v5a", 5, 1, -7],
+			["v5b", 5, 2, -8],
+			["v3", 3, 1, -20],
+		]);
+		const [old] = await listDrumKitManifests("a1");
+		expect(old!.samples).toEqual({ snare: "signed:https://blob/v5a.flac" });
 	});
 });
 
@@ -371,14 +489,21 @@ describe("deleteAccountDrumKits", () => {
 
 // ---- beats ----
 
-const drumData = { version: 1, bpm: 90 } as unknown as DrumProject;
-const beatOf = (id: string, accountId: string, songId: string | null, minute: number) => ({
+const drumData: DrumProject = startingDrumProject();
+const expressionData: ExpressionProject = startingExpressionProject();
+const beatOf = (
+	id: string,
+	accountId: string,
+	songId: string | null,
+	minute: number,
+	data: DrumProject | ExpressionProject = drumData,
+) => ({
 	id,
 	accountId,
 	createdBy: "u1",
 	songId,
 	name: id,
-	data: drumData,
+	data,
 	createdAt: at(minute),
 	updatedAt: at(minute),
 });
@@ -397,7 +522,12 @@ const songs = {
 		},
 		{ id: "s2", accountId: "a1", projectId: "p1", title: "Quiet", slug: "quiet", changes: [] },
 	],
-	beat: [beatOf("b1", "a1", "s1", 1), beatOf("b2", "a1", null, 2), beatOf("b3", "a2", null, 3)],
+	beat: [
+		beatOf("b1", "a1", "s1", 1),
+		beatOf("b2", "a1", null, 2),
+		beatOf("b3", "a2", null, 3),
+		beatOf("b4", "a1", null, 4, expressionData),
+	],
 };
 
 describe("beats", () => {
@@ -407,6 +537,17 @@ describe("beats", () => {
 			["b2", null],
 			["b1", { id: "s1", title: "Song One" }],
 		]);
+	});
+	it("listBeats: an expression drums beat is left out (the drum machine cannot play it)", async () => {
+		expect((await listBeats("a1")).map((b) => b.id)).not.toContain("b4");
+	});
+	it("listExpressionBeats: its own as they are, the drum machine's converted", async () => {
+		const beats = await listExpressionBeats("a1");
+		expect(beats.map((b) => b.id)).toEqual(["b4", "b2", "b1"]);
+		expect(beats[0]!.data).toEqual(expressionData);
+		const kick = beats[1]!.data.patterns[0]!.rows[0]!;
+		const old = drumData.patterns[0]!.rows[0]!;
+		expect(kick.cells.map((c) => c.main)).toEqual(old.cells.map((n) => [0, 1, 3, 5][n]));
 	});
 	it("songForBeat: null for another account's song", async () => {
 		expect(await songForBeat("a2", "s1")).toBeNull();
@@ -445,9 +586,9 @@ describe("beats", () => {
 	});
 	it("deleteBeat: scoped", async () => {
 		await deleteBeat("a2", "b1");
-		expect(ids(fake.rows("beat"))).toEqual(["b1", "b2", "b3"]);
+		expect(ids(fake.rows("beat"))).toEqual(["b1", "b2", "b3", "b4"]);
 		await deleteBeat("a1", "b1");
-		expect(ids(fake.rows("beat"))).toEqual(["b2", "b3"]);
+		expect(ids(fake.rows("beat"))).toEqual(["b2", "b3", "b4"]);
 	});
 });
 

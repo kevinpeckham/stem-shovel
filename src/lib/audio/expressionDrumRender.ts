@@ -4,9 +4,9 @@ import { encodeWav } from "#lib/utils/encodeWav.js";
 import type { ExpressionPattern, ExpressionProject, ExpressionRow } from "#lib/val/ExpressionDrumSchema.js";
 import { cellActive } from "#lib/val/ExpressionDrumSchema.js";
 import { createDrumBus, type DrumBus } from "./drumBus";
-import { drumKit } from "./kits/expressionIndex";
+import { drumKit } from "./kits/multisampledIndex";
 import type { DrumHit } from "./kits/types";
-import type { SampledKit as ExpressionKit } from "./kits/expressionSampled";
+import type { LayeredDrumKit } from "./kits/types";
 
 /**
  * Playing one step of a pattern into the bus, shared by the live engine
@@ -27,7 +27,7 @@ export interface DrumPlayState {
 
 export function playDrumStep(
 	ctx: BaseAudioContext,
-	kit: ExpressionKit,
+	kit: LayeredDrumKit,
 	bus: DrumBus,
 	project: Pick<ExpressionProject, "humanize" | "bpm" | "swing" | "swingGrid">,
 	pattern: ExpressionPattern,
@@ -80,7 +80,7 @@ export function playDrumStep(
  */
 export function playDrumHit(
 	ctx: BaseAudioContext,
-	kit: ExpressionKit,
+	kit: LayeredDrumKit,
 	bus: DrumBus,
 	row: Pick<ExpressionRow, "voice" | "level" | "pan" | "delaySend" | "reverbSend">,
 	gain: number,

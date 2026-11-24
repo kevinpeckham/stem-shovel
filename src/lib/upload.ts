@@ -460,6 +460,10 @@ export interface DrumSampleReservation {
 	sampleId: string;
 	pathname: string;
 	access?: "public" | "private";
+	/** Where the file landed (a multisampled kit's layer and round robin) and the name it was given there. */
+	layer?: number;
+	rr?: number;
+	filename?: string;
 }
 
 /** A custom kit's sample (docs/drum-machine.md, "Custom kits"): reserve, send the bytes to Blob, report the URL. */
@@ -467,8 +471,9 @@ export async function uploadDrumSampleFile(
 	file: File,
 	reserve: () => Promise<DrumSampleReservation>,
 	onProgress?: (percent: number) => void,
-): Promise<void> {
-	const { sampleId, pathname, access = "public" } = await reserve();
+): Promise<DrumSampleReservation> {
+	const reservation = await reserve();
+	const { sampleId, pathname, access = "public" } = reservation;
 	const contentType = demoContentType(file.name) ?? undefined;
 	const blob = await upload(pathname, file, {
 		access,
@@ -482,6 +487,7 @@ export async function uploadDrumSampleFile(
 		body: JSON.stringify({ url: blob.url }),
 	});
 	if (!ready.ok) throw new Error(await errorText(ready));
+	return reservation;
 }
 
 export async function postJson<T>(path: string, payload: unknown): Promise<T> {

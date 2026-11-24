@@ -12,7 +12,7 @@ import { expressionDrums } from "./expressionDrums.svelte";
 import { playDrumHit, type DrumPlayState } from "./drumRender";
 import { playDrumHit as playExpressionDrumHit, type DrumPlayState as ExpressionPlayState } from "./expressionDrumRender";
 import { drumKit } from "./kits";
-import { drumKit as expressionDrumKit } from "./kits/expressionIndex";
+import { drumKit as expressionDrumKit } from "./kits/multisampledIndex";
 import { chordPiano, piano, type PianoEngine } from "./piano.svelte";
 import { createPianoFx } from "./pianoFx";
 import { startSampledVoice } from "./pianoSamples";

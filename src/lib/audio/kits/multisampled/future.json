@@ -1,0 +1,1826 @@
+{
+	"clap": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "clap V5 RR1.flac",
+			"loudness": -21.88
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "clap V5 RR2.flac",
+			"loudness": -22.61
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "clap V5 RR3.flac",
+			"loudness": -22.35
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "clap V5 RR4.flac",
+			"loudness": -22.29
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "clap V5 RR5.flac",
+			"loudness": -22.32
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "clap V4 RR1.flac",
+			"loudness": -25.37
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "clap V4 RR2.flac",
+			"loudness": -25.32
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "clap V4 RR3.flac",
+			"loudness": -25.4
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "clap V4 RR4.flac",
+			"loudness": -25.41
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "clap V4 RR5.flac",
+			"loudness": -25.12
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "clap V3 RR1.flac",
+			"loudness": -30.59
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "clap V3 RR2.flac",
+			"loudness": -30.77
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "clap V3 RR3.flac",
+			"loudness": -30.24
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "clap V3 RR4.flac",
+			"loudness": -30.37
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "clap V3 RR5.flac",
+			"loudness": -30.45
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "clap V2 RR1.flac",
+			"loudness": -34.2
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "clap V2 RR2.flac",
+			"loudness": -34.3
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "clap V2 RR3.flac",
+			"loudness": -34.63
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "clap V2 RR4.flac",
+			"loudness": -34.33
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "clap V2 RR5.flac",
+			"loudness": -34.46
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "clap V1 RR1.flac",
+			"loudness": -39.07
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "clap V1 RR2.flac",
+			"loudness": -39.01
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "clap V1 RR3.flac",
+			"loudness": -39.19
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "clap V1 RR4.flac",
+			"loudness": -39.08
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "clap V1 RR5.flac",
+			"loudness": -39.56
+		}
+	],
+	"cowbell": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "cowbell V5 RR1.flac",
+			"loudness": -19.5
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "cowbell V5 RR2.flac",
+			"loudness": -19.03
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "cowbell V5 RR3.flac",
+			"loudness": -18.18
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "cowbell V5 RR4.flac",
+			"loudness": -19.9
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "cowbell V5 RR5.flac",
+			"loudness": -20.01
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "cowbell V4 RR1.flac",
+			"loudness": -26.1
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "cowbell V4 RR2.flac",
+			"loudness": -25.63
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "cowbell V4 RR3.flac",
+			"loudness": -24.23
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "cowbell V4 RR4.flac",
+			"loudness": -26.83
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "cowbell V4 RR5.flac",
+			"loudness": -26.22
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "cowbell V3 RR1.flac",
+			"loudness": -33.21
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "cowbell V3 RR2.flac",
+			"loudness": -32.93
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "cowbell V3 RR3.flac",
+			"loudness": -33.92
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "cowbell V3 RR4.flac",
+			"loudness": -31.75
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "cowbell V3 RR5.flac",
+			"loudness": -31.29
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "cowbell V2 RR1.flac",
+			"loudness": -34.35
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "cowbell V2 RR2.flac",
+			"loudness": -34.64
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "cowbell V2 RR3.flac",
+			"loudness": -34.4
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "cowbell V2 RR4.flac",
+			"loudness": -35.32
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "cowbell V2 RR5.flac",
+			"loudness": -34.78
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "cowbell V1 RR1.flac",
+			"loudness": -42.27
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "cowbell V1 RR2.flac",
+			"loudness": -42.44
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "cowbell V1 RR3.flac",
+			"loudness": -41.36
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "cowbell V1 RR4.flac",
+			"loudness": -41.01
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "cowbell V1 RR5.flac",
+			"loudness": -44.4
+		}
+	],
+	"crash": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "crash V5 RR1.flac",
+			"loudness": -8.15
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "crash V5 RR2.flac",
+			"loudness": -8.15
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "crash V5 RR3.flac",
+			"loudness": -8.4
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "crash V5 RR4.flac",
+			"loudness": -8.24
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "crash V5 RR5.flac",
+			"loudness": -8.27
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "crash V4 RR1.flac",
+			"loudness": -11.67
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "crash V4 RR2.flac",
+			"loudness": -12.59
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "crash V4 RR3.flac",
+			"loudness": -11.2
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "crash V4 RR4.flac",
+			"loudness": -11.41
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "crash V4 RR5.flac",
+			"loudness": -13.39
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "crash V3 RR1.flac",
+			"loudness": -13.61
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "crash V3 RR2.flac",
+			"loudness": -14.2
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "crash V3 RR3.flac",
+			"loudness": -13.22
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "crash V3 RR4.flac",
+			"loudness": -13.5
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "crash V3 RR5.flac",
+			"loudness": -15.9
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "crash V2 RR1.flac",
+			"loudness": -17.24
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "crash V2 RR2.flac",
+			"loudness": -19.1
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "crash V2 RR3.flac",
+			"loudness": -16.18
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "crash V2 RR4.flac",
+			"loudness": -17.2
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "crash V2 RR5.flac",
+			"loudness": -20.08
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "crash V1 RR1.flac",
+			"loudness": -25.43
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "crash V1 RR2.flac",
+			"loudness": -26.5
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "crash V1 RR3.flac",
+			"loudness": -23.7
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "crash V1 RR4.flac",
+			"loudness": -24.92
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "crash V1 RR5.flac",
+			"loudness": -30.46
+		}
+	],
+	"hat-closed": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "hat-closed V5 RR1.flac",
+			"loudness": -13.64
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "hat-closed V5 RR2.flac",
+			"loudness": -13.82
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "hat-closed V5 RR3.flac",
+			"loudness": -13.89
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "hat-closed V5 RR4.flac",
+			"loudness": -13.63
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "hat-closed V5 RR5.flac",
+			"loudness": -13.5
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "hat-closed V4 RR1.flac",
+			"loudness": -23.53
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "hat-closed V4 RR2.flac",
+			"loudness": -26.71
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "hat-closed V4 RR3.flac",
+			"loudness": -22.73
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "hat-closed V4 RR4.flac",
+			"loudness": -22.82
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "hat-closed V4 RR5.flac",
+			"loudness": -27.68
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "hat-closed V3 RR1.flac",
+			"loudness": -30.15
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "hat-closed V3 RR2.flac",
+			"loudness": -32.57
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "hat-closed V3 RR3.flac",
+			"loudness": -28.49
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "hat-closed V3 RR4.flac",
+			"loudness": -28.19
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "hat-closed V3 RR5.flac",
+			"loudness": -34.03
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "hat-closed V2 RR1.flac",
+			"loudness": -35.8
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "hat-closed V2 RR2.flac",
+			"loudness": -38.16
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "hat-closed V2 RR3.flac",
+			"loudness": -34.29
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "hat-closed V2 RR4.flac",
+			"loudness": -35.49
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "hat-closed V2 RR5.flac",
+			"loudness": -40.55
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "hat-closed V1 RR1.flac",
+			"loudness": -48.39
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "hat-closed V1 RR2.flac",
+			"loudness": -51.08
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "hat-closed V1 RR3.flac",
+			"loudness": -47.61
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "hat-closed V1 RR4.flac",
+			"loudness": -48.29
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "hat-closed V1 RR5.flac",
+			"loudness": -53.37
+		}
+	],
+	"hat-open": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "hat-open V5 RR1.flac",
+			"loudness": -5.49
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "hat-open V5 RR2.flac",
+			"loudness": -5.65
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "hat-open V5 RR3.flac",
+			"loudness": -5.47
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "hat-open V5 RR4.flac",
+			"loudness": -5.57
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "hat-open V5 RR5.flac",
+			"loudness": -5.4
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "hat-open V4 RR1.flac",
+			"loudness": -11.21
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "hat-open V4 RR2.flac",
+			"loudness": -13.98
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "hat-open V4 RR3.flac",
+			"loudness": -9.63
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "hat-open V4 RR4.flac",
+			"loudness": -10.38
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "hat-open V4 RR5.flac",
+			"loudness": -15.13
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "hat-open V3 RR1.flac",
+			"loudness": -20.24
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "hat-open V3 RR2.flac",
+			"loudness": -21.65
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "hat-open V3 RR3.flac",
+			"loudness": -19.42
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "hat-open V3 RR4.flac",
+			"loudness": -19.35
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "hat-open V3 RR5.flac",
+			"loudness": -24.46
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "hat-open V2 RR1.flac",
+			"loudness": -29.06
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "hat-open V2 RR2.flac",
+			"loudness": -31.26
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "hat-open V2 RR3.flac",
+			"loudness": -27.53
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "hat-open V2 RR4.flac",
+			"loudness": -28.31
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "hat-open V2 RR5.flac",
+			"loudness": -33.18
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "hat-open V1 RR1.flac",
+			"loudness": -37.63
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "hat-open V1 RR2.flac",
+			"loudness": -40
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "hat-open V1 RR3.flac",
+			"loudness": -36.48
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "hat-open V1 RR4.flac",
+			"loudness": -37.06
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "hat-open V1 RR5.flac",
+			"loudness": -42.38
+		}
+	],
+	"kick": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "kick V5 RR1.flac",
+			"loudness": -15.15
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "kick V5 RR2.flac",
+			"loudness": -15.47
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "kick V5 RR3.flac",
+			"loudness": -15.28
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "kick V5 RR4.flac",
+			"loudness": -16.08
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "kick V5 RR5.flac",
+			"loudness": -15.78
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "kick V4 RR1.flac",
+			"loudness": -18.99
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "kick V4 RR2.flac",
+			"loudness": -19.06
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "kick V4 RR3.flac",
+			"loudness": -18.68
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "kick V4 RR4.flac",
+			"loudness": -18.3
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "kick V4 RR5.flac",
+			"loudness": -19.75
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "kick V3 RR1.flac",
+			"loudness": -20.29
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "kick V3 RR2.flac",
+			"loudness": -20.6
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "kick V3 RR3.flac",
+			"loudness": -19.62
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "kick V3 RR4.flac",
+			"loudness": -19.97
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "kick V3 RR5.flac",
+			"loudness": -21.39
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "kick V2 RR1.flac",
+			"loudness": -21.27
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "kick V2 RR2.flac",
+			"loudness": -21.35
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "kick V2 RR3.flac",
+			"loudness": -21.13
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "kick V2 RR4.flac",
+			"loudness": -21.24
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "kick V2 RR5.flac",
+			"loudness": -21.98
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "kick V1 RR1.flac",
+			"loudness": -21.73
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "kick V1 RR2.flac",
+			"loudness": -23.1
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "kick V1 RR3.flac",
+			"loudness": -22.06
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "kick V1 RR4.flac",
+			"loudness": -21.95
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "kick V1 RR5.flac",
+			"loudness": -23.98
+		}
+	],
+	"ride": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "ride V5 RR1.flac",
+			"loudness": -7.17
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "ride V5 RR2.flac",
+			"loudness": -7.65
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "ride V5 RR3.flac",
+			"loudness": -7.22
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "ride V5 RR4.flac",
+			"loudness": -7.02
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "ride V5 RR5.flac",
+			"loudness": -7.18
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "ride V4 RR1.flac",
+			"loudness": -13.51
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "ride V4 RR2.flac",
+			"loudness": -14.25
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "ride V4 RR3.flac",
+			"loudness": -11.7
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "ride V4 RR4.flac",
+			"loudness": -12.09
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "ride V4 RR5.flac",
+			"loudness": -16.02
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "ride V3 RR1.flac",
+			"loudness": -18.07
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "ride V3 RR2.flac",
+			"loudness": -22.57
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "ride V3 RR3.flac",
+			"loudness": -18.64
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "ride V3 RR4.flac",
+			"loudness": -16.83
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "ride V3 RR5.flac",
+			"loudness": -25.07
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "ride V2 RR1.flac",
+			"loudness": -23.42
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "ride V2 RR2.flac",
+			"loudness": -24.85
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "ride V2 RR3.flac",
+			"loudness": -22.5
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "ride V2 RR4.flac",
+			"loudness": -22.91
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "ride V2 RR5.flac",
+			"loudness": -25.8
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "ride V1 RR1.flac",
+			"loudness": -30.35
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "ride V1 RR2.flac",
+			"loudness": -33.79
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "ride V1 RR3.flac",
+			"loudness": -26.96
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "ride V1 RR4.flac",
+			"loudness": -29.51
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "ride V1 RR5.flac",
+			"loudness": -35.08
+		}
+	],
+	"rim": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "rim V5 RR1.flac",
+			"loudness": -17.64
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "rim V5 RR2.flac",
+			"loudness": -17.76
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "rim V5 RR3.flac",
+			"loudness": -17.67
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "rim V5 RR4.flac",
+			"loudness": -17.63
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "rim V5 RR5.flac",
+			"loudness": -17.77
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "rim V4 RR1.flac",
+			"loudness": -18.1
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "rim V4 RR2.flac",
+			"loudness": -18.59
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "rim V4 RR3.flac",
+			"loudness": -18.08
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "rim V4 RR4.flac",
+			"loudness": -18.63
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "rim V4 RR5.flac",
+			"loudness": -18.58
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "rim V3 RR1.flac",
+			"loudness": -18.91
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "rim V3 RR2.flac",
+			"loudness": -19.25
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "rim V3 RR3.flac",
+			"loudness": -18.76
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "rim V3 RR4.flac",
+			"loudness": -18.68
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "rim V3 RR5.flac",
+			"loudness": -19.43
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "rim V2 RR1.flac",
+			"loudness": -21.72
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "rim V2 RR2.flac",
+			"loudness": -22.84
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "rim V2 RR3.flac",
+			"loudness": -21.81
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "rim V2 RR4.flac",
+			"loudness": -21.86
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "rim V2 RR5.flac",
+			"loudness": -23.02
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "rim V1 RR1.flac",
+			"loudness": -27.25
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "rim V1 RR2.flac",
+			"loudness": -28.21
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "rim V1 RR3.flac",
+			"loudness": -27.56
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "rim V1 RR4.flac",
+			"loudness": -27.02
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "rim V1 RR5.flac",
+			"loudness": -28.3
+		}
+	],
+	"snare": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "snare V5 RR1.flac",
+			"loudness": -19.15
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "snare V5 RR2.flac",
+			"loudness": -19.07
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "snare V5 RR3.flac",
+			"loudness": -19.04
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "snare V5 RR4.flac",
+			"loudness": -19.07
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "snare V5 RR5.flac",
+			"loudness": -19.24
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "snare V4 RR1.flac",
+			"loudness": -20.69
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "snare V4 RR2.flac",
+			"loudness": -21.22
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "snare V4 RR3.flac",
+			"loudness": -20.09
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "snare V4 RR4.flac",
+			"loudness": -20.3
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "snare V4 RR5.flac",
+			"loudness": -21.28
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "snare V3 RR1.flac",
+			"loudness": -21.52
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "snare V3 RR2.flac",
+			"loudness": -22.32
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "snare V3 RR3.flac",
+			"loudness": -21.56
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "snare V3 RR4.flac",
+			"loudness": -21.91
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "snare V3 RR5.flac",
+			"loudness": -22.56
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "snare V2 RR1.flac",
+			"loudness": -24.75
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "snare V2 RR2.flac",
+			"loudness": -24.64
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "snare V2 RR3.flac",
+			"loudness": -24.21
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "snare V2 RR4.flac",
+			"loudness": -24.39
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "snare V2 RR5.flac",
+			"loudness": -25.32
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "snare V1 RR1.flac",
+			"loudness": -27.83
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "snare V1 RR2.flac",
+			"loudness": -28.2
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "snare V1 RR3.flac",
+			"loudness": -27.6
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "snare V1 RR4.flac",
+			"loudness": -27.85
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "snare V1 RR5.flac",
+			"loudness": -28.67
+		}
+	],
+	"tom-high": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "tom-high V5 RR1.flac",
+			"loudness": -14.43
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "tom-high V5 RR2.flac",
+			"loudness": -14.52
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "tom-high V5 RR3.flac",
+			"loudness": -14.43
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "tom-high V5 RR4.flac",
+			"loudness": -14.45
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "tom-high V5 RR5.flac",
+			"loudness": -14.53
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "tom-high V4 RR1.flac",
+			"loudness": -16.61
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "tom-high V4 RR2.flac",
+			"loudness": -15.69
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "tom-high V4 RR3.flac",
+			"loudness": -15.78
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "tom-high V4 RR4.flac",
+			"loudness": -15.93
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "tom-high V4 RR5.flac",
+			"loudness": -17.38
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "tom-high V3 RR1.flac",
+			"loudness": -17.8
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "tom-high V3 RR2.flac",
+			"loudness": -19.39
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "tom-high V3 RR3.flac",
+			"loudness": -16.23
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "tom-high V3 RR4.flac",
+			"loudness": -16.4
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "tom-high V3 RR5.flac",
+			"loudness": -18.61
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "tom-high V2 RR1.flac",
+			"loudness": -19.78
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "tom-high V2 RR2.flac",
+			"loudness": -23.45
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "tom-high V2 RR3.flac",
+			"loudness": -19.48
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "tom-high V2 RR4.flac",
+			"loudness": -22.17
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "tom-high V2 RR5.flac",
+			"loudness": -24
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "tom-high V1 RR1.flac",
+			"loudness": -24.38
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "tom-high V1 RR2.flac",
+			"loudness": -29.14
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "tom-high V1 RR3.flac",
+			"loudness": -25.79
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "tom-high V1 RR4.flac",
+			"loudness": -25.53
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "tom-high V1 RR5.flac",
+			"loudness": -28.8
+		}
+	],
+	"tom-low": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "tom-low V5 RR1.flac",
+			"loudness": -14.9
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "tom-low V5 RR2.flac",
+			"loudness": -15.01
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "tom-low V5 RR3.flac",
+			"loudness": -15.13
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "tom-low V5 RR4.flac",
+			"loudness": -15.11
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "tom-low V5 RR5.flac",
+			"loudness": -15.12
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "tom-low V4 RR1.flac",
+			"loudness": -14.04
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "tom-low V4 RR2.flac",
+			"loudness": -14.46
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "tom-low V4 RR3.flac",
+			"loudness": -14.25
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "tom-low V4 RR4.flac",
+			"loudness": -14.48
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "tom-low V4 RR5.flac",
+			"loudness": -14.32
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "tom-low V3 RR1.flac",
+			"loudness": -14.23
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "tom-low V3 RR2.flac",
+			"loudness": -14.05
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "tom-low V3 RR3.flac",
+			"loudness": -14.63
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "tom-low V3 RR4.flac",
+			"loudness": -14.03
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "tom-low V3 RR5.flac",
+			"loudness": -14.71
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "tom-low V2 RR1.flac",
+			"loudness": -14.18
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "tom-low V2 RR2.flac",
+			"loudness": -14.28
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "tom-low V2 RR3.flac",
+			"loudness": -14.52
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "tom-low V2 RR4.flac",
+			"loudness": -14.72
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "tom-low V2 RR5.flac",
+			"loudness": -14.75
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "tom-low V1 RR1.flac",
+			"loudness": -14.65
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "tom-low V1 RR2.flac",
+			"loudness": -14.66
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "tom-low V1 RR3.flac",
+			"loudness": -14.93
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "tom-low V1 RR4.flac",
+			"loudness": -14.45
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "tom-low V1 RR5.flac",
+			"loudness": -15.04
+		}
+	],
+	"tom-mid": [
+		{
+			"layer": 5,
+			"rr": 1,
+			"file": "tom-mid V5 RR1.flac",
+			"loudness": -11.84
+		},
+		{
+			"layer": 5,
+			"rr": 2,
+			"file": "tom-mid V5 RR2.flac",
+			"loudness": -11.69
+		},
+		{
+			"layer": 5,
+			"rr": 3,
+			"file": "tom-mid V5 RR3.flac",
+			"loudness": -12.81
+		},
+		{
+			"layer": 5,
+			"rr": 4,
+			"file": "tom-mid V5 RR4.flac",
+			"loudness": -11.63
+		},
+		{
+			"layer": 5,
+			"rr": 5,
+			"file": "tom-mid V5 RR5.flac",
+			"loudness": -11.94
+		},
+		{
+			"layer": 4,
+			"rr": 1,
+			"file": "tom-mid V4 RR1.flac",
+			"loudness": -14.66
+		},
+		{
+			"layer": 4,
+			"rr": 2,
+			"file": "tom-mid V4 RR2.flac",
+			"loudness": -16.01
+		},
+		{
+			"layer": 4,
+			"rr": 3,
+			"file": "tom-mid V4 RR3.flac",
+			"loudness": -14.63
+		},
+		{
+			"layer": 4,
+			"rr": 4,
+			"file": "tom-mid V4 RR4.flac",
+			"loudness": -14.49
+		},
+		{
+			"layer": 4,
+			"rr": 5,
+			"file": "tom-mid V4 RR5.flac",
+			"loudness": -15.73
+		},
+		{
+			"layer": 3,
+			"rr": 1,
+			"file": "tom-mid V3 RR1.flac",
+			"loudness": -17.81
+		},
+		{
+			"layer": 3,
+			"rr": 2,
+			"file": "tom-mid V3 RR2.flac",
+			"loudness": -18.71
+		},
+		{
+			"layer": 3,
+			"rr": 3,
+			"file": "tom-mid V3 RR3.flac",
+			"loudness": -18.02
+		},
+		{
+			"layer": 3,
+			"rr": 4,
+			"file": "tom-mid V3 RR4.flac",
+			"loudness": -17.33
+		},
+		{
+			"layer": 3,
+			"rr": 5,
+			"file": "tom-mid V3 RR5.flac",
+			"loudness": -18.95
+		},
+		{
+			"layer": 2,
+			"rr": 1,
+			"file": "tom-mid V2 RR1.flac",
+			"loudness": -21.24
+		},
+		{
+			"layer": 2,
+			"rr": 2,
+			"file": "tom-mid V2 RR2.flac",
+			"loudness": -23.65
+		},
+		{
+			"layer": 2,
+			"rr": 3,
+			"file": "tom-mid V2 RR3.flac",
+			"loudness": -19.64
+		},
+		{
+			"layer": 2,
+			"rr": 4,
+			"file": "tom-mid V2 RR4.flac",
+			"loudness": -20.14
+		},
+		{
+			"layer": 2,
+			"rr": 5,
+			"file": "tom-mid V2 RR5.flac",
+			"loudness": -24.17
+		},
+		{
+			"layer": 1,
+			"rr": 1,
+			"file": "tom-mid V1 RR1.flac",
+			"loudness": -22.96
+		},
+		{
+			"layer": 1,
+			"rr": 2,
+			"file": "tom-mid V1 RR2.flac",
+			"loudness": -25.47
+		},
+		{
+			"layer": 1,
+			"rr": 3,
+			"file": "tom-mid V1 RR3.flac",
+			"loudness": -21.98
+		},
+		{
+			"layer": 1,
+			"rr": 4,
+			"file": "tom-mid V1 RR4.flac",
+			"loudness": -22.7
+		},
+		{
+			"layer": 1,
+			"rr": 5,
+			"file": "tom-mid V1 RR5.flac",
+			"loudness": -26.94
+		}
+	]
+}

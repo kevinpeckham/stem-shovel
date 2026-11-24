@@ -92,7 +92,7 @@ describe("createDrumKit", () => {
 			id: KIT,
 			name: "Room",
 		});
-		expect(data.createDrumKit).toHaveBeenCalledWith(ACCOUNT, USER, "Room");
+		expect(data.createDrumKit).toHaveBeenCalledWith(ACCOUNT, USER, "Room", false);
 	});
 	it("a site kit takes the operator: 404 for an account owner", async () => {
 		asEditorOf(ACCOUNT, "owner");
@@ -100,7 +100,7 @@ describe("createDrumKit", () => {
 		expect(data.createDrumKit).not.toHaveBeenCalled();
 		asSystemAdmin();
 		await call(kits.createDrumKit, { name: "Site" });
-		expect(data.createDrumKit).toHaveBeenCalledWith(null, SYSADMIN, "Site");
+		expect(data.createDrumKit).toHaveBeenCalledWith(null, SYSADMIN, "Site", false);
 	});
 });
 

@@ -6,8 +6,7 @@
 	const p = $derived(expressionDrums.project);
 </script>
 
-<div class="col-span-3 mt-5 @xl-mt-0">
-	<div class="device-button-group-label">Timeline</div>
+{#snippet timelineBody()}
 	<div class="flex items-center gap-2 mb-2">
 		<button
 			class="device-button-xs px-2 {expressionDrums.playsSong ? 'text-accent' : ''}"
@@ -31,14 +30,32 @@
 							onclick={() => { expressionDrums.songLoop = false; }}>Song</button
 						>
 						<button
-							class="device-button-xs font-thin px-2 text-22px {expressionDrums.songLoop ? 'text-accent' : ''}"
+							class="device-button-xs px-2 {expressionDrums.songLoop ? 'text-accent' : ''}"
 							type="button"
 							aria-pressed={expressionDrums.songLoop}
+							aria-label="Loop"
 							title="Loop the timeline endlessly"
-							onclick={() => { expressionDrums.songLoop = true; }}>∞</button
+							onclick={() => { expressionDrums.songLoop = true; }}
+							><span class="i-ph-repeat" aria-hidden="true"></span></button
 						>
 					</div>
 				</div>
+		<button
+			class="device-button-xs px-4 {expressionDrums.followSong ? 'text-accent' : ''} {expressionDrums.playsSong
+				? ''
+				: 'invisible'}"
+			type="button"
+			aria-pressed={expressionDrums.followSong}
+			aria-label="Pattern display follows sequence"
+			title="Pattern display follows sequence"
+			onclick={() => expressionDrums.setFollowSong(!expressionDrums.followSong)}
+		>
+			<!-- two arrows, one following the other -->
+			<span class="flex items-center gap-0.5" aria-hidden="true">
+				<span class="i-ph-arrow-fat-right-fill"></span>
+				<span class="i-ph-arrow-fat-right-fill"></span>
+			</span>
+		</button>
 	</div>
 	<div class="flex flex-wrap items-start gap-2" role="group" aria-label="Bars">
 		{#each p.timeline as entry, i (i)}
@@ -122,5 +139,26 @@
 			<span class="text-16px @2xl-text-12px opacity-70">Select one of your patterns and add it here.</span>
 		{/if}
 	</div>
+{/snippet}
 
+<!-- Desktop: inline -->
+<div class="hidden @xl-block col-span-5 mt-5 @xl-mt-0">
+	<div class="device-button-group-label">Timeline</div>
+	{@render timelineBody()}
 </div>
+
+<!-- Narrow: collapsible -->
+<details class="group @xl-hidden col-span-3 mt-3">
+	<summary
+		class="flex items-center gap-2 pb-1 mb-2 border-b border-current/50 cursor-pointer select-none font-500 opacity-80 text-dark text-20px sm-text-16px md-text-17px list-none [&::-webkit-details-marker]-hidden"
+	>
+		<span>Timeline</span>
+		<span
+			class="i-ph-caret-right-fill text-18px opacity-70 transition-transform group-open-rotate-90"
+			aria-hidden="true"
+		></span>
+	</summary>
+	<div class="pb-2">
+		{@render timelineBody()}
+	</div>
+</details>
