@@ -11,7 +11,8 @@
 	 * someone who already has a sign-in joins from here; joining lands them
 	 * in the account, as the link does. Rendered only with something in it.
 	 * A row without a token (a super admin viewing someone's dashboard) is
-	 * listed without the button.
+	 * listed with a note in place of the button: joining goes by the
+	 * signed-in person's address, so the admin's press would be refused.
 	 */
 	interface Invitation {
 		id: string;
@@ -70,6 +71,10 @@
 								{accept.pending ? "Joining…" : inv.label}
 							</button>
 						</form>
+					{:else}
+						<p class="text-12px opacity-70">
+							Only they can join: the button shows on their own dashboard.
+						</p>
 					{/if}
 				</li>
 			{/each}

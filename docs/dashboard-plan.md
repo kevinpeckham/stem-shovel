@@ -267,5 +267,8 @@ account), the expiry, and a Join button that submits the same
 or expired) and leaves out an account the person already belongs to and
 a project they are already on. One account's dashboard (`?account=`)
 leaves the section out. A super admin viewing a user (`?user=`) sees that
-user's invitations without the tokens, so without buttons. There is no
+user's invitations without the tokens, so with a note in place of each
+button ("Only they can join: the button shows on their own dashboard"):
+joining goes by the signed-in person's address, so the admin's press
+would be refused. There is no
 decline: the invitation expires, or the sender revokes it. No migration.

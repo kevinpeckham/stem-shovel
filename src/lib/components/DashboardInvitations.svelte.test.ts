@@ -60,10 +60,13 @@ describe("DashboardInvitations", () => {
 		expect(within(row).getByRole("button", { name: "Open The Album" })).toBeInTheDocument();
 	});
 
-	test("without a token (someone else's dashboard) the invitation is listed with no button", () => {
+	test("without a token (someone else's dashboard) the invitation is listed with a note in place of the button", () => {
 		render(DashboardInvitations, { props: { invitations: [{ ...toAccount, token: null }] } });
 		expect(screen.getByRole("listitem")).toHaveTextContent("Night Shift");
 		expect(screen.queryByRole("button")).toBeNull();
+		expect(screen.getByRole("listitem")).toHaveTextContent(
+			"Only they can join: the button shows on their own dashboard.",
+		);
 	});
 
 	test("pressing Join submits; a refusal is shown as an error notification", async () => {
