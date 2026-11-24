@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.271.0] - 2026-11-24
+
 ### Added
 
 - **Invitations on the dashboard.** Someone who already has a sign-in and
@@ -34,6 +36,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   8444 is gone (lj-bench's 8444 serves another app). The VM setup is the
   brief `docs/bench-brief-dev-on-lj-bench-2026-11-22.md`, for the agent
   already on that machine.
+- **Agent tooling is declared in the repository** (`.claude/settings.json`,
+  `.mcp.json`; the "Agent tooling" section of CLAUDE.md): the Playwright,
+  Svelte and Varlock documentation servers. Fallow's MCP server is gone;
+  the command is what agents and CI run.
+- **Fallow 3.43.1** (from 3.36.0).
+- **`sentry:diagnose` passes `CLAUDE_CONFIG_DIR`** to its headless Claude,
+  so a service picks the sign-in it is meant to use.
+- **Finding: the hook tests fail under the varlock plugin.** With varlock
+  loaded, its Vite plugin writes the stage's own `ENV.VERCEL_ENV` and
+  `ENV.SHORT_LINK_ORIGIN` into `src/hooks.server.ts`, so six tests that
+  set them through the mock fail on the dev VM and pass with
+  `SKIP_VARLOCK=1`, as CI runs them (FINDINGS.md).
 
 ## [0.270.0] - 2026-11-14
 

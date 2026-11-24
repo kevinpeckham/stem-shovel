@@ -7,6 +7,26 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## The varlock Vite plugin inlines non-sensitive `ENV.X`, so a mock of `varlock/env` cannot set them (2026-11-24)
+
+`@varlock/vite-integration` (1.5.4) replaces every `ENV.<KEY>` whose item
+is static and not sensitive with its resolved literal as the file is
+transformed (`resetStaticReplacements` in its `dist/index.mjs`; an unset
+value becomes `undefined`). That happens under Vitest too whenever the
+plugin is loaded, so `vi.mock("varlock/env", …)` has no say over those
+keys: in `src/hooks.server.ts`, `ENV.VERCEL_ENV` and
+`ENV.SHORT_LINK_ORIGIN` are the dev stage's (both unset) whatever the
+test puts in its mock. Six tests in `src/hooks.server.test.ts` (the
+production front page staying indexable, and the five short-domain ones)
+fail under a plain `bun run test` on the lj-bench VM and pass under
+`SKIP_VARLOCK=1 bun run test`, which is how CI runs them. Seen cutting
+v0.271.0; the same six fail on the commit before that release's work, so
+it is the harness, not the change. Sensitive keys are not inlined, which
+is why the other mocked values work. Until the tests stop depending on
+it (reading such a key through a helper the test can mock, or leaving
+the plugin out under Vitest), judge a release's test gate by the
+`SKIP_VARLOCK=1` run.
+
 ## `vercel link` appends `.env*` to `.gitignore` and rewrites `.env.local` (2026-11-22)
 
 `vercel link --yes` (CLI 65.2.0) does more than write `.vercel/`: it
