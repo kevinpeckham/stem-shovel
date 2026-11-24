@@ -8,6 +8,23 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **A note where the Join button is hidden.** A super admin viewing a
+  user's dashboard sees that user's invitations without the button (a
+  press would try to join as the admin and be refused); the row now says
+  "Only they can join: the button shows on their own dashboard."
+
+### Technical
+
+- **The tests never load the varlock plugin.** `vite.config.ts` leaves it
+  out under Vitest's `VITEST` as well as `SKIP_VARLOCK`, so `bun run test`
+  is the run CI does on every machine. With the plugin, six tests in
+  `src/hooks.server.test.ts` failed wherever varlock resolved: it writes
+  the stage's own `ENV.VERCEL_ENV` and `ENV.SHORT_LINK_ORIGIN` into the
+  code, past the tests' mock (FINDINGS.md; docs/testing.md and CLAUDE.md
+  follow).
+
 ## [0.271.0] - 2026-11-24
 
 ### Added

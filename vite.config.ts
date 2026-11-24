@@ -34,13 +34,21 @@ function buildSha(): string {
 // (which mock the env) without the plugin. The plugin module reads .env.schema
 // the moment it is imported (and complains without a token), so it is imported
 // only when it is going to be used. Never set SKIP_VARLOCK for a build.
-const varlockPlugins = process.env.SKIP_VARLOCK
-	? []
-	: [
-			(await import("@varlock/vite-integration")).varlockVitePlugin({
-				ssrInjectMode: "resolved-env",
-			}),
-		];
+//
+// The tests never get the plugin, on any machine (VITEST is Vitest's own
+// flag, set before this file is read): it writes each non-sensitive ENV.X
+// into the code as the stage's own value, so a test's mock of "varlock/env"
+// could not set VERCEL_ENV or SHORT_LINK_ORIGIN and the hook tests failed
+// wherever varlock resolved (FINDINGS.md). The sibling projects keep it out
+// of their tests the same way, with a Vitest config of their own.
+const varlockPlugins =
+	process.env.SKIP_VARLOCK || process.env.VITEST
+		? []
+		: [
+				(await import("@varlock/vite-integration")).varlockVitePlugin({
+					ssrInjectMode: "resolved-env",
+				}),
+			];
 
 export default defineConfig({
 	// The build version shown in the footer (src/lib/components/GlobalFooter.svelte).

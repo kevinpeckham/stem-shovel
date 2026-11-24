@@ -130,15 +130,17 @@ bunx vp test run src/lib/audio/measures.test.ts   # one file
   server modules' pure parts. Server modules pull in the database, Blob and
   ffmpeg, so their tests `vi.mock` those (`src/lib/server/mix.test.ts`,
   `previewAuth.test.ts`); inputs a mock factory needs go through
-  `vi.hoisted`, since factories are hoisted above imports. CI runs the
-  tests with `SKIP_VARLOCK=1` and no 1Password, where `#lib/server/db/index.js`
-  throws the moment it loads, so a test of a pure function must not import
-  it through a server module (`data.ts` reaches the database): put the
-  function in `src/lib/utils/` and test it there, or mock the module.
-  `SKIP_VARLOCK=1 bun run test` reproduces CI locally. The same flag (and
-  Vitest's own `VITEST`) makes `uno.config.ts` skip the web-fonts preset,
-  which fetches font CSS from the provider when the config loads and timed
-  out in CI; builds still inline the fonts.
+  `vi.hoisted`, since factories are hoisted above imports. The tests run
+  without the varlock plugin on every machine (`vite.config.ts` leaves it
+  out under Vitest's own `VITEST`, and under CI's `SKIP_VARLOCK=1`), so
+  `bun run test` here is what CI runs: the env is whatever a test's mock
+  of `varlock/env` says, and `#lib/server/db/index.js` throws the moment
+  it loads, so a test of a pure function must not import it through a
+  server module (`data.ts` reaches the database): put the function in
+  `src/lib/utils/` and test it there, or mock the module. The plugin
+  stays out because it writes each non-sensitive `ENV.X` into the code
+  as the stage's own value, which no mock can change (FINDINGS.md, "The
+  varlock Vite plugin inlines…").
 - **Component tests** render with `@testing-library/svelte`, query by role
   and name, and drive clicks with `@testing-library/user-event`. The engine
   is `fakeEngine()` — the reactive fields components read plus spies for

@@ -22,10 +22,14 @@ fail under a plain `bun run test` on the lj-bench VM and pass under
 `SKIP_VARLOCK=1 bun run test`, which is how CI runs them. Seen cutting
 v0.271.0; the same six fail on the commit before that release's work, so
 it is the harness, not the change. Sensitive keys are not inlined, which
-is why the other mocked values work. Until the tests stop depending on
-it (reading such a key through a helper the test can mock, or leaving
-the plugin out under Vitest), judge a release's test gate by the
-`SKIP_VARLOCK=1` run.
+is why the other mocked values work. Nothing recorded says a plain run
+ever passed with this plugin: the move to lj-bench checked
+`SKIP_VARLOCK=1 bun run test` on both machines, and the inlining does
+not depend on the machine. Fixed the same day: `vite.config.ts` leaves
+the plugin out whenever `VITEST` is set (Vitest sets it before the
+config is read), so every test run is CI's. replicator, slx-web,
+slx-customer-portal and lj-website get the same result from a Vitest
+config of their own that never loads the plugin.
 
 ## `vercel link` appends `.env*` to `.gitignore` and rewrites `.env.local` (2026-11-22)
 
