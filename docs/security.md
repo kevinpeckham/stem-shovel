@@ -295,7 +295,9 @@ answer 200 with no redirect, carry neither the noindex header nor the
 robots meta, be allowed by `robots.txt` (`robotsTxtAllows`: Google's
 longest-match rules), escape vercel.json's `X-Robots-Tag` rule
 (`vercelHeaderRuleMatches`, read from disk), be in the sitemap, and have a
-title, a meta description, one `<h1>`, `<html lang>`, and the social
+title, a meta description, one `<h1>`, no `id` that holds whitespace
+(`idsWithWhitespace`: such an id is invalid and `aria-labelledby` cannot
+point at it, issue #22), `<html lang>`, and the social
 card's tags (`og:image` = `<origin>/og.png`, 1200×630, `twitter:card`
 `summary_large_image`: the root layout sets them on every page, and
 `/og.png` itself must answer 200 `image/png`). An app page must

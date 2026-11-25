@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { slugify } from "#lib/utils/slugify.js";
 
 	/**
 	 * What Stem Shovel is made of, for the curious and for anyone who wants
@@ -322,8 +323,10 @@
 
 	<div class="grid gap-8 max-w-4xl">
 		{#each GROUPS as group (group.title)}
-			<section aria-labelledby="built-{group.title}">
-				<h2 id="built-{group.title}" class="marketing-section-heading mb-1">{group.title}</h2>
+			<!-- A slug, since an id cannot hold a space and aria-labelledby reads one as two ids. -->
+			{@const headingId = `built-${slugify(group.title)}`}
+			<section aria-labelledby={headingId}>
+				<h2 id={headingId} class="marketing-section-heading mb-1">{group.title}</h2>
 				<p class="mb-3 text-sm opacity-80">{group.blurb}</p>
 				<ul class="grid gap-2 sm:grid-cols-2">
 					{#each group.items as item (item.name)}

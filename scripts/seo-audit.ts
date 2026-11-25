@@ -25,6 +25,7 @@
  * when there is any finding.
  */
 import { readFileSync, writeFileSync } from "node:fs";
+import { idsWithWhitespace } from "../src/lib/utils/idsWithWhitespace";
 import { isIndexablePath } from "../src/lib/utils/isIndexablePath";
 import { robotsTxtAllows } from "../src/lib/utils/robotsTxtAllows";
 import {
@@ -62,6 +63,7 @@ interface Page {
 	description: string | null;
 	canonical: string | null;
 	h1: number;
+	badIds: string[];
 	lang: string | null;
 	ogImage: string | null;
 	ogImageWidth: string | null;
@@ -146,6 +148,7 @@ function readHtml(body: string) {
 		description: decode(attrOf(metas, "name", "description", "content")),
 		canonical: attrOf(tags(head, "link"), "rel", "canonical", "href"),
 		h1: [...body.matchAll(/<h1[\s>]/gi)].length,
+		badIds: idsWithWhitespace(body),
 		lang: attrOf(tags(body, "html"), "lang", "", "lang", true),
 		ogImage: attrOf(metas, "property", "og:image", "content"),
 		ogImageWidth: attrOf(metas, "property", "og:image:width", "content"),
@@ -226,6 +229,7 @@ function publicChecks(p: Page, production: boolean): Check[] {
 		["title", ifShown(!!p.title), "a <title>", "none"],
 		["description", ifShown(!!p.description), "a meta description", "none"],
 		["h1", ifShown(p.h1 === 1), "one <h1>", String(p.h1)],
+		["ids", ifShown(p.badIds.length === 0), "no id with a space", p.badIds.join(", ")],
 		["lang", ifShown(!!p.lang), "<html lang>", "none"],
 		...cardChecks(p, ifShown),
 	];
@@ -343,6 +347,7 @@ const COLUMNS = [
 	"title",
 	"description",
 	"h1",
+	"ids",
 	"og:image",
 	"og:image:size",
 	"twitter:card",
