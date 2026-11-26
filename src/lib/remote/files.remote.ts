@@ -215,7 +215,9 @@ export const chartFromScore = command(ChartFromScoreSchema, async ({ id, part: a
  * "Chart from MIDI": a MIDI attachment of a song read by @barmark/midi into
  * a barmark chart (its harmony as block chords by bar, its markers as
  * sections, its tempo and meter), for the same draft card as "Chart from
- * score" (an editor). The import never throws: a file that gives nothing is
+ * score" (an editor). A file that is one line of notes, a bass line or a
+ * melody, comes in as those notes (the package's default since 0.4: the
+ * chord reading turned such a line into holds and `N.C.`). The import never throws: a file that gives nothing is
  * an empty chart with an error. The package's info notes are left out; its
  * messages carry no values from the file, so they go through as written.
  */

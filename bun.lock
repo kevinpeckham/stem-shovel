@@ -6,11 +6,12 @@
       "name": "stem-player",
       "dependencies": {
         "@ai-sdk/gateway": "^4.0.127",
-        "@barmark/midi": "0.3.2",
-        "@barmark/musicxml": "0.9.0",
-        "@barmark/render": "0.19.0",
-        "@barmark/score": "0.5.0",
-        "@barmark/sync": "0.4.1",
+        "@barmark/listen": "0.2.2",
+        "@barmark/midi": "0.4.0",
+        "@barmark/musicxml": "0.9.3",
+        "@barmark/render": "0.21.1",
+        "@barmark/score": "0.8.0",
+        "@barmark/sync": "0.4.3",
         "@better-auth/passkey": "^1.7.14",
         "@kevinpeckham/barkdown": "0.1.1",
         "@kevinpeckham/woof-editor": "0.3.0",
@@ -24,7 +25,7 @@
         "@vercel/blob": "2.8.2",
         "@vercel/speed-insights": "^2.0.0",
         "ai": "^7.0.154",
-        "barmark": "0.23.1",
+        "barmark": "0.25.0",
         "better-auth": "^1.7.14",
         "client-zip": "^2.5.1",
         "drizzle-orm": "0.45.4",
@@ -120,15 +121,19 @@
 
     "@barmark/engraver": ["@barmark/engraver@0.1.1", "", {}, "sha512-JWUmfOJe6SB5h/1GAI2PKe91F3KSWMmVSXNagrTQuoags5dKvSayu+jtMhWU/RQOoGKOwT5XOV/3LeSRj7+cLw=="],
 
-    "@barmark/midi": ["@barmark/midi@0.3.2", "", { "dependencies": { "@barmark/sync": "^0.4.1", "barmark": "^0.23.0" } }, "sha512-CWmY+RuR2kr9MJRyQZyn3gqQbB6FhoQ5qowvnd2sGet9r2NczKTwOLYntfmNhznXte3sMhMmMa4Zr/BHE2vQag=="],
+    "@barmark/fretboard": ["@barmark/fretboard@0.1.2", "", { "dependencies": { "barmark": "^0.25.0" } }, "sha512-JVyaEutnsLvhO+X2Gk4UuZNhPtZOA9NY82V4LiavPYqG4NYA2pA1/Y4P9MCxs3NRdRNfFgKb/H2t0KCdwsiXdw=="],
 
-    "@barmark/musicxml": ["@barmark/musicxml@0.9.0", "", { "dependencies": { "barmark": "^0.23.0", "fast-xml-parser": "5.12.0" } }, "sha512-mVKS5IFVdvJoH9ODXhiBMWibKciV3MBvUH7HmvMFNmCR2FmvaeAi2MxLnIz2ALEE8KtbHD6DiQESkyJYpX/AGQ=="],
+    "@barmark/listen": ["@barmark/listen@0.2.2", "", { "dependencies": { "@barmark/sync": "^0.4.3", "barmark": "^0.25.0" } }, "sha512-jxRBKn1vHamqOqghSZGfCk+G3BITbhZK3ql5M+NKmhIS5CnJ2m93o6U01i4jtHgbZTIY/rlagJ5bciz2Qkg/yA=="],
 
-    "@barmark/render": ["@barmark/render@0.19.0", "", { "dependencies": { "barmark": "^0.23.0" } }, "sha512-YQFloy/k/xnF6zUvJFpp1w1mZup8wxHlja4hanbHx0+AciNMnnS9uegFJxiolaAHUmhlpx6vO9zRfjptwzF9cA=="],
+    "@barmark/midi": ["@barmark/midi@0.4.0", "", { "dependencies": { "@barmark/sync": "^0.4.3", "barmark": "^0.25.0" } }, "sha512-fFbgphdSvC51iAkDRV9B+uNvtJ5MXX+f6EmkMq0yPZhdZHCp8K/IP/MoY0X4Fyqmi2mHVdg8fVmoLHF3SIUFag=="],
 
-    "@barmark/score": ["@barmark/score@0.5.0", "", { "dependencies": { "@barmark/musicxml": "^0.9.0", "@barmark/render": "^0.19.0", "barmark": "^0.23.0", "verovio": "6.4.1" } }, "sha512-rL1LTslAbyKmRWAIT+PDSM4wfZKZiiCOTl5JtXU64agwVLd5R+xa8ltka17xabov7fh4KzrwY3wDOs48Bi4w3w=="],
+    "@barmark/musicxml": ["@barmark/musicxml@0.9.3", "", { "dependencies": { "barmark": "^0.25.0", "fast-xml-parser": "5.12.0" } }, "sha512-9AVqocMYyd7ipxUL8mc8C5GqvctqLIsztsi7tpVVuYN0q/WKEbBhH734I5WvMAc1QXYxPICPESKPvAwz4Q/aLg=="],
 
-    "@barmark/sync": ["@barmark/sync@0.4.1", "", { "dependencies": { "barmark": "^0.23.0" } }, "sha512-nnpaWip8XxbqT/JbrqCSyZh7ckbbJy2WxY7TBBHEHaI3TSiossrNUfYvIYIUFgiAzfcc0IXlo7ClV9XdwX7V6w=="],
+    "@barmark/render": ["@barmark/render@0.21.1", "", { "dependencies": { "@barmark/fretboard": "^0.1.2", "barmark": "^0.25.0" } }, "sha512-DsW7QfpKqIaubOgCLowWWEz6EA4SkwwK2S+r2WXiSphyX7FTbCmOjqd6OfK5Pqov+PuBjioIJ7uAVm/2LmxzFQ=="],
+
+    "@barmark/score": ["@barmark/score@0.8.0", "", { "dependencies": { "@barmark/musicxml": "^0.9.3", "@barmark/render": "^0.21.1", "barmark": "^0.25.0", "verovio": "6.4.1" } }, "sha512-df8x1goRSgodW1X3aAzD5GOMJif7QNxC2YW2O+qmyimCwWfQrZhmgunkHCOMhyM/Pdo0q1uelfb5oX+fTzRf/Q=="],
+
+    "@barmark/sync": ["@barmark/sync@0.4.3", "", { "dependencies": { "barmark": "^0.25.0" } }, "sha512-uHUIEWioUEo2zeknyUPIj7pZEQPkr1c3ECGH5AAe1gbESQC7F4m7LbUv6u0go8trpRlMq9Tev05i+g8mXbjb+w=="],
 
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@1.0.2", "", {}, "sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA=="],
 
@@ -974,7 +979,7 @@
 
     "balanced-match": ["balanced-match@4.0.4", "", {}, "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA=="],
 
-    "barmark": ["barmark@0.23.1", "", {}, "sha512-N1mqAGv4DOZ4//zRM1KlqoE7ttpQRCx0vzTMYnIXvSg0Z1DRkdXbtVMB+Yg8OLuC0ZPZhyyukKYI0mKgZ+nsUA=="],
+    "barmark": ["barmark@0.25.0", "", {}, "sha512-ygYKwgP+3RSifmN3e7D6jp6VaBqyj8Yzd4opuNK0RHtvSVEx6KTHpZtV84MEx+lnGwkej9V6gHW9Avo02Kq5EQ=="],
 
     "base64-js": ["base64-js@0.0.8", "", {}, "sha512-3XSA2cR/h/73EzlXXdU6YNycmYI7+kicTxks4eJg2g39biHR84slg2+des+p7iHYhbRg/udIS4TD53WabcOUkw=="],
 
