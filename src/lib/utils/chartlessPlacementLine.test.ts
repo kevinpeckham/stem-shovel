@@ -1,27 +1,43 @@
 import { describe, expect, test } from "vite-plus/test";
-import type { ChartlessGrid, ChartlessRefusal, DownbeatWitness } from "#lib/audio/chartlessGrid.js";
+import type { ChartlessRefusal } from "#lib/audio/chartlessGridInBrowser.js";
+import type { GridReading, PlacedGrid, Witness } from "@barmark/listen";
 import { chartlessPlacementLine } from "./chartlessPlacementLine.js";
 
-const witness = (name: DownbeatWitness["name"], cls: number | null): DownbeatWitness => ({
+const witness = (name: Witness["name"], cls: number | null): Witness => ({
 	name,
 	cls,
 	weight: name === "sections" ? 1 : 2,
 	detail: {},
 });
 
-/** 76 bars of 2 s from 0.5 s, voted class 1 by `witnesses`. */
-const placed = (
-	witnesses: DownbeatWitness[],
-	over: Partial<ChartlessGrid> = {},
-): ChartlessGrid => ({
-	barStarts: Array.from({ length: 77 }, (_, i) => 0.5 + 2 * i),
-	period: 2,
-	beatsPerBar: 4,
+/** The grid's reading: the comb's bar of 2 s in 4/4, voted class 1 by `witnesses`. */
+const readingOf = (witnesses: Witness[], over: Partial<GridReading> = {}): GridReading => ({
+	comb: { period: 2, phase: 0.43, score: 1 },
+	lattice: { anchor: 0.5, beat: 0.5, period: 2, beatsPerBar: 4 },
+	witnesses,
+	scores: [0, 4, 0, 0],
 	cls: 1,
 	decided: true,
 	byStart: false,
-	witnesses,
 	...over,
+});
+
+/** 76 bars of 2 s from 0.5 s (@barmark/listen's placed grid), voted class 1 by `witnesses`. */
+const placed = (witnesses: Witness[], over: Partial<GridReading> = {}): PlacedGrid => ({
+	grid: { bars: Array.from({ length: 77 }, (_, i) => 0.5 + 2 * i) },
+	pickup: null,
+	reading: readingOf(witnesses, over),
+});
+
+/** A refusal of the grid: its reason, and the reading when it got that far. */
+const refused = (
+	reason: ChartlessRefusal["reason"],
+	witnesses: Witness[] | null = null,
+): ChartlessRefusal => ({
+	ok: false,
+	reason,
+	message: `The package says ${reason}.`,
+	reading: witnesses ? readingOf(witnesses, { decided: false }) : null,
 });
 
 /** The placement line on the detected chords card (utils/chartlessPlacementLine.ts). */
@@ -66,36 +82,38 @@ describe("chartlessPlacementLine", () => {
 	});
 
 	test("an undecided vote says what each witness read, 1-based, and that the song's own grid stands", () => {
-		const refusal: ChartlessRefusal = {
-			ok: false,
-			reason: "undecided",
-			witnesses: [witness("timeZero", 0), witness("harmonicRhythm", 2), witness("sections", null)],
-		};
+		const refusal = refused("downbeat-undecided", [
+			witness("timeZero", 0),
+			witness("harmonicRhythm", 2),
+			witness("sections", null),
+		]);
 		expect(chartlessPlacementLine(null, refusal)).toBe(
 			"Bar 1 not placed from the stems: the chord changes say beat 3, the recording's start says beat 1, the section changes abstain. The bars follow your tempo and start of bar 1.",
 		);
 		expect(
-			chartlessPlacementLine(null, {
-				...refusal,
-				witnesses: [witness("timeZero", null), witness("sections", 1)],
-			}),
+			chartlessPlacementLine(
+				null,
+				refused("downbeat-undecided", [witness("timeZero", null), witness("sections", 1)]),
+			),
 		).toBe(
 			"Bar 1 not placed from the stems: the recording's start abstains, the section changes say beat 2. The bars follow your tempo and start of bar 1.",
 		);
 	});
 
-	test("no usable beat, no fit, and an unavailable reading", () => {
-		const refusal = (reason: ChartlessRefusal["reason"]): ChartlessRefusal => ({
-			ok: false,
-			reason,
-			witnesses: [],
-		});
-		expect(chartlessPlacementLine(null, refusal("no-input"))).toBe(
-			"Bar 1 not placed from the stems: they gave no usable beat.",
-		);
-		expect(chartlessPlacementLine(null, refusal("no-fit"))).toBe(
+	test("no usable beat (a flat envelope, or nothing to read), no fit, and an unavailable reading", () => {
+		for (const reason of ["no-period", "invalid-input"] as const)
+			expect(chartlessPlacementLine(null, refused(reason))).toBe(
+				"Bar 1 not placed from the stems: they gave no usable beat.",
+			);
+		expect(chartlessPlacementLine(null, refused("nothing-fits"))).toBe(
 			"Bar 1 not placed from the stems: no bar on their beat fits the recording.",
 		);
-		expect(chartlessPlacementLine(null, refusal("unavailable"))).toBe("");
+		expect(chartlessPlacementLine(null, refused("unavailable"))).toBe("");
+	});
+
+	test("a reason the app has no sentence for is said in the package's words", () => {
+		expect(chartlessPlacementLine(null, refused("features-invalid"))).toBe(
+			"Bar 1 not placed from the stems: The package says features-invalid.",
+		);
 	});
 });

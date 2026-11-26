@@ -89,6 +89,21 @@ function setup() {
 	return { changes, chordDraft, check, props };
 }
 
+/** @barmark/listen's placed grid: bar one at 0.5 s, a comb bar of 1.8 s in 4/4. */
+const PLACED = {
+	grid: { bars: [0.5, 2.3, 4.1, 5.9] },
+	pickup: null,
+	reading: {
+		comb: { period: 1.8, phase: 0.5, score: 1 },
+		lattice: { anchor: 0.5, beat: 0.45, period: 1.8, beatsPerBar: 4 },
+		witnesses: [],
+		scores: [0, 4, 0, 0],
+		cls: 1,
+		decided: true,
+		byStart: false,
+	},
+};
+
 describe("SongTempoKeyTab", () => {
 	test("the actions and the song's rows; Scan and Detect wait for the stems", () => {
 		const { props } = setup();
@@ -201,15 +216,7 @@ describe("SongTempoKeyTab", () => {
 	test("Use as start of bar 1 writes the placement's bar one and tempo, then refreshes", async () => {
 		const { changes, chordDraft, props } = setup();
 		chordDraft.chordSegments = [{ bar: 1, bars: 3, start: 0.5, chord: "C", confidence: 1 }];
-		chordDraft.placement = {
-			barStarts: [0.5, 2.3, 4.1, 5.9],
-			period: 1.8,
-			beatsPerBar: 4,
-			cls: 1,
-			decided: true,
-			byStart: false,
-			witnesses: [],
-		};
+		chordDraft.placement = PLACED;
 		const onstartset = vi.fn();
 		render(SongTempoKeyTab, { props: { ...props, onstartset } });
 		await fireEvent.click(screen.getByRole("button", { name: "Use as start of bar 1" }));
@@ -319,15 +326,7 @@ describe("SongTempoKeyTab", () => {
 	test("Use as start of bar 1 on an alternate writes the alternate's", async () => {
 		const { chordDraft, props } = setup();
 		chordDraft.chordSegments = [{ bar: 1, bars: 3, start: 0.5, chord: "C", confidence: 1 }];
-		chordDraft.placement = {
-			barStarts: [0.5, 2.3, 4.1, 5.9],
-			period: 1.8,
-			beatsPerBar: 4,
-			cls: 1,
-			decided: true,
-			byStart: false,
-			witnesses: [],
-		};
+		chordDraft.placement = PLACED;
 		render(SongTempoKeyTab, {
 			props: { ...props, onAlternate: true, arrangementId: "arr1" },
 		});

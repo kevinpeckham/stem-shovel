@@ -1,51 +1,30 @@
-import {
-	alignChartPath,
-	type AlignmentPath,
-	type RecordingFeatures,
-	recordingFeatures,
-} from "#lib/audio/chartAlignment.js";
-import type { ChartBar } from "#lib/utils/barmarkChartBars.js";
+import { type AlignInput, alignChart } from "@barmark/listen";
 
 /**
- * A chart's warping path in a recording off the page
- * (audio/chartAlignment.ts `alignChartPath`): the warping is a few hundred
- * million steps for a long song, seconds of work that would stall the
- * player and the drawing. A request carries the bars and either the
- * recording mixed to mono (transferred) at its rate, or the recording's
- * features at that rate (`features`, cached in the browser by
- * audio/alignmentFeaturesCache.ts), so a second alignment after a chart
- * edit skips the recording's chromagram. The reply carries the path's
- * alignment (before the grid re-phase, which the page applies with the
- * envelope from workers/alignmentEnvelope.worker.ts) and, given a
- * recording, the features it computed (their chroma transferred), so the
- * page can keep them; or the reason there is none.
+ * A chart aligned to a recording off the page (@barmark/listen's
+ * `alignChart`): the chart's render, the warping (a few hundred million
+ * steps for a long song, seconds of work that would stall the player and
+ * the drawing), the re-phase, the fit, the placements and the timing map.
+ * A request carries the alignment's input with the recording's features
+ * (audio/alignmentWorkers.ts, cached in the browser); the reply carries
+ * the package's answer as it is (it never throws: a refusal is a value),
+ * or the reason there is none when the worker itself failed.
  */
 export interface AlignChartRequest {
 	id: number;
-	bars: Pick<ChartBar, "chords" | "bpm" | "meter">[];
-	recording?: Float32Array;
-	features?: RecordingFeatures;
-	sampleRate: number;
+	input: AlignInput;
 }
 export type AlignChartReply =
-	| { id: number; path: AlignmentPath; features?: RecordingFeatures }
+	| { id: number; result: ReturnType<typeof alignChart> }
 	| { id: number; error: string };
 
 self.onmessage = (e: MessageEvent<AlignChartRequest>) => {
-	const { id, bars, recording, sampleRate } = e.data;
+	const { id, input } = e.data;
 	let reply: AlignChartReply;
-	const transfer: Transferable[] = [];
 	try {
-		const given = e.data.features;
-		if (!given && !recording) throw new Error("There is no audio to align the chart to");
-		const features = given ?? recordingFeatures(recording!, sampleRate);
-		reply = { id, path: alignChartPath(bars, features, sampleRate) };
-		if (!given) {
-			reply.features = features;
-			transfer.push(features.chroma.buffer);
-		}
+		reply = { id, result: alignChart(input) };
 	} catch (err) {
 		reply = { id, error: err instanceof Error ? err.message : String(err) };
 	}
-	(self as unknown as Worker).postMessage(reply, transfer);
+	(self as unknown as Worker).postMessage(reply);
 };

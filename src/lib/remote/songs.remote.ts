@@ -421,10 +421,11 @@ function barsOfScore(
 }
 
 /**
- * The song's chart as the bars it plays, for aligning to the recording in
- * the browser (audio/chartAlignment.ts; stem-bench Study 12), any member.
- * The band's chord chart, else a PDF or image score's stored chart read;
- * never calls the model. A MusicXML score is not read here yet, a score
+ * The song's chart as the bars it plays, with its text, for aligning to
+ * the recording in the browser (@barmark/listen's `alignChart`, which
+ * reads the text; audio/alignChartInBrowser.ts; stem-bench Study 12), any
+ * member. The band's chord chart, else a PDF or image score's stored chart
+ * read; never calls the model. A MusicXML score is not read here yet, a score
  * with no read waits for one, and a chart that gives no tempo (with the
  * song's own as the default) or no bars has nothing to render.
  */
@@ -438,10 +439,10 @@ export const chartBarsOf = query(IdSchema, async ({ id }) => {
 	const read = barsOfScore(score, chartDefaults(song.changes));
 	if (read === undefined) return { bars: null, reason: "unread" as const };
 	if (read === null) return { bars: null, reason: "no-bars" as const };
-	// The song's own chart carries its text: an alignment of it is kept as its timing map (`saveChartTiming`).
+	// Both carry their text, which the alignment reads; only the song's own chart's alignment is kept as its timing map (`saveChartTiming`).
 	return score.kind === "chart"
 		? { ...read, source: "chart" as const, text: score.markdown }
-		: { ...read, source: "summary" as const };
+		: { ...read, source: "summary" as const, text: score.chartRead! };
 });
 
 /** Asks the listening model where the song's sections begin, with its score when it has one (members; a few per hour). */

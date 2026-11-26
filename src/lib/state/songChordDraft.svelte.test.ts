@@ -3,6 +3,7 @@ import type { Note } from "#lib/audio/chords.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { barGrid } from "#lib/audio/measures.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
 
 /**
  * Detect chords and the AI's draft: the chord model's state, the server's
@@ -24,7 +25,10 @@ vi.mock("#lib/remote/files.remote.js", () => files);
 const notify = vi.hoisted(() => vi.fn());
 vi.mock("#lib/state/notifications.svelte.js", () => ({ notify }));
 /** The chartless placement on the stems: unavailable (the declared grid stands) unless a test says otherwise. */
-const placing = vi.hoisted(() => ({ chartlessGridInBrowser: vi.fn() }));
+const placing = vi.hoisted(() => ({
+	chartlessGridInBrowser: vi.fn(),
+	UNAVAILABLE: { ok: false, reason: "unavailable", message: "", reading: null },
+}));
 vi.mock("#lib/audio/chartlessGridInBrowser.js", () => placing);
 
 const { SongChordDraft } = await import("./songChordDraft.svelte");
@@ -67,11 +71,14 @@ function make({
 	hasSections = false,
 	/** A grid that changes during the run (the stems' scan sets it); else `grid`. */
 	gridOf = undefined as (() => typeof GRID | null) | undefined,
+	/** The song's changes (their time signature names the meter's bottom note); none when not given. */
+	changes = undefined as SongChange[] | undefined,
 } = {}) {
 	return new SongChordDraft({
 		songId: () => "song1",
 		engine: () => engine,
 		grid: gridOf ?? (() => grid),
+		...(changes ? { changes: () => changes } : {}),
 		aiAvailable: () => ai,
 		startAt: () => startAt,
 		ensureGrid,
@@ -107,10 +114,31 @@ const MODEL: ChordminiRuns = {
 	],
 };
 const STORED = { chords: MODEL, inFlight: false, hasMix: true };
-const UNAVAILABLE = { ok: false, reason: "unavailable", witnesses: [] };
+const UNAVAILABLE = placing.UNAVAILABLE;
 /** The placement's answer for a placed grid. */
-const placedAs = (grid: object) => ({ ok: true, grid });
+const placedAs = (placed: object) => ({ ok: true, placed });
 const WITNESS = { name: "timeZero", cls: null, weight: 2, detail: {} };
+/** @barmark/listen's placed grid: bar one onward, the comb's bar `period`, decided by the vote. */
+const placedGrid = (bars: number[], period = 2) => ({
+	grid: { bars },
+	pickup: null,
+	reading: {
+		comb: { period, phase: 0.23, score: 1 },
+		lattice: { anchor: 0.3, beat: period / 4, period, beatsPerBar: 4 },
+		witnesses: [],
+		scores: [0, 4, 0, 0],
+		cls: 1,
+		decided: true,
+		byStart: false,
+	},
+});
+/** The grid's refusal of an undecided vote, with the witnesses' reading. */
+const UNDECIDED = {
+	ok: false,
+	reason: "downbeat-undecided",
+	message: "The witnesses did not agree on which beat is bar one.",
+	reading: { ...placedGrid([]).reading, witnesses: [WITNESS], decided: false },
+};
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -463,15 +491,7 @@ describe("SongChordDraft", () => {
 	});
 
 	describe("the chartless placement on the stems", () => {
-		const PLACED = {
-			barStarts: [0.3, 2.3, 4.3, 6.3, 7.9],
-			period: 2,
-			beatsPerBar: 4,
-			cls: 1,
-			decided: true,
-			byStart: false,
-			witnesses: [],
-		};
+		const PLACED = placedGrid([0.3, 2.3, 4.3, 6.3, 7.9]);
 
 		test("a placed grid is what the chords are read on and what the draft is built on", async () => {
 			remote.songChords.mockImplementation(() => asQuery(STORED));
@@ -481,16 +501,14 @@ describe("SongChordDraft", () => {
 			expect(placing.chartlessGridInBrowser).toHaveBeenCalledWith(
 				expect.objectContaining({
 					buffers: [BUFFER],
-					cacheKey: expect.stringMatching(/^af1:44100:/),
-					declaredBarSeconds: 2,
-					beatsPerBar: 4,
+					cacheKey: expect.stringMatching(/^lf1:44100:/),
+					declared: { meter: "4/4", tempo: 120 },
 					startAt: 0.3,
 					runs: MODEL,
-					duration: 7.9,
 				}),
 			);
 			expect(cd.placement).toEqual(PLACED);
-			expect(remote.draftChart.mock.calls[0][0].grid).toEqual(PLACED.barStarts);
+			expect(remote.draftChart.mock.calls[0][0].grid).toEqual(PLACED.grid.bars);
 			cd.dismiss();
 			expect(cd.placement).toBeNull();
 		});
@@ -515,13 +533,35 @@ describe("SongChordDraft", () => {
 			expect(remote.draftChart.mock.calls[0][0].grid).toEqual([0, 2, 4, 6, 7.9]);
 		});
 
+		test("a 6/8 song declares its 120 eighths as 40 dotted quarters, the same three-second bar", async () => {
+			const changes: SongChange[] = [
+				{ kind: "tempo", start: 0, value: "120" },
+				{ kind: "meter", start: 0, value: "6/8" },
+			];
+			const cd = make({ grid: barGrid(changes, null), changes });
+			await cd.detectChords();
+			expect(placing.chartlessGridInBrowser).toHaveBeenCalledWith(
+				expect.objectContaining({ declared: { meter: "6/8", tempo: 40 } }),
+			);
+		});
+
+		test("a pickup before bar one is not a bar of the draft's grid; bar one is the placed downbeat", async () => {
+			const withPickup = {
+				...placedGrid([1.3, 3.3, 5.3, 7.3, 7.9]),
+				pickup: { start: 0.3, beats: 2 },
+			};
+			placing.chartlessGridInBrowser.mockResolvedValue(placedAs(withPickup));
+			const cd = make();
+			await cd.draftFromPanel();
+			expect(remote.draftChart.mock.calls[0][0].grid).toEqual([1.3, 3.3, 5.3, 7.3, 7.9]);
+		});
+
 		test("an undecided vote keeps its refusal beside no placement; dismiss clears it", async () => {
-			const undecided = { ok: false, reason: "undecided", witnesses: [WITNESS] };
-			placing.chartlessGridInBrowser.mockResolvedValue(undecided);
+			placing.chartlessGridInBrowser.mockResolvedValue(UNDECIDED);
 			const cd = make();
 			await cd.detectChords();
 			expect(cd.placement).toBeNull();
-			expect(cd.placementRefusal).toEqual(undecided);
+			expect(cd.placementRefusal).toEqual(UNDECIDED);
 			cd.dismiss();
 			expect(cd.placementRefusal).toBeNull();
 		});
@@ -552,15 +592,7 @@ describe("SongChordDraft", () => {
 	});
 
 	describe("Generate chart from the stems", () => {
-		const PLACED = {
-			barStarts: [0.3, 2.3, 4.3, 6.3, 7.9],
-			period: 2,
-			beatsPerBar: 4,
-			cls: 1,
-			decided: true,
-			byStart: false,
-			witnesses: [],
-		};
+		const PLACED = placedGrid([0.3, 2.3, 4.3, 6.3, 7.9]);
 		const TWO_SECTIONS = {
 			...DRAFT,
 			sections: [
@@ -713,7 +745,7 @@ describe("SongChordDraft", () => {
 		test("on the tracker's bars the comb's drift does not hold the draft", async () => {
 			remote.songChords.mockImplementation(() => asQuery(STORED));
 			placing.chartlessGridInBrowser.mockResolvedValueOnce(
-				placedAs({ ...PLACED, period: 2.144, barStarts: [0.3, 2.444, 4.588, 6.732, 7.9] }),
+				placedAs(placedGrid([0.3, 2.444, 4.588, 6.732, 7.9], 2.144)),
 			);
 			remote.draftChart.mockResolvedValue({
 				...DRAFT,
@@ -792,7 +824,7 @@ describe("SongChordDraft", () => {
 		test("bars that settled 7% off the declared tempo hold the draft (Study 34b's comb drift)", async () => {
 			// 120 bpm in 4/4 is a two-second bar; the comb settled at 2.144 s.
 			placing.chartlessGridInBrowser.mockResolvedValueOnce(
-				placedAs({ ...PLACED, period: 2.144, barStarts: [0.3, 2.444, 4.588, 6.732, 7.9] }),
+				placedAs(placedGrid([0.3, 2.444, 4.588, 6.732, 7.9], 2.144)),
 			);
 			const cd = make();
 			await cd.generateChart();
@@ -837,11 +869,7 @@ describe("SongChordDraft", () => {
 		});
 
 		test("an undecided vote with a clean draft saves, and the notification says bar 1 was not placed", async () => {
-			placing.chartlessGridInBrowser.mockResolvedValue({
-				ok: false,
-				reason: "undecided",
-				witnesses: [WITNESS],
-			});
+			placing.chartlessGridInBrowser.mockResolvedValue(UNDECIDED);
 			const cd = make();
 			await cd.generateChart();
 			expect(remote.useChartlessGrid).not.toHaveBeenCalled();

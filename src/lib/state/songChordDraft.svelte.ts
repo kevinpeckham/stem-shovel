@@ -1,13 +1,13 @@
 import { extractFeatures } from "#lib/audio/analysis.js";
 import { chordsPerBar, describeBars, type ChordSegment, type Note } from "#lib/audio/chords.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
-import type {
-	ChartlessGrid,
-	ChartlessGridResult,
-	ChartlessRefusal,
-} from "#lib/audio/chartlessGrid.js";
-import { chartlessGridInBrowser } from "#lib/audio/chartlessGridInBrowser.js";
-import { barSecondsAt, beatsPerBarAt, secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
+import {
+	type ChartlessGridResult,
+	type ChartlessRefusal,
+	chartlessGridInBrowser,
+	UNAVAILABLE,
+} from "#lib/audio/chartlessGridInBrowser.js";
+import { barSecondsAt, secondsAtBar, type BarGrid } from "#lib/audio/measures.js";
 import { chartFromScore } from "#lib/remote/files.remote.js";
 import {
 	draftChart,
@@ -38,8 +38,11 @@ import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { generatedChartLine } from "#lib/utils/generatedChartLine.js";
 import { generatedChartVerdict } from "#lib/utils/generatedChartVerdict.js";
+import { listenDeclared } from "#lib/utils/listenDeclared.js";
 import { reconciledSegments } from "#lib/utils/reconciledSegments.js";
 import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import type { PlacedGrid } from "@barmark/listen";
 import type { ConfidenceRecord, TimingMap } from "@barmark/sync";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -110,6 +113,13 @@ export interface SongChordDraftOptions {
 	engine: () => StemEngine | null;
 	/** The song's bar grid (null without a tempo and a time signature). */
 	grid: () => BarGrid | null;
+	/**
+	 * The song's tempo, key and time signature changes: the time signature's
+	 * bottom note, which the grid does not keep, makes the declared tempo
+	 * the chartless placement reads (utils/listenDeclared.ts). Without them
+	 * the grid's beats count as quarters, which gives the same bar.
+	 */
+	changes?: () => SongChange[];
 	/** Whether the AI is at hand for this song. */
 	aiAvailable: () => boolean;
 	/** The song's own start of bar 1 (null when it has none): the chartless grid places bar one there. */
@@ -157,9 +167,6 @@ function barStartsOf(grid: BarGrid, duration: number): number[] {
 	return barStarts;
 }
 
-/** The placement could not run (no audio, no workers, a failure): the declared grid stands, nothing to say. */
-const UNAVAILABLE: ChartlessRefusal = { ok: false, reason: "unavailable", witnesses: [] };
-
 /** A grid of one tempo, without a ramp, in one meter: the only kind the chartless placement reads (one bar length, one lattice). */
 const steadyGrid = (grid: BarGrid) =>
 	grid.tempos.length === 1 && !grid.tempos[0]!.ramp && grid.meters.length === 1;
@@ -168,7 +175,7 @@ const steadyGrid = (grid: BarGrid) =>
  * "Detect chords" and "Draft chart with AI" (SongTempoKeyTab.svelte, the Docs
  * panel's ⋯ menu): one chord per bar on the song's grid (on a steady grid,
  * its bars placed on the stems' own beat when the placement decides,
- * audio/chartlessGrid.ts), from the chord
+ * @barmark/listen's `findGrid`), from the chord
  * model's read of the mix on the server when the song has a mix (waited for
  * while it runs), otherwise from Basic Pitch on the tonal stems, checked by
  * the AI (never the model's chords: stem-bench Study 17 G4); then the AI turns them into sections, a
@@ -192,11 +199,12 @@ export class SongChordDraft {
 	/** A score's part is being charted (`chartPart`); the card's part buttons are disabled meanwhile. */
 	partBusy = $state(false);
 	/**
-	 * The bars placed on the stems' own beat (audio/chartlessGrid.ts) for this
-	 * run's chords and draft; null when the declared grid stands (a changing
+	 * The bars placed on the stems' own beat (@barmark/listen's `findGrid`,
+	 * audio/chartlessGridInBrowser.ts) for this run's chords and draft, bar
+	 * one after any pickup; null when the declared grid stands (a changing
 	 * tempo or meter, an undecided vote, or the placement failed).
 	 */
-	placement = $state<ChartlessGrid | null>(null);
+	placement = $state<PlacedGrid | null>(null);
 	/** Why nothing was placed, when the placement ran and refused (`placement` is then null). */
 	placementRefusal = $state<ChartlessRefusal | null>(null);
 	/** The notes the last read transcribed over the whole song (the verdict's thin-transcription hold); null when none were at hand. */
@@ -381,7 +389,7 @@ export class SongChordDraft {
 	#useBarOne(): Effect.Effect<BarOnePlaced | null> {
 		return Effect.gen({ self: this }, function* () {
 			const placement = this.placement;
-			if (!placement?.decided || placement.byStart) return null;
+			if (!placement?.reading.decided || placement.reading.byStart) return null;
 			this.#step = "Setting the start of bar 1…";
 			const use = chartlessGridUse(placement);
 			return yield* attempt(async () => {
@@ -414,11 +422,11 @@ export class SongChordDraft {
 		const verdict = generatedChartVerdict({
 			draft,
 			segments: this.chordSegments ?? [],
-			undecided: this.placementRefusal?.reason === "undecided",
+			undecided: this.placementRefusal?.reason === "downbeat-undecided",
 			detectedGrid,
 			gridDrift:
 				this.placement && grid
-					? Math.abs(this.placement.period / barSecondsAt(grid, grid.startAt) - 1)
+					? Math.abs(this.placement.reading.lattice.period / barSecondsAt(grid, grid.startAt) - 1)
 					: null,
 			noteCount: this.#noteCount,
 		});
@@ -540,13 +548,14 @@ export class SongChordDraft {
 			this.#setPlacement(result);
 			if (import.meta.env.DEV)
 				(window as unknown as { __chartlessGrid?: unknown }).__chartlessGrid = result;
-			return this.placement?.barStarts ?? declared;
+			// Bar one onward: a pickup before it (its start in `placement.pickup`) is not a bar of the draft's grid.
+			return this.placement?.grid.bars ?? declared;
 		});
 	}
 
 	/** The placement's answer kept: the grid when placed, else the refusal; null clears both. */
 	#setPlacement(result: ChartlessGridResult | null) {
-		this.placement = result?.ok ? result.grid : null;
+		this.placement = result?.ok ? result.placed : null;
 		this.placementRefusal = result && !result.ok ? result : null;
 	}
 
@@ -562,11 +571,9 @@ export class SongChordDraft {
 		return chartlessGridInBrowser({
 			buffers,
 			cacheKey: alignmentFeaturesKey(engine.sourceUrls(), buffers[0]!.sampleRate),
-			declaredBarSeconds: barSecondsAt(grid, grid.startAt),
-			beatsPerBar: beatsPerBarAt(grid, grid.startAt),
+			declared: listenDeclared(grid, this.#opts.changes?.() ?? []),
 			startAt: this.#opts.startAt(),
 			runs,
-			duration: engine.duration,
 			signal,
 		});
 	}

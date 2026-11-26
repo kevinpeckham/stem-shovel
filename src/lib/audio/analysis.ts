@@ -133,8 +133,8 @@ function fluxOver(magnitude: Float32Array, previous: Float32Array): number {
  * The frames are real, so they go through the FFT two at a time, one as
  * the real part and one as the imaginary (`splitMagnitudes`); a last odd
  * frame goes alone, with a zero partner.
- * `extractFeatures` reads the first 90 s through it; the chart alignment's
- * grid re-phase (audio/alignmentRepair.ts) reads a whole recording.
+ * `extractFeatures` reads the first 90 s through it. (The chart alignment's
+ * onset envelope is @barmark/listen's `onsetFeatures`, the same numbers.)
  */
 export function onsetEnvelope(
 	mono: Float32Array,
@@ -257,7 +257,7 @@ export function combineFeatures(list: Features[]): Features | null {
 }
 
 /** Removes the slow trend from an onset envelope (a half-second running mean) and rectifies it. */
-export function detrend(onset: Float32Array, fps: number): Float32Array {
+function detrend(onset: Float32Array, fps: number): Float32Array {
 	const out = new Float32Array(onset.length);
 	const span = Math.max(1, Math.round(fps * 0.5));
 	let sum = 0;

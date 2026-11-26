@@ -1,239 +1,131 @@
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 import type { AlignChartReply, AlignChartRequest } from "#lib/workers/alignChart.worker.js";
-import type {
-	AlignmentEnvelopeReply,
-	AlignmentEnvelopeRequest,
-} from "#lib/workers/alignmentEnvelope.worker.js";
-import type { AlignmentFeaturesRecord } from "./alignmentFeaturesCache.js";
+import type { Alignment, Placements } from "@barmark/listen";
+import type { TimingMap } from "@barmark/sync";
+import * as Effect from "effect/Effect";
 
-const cache = vi.hoisted(() => ({
-	readAlignmentFeatures: vi.fn(async (_key: string): Promise<unknown> => null),
-	writeAlignmentFeatures: vi.fn(async (_key: string, _record: unknown) => {}),
+/**
+ * The chart alignment's browser side (audio/alignChartInBrowser.ts): the
+ * recording's features are a stand-in (audio/alignmentWorkers.ts has its
+ * own tests), the alignment's worker a fake that answers with what the
+ * test gives it.
+ */
+const features = vi.hoisted(() => ({ format: "barmark-listen-features", sampleRate: 8000 }));
+const workers = vi.hoisted(() => ({
+	recordingFeaturesOf: vi.fn((_buffers: AudioBuffer[], _key: string | null): unknown => null),
 }));
-vi.mock("./alignmentFeaturesCache.js", () => cache);
+vi.mock("./alignmentWorkers.js", async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	recordingFeaturesOf: workers.recordingFeaturesOf,
+}));
 
 const { alignChartInBrowser } = await import("./alignChartInBrowser.js");
-import type { Alignment, AlignmentPath } from "./chartAlignment.js";
 
-const buffer = (sampleRate: number, channels: number[][]) =>
-	({
-		sampleRate,
-		length: channels[0]!.length,
-		numberOfChannels: channels.length,
-		getChannelData: (c: number) => Float32Array.from(channels[c]!),
-	}) as unknown as AudioBuffer;
+const buffer = { sampleRate: 8000, length: 8, numberOfChannels: 1 } as unknown as AudioBuffer;
 
-const alignment: Alignment = {
-	barStarts: [0, 2],
-	cost: 0.1,
-	controlCost: 0.5,
-	localCost: [0.1],
-	hopSec: 0.1,
-	firstSound: 0,
-	lastSound: 2,
-	rawBarStarts: [0, 2],
-	repair: null,
-};
-const path: AlignmentPath = { alignment, declaredBar: 2, beatsPerBar: 4 };
-const bars = [{ measure: 1, chords: ["D"], bpm: 120, meter: "4/4", key: null, section: null }];
+const alignment = { barStarts: [0, 2], firstSound: 0 } as unknown as Alignment;
+const placements: Placements = { sections: [], keyChanges: [], tempoChanges: [] };
+const timing = { format: "barmark-timing" } as unknown as TimingMap;
+const fit = { bar1: 0, medianBar: 2, declaredBar: 2, ratio: 3 };
 
-type Request = AlignChartRequest | AlignmentEnvelopeRequest;
-type Reply = AlignChartReply | AlignmentEnvelopeReply;
-/** What each worker answers, by its module's name; null never answers. */
-type Replies = {
-	path: ((r: AlignChartRequest) => AlignChartReply) | null;
-	envelope: ((r: AlignmentEnvelopeRequest) => AlignmentEnvelopeReply) | null;
-};
-
-/** Stand-in Workers told apart by the URL they are built from: each keeps what it was sent and answers with its reply. */
-function fakeWorkers(replies: Replies) {
-	const sent: { path: AlignChartRequest[]; envelope: AlignmentEnvelopeRequest[] } = {
-		path: [],
-		envelope: [],
-	};
-	const terminate = { path: vi.fn(), envelope: vi.fn() };
+/** A fake alignment worker answering `reply`; null never answers. */
+function fakeWorker(reply: ((r: AlignChartRequest) => AlignChartReply) | null) {
+	const sent: AlignChartRequest[] = [];
+	const terminate = vi.fn();
 	class FakeWorker {
-		onmessage: ((e: MessageEvent<Reply>) => void) | null = null;
+		onmessage: ((e: MessageEvent<AlignChartReply>) => void) | null = null;
 		onerror: (() => void) | null = null;
-		kind: keyof Replies;
-		terminate: () => void;
-		constructor(url: URL) {
-			this.kind = String(url).includes("alignmentEnvelope.worker") ? "envelope" : "path";
-			this.terminate = terminate[this.kind];
-		}
-		postMessage(request: Request) {
-			(sent[this.kind] as Request[]).push(request);
-			const reply = replies[this.kind] as ((r: Request) => Reply) | null;
-			if (reply) queueMicrotask(() => this.onmessage?.({ data: reply(request) } as MessageEvent));
+		terminate = terminate;
+		postMessage(r: AlignChartRequest) {
+			sent.push(r);
+			if (reply) queueMicrotask(() => this.onmessage?.({ data: reply(r) } as MessageEvent));
 		}
 	}
 	vi.stubGlobal("Worker", FakeWorker);
 	return { sent, terminate };
 }
 
-/** An envelope with no onsets: the repair has nothing to read, so the path's alignment comes back as it is. */
-const noOnsets: Replies["envelope"] = (r) => ({ id: r.id, onset: new Float32Array(0), fps: 86 });
+const input = { chart: "time: 4/4, tempo: 120\n| D |\n", tempo: 120 };
+const refusedWith = (reason: string, before = false) =>
+	({
+		ok: false,
+		refusals: [{ reason, message: `listen: ${reason}` }],
+		warnings: [],
+		alignment: before ? null : alignment,
+		placements: before ? null : placements,
+	}) as unknown as Extract<AlignChartReply, { result: unknown }>["result"];
 
 afterEach(() => {
-	cache.readAlignmentFeatures.mockReset().mockResolvedValue(null);
-	cache.writeAlignmentFeatures.mockReset();
+	workers.recordingFeaturesOf.mockReset().mockReturnValue(Effect.succeed(features));
 	vi.unstubAllGlobals();
 	vi.useRealTimers();
 });
+workers.recordingFeaturesOf.mockReturnValue(Effect.succeed(features));
 
 describe("alignChartInBrowser", () => {
-	test("sums the buffers to mono at the first one's rate, posts it to both workers, and ends them", async () => {
-		const { sent, terminate } = fakeWorkers({
-			path: (r) => ({ id: r.id, path }),
-			envelope: noOnsets,
+	test("posts the input with the recording's features to the worker and gives back its alignment, map and placements", async () => {
+		const { sent, terminate } = fakeWorker((r) => ({
+			id: r.id,
+			result: { ok: true, value: { timing, alignment, fit, placements }, warnings: [] },
+		}));
+		await expect(alignChartInBrowser(input, [buffer], "lf1:8000:a")).resolves.toEqual({
+			alignment,
+			placements,
+			timing,
+			refusals: [],
+			warnings: [],
 		});
-		const stereo = buffer(4, [
-			[1, 1, 1, 1],
-			[0, 0, 0, 0],
-		]);
-		// Twice the rate, half as long in time: linear interpolation picks every other sample.
-		const doubleRate = buffer(8, [[0, 1, 2, 3]]);
-		await expect(alignChartInBrowser(bars, [stereo, doubleRate])).resolves.toEqual(alignment);
-		expect(Array.from(sent.path[0]!.recording!)).toEqual([0.5, 2.5, 0.5, 0.5]);
-		expect(sent.path[0]!.sampleRate).toBe(4);
-		expect(sent.path[0]!.bars).toEqual([{ chords: ["D"], bpm: 120, meter: "4/4" }]);
-		// Its own copy: both are transferred.
-		expect(Array.from(sent.envelope[0]!.recording)).toEqual([0.5, 2.5, 0.5, 0.5]);
-		expect(sent.envelope[0]!.recording).not.toBe(sent.path[0]!.recording);
-		expect(sent.envelope[0]!.sampleRate).toBe(4);
-		expect(terminate.path).toHaveBeenCalledOnce();
-		expect(terminate.envelope).toHaveBeenCalledOnce();
+		expect(workers.recordingFeaturesOf).toHaveBeenCalledWith([buffer], "lf1:8000:a");
+		expect(sent[0]!.input).toEqual({ ...input, features });
+		expect(terminate).toHaveBeenCalledOnce();
 	});
 
-	test("the path's error becomes the rejection's message, and both workers end", async () => {
-		const { terminate } = fakeWorkers({
-			path: (r) => ({ id: r.id, error: "The recording or the chart is too short to align" }),
-			envelope: null,
+	test("a refusal after the warping comes back with its alignment and placements, and no map", async () => {
+		fakeWorker((r) => ({ id: r.id, result: refusedWith("weak-fit") }));
+		await expect(alignChartInBrowser(input, [buffer])).resolves.toEqual({
+			alignment,
+			placements,
+			timing: null,
+			refusals: [{ reason: "weak-fit", message: "listen: weak-fit" }],
+			warnings: [],
 		});
-		await expect(alignChartInBrowser(bars, [buffer(4, [[0]])])).rejects.toThrow("too short");
-		expect(terminate.path).toHaveBeenCalledOnce();
-		expect(terminate.envelope).toHaveBeenCalledOnce();
 	});
 
-	test("the envelope's error fails the alignment too", async () => {
-		const { terminate } = fakeWorkers({
-			path: (r) => ({ id: r.id, path }),
-			envelope: (r) => ({ id: r.id, error: "out of memory" }),
-		});
-		await expect(alignChartInBrowser(bars, [buffer(4, [[0]])])).rejects.toThrow("out of memory");
-		expect(terminate.path).toHaveBeenCalledOnce();
-		expect(terminate.envelope).toHaveBeenCalledOnce();
+	test.each([
+		["no-bars", "The chart has no bars to place"],
+		["no-tempo", "The chart has no bars to place"],
+		["too-short", "The recording or the chart is too short to align"],
+		["too-long", "The recording is too long to align in the browser"],
+		["chart-too-long", "The chart runs more than twice as long as the recording; check its tempo"],
+		["invalid-input", "listen: invalid-input"],
+	])("a refusal before the warping (%s) rejects with the page's sentence", async (reason, text) => {
+		fakeWorker((r) => ({ id: r.id, result: refusedWith(reason, true) }));
+		await expect(alignChartInBrowser(input, [buffer])).rejects.toThrow(text);
 	});
 
-	test("no answer in 90 s rejects and ends both workers", async () => {
+	test("the worker's error, or the features', becomes the rejection's message and the worker ends", async () => {
+		const { terminate } = fakeWorker((r) => ({ id: r.id, error: "out of memory" }));
+		await expect(alignChartInBrowser(input, [buffer])).rejects.toThrow("out of memory");
+		expect(terminate).toHaveBeenCalledOnce();
+		workers.recordingFeaturesOf.mockReturnValue(Effect.fail(new Error("no chroma")));
+		await expect(alignChartInBrowser(input, [buffer])).rejects.toThrow("no chroma");
+	});
+
+	test("no answer in 90 s rejects and ends the worker", async () => {
 		vi.useFakeTimers();
-		const { terminate } = fakeWorkers({ path: null, envelope: noOnsets });
-		const pending = alignChartInBrowser(bars, [buffer(4, [[0]])]);
+		const { terminate } = fakeWorker(null);
+		const pending = alignChartInBrowser(input, [buffer]);
 		const check = expect(pending).rejects.toThrow("took too long");
 		await vi.advanceTimersByTimeAsync(90_000);
 		await check;
-		expect(terminate.path).toHaveBeenCalledOnce();
-		expect(terminate.envelope).toHaveBeenCalledOnce();
+		expect(terminate).toHaveBeenCalledOnce();
 	});
 
 	test("no Worker, or no audio, rejects with a sentence instead of throwing", async () => {
 		vi.stubGlobal("Worker", undefined);
-		await expect(alignChartInBrowser(bars, [buffer(4, [[0]])])).rejects.toThrow("cannot align");
-		fakeWorkers({ path: null, envelope: null });
-		await expect(alignChartInBrowser(bars, [])).rejects.toThrow("no audio");
-	});
-
-	describe("with a cache key", () => {
-		const KEY = "af1:4:st.play-1";
-		const computed = {
-			chroma: Float32Array.from({ length: 12 }, () => 0.5),
-			frames: 1,
-			hopSec: 0.1,
-			firstSound: 0,
-			lastSound: 1,
-		};
-		const kept = (over: Partial<AlignmentFeaturesRecord> = {}): AlignmentFeaturesRecord => ({
-			key: KEY,
-			at: 1,
-			sampleRate: 4,
-			...computed,
-			onset: Float32Array.from([0, 1]),
-			fps: 86,
-			...over,
-		});
-
-		test("a full hit posts the features, no recording, to the path worker alone, and writes nothing", async () => {
-			cache.readAlignmentFeatures.mockResolvedValue(kept());
-			const { sent, terminate } = fakeWorkers({
-				path: (r) => ({ id: r.id, path }),
-				envelope: noOnsets,
-			});
-			await expect(alignChartInBrowser(bars, [buffer(4, [[0]])], KEY)).resolves.toBeTruthy();
-			expect(cache.readAlignmentFeatures).toHaveBeenCalledWith(KEY);
-			expect(sent.path).toHaveLength(1);
-			expect(sent.path[0]!.recording).toBeUndefined();
-			expect(sent.path[0]!.features).toEqual(computed);
-			expect(sent.envelope).toHaveLength(0);
-			expect(terminate.path).toHaveBeenCalledOnce();
-			expect(cache.writeAlignmentFeatures).not.toHaveBeenCalled();
-		});
-
-		test("a hit without the envelope runs its worker on the mix and keeps the whole record", async () => {
-			cache.readAlignmentFeatures.mockResolvedValue(kept({ onset: null, fps: null }));
-			const { sent } = fakeWorkers({ path: (r) => ({ id: r.id, path }), envelope: noOnsets });
-			await alignChartInBrowser(bars, [buffer(4, [[1, 1]])], KEY);
-			expect(sent.path[0]!.recording).toBeUndefined();
-			expect(Array.from(sent.envelope[0]!.recording)).toEqual([1, 1]);
-			expect(cache.writeAlignmentFeatures).toHaveBeenCalledOnce();
-			expect(cache.writeAlignmentFeatures.mock.calls[0]![1]).toMatchObject({
-				...computed,
-				fps: 86,
-			});
-		});
-
-		test("a kept record at another rate is a miss", async () => {
-			cache.readAlignmentFeatures.mockResolvedValue(kept({ sampleRate: 48000 }));
-			const { sent } = fakeWorkers({
-				path: (r) => ({ id: r.id, path, features: computed }),
-				envelope: noOnsets,
-			});
-			await alignChartInBrowser(bars, [buffer(4, [[0]])], KEY);
-			expect(sent.path[0]!.features).toBeUndefined();
-			expect(sent.envelope).toHaveLength(1);
-		});
-
-		test("a miss runs both workers on the mix and writes once what they computed", async () => {
-			const onset = Float32Array.from([0, 0.5]);
-			const { sent } = fakeWorkers({
-				path: (r) => ({ id: r.id, path, features: computed }),
-				envelope: (r) => ({ id: r.id, onset, fps: 86 }),
-			});
-			await alignChartInBrowser(bars, [buffer(4, [[0, 1]])], KEY);
-			expect(Array.from(sent.path[0]!.recording!)).toEqual([0, 1]);
-			expect(sent.path[0]!.features).toBeUndefined();
-			expect(sent.envelope).toHaveLength(1);
-			expect(cache.writeAlignmentFeatures).toHaveBeenCalledOnce();
-			const [key, record] = cache.writeAlignmentFeatures.mock.calls[0]!;
-			expect(key).toBe(KEY);
-			expect(record).toMatchObject({ key: KEY, sampleRate: 4, ...computed, onset, fps: 86 });
-		});
-
-		test("a failed envelope worker on a miss still fails the alignment and writes nothing", async () => {
-			fakeWorkers({
-				path: (r) => ({ id: r.id, path, features: computed }),
-				envelope: (r) => ({ id: r.id, error: "out of memory" }),
-			});
-			await expect(alignChartInBrowser(bars, [buffer(4, [[0]])], KEY)).rejects.toThrow(
-				"out of memory",
-			);
-			expect(cache.writeAlignmentFeatures).not.toHaveBeenCalled();
-		});
-
-		test("without a key nothing is read or written", async () => {
-			fakeWorkers({ path: (r) => ({ id: r.id, path, features: computed }), envelope: noOnsets });
-			await alignChartInBrowser(bars, [buffer(4, [[0]])]);
-			expect(cache.readAlignmentFeatures).not.toHaveBeenCalled();
-			expect(cache.writeAlignmentFeatures).not.toHaveBeenCalled();
-		});
+		await expect(alignChartInBrowser(input, [buffer])).rejects.toThrow("cannot align");
+		fakeWorker(null);
+		await expect(alignChartInBrowser(input, [])).rejects.toThrow("no audio");
+		expect(workers.recordingFeaturesOf).not.toHaveBeenCalled();
 	});
 });

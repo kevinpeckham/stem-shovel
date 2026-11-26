@@ -1,5 +1,5 @@
 import { alignmentFeaturesKey } from "#lib/utils/alignmentFeaturesKey.js";
-import { alignChartInBrowser } from "#lib/audio/alignChartInBrowser.js";
+import { alignChartInBrowser, type ChartAlignment } from "#lib/audio/alignChartInBrowser.js";
 import {
 	analyse,
 	combineFeatures,
@@ -11,8 +11,7 @@ import {
 	type KeyChange,
 } from "#lib/audio/analysis.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
-import type { Alignment } from "#lib/audio/chartAlignment.js";
-import { barGrid, barSecondsAt, snapToAnchor, snapToDownbeat } from "#lib/audio/measures.js";
+import { barSecondsAt, snapToAnchor, snapToDownbeat } from "#lib/audio/measures.js";
 import { songGrid } from "#lib/utils/barGridOfTiming.js";
 import type { TimingMap } from "@barmark/sync";
 import {
@@ -30,9 +29,10 @@ import type { AiAnswer } from "#lib/server/aiDetect.js";
 import { notify } from "#lib/state/notifications.svelte.js";
 import type { SongChanges } from "#lib/state/songChanges.svelte.js";
 import { alignedPlacements } from "#lib/utils/alignedPlacements.js";
-import { alignedTimingMap } from "#lib/utils/alignedTimingMap.js";
-import { alignmentFit } from "#lib/utils/alignmentFit.js";
+import { alignmentFitReasons } from "#lib/utils/alignmentFitReasons.js";
 import { barmarkKey } from "#lib/utils/barmarkKey.js";
+import { chartAlignInput } from "#lib/utils/chartAlignInput.js";
+import { timingOfText } from "#lib/utils/timingOfText.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
 import { formatSongChange } from "#lib/utils/formatSongChange.js";
 import { keyLine } from "#lib/utils/keyLine.js";
@@ -228,14 +228,16 @@ export class SongCheck {
 	}
 
 	/**
-	 * The chart aligned to the decoded stems in a worker (stem-bench Study 12;
-	 * no AI): its placements and the chart parser's warnings, or why it could
-	 * not be aligned. A failure in the worker rejects; the callers handle it.
-	 * The song's own chart, aligned, is kept as its timing map in passing.
+	 * The chart aligned to the decoded stems in a worker (@barmark/listen's
+	 * `alignChart`, stem-bench Study 12; no AI): its placements and the chart
+	 * parser's warnings, or why it could not be aligned. A failure in the
+	 * worker, or a refusal before the warping, rejects with a sentence; the
+	 * callers handle it. The song's own chart, aligned, is kept as its timing
+	 * map in passing.
 	 */
 	alignChart = async (): Promise<AlignedChart> => {
-		const id = this.#opts.song().id;
-		const chart = await chartBarsOf({ id });
+		const song = this.#opts.song();
+		const chart = await chartBarsOf({ id: song.id });
 		if (chart.bars === null) return { reason: chart.reason };
 		const engine = this.#opts.engine();
 		if (engine?.status !== "ready") return { reason: "audio" };
@@ -244,41 +246,43 @@ export class SongCheck {
 		const key = buffers[0]
 			? alignmentFeaturesKey(engine.sourceUrls(), buffers[0].sampleRate)
 			: null;
-		const alignment = await alignChartInBrowser(chart.bars, buffers, key);
-		if (chart.source === "chart")
-			this.#keepTiming(id, chart.text, chart.bars.length, alignment, engine.duration);
-		return { placements: alignedPlacements(chart.bars, alignment), warnings: chart.warnings };
+		// The package aligns the chart's text (a copy in the song's meter when the chart sets none).
+		const input = chartAlignInput(chart.text, song.changes, song.startAt);
+		const aligned = await alignChartInBrowser(input, buffers, key);
+		if (chart.source === "chart" && input.declared) this.#keepTiming(song.id, chart.text, aligned);
+		// Placed from the app's own bars of the chart (sections named in words, tempo in the song's unit).
+		return {
+			placements: alignedPlacements(aligned.alignment, chart.bars),
+			warnings: chart.warnings,
+		};
 	};
 
 	/**
-	 * The aligned chart's bar starts posted as its timing map (`saveChartTiming`),
-	 * only when the map checks clean against the chart here and the alignment
-	 * fits the recording and the declared tempo (`alignmentFit`). A song
-	 * without a tempo and a time signature keeps nothing; an alignment that
-	 * does not fit says why in a notice; any other failure is silent: the
-	 * alignment's purpose is placing the settings, the map is a by-product.
+	 * The aligned chart's timing map posted (`saveChartTiming`) when the
+	 * package kept one: it checks against the chart, the alignment fits the
+	 * recording and the song's declared bar, and the chart is this recording
+	 * (the same-piece gate). Called only for a song with a tempo and a time
+	 * signature (the fit's declared bar). A map the package clamped to the
+	 * recording, its bars past the recording's end cut (`bars-cut`), is kept
+	 * as it is: the player follows it to where the recording stops. An
+	 * alignment that does not fit says why in a notice; any other failure is
+	 * silent: the alignment's purpose is placing the settings, the map is a
+	 * by-product. A map of a copy aligned in the song's meter is carried back
+	 * to the saved `text` (`timingOfText`); none when the two do not play the
+	 * same bars.
 	 */
-	#keepTiming(id: string, text: string, bars: number, alignment: Alignment, duration: number) {
-		const song = this.#opts.song();
-		const grid = barGrid(song.changes, song.startAt);
-		if (!grid) return;
-		let timing: TimingMap | null;
-		try {
-			timing = alignedTimingMap(text, bars, alignment.barStarts, duration);
-		} catch {
-			return; // Nothing to keep: the alignment's answer stands on its own.
-		}
-		if (!timing) return;
-		const startAt = song.startAt ?? 0;
-		const fit = alignmentFit(alignment, { startAt, barSeconds: barSecondsAt(grid, startAt) });
-		if (!fit.ok) {
-			notify(
-				`The chart's alignment did not fit the recording well enough to keep as bar timing: ${fit.reasons.join("; ")}.`,
-				{ kind: "info", timeout: 10000 },
-			);
+	#keepTiming(id: string, text: string, aligned: ChartAlignment) {
+		if (aligned.timing) {
+			const timing = timingOfText(aligned.timing, text);
+			if (timing) saveChartTiming({ id, timing }).catch(() => {});
 			return;
 		}
-		saveChartTiming({ id, timing }).catch(() => {});
+		const reasons = alignmentFitReasons(aligned.refusals);
+		if (reasons.length === 0) return;
+		notify(
+			`The chart's alignment did not fit the recording well enough to keep as bar timing: ${reasons.join("; ")}.`,
+			{ kind: "info", timeout: 10000 },
+		);
 	}
 
 	/**

@@ -335,6 +335,7 @@
 		arrangementId: () => data.song.arrangementId,
 		engine: () => playerEngine,
 		grid: () => posCtx.grid,
+		changes: () => data.song.changes,
 		aiAvailable: () => data.aiAvailable,
 		startAt: () => data.song.startAt,
 		// "Generate chart" on a song without a grid: the stems' tempo and meter first (saved at once on a song with none).

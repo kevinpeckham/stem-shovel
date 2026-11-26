@@ -13,7 +13,7 @@
 	import { chartlessPlacementLine } from "#lib/utils/chartlessPlacementLine.js";
 	import { chartlessGridUse } from "#lib/utils/chartlessGridUse.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
-	import type { ChartlessGrid } from "#lib/audio/chartlessGrid.js";
+	import type { PlacedGrid } from "@barmark/listen";
 	import { chordChart, type ChordSegment } from "#lib/audio/chords.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import { barGrid, barSecondsAt, type BarGrid } from "#lib/audio/measures.js";
@@ -140,7 +140,7 @@
 			use ? "Following the chart's timing" : "Back to the song's own tempo",
 		);
 	/** The placement's bar one and tempo become the song's start of bar 1 and tempo; the rows show the new tempo. */
-	const usePlacement = (placement: ChartlessGrid) =>
+	const usePlacement = (placement: PlacedGrid) =>
 		timingAction(
 			() => useChartlessGrid({ id: songId, arrangementId, ...chartlessGridUse(placement) }),
 			({ startAt: at, bpm }) => {

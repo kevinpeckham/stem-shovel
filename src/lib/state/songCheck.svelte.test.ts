@@ -3,6 +3,7 @@ import type { Detection } from "#lib/audio/analysis.js";
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import type { AiAnswer } from "#lib/server/aiDetect.js";
 import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import { chartHash } from "@barmark/sync";
 
 /**
  * Scan stems and the AI's song check: the remote functions are stand-ins
@@ -256,93 +257,185 @@ describe("SongCheck", () => {
 	});
 });
 
-describe("alignChart keeps the song's own chart's timing map", () => {
-	const TEXT = "| C | G |\n";
-	const bar = (chords: string[]) => ({
+describe("alignChart aligns the chart's text and keeps the song's own chart's timing map", () => {
+	const TEXT = "time: 4/4\n| C | G |\n";
+	const bar = (chords: string[], over: Record<string, unknown> = {}) => ({
 		measure: 1,
 		chords,
 		bpm: 120,
 		meter: "4/4",
 		key: null,
 		section: null,
+		...over,
 	});
 	const chart = (over: Record<string, unknown> = {}) => ({
-		bars: [bar(["C"]), bar(["G"])],
-		warnings: [],
+		bars: [bar(["C"], { section: "Verse" }), bar(["G"])],
+		warnings: ["Line 1: a warning"],
 		source: "chart",
 		text: TEXT,
 		...over,
 	});
-	const alignment = (barStarts: number[]) => ({
-		barStarts,
-		cost: 0.1,
-		controlCost: 0.5,
-		localCost: [0.1, 0.1],
-		hopSec: 0.1,
-		firstSound: 0,
-		lastSound: 4,
+	/** A map of `text` (the one listen hashes: the text it aligned). */
+	const timingOf = (text: string, bars = 2) => ({
+		format: "barmark-timing",
+		version: 1,
+		chart: { bars, hash: chartHash(text) },
+		source: "aligned",
+		bars: Array.from({ length: bars }, (_, i) => ({ bar: i + 1, start: 0.5 + 2 * i })),
+		end: 0.5 + 2 * bars,
 	});
-	/** 120 bpm in 4/4: a declared bar of 2 s. */
-	const aligned = () =>
+	/** What alignChartInBrowser resolves: the alignment (this recording, an even fit), the map or the refusals. */
+	const aligned = (
+		over: { barStarts?: number[]; timing?: object | null; refusals?: object[] } = {},
+	) => ({
+		alignment: {
+			barStarts: over.barStarts ?? [0.5, 2.5, 4.5],
+			ratio: 5,
+			samePiece: true,
+			localCost: [0.1, 0.1, 0.1],
+			localMedian: 0.1,
+			firstSound: 0.4,
+			lastSound: 4.5,
+		},
+		// listen's own placements: not what the app places from.
+		placements: { sections: [], keyChanges: [], tempoChanges: [] },
+		timing: over.timing === undefined ? timingOf(TEXT) : over.timing,
+		refusals: over.refusals ?? [],
+		warnings: [],
+	});
+	const song = (meter: string, bpm: string) =>
 		make([
-			{ kind: "tempo", start: 0, value: "120" },
-			{ kind: "meter", start: 0, value: "4/4" },
+			{ kind: "tempo", start: 0, value: bpm },
+			{ kind: "meter", start: 0, value: meter },
 		]);
 
-	test("a clean map of the aligned bars is posted with source aligned", async () => {
+	test("hands the package the chart's text, the song's tempo and declared bar, posts the map it kept, and places from the app's bars", async () => {
 		remote.chartBarsOf.mockResolvedValue(chart());
-		align.alignChartInBrowser.mockResolvedValue(alignment([0.5, 2.5, 4.5]));
-		const { check } = aligned();
-		await check.alignChart();
-		expect(remote.saveChartTiming).toHaveBeenCalledWith({
-			id: "song1",
-			timing: expect.objectContaining({
-				format: "barmark-timing",
-				source: "aligned",
-				chart: { bars: 2, hash: expect.stringMatching(/^[0-9a-f]{16}$/) },
-				bars: [
-					{ bar: 1, start: 0.5 },
-					{ bar: 2, start: 2.5 },
-				],
-				end: 4.5,
-			}),
+		align.alignChartInBrowser.mockResolvedValue(aligned());
+		const result = await song("4/4", "120").check.alignChart();
+		expect(align.alignChartInBrowser).toHaveBeenCalledWith(
+			{ chart: TEXT, tempo: 120, declared: { meter: "4/4", tempo: 120 }, startAt: 0 },
+			[],
+			null,
+		);
+		expect(remote.saveChartTiming).toHaveBeenCalledWith({ id: "song1", timing: timingOf(TEXT) });
+		expect(result).toEqual({
+			placements: {
+				sections: [{ name: "Verse", start: 0.4, hedged: true }],
+				keyChanges: [],
+				tempoChanges: [],
+				ratio: 5,
+				samePiece: true,
+			},
+			warnings: ["Line 1: a warning"],
 		});
 	});
 
-	test("a score's read, or bar starts that do not check, post nothing", async () => {
-		remote.chartBarsOf.mockResolvedValue(chart({ source: "summary", text: undefined }));
-		align.alignChartInBrowser.mockResolvedValue(alignment([0.5, 2.5, 4.5]));
-		await aligned().check.alignChart();
-		remote.chartBarsOf.mockResolvedValue(chart());
-		align.alignChartInBrowser.mockResolvedValue(alignment([3, 2, 4.5]));
-		await aligned().check.alignChart();
+	test("a 6/8 song declares its 120 eighths as 40 dotted quarters; a tempo change is the chart bar's, in eighths", async () => {
+		const sixEight = "time: 6/8\n| C | G | F |\n";
+		remote.chartBarsOf.mockResolvedValue(
+			chart({
+				text: sixEight,
+				bars: [
+					bar(["C"], { meter: "6/8" }),
+					bar(["G"], { meter: "6/8" }),
+					bar(["F"], { meter: "6/8", bpm: 180 }),
+				],
+			}),
+		);
+		align.alignChartInBrowser.mockResolvedValue(
+			aligned({ barStarts: [0.5, 2, 3.5, 4.5], timing: null }),
+		);
+		const result = await song("6/8", "120").check.alignChart();
+		expect(align.alignChartInBrowser.mock.calls[0]![0]).toEqual({
+			chart: sixEight,
+			tempo: 40,
+			declared: { meter: "6/8", tempo: 40 },
+			startAt: 0,
+		});
+		expect("placements" in result && result.placements.tempoChanges).toEqual([
+			{ at: 3.5, bpm: 180, hedged: false },
+		]);
+	});
+
+	test("a chart without `time:` in a 3/4 song is aligned in 3/4, and its map is kept under the saved chart's hash", async () => {
+		const saved = "| C | G |\n";
+		const copy = `time: 3/4\n${saved}`;
+		remote.chartBarsOf.mockResolvedValue(
+			chart({ text: saved, bars: [bar(["C"], { meter: "3/4" }), bar(["G"], { meter: "3/4" })] }),
+		);
+		align.alignChartInBrowser.mockResolvedValue(aligned({ timing: timingOf(copy) }));
+		await song("3/4", "120").check.alignChart();
+		expect(align.alignChartInBrowser.mock.calls[0]![0]).toMatchObject({
+			chart: copy,
+			tempo: 120,
+			declared: { meter: "3/4", tempo: 120 },
+		});
+		expect(remote.saveChartTiming).toHaveBeenCalledWith({ id: "song1", timing: timingOf(saved) });
+	});
+
+	test("a score's read is aligned from its text and keeps no map", async () => {
+		remote.chartBarsOf.mockResolvedValue(
+			chart({ source: "summary", text: "time: 4/4\n| D | A |\n" }),
+		);
+		align.alignChartInBrowser.mockResolvedValue(aligned());
+		await expect(song("4/4", "120").check.alignChart()).resolves.toHaveProperty("placements");
+		expect(align.alignChartInBrowser.mock.calls[0]![0]).toMatchObject({
+			chart: "time: 4/4\n| D | A |\n",
+		});
 		expect(remote.saveChartTiming).not.toHaveBeenCalled();
 	});
 
-	test("an alignment that does not fit the recording posts nothing and says why", async () => {
+	test("an alignment that does not fit the recording posts nothing and says why, in the fit's words", async () => {
 		remote.chartBarsOf.mockResolvedValue(chart());
-		align.alignChartInBrowser.mockResolvedValue(alignment([8, 9, 10]));
-		await aligned().check.alignChart();
+		align.alignChartInBrowser.mockResolvedValue(
+			aligned({
+				timing: null,
+				refusals: [
+					{ reason: "bar-one-far", message: "", detail: { bar1: 8, music: 0, declaredBar: 2 } },
+					{ reason: "bar-length-off", message: "", detail: { medianBar: 1, declaredBar: 2 } },
+					{
+						reason: "not-same-piece",
+						message: "The chart does not sound like this recording: it fits little better.",
+					},
+				],
+			}),
+		);
+		const result = await song("4/4", "120").check.alignChart();
+		expect(result).toHaveProperty("placements");
 		expect(remote.saveChartTiming).not.toHaveBeenCalled();
 		expect(notify).toHaveBeenCalledWith(
-			"The chart's alignment did not fit the recording well enough to keep as bar timing: bar 1 at 0:08 where the sound starts at 0:00; bars 1.0 s where the tempo says 2.00 s.",
+			"The chart's alignment did not fit the recording well enough to keep as bar timing: bar 1 at 0:08 where the sound starts at 0:00; bars 1.0 s where the tempo says 2.00 s; the chart does not sound like this recording: it fits little better.",
 			{ kind: "info", timeout: 10000 },
 		);
 	});
 
-	test("a song without a tempo and a time signature keeps nothing, silently", async () => {
+	test("a map that does not check is silent", async () => {
 		remote.chartBarsOf.mockResolvedValue(chart());
-		align.alignChartInBrowser.mockResolvedValue(alignment([0.5, 2.5, 4.5]));
-		await make().check.alignChart();
+		align.alignChartInBrowser.mockResolvedValue(
+			aligned({ timing: null, refusals: [{ reason: "map-invalid", message: "" }] }),
+		);
+		await song("4/4", "120").check.alignChart();
 		expect(remote.saveChartTiming).not.toHaveBeenCalled();
 		expect(notify).not.toHaveBeenCalled();
 	});
 
-	test("a failed post is silent", async () => {
+	test("a song without a tempo and a time signature declares nothing and keeps nothing, silently", async () => {
 		remote.chartBarsOf.mockResolvedValue(chart());
-		align.alignChartInBrowser.mockResolvedValue(alignment([0, 2, 4]));
-		remote.saveChartTiming.mockRejectedValue(new Error("nope"));
-		await expect(aligned().check.alignChart()).resolves.toBeDefined();
+		align.alignChartInBrowser.mockResolvedValue(aligned());
+		await make().check.alignChart();
+		expect(align.alignChartInBrowser.mock.calls[0]![0]).toEqual({ chart: TEXT, startAt: 0 });
+		expect(remote.saveChartTiming).not.toHaveBeenCalled();
 		expect(notify).not.toHaveBeenCalled();
+	});
+
+	test("a failed post is silent; a failed alignment rejects with its sentence", async () => {
+		remote.chartBarsOf.mockResolvedValue(chart());
+		align.alignChartInBrowser.mockResolvedValue(aligned());
+		remote.saveChartTiming.mockRejectedValue(new Error("nope"));
+		await expect(song("4/4", "120").check.alignChart()).resolves.toBeDefined();
+		expect(notify).not.toHaveBeenCalled();
+		align.alignChartInBrowser.mockRejectedValue(new Error("The chart has no bars to place"));
+		await expect(song("4/4", "120").check.alignChart()).rejects.toThrow("no bars to place");
 	});
 });

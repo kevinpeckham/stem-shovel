@@ -1282,6 +1282,43 @@ describe("saveChartTiming", () => {
 	});
 });
 
+describe("chartBarsOf gives the chart's text with its bars", () => {
+	beforeEach(() => {
+		asEditorOf(ACCOUNT);
+		data.songForMix.mockResolvedValue({
+			accountId: ACCOUNT,
+			changes: [
+				{ kind: "tempo", start: 0, value: "120" },
+				{ kind: "meter", start: 0, value: "4/4" },
+			],
+		});
+	});
+	it("the song's own chart: its markdown, source chart", async () => {
+		data.scoreForAi.mockResolvedValue({ kind: "chart", markdown: "| C | G |\n" });
+		const out = (await call(songs.chartBarsOf, { id: SONG })) as Record<string, unknown>;
+		expect(out).toMatchObject({ source: "chart", text: "| C | G |\n" });
+		expect(out.bars).toHaveLength(2);
+	});
+	it("a PDF or image score's read: the read's text, source summary", async () => {
+		data.scoreForAi.mockResolvedValue({ kind: "pdf", chartRead: "| D | A | G |\n" });
+		const out = (await call(songs.chartBarsOf, { id: SONG })) as Record<string, unknown>;
+		expect(out).toMatchObject({ source: "summary", text: "| D | A | G |\n" });
+		expect(out.bars).toHaveLength(3);
+	});
+	it("a score not read yet, or MusicXML, gives a reason and no text", async () => {
+		data.scoreForAi.mockResolvedValue({ kind: "image", chartRead: null });
+		await expect(call(songs.chartBarsOf, { id: SONG })).resolves.toEqual({
+			bars: null,
+			reason: "unread",
+		});
+		data.scoreForAi.mockResolvedValue({ kind: "musicxml" });
+		await expect(call(songs.chartBarsOf, { id: SONG })).resolves.toEqual({
+			bars: null,
+			reason: "musicxml",
+		});
+	});
+});
+
 describe("useChartlessGrid", () => {
 	beforeEach(() => asEditorOf(ACCOUNT));
 	it("404 when the song is gone; a tempo outside 20 to 400 or a negative start is refused", async () => {

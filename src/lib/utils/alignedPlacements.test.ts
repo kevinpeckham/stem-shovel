@@ -1,12 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
-import type { Alignment } from "#lib/audio/chartAlignment.js";
-import {
-	ALIGNMENT_SAME_PIECE_LOCAL_COST,
-	ALIGNMENT_SAME_PIECE_RATIO,
-} from "#lib/constants/chartAlignment.js";
+import type { Alignment } from "@barmark/listen";
 import { alignedPlacements } from "./alignedPlacements.js";
-import type { ChartBar } from "./barmarkChartBars.js";
+import { barmarkChartBars, type ChartBar } from "./barmarkChartBars.js";
 
+/**
+ * What the aligned chart places, from the app's own reading of the chart
+ * (`ChartBar`: sections named by heading, rehearsal mark or words; tempo in
+ * the song's unit) at @barmark/listen's aligned bar starts, gated and
+ * hedged by its alignment.
+ */
 const bar = (over: Partial<ChartBar>): ChartBar => ({
 	measure: 1,
 	chords: ["D"],
@@ -30,27 +32,27 @@ const bars: ChartBar[] = [
 
 const alignment = (over: Partial<Alignment> = {}): Alignment => ({
 	barStarts: [0.1, 2.4, 4.4, 6.4, 8.4, 10.4, 12, 13.6, 15.2],
+	rawBarStarts: [0.1, 2.4, 4.4, 6.4, 8.4, 10.4, 12, 13.6, 15.2],
+	repair: null,
 	cost: 0.05,
 	controlCost: 0.5,
+	ratio: 10,
 	localCost: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05],
+	localMedian: 0.05,
+	samePiece: true,
+	chartBar: 2.4,
+	beatsPerBar: 4,
 	hopSec: 0.093,
 	firstSound: 0,
 	lastSound: 16,
-	rawBarStarts: [0.1, 2.4, 4.4, 6.4, 8.4, 10.4, 12, 13.6, 15.2],
-	repair: null,
 	...over,
 });
+/** Not this recording: listen's gate said no. */
+const notThis = { ratio: 1.2, samePiece: false };
 
 describe("alignedPlacements", () => {
-	test("a one-bar meter's own bpm is not a tempo change; the song's tempo is what changes", () => {
-		// A [6/8] bar in 4/4 at 100 counts its eighths at 200 and keeps the tempo at 100.
-		const odd = bars.map((b, i) => (i === 1 ? bar({ meter: "6/8", bpm: 200, tempo: 100 }) : b));
-		expect(alignedPlacements(odd, alignment()).tempoChanges).toEqual([
-			{ at: 10.4, bpm: 120, hedged: false },
-		]);
-	});
 	test("sections, key and tempo changes at their bars; the first and last sections hedged; a first section near 0 at 0", () => {
-		const placed = alignedPlacements(bars, alignment());
+		const placed = alignedPlacements(alignment(), bars);
 		expect(placed.sections).toEqual([
 			{ name: "Intro", start: 0, hedged: true },
 			{ name: "Verse", start: 4.4, hedged: false },
@@ -59,21 +61,49 @@ describe("alignedPlacements", () => {
 		]);
 		expect(placed.keyChanges).toEqual([{ at: 8.4, key: "E major", hedged: false }]);
 		expect(placed.tempoChanges).toEqual([{ at: 10.4, bpm: 120, hedged: false }]);
-		expect(placed.ratio).toBeCloseTo(10);
+		expect(placed.ratio).toBe(10);
 		expect(placed.samePiece).toBe(true);
+	});
+
+	test("a one-bar meter's own bpm is not a tempo change; the song's tempo is what changes", () => {
+		// A [6/8] bar in 4/4 at 100 counts its eighths at 200 and keeps the tempo at 100.
+		const odd = bars.map((b, i) => (i === 1 ? bar({ meter: "6/8", bpm: 200, tempo: 100 }) : b));
+		expect(alignedPlacements(alignment(), odd).tempoChanges).toEqual([
+			{ at: 10.4, bpm: 120, hedged: false },
+		]);
+	});
+
+	test("4/4 at 120 going to 6/8 at the same dotted-quarter pulse is a change to 360 eighths in the song's unit", () => {
+		const read = barmarkChartBars("time: 4/4, tempo: 120\n| C | G |\ntime: 6/8\n| F | C |\n", {
+			tempo: null,
+			meter: null,
+		})!;
+		expect(read.bars.map((b) => b.tempo ?? b.bpm)).toEqual([120, 120, 360, 360]);
+		const placed = alignedPlacements(alignment({ barStarts: [0, 2, 4, 5, 6] }), read.bars);
+		expect(placed.tempoChanges).toEqual([{ at: 4, bpm: 360, hedged: false }]);
+	});
+
+	test("a section a score's read names in a bar's words is placed (barmark's own reading names only headings and rehearsal marks)", () => {
+		const read = barmarkChartBars('time: 4/4, tempo: 120\n| C | G |\n| "Chorus" F | C |\n', {
+			tempo: null,
+			meter: null,
+		})!;
+		expect(read.bars.map((b) => b.section)).toEqual([null, null, "Chorus", null]);
+		const placed = alignedPlacements(alignment({ barStarts: [0, 2, 4, 6, 8] }), read.bars);
+		expect(placed.sections.map((s) => [s.name, s.start])).toEqual([["Chorus", 4]]);
 	});
 
 	test("a bar whose local cost is over twice the median hedges what is placed there", () => {
 		const localCost = [0.05, 0.05, 0.05, 0.05, 0.2, 0.05, 0.05, 0.05];
-		const placed = alignedPlacements(bars, alignment({ localCost }));
+		const placed = alignedPlacements(alignment({ localCost }), bars);
 		expect(placed.sections.find((s) => s.name === "Chorus")?.hedged).toBe(true);
 		expect(placed.keyChanges[0]?.hedged).toBe(true);
 		expect(placed.tempoChanges[0]?.hedged).toBe(false);
 	});
 
 	test("a chart that is not this recording hedges everything", () => {
-		const placed = alignedPlacements(bars, alignment({ controlCost: 0.06 }));
-		expect(placed.ratio).toBeCloseTo(1.2);
+		const placed = alignedPlacements(alignment(notThis), bars);
+		expect(placed.ratio).toBe(1.2);
 		expect(placed.samePiece).toBe(false);
 		expect(
 			[...placed.sections, ...placed.keyChanges, ...placed.tempoChanges].every((p) => p.hedged),
@@ -82,88 +112,56 @@ describe("alignedPlacements", () => {
 
 	test("not this recording: a first section later than a quarter second keeps its time, one within it starts at 0", () => {
 		const late = alignedPlacements(
+			alignment({ barStarts: [0.6, 2.4, 4.4, 6.4, 8.4, 10.4, 12, 13.6, 15.2], ...notThis }),
 			bars,
-			alignment({ barStarts: [0.6, 2.4, 4.4, 6.4, 8.4, 10.4, 12, 13.6, 15.2], controlCost: 0.06 }),
 		);
-		expect(late.samePiece).toBe(false);
 		expect(late.sections[0]?.start).toBe(0.6);
 		expect(late.sections.at(-1)?.start).toBe(12);
 		const near = alignedPlacements(
+			alignment({ barStarts: [0.2, 2.4, 4.4, 6.4, 8.4, 10.4, 12, 13.6, 15.2], ...notThis }),
 			bars,
-			alignment({ barStarts: [0.2, 2.4, 4.4, 6.4, 8.4, 10.4, 12, 13.6, 15.2], controlCost: 0.06 }),
 		);
 		expect(near.sections[0]?.start).toBe(0);
 	});
 
-	test("nothing is before 0; a perfect fit has a finite ratio", () => {
-		const placed = alignedPlacements(bars, alignment({ cost: 0 }));
-		expect(Number.isFinite(placed.ratio)).toBe(true);
-		const early = alignedPlacements(
-			[bar({}), bar({ key: "G major" })],
-			alignment({ barStarts: [-2, -1, 1] }),
-		);
+	test("nothing is before 0", () => {
+		const early = alignedPlacements(alignment({ barStarts: [-2, -1, 1] }), [
+			bar({}),
+			bar({ key: "G major" }),
+		]);
 		expect(early.keyChanges[0]?.at).toBe(0);
-	});
-
-	test("Study 14's real-domain ratios: a correct chart's 2.04 is this recording, a wrong one's 1.24 is not", () => {
-		expect(ALIGNMENT_SAME_PIECE_RATIO).toBe(1.6);
-		expect(alignedPlacements(bars, alignment({ cost: 0.1, controlCost: 0.204 })).samePiece).toBe(
-			true,
-		);
-		expect(alignedPlacements(bars, alignment({ cost: 0.1, controlCost: 0.124 })).samePiece).toBe(
-			false,
-		);
-	});
-
-	test("Study 16's wrong pairing: a ratio of 1.74 clears the gate, its median local cost of 0.323 does not; the same ratio with a low local cost is this recording", () => {
-		expect(ALIGNMENT_SAME_PIECE_LOCAL_COST).toBe(0.3);
-		const wrong = alignedPlacements(
-			bars,
-			alignment({ cost: 0.1, controlCost: 0.174, localCost: Array(8).fill(0.323) }),
-		);
-		expect(wrong.ratio).toBeCloseTo(1.74);
-		expect(wrong.samePiece).toBe(false);
-		expect(wrong.sections.every((s) => s.hedged)).toBe(true);
-		const right = alignedPlacements(
-			bars,
-			alignment({ cost: 0.1, controlCost: 0.174, localCost: Array(8).fill(0.12) }),
-		);
-		expect(right.samePiece).toBe(true);
 	});
 
 	test("FIRST-ONSET: a first section at the chart's first bar starts at the first sound, hedged, only when the chart is this recording", () => {
 		const late = { barStarts: [7.15, 9, 11, 13, 15, 17, 19, 21, 23], lastSound: 25 };
-		const placed = alignedPlacements(bars, alignment({ ...late, firstSound: 0.02 }));
+		const placed = alignedPlacements(alignment({ ...late, firstSound: 0.02 }), bars);
 		expect(placed.sections[0]).toEqual({ name: "Intro", start: 0.02, hedged: true });
-		const notThis = alignedPlacements(
-			bars,
-			alignment({ ...late, firstSound: 0.02, controlCost: 0.06 }),
-		);
-		expect(notThis.sections[0]?.start).toBe(7.15);
+		const other = alignedPlacements(alignment({ ...late, firstSound: 0.02, ...notThis }), bars);
+		expect(other.sections[0]?.start).toBe(7.15);
 		// A chart whose first section starts after its first bar keeps the path's time.
 		const unmarked = [bar({}), ...bars.slice(1)];
-		const kept = alignedPlacements(unmarked, alignment({ ...late, firstSound: 0.02 }));
+		const kept = alignedPlacements(alignment({ ...late, firstSound: 0.02 }), unmarked);
 		expect(kept.sections[0]).toEqual({ name: "Verse", start: 11, hedged: true });
 	});
 
 	test("LAST-SOUND: the last section starts its chart length before the last sound, hedged, never within a bar of the section before", () => {
 		// The Outro is two bars at 120 in 4/4: four seconds.
-		const placed = alignedPlacements(bars, alignment({ lastSound: 20.03 }));
+		const placed = alignedPlacements(alignment({ lastSound: 20.03 }), bars);
 		expect(placed.sections.at(-1)?.name).toBe("Outro");
 		expect(placed.sections.at(-1)?.start).toBeCloseTo(16.03);
 		expect(placed.sections.at(-1)?.hedged).toBe(true);
 		// A last sound too early for the outro: one bar (2.4 s at 100) after the Chorus at 8.4.
-		const floored = alignedPlacements(bars, alignment({ lastSound: 9 }));
+		const floored = alignedPlacements(alignment({ lastSound: 9 }), bars);
 		expect(floored.sections.at(-1)?.start).toBeCloseTo(10.8);
-		const notThis = alignedPlacements(bars, alignment({ lastSound: 20.03, controlCost: 0.06 }));
-		expect(notThis.sections.at(-1)?.start).toBe(12);
+		const other = alignedPlacements(alignment({ lastSound: 20.03, ...notThis }), bars);
+		expect(other.sections.at(-1)?.start).toBe(12);
 	});
 
 	test("a chart of one section is untouched by LAST-SOUND", () => {
 		const one = [bar({ section: "Song" }), bar({}), bar({})];
 		const placed = alignedPlacements(
-			one,
 			alignment({ barStarts: [0, 2.4, 4.8, 7.2], firstSound: 0.3, lastSound: 30 }),
+			one,
 		);
 		expect(placed.sections).toEqual([{ name: "Song", start: 0.3, hedged: true }]);
 	});

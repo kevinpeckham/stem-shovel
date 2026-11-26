@@ -1,29 +1,26 @@
+import { type Features, readFeatures } from "@barmark/listen/features";
 import { openIndexedDb } from "#lib/utils/openIndexedDb.js";
 
 /**
- * The recording features a chart alignment reads, kept per song in this
- * browser (IndexedDB, its own database): the mix's chromagram (flattened,
- * 12 a frame), where its sound starts and ends, and its onset envelope.
- * They depend on the stems alone, not the chart, so a second "Place from
- * chart" after a chart edit skips them (audio/alignChartInBrowser.ts).
- * Keyed by utils/alignmentFeaturesKey.ts (the renditions and the rate,
- * with the feature code's version). At most `KEEP` records, the oldest
+ * The recording features a chart alignment and the chartless grid read,
+ * kept per song in this browser (IndexedDB, its own database): the mix's
+ * @barmark/listen `Features` record (its chromagram, where its sound
+ * starts and ends, and its onset envelope). They depend on the stems
+ * alone, not the chart, so a second "Place from chart" after a chart edit
+ * skips them (audio/alignChartInBrowser.ts). Keyed by
+ * utils/alignmentFeaturesKey.ts (the renditions and the rate, with the
+ * package's `FEATURES_VERSION`). A record is read back through the
+ * package's `readFeatures`, so one in the app's old shape, of another
+ * features version, or one that does not hold together is a miss, and is
+ * computed again and written over. At most `KEEP` records, the oldest
  * written going first. The house contract for a browser cache
  * (audio/mediaCache.ts): it never throws; no IndexedDB, a blocked open, a
  * quota error or any other failure is a miss on read and a no-op on write.
  */
-export interface AlignmentFeaturesRecord {
+interface StoredFeatures {
 	key: string;
 	at: number;
-	sampleRate: number;
-	chroma: Float32Array;
-	frames: number;
-	hopSec: number;
-	firstSound: number;
-	lastSound: number;
-	/** Null when the envelope's worker failed: the next alignment computes it. */
-	onset: Float32Array | null;
-	fps: number | null;
+	features: Features;
 }
 
 const DB_NAME = "stem-shovel-alignment";
@@ -58,28 +55,31 @@ async function inTransaction<T>(
 	});
 }
 
-/** The record under `key`, or null (a miss, or any failure). */
-export async function readAlignmentFeatures(key: string): Promise<AlignmentFeaturesRecord | null> {
+/** The features under `key` as `readFeatures` accepts them, or null (a miss, a record it refuses, or any failure). */
+export async function readAlignmentFeatures(key: string): Promise<Features | null> {
 	try {
 		if (typeof indexedDB === "undefined") return null;
-		return await inTransaction<AlignmentFeaturesRecord | null>("readonly", (store, done) => {
-			const req = store.get(key);
-			req.onsuccess = () => done((req.result as AlignmentFeaturesRecord | undefined) ?? null);
-		});
+		const stored = await inTransaction<Partial<StoredFeatures> | null>(
+			"readonly",
+			(store, done) => {
+				const req = store.get(key);
+				req.onsuccess = () => done((req.result as Partial<StoredFeatures> | undefined) ?? null);
+			},
+		);
+		const read = stored ? readFeatures(stored.features) : null;
+		return read?.ok ? read.value : null;
 	} catch {
 		return null;
 	}
 }
 
-/** Keeps `record` under `key`, then deletes the oldest beyond `KEEP`; a no-op on any failure. */
-export async function writeAlignmentFeatures(
-	key: string,
-	record: AlignmentFeaturesRecord,
-): Promise<void> {
+/** Keeps `features` under `key`, then deletes the oldest beyond `KEEP`; a no-op on any failure. */
+export async function writeAlignmentFeatures(key: string, features: Features): Promise<void> {
 	try {
 		if (typeof indexedDB === "undefined") return;
 		await inTransaction<void>("readwrite", (store) => {
-			store.put({ ...record, key });
+			const record: StoredFeatures = { key, at: Date.now(), features };
+			store.put(record);
 			const count = store.count();
 			count.onsuccess = () => {
 				let excess = count.result - KEEP;
