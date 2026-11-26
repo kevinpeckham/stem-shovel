@@ -32,7 +32,7 @@ A song has one chart, and a score you upload is a source for it, not a second ch
 
 A song with no chart yet offers the three ways to fill it on the Chart tab: **Write it**, **Generate from the stems** (when the song has stems and the AI is on; see Song settings) and **Import from a score**, which opens the Scores section, or the upload when there are none yet. A generated chart takes its bar lines from the recording itself: where the band actually plays each bar, even when the tempo drifts. When those bars are not the bars the song's tempo and time signature make, the draft says so and waits on the Chart tab for you to review before anything is saved.
 
-**Chart from MIDI** does the same for a MIDI file in the song's attachments: the ⋯ menu on the file reads its harmony as block chords, bar by bar, with the file's markers as sections and its tempo and meter, into the same draft card.
+**Chart from MIDI** does the same for a MIDI file in the song's attachments: the ⋯ menu on the file reads its harmony as block chords, bar by bar, with the file's markers as sections and its tempo and meter, into the same draft card. A file that is a single line of notes, a bass line or a melody, comes in as those notes, each with its pitch and length, instead of as chords.
 
 From Dorico: File › Export › MusicXML, one flow per file, exporting layouts as separate files if you want the parts as well as the score. Slash regions and some engraving details do not travel in MusicXML; a PDF in the Attachments panel shows the page exactly as Dorico printed it.
 

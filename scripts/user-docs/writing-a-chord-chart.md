@@ -101,6 +101,7 @@ Capitals do not matter, but the rest of the name must match: `## Verse 2` is a n
 - A bass note after a slash: `C/E`
 - Tones in parentheses are added exactly, as Logic reads them: `C(9)` is C, E, G and D; `Cm7(b5)` is half-diminished
 - `5` means no third: `C5` is C and G, `C5(7)` is C, G and B♭
+- Other common spellings are read as well: `CΔ7`, `CMaj9` and `Cma9` for `Cmaj7` and `Cmaj9`, `CmΔ7` for a minor chord with a major seventh, `Cadd13` for `C(13)`, and `Cm(b6)` for a flat sixth
 
 `C2` and `C4` are refused (players read them two ways); write `Csus2` or `C(9)`.
 

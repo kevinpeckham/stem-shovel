@@ -8,6 +8,93 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.272.0] - 2026-11-26
+
+### Added
+
+- **More chord spellings read** (barmark 0.24 and 0.25): the flat sixth
+  (`F#m(b6)`), `add` before any tone (`Cadd13`), `Δ9` and `Δ13`, `Maj` and
+  `ma` before 9 and 13, the delta after a minor (`CmΔ7`) and the triangle
+  signs a Mac types. No chord that read before changes meaning, except a
+  misreading fixed: a bare `add9` followed by an alteration (`Cadd9b13`)
+  read as a chord on another root and is now an error with a suggestion
+  (`C(9,b13)`), which `repairChordSpellings` applies like any other.
+
+### Changed
+
+- **"Chart from MIDI" writes a single line of notes as its notes**
+  (`@barmark/midi` 0.4): a file that is one bass line or one melody comes
+  in with every attack, pitch and length, where the chord reading turned
+  it into holds and `N.C.`. Every other file imports as it did.
+- **A chord model's `b6` label builds `(b6)`**, where it built `(b13)`:
+  the same notes under the name the model gave (`harteToBarmark`, so the
+  chords job's runs and the drafts built from them).
+- **"Place from chart" keeps no bar timing for a chart that is not the
+  recording.** The alignment's same-piece gate (it must fit better than a
+  wrong chart, and closely enough bar by bar) now also decides whether the
+  map is kept, and the notice says so; the sections are still offered,
+  marked approximate, as before.
+- **A kept bar timing stops where the recording does.** The map is held
+  to the recording's length, and a bar that would lie wholly past its end
+  (a recording cut short of its chart) is left off, where the map ran on
+  past the end.
+- **A pickup is not bar one.** When a recording starts with a few beats
+  before its first full bar, "Detect chords" and "Generate chart" place
+  bar 1 at the first full bar on the browser's grid; the pickup's own
+  beats are left off the draft, as they are on the tracker's bars.
+
+### Fixed
+
+- **The Built With page's sections are named regions again** (issue #22).
+  Each section's id was built from its title, and five of the seven
+  titles hold spaces: an invalid id, and `aria-labelledby` read each as
+  two ids that do not exist, so a screen reader listing the page's regions
+  heard two of seven by name. The ids are slugs of the titles now.
+
+### Technical
+
+- **barmark 0.25.0**, `@barmark/render` 0.21.1, `@barmark/score` 0.8.0,
+  `@barmark/sync` 0.4.3, `@barmark/musicxml` 0.9.3 and `@barmark/midi`
+  0.4.0, two barmark minors on from 0.23.1. `db:chart-check` read every
+  chart on dev and staging clean before the bump. `@barmark/render` now
+  brings `@barmark/fretboard` (its chord diagrams, not drawn here yet);
+  the engraver is unchanged. No migration.
+- **The recording-to-chart math is `@barmark/listen`'s** (0.2.2, issue
+  #17): the package is a port of the app's own modules, and the app's
+  copies are gone, so the app, the bench and the package run one copy.
+  - _The tracker's bars_: `trackerBarGrid` calls `gridFromBeats`;
+    `beatThisGrid` and `beatThisDownbeats` go, and the chords job snaps
+    downbeats with the package's `snapDownbeats`. Run side by side first
+    on the five dev readings and 400 seeded ones: the same bars, meter,
+    bar length and refusals.
+  - _The browser's alignment and grid_: "Place from chart" runs
+    `alignChart` in a worker and the chartless draft's grid `findGrid`, on
+    features two workers compute at once (`chromaFeatures`,
+    `onsetFeatures`, joined on the page) and the browser caches as the
+    package's record (read back through `readFeatures`; records from
+    before are recomputed once a song). `audio/chartAlignment.ts`,
+    `alignmentRepair.ts`, `chartlessGrid.ts`, `constants/chartAlignment.ts`,
+    `utils/alignmentFit.ts`, `alignedTimingMap.ts` and
+    `chordPitchClasses.ts` go with their tests, about 3,400 lines.
+  - _What stays the app's_: its sentences (the package's refusal reasons
+    are mapped to them), the placements (`alignedPlacements`, read off the
+    app's own bars at the aligned bar starts, so a section named in a
+    bar's words is still placed and a tempo change is counted in the
+    song's unit), a chart without `time:` aligned in the song's meter
+    (`chartAlignInput`, the map carried back by `timingOfText`), and the
+    song's tempo converted to barmark's beat (`listenDeclared`).
+  - _How it was checked_: old against new on twelve synthetic recordings
+    before the copies went (6/8, a pickup, a wrong chart and a chart longer
+    than its recording among them), then in a browser on two dev songs:
+    the same 76-bar timing map to the last digit, and the same grids.
+  - _Not taken yet_: a draft that writes the pickup as a bar 0, and the
+    package's own comparison of a declared tempo with the tracker's
+    (`trackerGridNote` keeps the app's, which measures against the song's
+    own timeline).
+- **The indexability audit checks ids.** `bun run audit:seo` has an `ids`
+  column: a public page with whitespace in an `id` is a finding
+  (`idsWithWhitespace`).
+
 ## [0.271.1] - 2026-11-24
 
 ### Changed

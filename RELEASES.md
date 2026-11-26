@@ -4,6 +4,29 @@ What changed in Stem Shovel, release by release, as a user would notice it. The 
 
 ## [Unreleased]
 
+## [0.272.0] - 2026-11-26
+
+### Added
+
+- **More chord spellings are read in a chart**: `Cadd13`, a flat sixth
+  such as `F#m(b6)`, `CΔ9`, `CMaj9`, `Cma9`, and `CmΔ7` for a minor
+  chord with a major seventh.
+
+### Changed
+
+- **Chart from MIDI** brings in a file that is a single line of notes, a
+  bass line or a melody, as those notes, where it used to guess chords
+  from them.
+- **Place from chart** no longer keeps bar timing when the chart plainly
+  is not the recording, and bar timing now stops where the recording
+  does.
+- **Detect chords and Generate chart** put bar 1 at the first full bar
+  when a recording starts with a pickup.
+
+### Fixed
+
+- **The Built With page** names each of its sections for screen readers.
+
 ## [0.271.1] - 2026-11-24
 
 Maintenance release with no user-visible changes.
