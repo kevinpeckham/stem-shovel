@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import type { BeatThisBeats } from "./beatThisBeats";
 import { trackerBarGrid } from "./trackerBarGrid";
@@ -110,5 +111,21 @@ describe("trackerBarGrid", () => {
 		expect(trackerBarGrid(reading([2, 2, 4, 4, 4, 4, 4, 2, 2]))?.bars).toEqual([
 			0, 2, 4, 6, 8, 10, 12, 14,
 		]);
+	});
+
+	it("the dev songs' readings: the bar counts the app and the package agreed on (issue #17)", () => {
+		const real = JSON.parse(
+			readFileSync("docs/bench-reply-beats-2026-11-11.json", "utf8"),
+		) as Record<string, BeatThisBeats>;
+		const bars = (name: string) => {
+			const grid = trackerBarGrid(real[name]!);
+			return grid ? [grid.bars.length - 1, grid.meter] : null;
+		};
+		expect(bars("peaceful-dreams")).toEqual([144, "4/4"]);
+		expect(bars("eat-all-the-clocks")).toEqual([72, "4/4"]);
+		expect(bars("letter-lands")).toEqual([69, "4/4"]);
+		expect(bars("interbellum")).toEqual([66, "4/4"]);
+		// Bars that do not settle on one count of beats: the draft keeps the declared grid.
+		expect(bars("mop-heart")).toBeNull();
 	});
 });

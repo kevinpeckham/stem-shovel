@@ -15,13 +15,13 @@ import { Db, type Services } from "#lib/server/effect/services.js";
 import { TranscriberError } from "#lib/server/effect/transcriptionErrors.js";
 import { JobTuning } from "#lib/server/effect/tuning.js";
 import type { BeatThisBeats } from "#lib/utils/beatThisBeats.js";
-import { beatThisDownbeats } from "#lib/utils/beatThisDownbeats.js";
 import { beatThisLogMel } from "#lib/utils/beatThisLogMel.js";
 import { beatThisPeaks } from "#lib/utils/beatThisPeaks.js";
 import { chordminiFeatures } from "#lib/utils/chordminiCqt.js";
 import { chordminiIndices } from "#lib/utils/chordminiSmooth.js";
 import { chordminiRunsOf } from "#lib/utils/chordminiRunsOf.js";
 import type { ChordminiRuns } from "#lib/utils/chordminiRuns.js";
+import { snapDownbeats } from "@barmark/listen/stages";
 import { harteToBarmark } from "barmark";
 import type * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
@@ -114,7 +114,7 @@ function trackBeats(samples: Float32Array, dir: string) {
 				new TranscriberError({ code: null, signal: null, stderr: String(e).slice(-2048) }),
 		}).pipe(Effect.timeout(ffmpegTimeout));
 		const beats = beatThisPeaks(logits.beat);
-		return { beats, downbeats: beatThisDownbeats(beats, beatThisPeaks(logits.downbeat)) };
+		return { beats, downbeats: snapDownbeats(beats, beatThisPeaks(logits.downbeat)) };
 	}).pipe(
 		Effect.withSpan("chords.beats"),
 		Effect.tapError((e) => Effect.logWarning("beat tracker failed", e)),

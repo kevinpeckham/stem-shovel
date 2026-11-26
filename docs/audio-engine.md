@@ -1146,6 +1146,42 @@ Kevin's machine, like `db:status`). The packages pin each other exactly
 since a caret range would not reach a minor), so they are bumped
 together, with exact pins in package.json.
 
+### The 0.25 bump (2026-11-26)
+
+barmark 0.25.0, `@barmark/render` 0.21.1, `@barmark/score` 0.8.0,
+`@barmark/sync` 0.4.3, `@barmark/musicxml` 0.9.3 and `@barmark/midi`
+0.4.0, two barmark minors on from 0.23.1, with `@barmark/listen` 0.2.2
+added (below, "The tracker's bars", and "The math is
+`@barmark/listen`'s"). `db:chart-check` read every chart on dev and
+staging clean with 0.25.0 before the bump landed. What changed for the
+app:
+
+- **More chords read** (0.24, 0.25): the flat sixth (`F#m(b6)`), `add`
+  before any tone (`Cadd13`), `Δ9` and `Δ13`, `Maj` and `ma` before 9 and
+  13, the delta after a minor, and the triangle signs. No chord that read
+  before changes meaning, with one exception, a misreading fixed: a bare
+  `add9` followed by an alteration (`Cadd9b13`) read as a chord on
+  another root and is now an error with a suggestion (`C(9,b13)`).
+  `repairChordSpellings` applies the suggestion like any other.
+- **A chord model's `b6` label builds `(b6)`**, where it built `(b13)`
+  (`harteToBarmark`, so the chords job's runs and the draft built from
+  them): the same notes under the name the model gave.
+- **"Chart from MIDI" writes a single line of notes as its notes**
+  (`@barmark/midi` 0.4): a file that is one bass line or one melody comes
+  in with every attack, pitch and octave, where the chord reading turned
+  it into holds and `N.C.`. `chartFromMidi` keeps the package's default
+  (`notes: true`); every other file imports as it did.
+- **`@barmark/render` now depends on `@barmark/fretboard`** (the chord
+  diagrams of 0.20). The app bundles it; nothing draws diagrams yet.
+- **Not taken up, available:** guitar chord diagrams
+  (`chordDiagrams: "guitar"`), a grid without the melody line
+  (`melody: false`) and a score element without its own switch
+  (`switch: false`). The engraver is unchanged (`@barmark/engraver`
+  0.1.1), so `static/engraver/` was not recopied.
+- **Still spliced:** `renderScoreHtml` has no options for the engraver's
+  three attributes (our ask on issue #16), so `renderScoreChartHtml`
+  still writes them into the opening tag.
+
 ### The 0.23 bump and what it retired (2026-11-11)
 
 barmark 0.23.1, `@barmark/render` 0.19.0, `@barmark/score` 0.5.0,
@@ -1430,7 +1466,9 @@ beat tracker, not an even grid laid from the song's declared tempo.
   (`utils/beatThisLogMel.ts`), 1500-frame windows with a 6-frame border
   stitched keeping the earlier window (`beatThisChunks`, `beatThisChunkOf`,
   `beatThisStitch`), the minimal postprocessor with no DBN
-  (`beatThisPeaks`, `beatThisDownbeats`). Fixtures from the bench pin
+  (`beatThisPeaks`, then each downbeat moved to its nearest beat by
+  `@barmark/listen`'s `snapDownbeats`, which replaced the app's own
+  `beatThisDownbeats` on 2026-11-26). Fixtures from the bench pin
   every stage to the package's numbers (`tests/fixtures/beat-this`).
 - **What is stored.** `song.beats_json` (`BeatThisBeats`: beats,
   downbeats, the duration read, the export's version) with `beats_key`
@@ -1454,6 +1492,30 @@ beat tracker, not an even grid laid from the song's declared tempo.
   readings than wrong, so 0.4). The meter is Study 41's label (modal
   beats per bar: 6 is 6/8, 3 is 3/4, else 4/4); the tempo is the grid's
   own, derived by `@barmark/sync`.
+- **The arithmetic is `@barmark/listen`'s** (since 2026-11-26, issue
+  #17): `trackerBarGrid` is a call to the package's `gridFromBeats`,
+  which is a port of the app's own `trackerBarGrid`, `beatThisGrid` and
+  `beatThisDownbeats`, so the app, the bench and the package run one
+  copy. Before the app's copy went, the two were run side by side on the
+  five dev readings (`docs/bench-reply-beats-2026-11-11.json`) and on
+  400 seeded readings with half bars, odd bars and loose downbeats: the
+  same bars, meter and bar length every time, and the same readings
+  turned away. A test keeps the dev readings' bar counts (144, 72, 69,
+  66, and Mop Heart turned away). The thresholds are the package's
+  defaults, set from the same studies: `TRACKER_MIN_BARS` 4,
+  `TRACKER_MIN_STEADY_SHARE` 0.4, `TRACKER_MIN_CLOSING_SHARE` 0.5. A
+  refusal of any kind (too few bars, bars that do not settle, stored
+  beats it cannot read) is "no tracker grid", as before. Two things the
+  package offers are not taken yet. It reports a **pickup** (the beats
+  before bar one, written as a bar 0 when they measure one beat to half
+  a bar): the draft still leaves those beats off the chart, since a
+  draft with a bar 0 changes how its sections and its bar one are
+  placed. And it compares a **declared** tempo and meter
+  (`tempo-drift`, `meter-differs`): `trackerGridNote` keeps its own
+  comparison, because the declared bar it measures against comes from
+  the app's own timeline (the tempo in force at the song's start of bar
+  one, ramps included, counted in the meter's bottom note), which the
+  package is not given.
 - **The build** (`buildChartFromDetections`, `draftChart`): on the
   tracker's bars when they stand and the chord model named the chords;
   the model's frames are voted onto those bars, the song's keys are

@@ -1,9 +1,8 @@
 import { readFileSync } from "node:fs";
+import { beatsLabel, snapDownbeats } from "@barmark/listen/stages";
 import { describe, expect, test } from "vite-plus/test";
 import { beatThisChunkOf } from "./beatThisChunkOf.js";
 import { beatThisChunks } from "./beatThisChunks.js";
-import { beatThisDownbeats } from "./beatThisDownbeats.js";
-import { beatThisGrid } from "./beatThisGrid.js";
 import { beatThisLogMel } from "./beatThisLogMel.js";
 import { beatThisPeaks } from "./beatThisPeaks.js";
 
@@ -47,10 +46,14 @@ describe("the Beat This port against the package's fixtures", () => {
 
 	test("the stitched logits give the package's beats, downbeats and tempo", () => {
 		const beats = beatThisPeaks(f32("beat-logits.f32"));
-		const downbeats = beatThisDownbeats(beats, beatThisPeaks(f32("downbeat-logits.f32")));
+		const downbeats = snapDownbeats(beats, beatThisPeaks(f32("downbeat-logits.f32")));
 		expect(beats.map((t) => Math.round(t * 1000) / 1000)).toEqual(expected.beats);
 		expect(downbeats.map((t) => Math.round(t * 1000) / 1000)).toEqual(expected.downbeats);
-		const grid = beatThisGrid(beats, downbeats);
-		expect(grid).toMatchObject({ tempo: Math.round(expected.tempo), beatsPerBar: 4, meter: "4/4" });
+		const label = beatsLabel(beats, downbeats);
+		expect(label).toMatchObject({
+			beatTempo: Math.round(expected.tempo),
+			beatsPerBar: 4,
+			meter: "4/4",
+		});
 	});
 });
