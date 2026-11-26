@@ -869,16 +869,19 @@ and the song-check's key and tempo changes.
   `@barmark/render` draws it (docs/styling.md).
 - **The query** `chartBarsOf` (songs.remote.ts, members): the song's
   score through `scoreForAi`; the chord chart or a notation file's
-  stored read gives `{bars, warnings, source: "chart" | "summary"}`;
+  stored read gives `{bars, warnings, source: "chart" | "summary", text}`
+  (the chart's markdown or the read's text, which the aligner reads);
   otherwise `{bars: null, reason: "none" | "musicxml" | "unread" |
   "no-bars"}`. It never calls the model: "unread" means the song-check
   has not yet read the file.
-- **The aligner** (`audio/chartAlignment.ts`, pure, run in
+- **The aligner** (the app's `audio/chartAlignment.ts` until
+  2026-11-26, now `@barmark/listen`'s `alignChart`, the same math: "The
+  math is `@barmark/listen`'s" below; run in
   `workers/alignChart.worker.ts`; `audio/alignChartInBrowser.ts` mixes
   the player's decoded buffers to mono at the first buffer's rate,
   posts, waits 90 s at most and terminates the worker). The bench's
   math ported: `renderChartPads` sums a sine per chord tone
-  (`utils/chordPitchClasses.ts`: root and triad by quality, sevenths,
+  (`chordPitchClasses`: root and triad by quality, sevenths,
   sixths, ninths, a slash bass) for each bar's seconds, where a bar is
   the numerator's beats at the bpm and a beat is the meter's bottom
   note, as the song's changes count it everywhere (the bench counted a
@@ -893,12 +896,15 @@ and the song-check's key and tempo changes.
   each bar start through the path and runs the same alignment with the
   reference chroma rotated six classes as the tritone control; a
   four-minute song renders in about a second and aligns in about three.
-- **Placements** (`utils/alignedPlacements.ts`, pure): a section at
+- **Placements** (`utils/alignedPlacements.ts`, pure, read off the
+  app's own bars at the aligned bar starts): a section at
   each bar that begins one (the first snapped to 0 within a quarter
   second), a key or tempo change at each bar whose value differs from
   the bar before, `ratio = controlCost / cost` and `samePiece = ratio >=
   ALIGNMENT_SAME_PIECE_RATIO && median(localCost) <=
-  ALIGNMENT_SAME_PIECE_LOCAL_COST` (constants/chartAlignment.ts). The
+  ALIGNMENT_SAME_PIECE_LOCAL_COST` (the app's
+  `constants/chartAlignment.ts` until 2026-11-26; now listen's `DEFAULTS`
+  and its `Alignment.samePiece`, with the same values). The
   ratio constant is **1.6** since stem-bench Study 14 (2026-10-30): the first
   value, 3, came from synthetic renders where correct charts score 24 to
   49, but on the two real recordings the band's own correct charts
@@ -1314,7 +1320,8 @@ chart existed.
   against the stored text; a chart edit whose hash no longer matches clears
   both. "Place from chart" (the chart aligned to the stems, above) saves the
   alignment's bar starts as a map with `source` "aligned" when the aligned
-  score is the band's own chart.
+  score is the band's own chart (since 2026-11-26 listen's map, clamped to
+  the recording: "The math is `@barmark/listen`'s").
 - **The player follows the map when asked** (v0.245.0). A timing map
   converts to the player's `BarGrid` exactly, one tempo segment per bar
   (`utils/barGridOfTiming.ts`: the bar's beats over its span; meters from the
@@ -1345,7 +1352,9 @@ chart existed.
   (grammar 2.4) and the first full bar 1, so a readout on the pickup says
   "0 | 1" and a typed `0|1` seeks to it; the Studio ruler is the Studio's
   own grid and is not a chart's.
-- **An aligned map is gated on its fit** (`utils/alignmentFit.ts`). On
+- **An aligned map is gated on its fit** (the app's `utils/alignmentFit.ts`
+  until 2026-11-26; now listen's fit refusals, said in the same sentences
+  by `utils/alignmentFitReasons.ts`). On
   Letter Lands (music from 0:00, 132 bpm, a 1.82 s bar) the alignment put
   bar 1 at 8.06 s with half-length bars at the head and ended 15 s early,
   Study 12's weak first and last boundaries, and following that map read
@@ -1357,7 +1366,8 @@ chart existed.
   timing block shows an aligned map's agreement ("bar 1 at 0:00, bars
   1.8 s (the tempo says 1.82 s)") so a member sees it before following.
 - **The alignment's ends are repaired after the DTW** (stem-bench Studies
-  26/26b/26c, `audio/alignmentRepair.ts`). The path is good through the
+  26/26b/26c; the app's `audio/alignmentRepair.ts` until 2026-11-26, now
+  inside listen's `alignChart`). The path is good through the
   middle of a song (0.2 to 0.4 s of the true bars on the MMKK set) and
   bad at both ends (3 to 23 s), whatever the cause (the bench's
   trim-to-drums ablation was ill-posed, so the sparse-intro story stays
@@ -1385,10 +1395,12 @@ chart existed.
   chart): the repair's onset envelope 1.55 s, the recording's chromagram
   0.48 s, the render's 0.45 s, the render itself about 0.4 s, both
   warpings together 0.19 s. The warping is nearly free; the spectral
-  analyses are the cost. So the envelope runs in its own worker
-  (`workers/alignmentEnvelope.worker.ts`) at the same time as the path
-  worker, and `repairAlignment` joins the two on the main thread (the
-  comb is milliseconds); the envelope packs two real frames into each
+  analyses are the cost. So the envelope ran in its own worker
+  (`workers/alignmentEnvelope.worker.ts`, gone since 2026-11-26: the two
+  feature workers of "The math is `@barmark/listen`'s" split the work the
+  same way) at the same time as the path worker, and `repairAlignment`
+  joined the two on the main thread (the comb is milliseconds); the
+  envelope packs two real frames into each
   FFT and takes the magnitude with a square root instead of `hypot`,
   which matches the plain computation to rounding and leaves the
   envelope the bench measured with (22,050 Hz, a 2048 window, hop 256)
@@ -1398,7 +1410,8 @@ chart existed.
   envelope's window to go faster: the repair's numbers were measured with
   it.
 - **The grid is re-phased onto the onset lattice** (2026-11-08, stem-bench
-  Study 27, recipe v5; `alignmentRepair.ts` `rephaseGrid`): after the
+  Study 27, recipe v5; `alignmentRepair.ts` `rephaseGrid`, listen's since
+  2026-11-26): after the
   phase line and the trusted span of recipe v3, the ENTIRE uniform line
   slides once onto the onsets by `combSlide`, fenced at ±0.5 beat
   (`REPHASE_FENCE_BEATS`, the bar over the meter's beats,
@@ -1425,12 +1438,12 @@ chart existed.
   `stem-shovel-alignment`): the mix's chromagram (flattened, 12 a frame),
   its audible span and its onset envelope depend on the stems alone, not
   the chart, so a second "Place from chart" after a chart edit skips them.
-  The key (`utils/alignmentFeaturesKey.ts`) is `af1:<rate>:<the source
+  The key (`utils/alignmentFeaturesKey.ts`) was `af1:<rate>:<the source
   renditions' mediaCacheKeys, sorted>`: pathnames are never reused, so the
-  set names the audio, and `af1` is the feature code's version, bumped
-  when `chromagram`, `audibleSpan` or `alignmentEnvelope` change what they
-  compute. On a hit the path worker takes `features` and no recording, the
-  envelope worker is not started and the mono mix is not made; a record at
+  set names the audio, and `af1` was the feature code's version. Since
+  2026-11-26 the record is listen's `Features` and the prefix is
+  `lf<FEATURES_VERSION>` ("The math is `@barmark/listen`'s"). On a hit no
+  feature worker starts and the mono mix is not made; a record at
   another rate is a miss; at most 24 records, the oldest written going
   first; the house browser-cache contract (never throws, a failure is a
   miss or a no-op). Letter Lands in the browser: 4.8 s on a miss, 3.4 s
@@ -1561,7 +1574,9 @@ what the stems alone can say about that grid and what they cannot:
   bar-phase landed on the backbeat on two of four songs (Study 28), and
   three cheap scorers tried next (chroma novelty, kick-band onsets, raw
   comb phase) never earned the right to overrule it (Study 30).
-- **Three witnesses do** (Studies 31/31b/31c, `audio/chartlessGrid.ts`).
+- **Three witnesses do** (Studies 31/31b/31c; the app's
+  `audio/chartlessGrid.ts` until 2026-11-26, now `@barmark/listen`'s
+  `findGrid`).
   _Time zero_: a DAW bounces from a bar line, so 0:00 snapped to the
   nearest lattice beat votes for that beat's class when it is within a
   quarter beat (on the bench the distance was 0.06 to 0.08 s on every song,
@@ -1595,19 +1610,21 @@ what the stems alone can say about that grid and what they cannot:
   the model's chords first, then places the grid in the browser
   (`audio/chartlessGridInBrowser.ts`, the worker plumbing both readings
   share in `audio/alignmentWorkers.ts` and `audio/monoOfBuffers.ts`): the
-  recording's chromagram, audible span and onset envelope come from the
-  alignment features cache when it holds them, else from two workers
-  (`workers/alignmentEnvelope.worker.ts` and the new
-  `workers/recordingFeatures.worker.ts`), and the record is written so a
-  later "Place from chart" is a hit. Cancel aborts the workers. In streamed
+  recording's features come from the alignment features cache when it
+  holds them, else from the two feature workers (since 2026-11-26 both
+  `workers/recordingFeatures.worker.ts`, one computing the chroma and one
+  the onset envelope), and the record is written so a later "Place from
+  chart" is a hit. `findGrid` runs on the page: it is milliseconds. Cancel aborts the workers. In streamed
   mode this is the step that fetches and decodes the stems. The chords are voted on
   the placed bars, the draft and its timing map are built on them
   (`draftChart`'s `grid`), and the detected-chords card says where bar one
   landed and which witnesses agreed (`utils/chartlessPlacementLine.ts`).
   Nothing that plays changes: the map follows the existing switch, off by
   default. Any failure in the placement falls back to the declared grid.
-  A bar one the vote puts before 0:00 is clamped to it (the draft's grid
-  takes no negative time), a short pickup bar.
+  A bar one the vote puts before 0:00 was clamped to it (the draft's grid
+  takes no negative time), a short pickup bar. Since 2026-11-26 listen
+  reports a pickup apart from bar one, and the draft's grid starts at
+  bar one.
 - **Letter Lands on dev** (2026-11-08): period 1.8182 s (132 bpm exactly),
   the comb's own phase on beat four, all three witnesses for the same
   class (time zero 0.034 beat off, chord changes 22 against 13, 12 and 7,
@@ -1634,10 +1651,12 @@ what the stems alone can say about that grid and what they cannot:
   timing map (`saveChartDraft`, `replace: false`), the draft cleared and
   the page's data read again. The Docs panel shows the step (`progress`)
   with Cancel; the final notification is `utils/generatedChartLine.ts`.
-- **Refusals are values** (2026-11-09). `chartlessGrid` answers with a
+- **Refusals are values** (2026-11-09). `chartlessGrid` answered with a
   result: the grid, or a refusal with its reason and the witnesses'
-  readings (`no-input`, `undecided`, `no-fit`; the browser wrapper adds
-  `unavailable` for no workers, no audio, a failure or a timeout). The
+  readings (`no-input`, `undecided`, `no-fit`; since 2026-11-26 listen's
+  `invalid-input` or `no-period`, `downbeat-undecided` and
+  `nothing-fits`; the browser wrapper adds `unavailable` for no workers,
+  no audio, a failure or a timeout). The
   draft state keeps the refusal beside the placement
   (`placementRefusal`), and `chartlessPlacementLine` says it on the
   Tempo & key tab: for an undecided vote, what each witness read ("the
@@ -1699,3 +1718,84 @@ what the stems alone can say about that grid and what they cannot:
   separated right from wrong in that study (about 0.84, two safe-side
   errors in twelve) and is a candidate refusal for an automatic mode,
   not used here.
+
+## The math is `@barmark/listen`'s (2026-11-26)
+
+The recording-to-chart math the sections above describe moved out of the
+app into `@barmark/listen` 0.2.2 (stem-shovel issue #17; the tracker side
+is "The tracker's bars"). The package ported the app's code in the app's
+order, so the studies' numbers and thresholds still hold; this section
+says what moved, what stayed and what differs.
+
+- **What replaced what.** `alignChart` replaced `audio/chartAlignment.ts`
+  (the render, chromagram, warping and tritone control),
+  `audio/alignmentRepair.ts` (the ends repair and the re-phase),
+  `utils/alignmentFit.ts` (the fit gate) and `utils/alignedTimingMap.ts`
+  (the map, which listen builds and checks). `findGrid` replaced
+  `audio/chartlessGrid.ts`. `chromaFeatures`, `onsetFeatures`,
+  `joinFeatures` and `readFeatures` (from `@barmark/listen/features`)
+  replaced the feature code the workers ran. `constants/chartAlignment.ts`
+  and `utils/chordPitchClasses.ts` went with them. No import from
+  `@barmark/listen/stages` is needed.
+- **Three workers.** The mono mix goes to two copies of
+  `workers/recordingFeatures.worker.ts` at once, one computing the chroma
+  and one the onset envelope (it imports only `@barmark/listen/features`,
+  about 23 KB); the page joins the parts with `joinFeatures`
+  (`audio/alignmentWorkers.ts`). `workers/alignChart.worker.ts` runs
+  `alignChart` on the joined features. `findGrid` runs on the page. The
+  90 s timeout, Cancel and "the placement never fails the draft" are as
+  before.
+- **The cache record** (`audio/alignmentFeaturesCache.ts`) is listen's
+  `Features` record, read back through `readFeatures`, so a record of
+  another shape or another feature version is a miss. The key is
+  `lf<FEATURES_VERSION>:<rate>:<renditions>` (`lf1:` today), so the old
+  `af1:` records are never read: each song's features are computed once
+  more and the old records age out under the 24-record limit.
+- **What stays the app's, and why.**
+  - Its sentences: listen's refusals are mapped to the words the app
+    already said (`utils/alignmentFitReasons.ts` for the fit,
+    `utils/chartlessPlacementLine.ts` for the grid,
+    `audio/alignChartInBrowser.ts` for a refusal before the warping).
+  - The placements: `utils/alignedPlacements.ts` reads the app's own
+    bars of the chart (`barmarkChartBars`) at listen's aligned bar
+    starts, with listen's same-piece gate and local costs. listen's own
+    placements name a section only by heading or rehearsal mark, so a
+    score's read that names sections in words ("Chorus") would place
+    none, and they count tempo in barmark's beat, so 4/4 at 120 going to
+    6/8 at the same pulse is no change there where the song's unit
+    counts 120 to 360.
+  - The meter of a chart without `time:`: barmark reads it as 4/4, the
+    app as the song's meter, so `utils/chartAlignInput.ts` aligns a copy
+    with the song's `time:` line first, and `utils/timingOfText.ts`
+    carries the copy's map back to the saved chart's hash. Not
+    `@barmark/sync`'s `rehashTiming`: it refuses a copy whose bars differ
+    in meter (`meters-differ`), which is the copy's purpose. The map holds
+    only bar starts, so the hash is all that changes.
+  - The tempo unit: listen counts grammar 2.1's beat (dotted quarters in
+    6/8), the song its bottom note. `utils/listenDeclared.ts` gives the
+    song's meter and tempo in listen's unit (6/8 at 120 is
+    `{meter: "6/8", tempo: 40}`), and `chartAlignInput` converts the
+    fallback tempo the same way.
+- **Accepted differences.**
+  - The map is clamped to the recording: bars past its end are cut
+    (listen's `bars-cut` warning), and the shorter map is kept without a
+    notice; the player follows it to where the recording stops.
+  - A chartless grid's pickup is not bar one: listen reports it apart
+    (`PlacedGrid.pickup`), the draft's grid starts at bar one, and the
+    pickup's chords are left off the draft.
+  - `not-same-piece` and `no-period` keep no map, said in the package's
+    own words, since the app had no sentence for either.
+  - Old cache records are recomputed (above).
+- **How it was checked.** Before the old modules were removed, a
+  temporary test ran them against the new path on twelve synthetic
+  recordings (4/4, 3/4 with a backbeat, 6/8 with and without the chord
+  model's runs, a 6/8 tempo change, a pickup, a lead-in at 44.1 kHz, the
+  song's own start of bar 1, a wrong chart, a chart longer than the
+  recording and a chart without `time:`): the features byte for byte,
+  the grid, the alignment, the placements, the map and the notices
+  matched apart from the differences above. In a browser on two dev
+  songs the old and new paths gave the same timing map (76 bars, no
+  difference) and the same chartless grid.
+- **Not taken yet.** A draft that writes the pickup as bar 0 (barmark's
+  grammar 2.4 has it; `chartFromDetections` would need the pickup's
+  start).

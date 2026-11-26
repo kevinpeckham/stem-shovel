@@ -7,6 +7,56 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## `@barmark/sync`'s `rehashTiming` refuses a chart read in another meter (`meters-differ`) (2026-11-26)
+
+`rehashTiming` (`@barmark/sync` 0.4.3) carries a timing map to a
+refinement of its chart only when every played bar keeps its length: it
+compares meters by value (6/8 is 3/4, 2/2 is 4/4) and refuses
+`meters-differ` otherwise. The listen swap needed exactly that case: a
+chart with no `time:` line is read by barmark as 4/4, by the app as the
+song's meter, so "Place from chart" aligns a copy with the song's `time:`
+line first, and the copy's map must go back to the saved chart. For a
+3/4 song `rehashTiming({ chart: copy, timing }, saved)` answers
+`{ ok: false, reason: "meters-differ" }` (asserted in
+`src/lib/utils/timingOfText.test.ts`). A map with no `beats` holds only
+bar starts, so `utils/timingOfText.ts` swaps the hash itself after
+checking the bar count, and the result passes `checkTimingMap` against
+the saved text. listen's README points at `rehashTiming` for carrying a
+map to a refined chart; that holds only when the meters agree. From the
+issue #17 review of the listen swap.
+
+## `@barmark/listen`'s placements name sections only by heading or rehearsal mark and count tempo in barmark's beat (2026-11-26)
+
+`alignChart` (`@barmark/listen` 0.2.2) returns `placements` (sections,
+key and tempo changes) from its own reading of the chart text
+(`chartPadBars` in `dist/align/bars.js`): a bar's section is its heading,
+else its rehearsal mark, never a section name in its words, and a tempo
+change compares `tempo` in grammar 2.1's beat. The app's reading
+(`barmarkChartBars`) also names a section from a bar's words
+(`chartSectionName`: a score's read marks sections as `"Chorus" F`), and
+counts tempo in the song's unit, the bottom note, so `time: 4/4, tempo:
+120` going to `time: 6/8` at the same pulse is 120 then 360 there and no
+change in listen. Taking listen's placements would have offered no
+sections for a score's read and dropped that tempo change. The app keeps
+listen's alignment (bar starts, gate, local costs) and places from its
+own bars (`utils/alignedPlacements.ts`, with a test for each case). From
+the issue #17 review of the listen swap.
+
+## Without `.env.local`, `bun run format` and `bun run build` stop at varlock, and `SKIP_VARLOCK=1` saves only the first (2026-11-26)
+
+In a worktree with no `.env.local` (no 1Password token), `bun run
+format` (`vp fmt`) fails with "[varlock] config is invalid" because it
+loads the Vite config, and runs clean as `SKIP_VARLOCK=1 bun run
+format`; `check` and `lint` behave the same. `SKIP_VARLOCK=1 bun run
+build` builds the server bundle and then fails in SvelteKit's step after
+it with "varlock ENV not initialized", before the client bundle (where
+the workers are) is built, and `vite.config.ts` says never to set
+`SKIP_VARLOCK` for a build anyway. So an agent without `.env.local`
+cannot run the real build; bundling a worker alone (`bun build
+src/lib/workers/<name>.worker.ts --target browser`) at least shows its
+imports resolve for the browser. Seen in the listen swap's worktree
+(issue #17); the build passed in the main checkout.
+
 ## The varlock Vite plugin inlines non-sensitive `ENV.X`, so a mock of `varlock/env` cannot set them (2026-11-24)
 
 `@varlock/vite-integration` (1.5.4) replaces every `ENV.<KEY>` whose item
